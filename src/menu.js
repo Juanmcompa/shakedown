@@ -4,7 +4,7 @@ import { AUTOS } from './config.js';
 import { BIOMAS, CLIMAS, CARACTER, datosDelDia } from './generador.js';
 import { fechaDe } from './dia.js';
 import { tiempoFinal, CLASE_DE_COLOR } from './hud.js';
-import { iconoDeNota, textoDeNota, ponerIconos, rotular } from './iconos.js';
+import { iconoDeNota, textoDeNota, ponerIconos, rotular, icono } from './iconos.js';
 
 const $ = (id) => document.getElementById(id);
 const CUADRO = { v: '🟩', a: '🟨', r: '🟥', n: '⬛' };
@@ -24,9 +24,12 @@ function cuadritos(colores) {
   return caja;
 }
 
-// o: { T, club, hoy, ref, copiloto, largar(), elegirAuto(id), elegirRival(clave), rival() }
+// o: { T, club, hoy, ref, copiloto, elegirAuto(id), elegirRival(clave), rival(),
+//      ajustes: { leer(clave), poner(clave, valor), probar() }   la configuracion (ver GUSTOS en config.js) }
 export function crearMenu(o) {
-  const { T, club, hoy, ref, copiloto } = o, etapa = T.etapa, numero = etapa.numero, esHoy = numero === hoy;
+  const { T, club, hoy, ref, copiloto, ajustes } = o, etapa = T.etapa, numero = etapa.numero, esHoy = numero === hoy;
+  // el salvavidas que marca un tiempo hecho con la ayuda de manejo
+  const conAyuda = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('salvavidas'); img.alt = 'con ayuda de manejo'; img.title = 'Con ayuda de manejo'; return img; };
   let ultimo = null, linkDe = null;   // el ultimo resultado mostrado, y la funcion que arma su link
 
   // --- la portada ---
@@ -65,6 +68,8 @@ export function crearMenu(o) {
       mio.textContent = '';
       mio.append(crear('span', 'chico', 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
     }
+    $('avisoAyuda').hidden = !ajustes.leer('ayuda');
+    pintarAjustes();
     // la bandera a cuadros larga la pasada oficial; el cono, una practica
     rotular($('largar'), puede ? 'Largar' : 'Practicar');
     $('largar').dataset.icono = puede ? 'bandera' : 'cono';
@@ -84,7 +89,9 @@ export function crearMenu(o) {
     const rival = o.rival();
     lista.forEach((r) => {
       const li = crear('li', r.mio ? 'mio' : '');
-      li.append(crear('span', 'emoji', (AUTOS[r.auto] || AUTOS.vitarita).emoji), crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?')), crear('span', 'tiempoMarca', r.ab ? 'abandono' : tiempoFinal(r.t)), cuadritos(r.c));
+      const quien = crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?'));
+      if (r.ayuda) quien.append(conAyuda());
+      li.append(crear('span', 'emoji', (AUTOS[r.auto] || AUTOS.vitarita).emoji), quien, crear('span', 'tiempoMarca', r.ab ? 'abandono' : tiempoFinal(r.t)), cuadritos(r.c));
       if (r.codigo) {
         const clave = r.mio ? '*' : r.nombre, es = rival && rival.clave === clave && !!rival.practica === !!r.practica;
         // el fantasma: amarillo si es contra quien se corre
@@ -143,12 +150,48 @@ export function crearMenu(o) {
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
     <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla.</p>
     <p>Los golpes rompen el auto. Si se rompe del todo, es abandono.</p>
-    <p>${dib('fantasma')} En la tabla, el fantasma elige contra quién corrés. Si te mandan un link, corrés contra quien te lo mandó.</p>`;
+    <p>${dib('fantasma')} En la tabla, el fantasma elige contra quién corrés. Si te mandan un link, corrés contra quien te lo mandó.</p>
+    <p>${dib('ajustes')} En la configuración se cambian la distancia de la cámara y, en el celular, la sensibilidad al inclinar y el tamaño de los pedales.</p>
+    <p>${dib('salvavidas')} Si recién arrancás, prendé ahí la ayuda de manejo: el auto frena solo antes de las curvas y se cruza menos. Es más lento, pero llegás.</p>`;
+
+  // --- la configuracion ---
+  // Cada grupo de botones y cada barra dice que gusto cambia (data-ajuste). "si" y "no" valen verdadero y falso;
+  // lo demas son numeros. La barra de la camara va en porcentaje (100 = la distancia normal).
+  const leerValor = (txt) => (txt === 'si' ? true : txt === 'no' ? false : Number(txt));
+  const deBarra = { lejos: (v) => v / 100, sensible: (v) => v }, aBarra = { lejos: (v) => Math.round(v * 100), sensible: (v) => v };
+  function pintarAjustes() {
+    for (const el of document.querySelectorAll('[data-ajuste]')) {
+      const clave = el.dataset.ajuste, vale = ajustes.leer(clave);
+      if (el.tagName === 'INPUT') { if (document.activeElement !== el) el.value = aBarra[clave](vale); continue; }
+      for (const b of el.children) { const si = leerValor(b.dataset.valor) === vale; b.classList.toggle('elegido', si); b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', si); }
+    }
+    // la sensibilidad no hace falta si se dobla con las flechas
+    $('ajusteInclina').hidden = !!ajustes.leer('botones');
+  }
+  for (const el of document.querySelectorAll('[data-ajuste]')) {
+    const clave = el.dataset.ajuste;
+    if (el.tagName === 'INPUT') {
+      el.addEventListener('input', () => ajustes.poner(clave, deBarra[clave](Number(el.value))));
+      // mientras se mueve la barra de la camara, el panel se corre para que se vea como queda
+      if (clave === 'lejos') {
+        const mirar = (si) => { $('panel').classList.toggle('mirando', si); el.closest('.ajuste').classList.toggle('mirado', si); };
+        el.addEventListener('pointerdown', () => mirar(true));
+        for (const fin of ['pointerup', 'pointercancel', 'blur']) el.addEventListener(fin, () => mirar(false));
+      }
+    } else for (const b of el.children) b.addEventListener('click', () => ajustes.poner(clave, leerValor(b.dataset.valor)));
+  }
+  $('probarAyuda').addEventListener('click', () => {
+    ajustes.poner('ayuda', true);
+    $('finAyuda').firstElementChild.textContent = 'Listo: la próxima pasada va con ayuda de manejo.';
+    $('probarAyuda').hidden = true;
+  });
 
   // --- paneles ---
   function abrir(cual) {
-    for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda']]) $(id).hidden = nombre !== cual;
+    for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes']]) $(id).hidden = nombre !== cual;
     if (cual === 'pasadas') pintarPasadas();
+    // en el celular, al abrir la configuracion se prende el sensor (si lo hay) para poder probar la sensibilidad
+    if (cual === 'ajustes') { pintarAjustes(); if (window.matchMedia('(pointer: coarse)').matches) ajustes.probar(); }
     $('panel').hidden = !cual;
     if (cual) $('cerrarPanel').focus();
   }
@@ -194,7 +237,11 @@ export function crearMenu(o) {
         s.append(crear('i'), crear('b', '', x === 'n' ? '—' : r.s[k].toFixed(1)), crear('small', '', x === 'n' ? '' : (r.s[k] >= ref.sectores[k] ? '+' : '−') + Math.abs(r.s[k] - ref.sectores[k]).toFixed(1)));
         caja.append(s);
       });
-      $('finDetalle').textContent = r.ab ? '' : (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.';
+      $('finDetalle').textContent = r.ab ? '' : (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : '');
+      // despues de una pasada complicada sin ayuda, se la ofrece
+      $('finAyuda').hidden = !!r.ayuda || !!ajustes.leer('ayuda') || !(r.ab === 'roto' || r.vueltas >= 2 || (!r.ab && r.t > ref.total * 1.6));
+      $('finAyuda').firstElementChild.textContent = '¿Se complicó?';
+      $('probarAyuda').hidden = false;
       $('nombre').value = club.nombre();
       $('compartido').textContent = '';
       $('finRanking').hidden = club.tabla().length < 2;
@@ -204,5 +251,7 @@ export function crearMenu(o) {
       ponerIconos();
     },
     cerrarFin: () => { $('fin').hidden = true; ultimo = null; },
+    // (en la configuracion) muestra el volante en vivo: v es la inclinacion, de -1 a 1, o null si no hay sensor
+    prueba: (v) => { if (!$('panelAjustes').hidden && v !== null) $('pruebaVolante').style.left = (50 + v * 50).toFixed(1) + '%'; },
   };
 }

@@ -1,12 +1,13 @@
 // SHAKEDOWN: arma el juego y corre el ciclo principal.
 import * as THREE from 'three';
-import { JUEGO, AUTOS, REFERENCIA } from './config.js';
+import { JUEGO, AUTOS, REFERENCIA, AYUDA, GUSTOS, gradosDeInclinacion } from './config.js';
 import { hoy } from './dia.js';
 import { generarPista, VERSION } from './generador.js';
 import { crearTerreno } from './terrain.js';
 import { crearReferencia } from './referencia.js';
 import { crearAuto } from './vehicle.js';
 import { crearPartida } from './reglas.js';
+import { crearAyuda } from './ayuda.js';
 import { crearCopiloto } from './copiloto.js';
 import { crearGrabacion, leerCodigo, crearFantasma } from './fantasma.js';
 import { crearClub } from './club.js';
@@ -21,11 +22,11 @@ import { crearSonido } from './audio.js';
 import { crearTeclas } from './input.js';
 import { crearHud } from './hud.js';
 
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (document.documentElement.dataset.pagina !== '7' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '8' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now() + location.hash);
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
@@ -63,15 +64,19 @@ const huellas = crearHuellas(T, render), mundo = crearMundo(T, escena, liviano, 
 const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
 const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento]), sonido = crearSonido(), hud = crearHud();
 const post = crearPost(render, etapa.clima, liviano);
-if (consulta.has('simple')) post.prender(false);   // ?simple: sin desenfoque ni brillos
+// lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica)
+const gusto = (clave) => { const v = club.gusto(clave); return v === undefined ? GUSTOS[clave] : v; };
 
 // --- el auto del jugador (se puede cambiar en la portada) y los fantasmas ---
-let c = null, dibujo = null;
+// Con la ayuda de manejo, el mismo auto se cruza menos (y ademas frena solo: ver ayuda.js).
+const ayuda = crearAyuda(T);
+let c = null, dibujo = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false;
 function ponerAuto(id) {
   if (!AUTOS[id]) id = 'vitarita';
   if (dibujo) escena.remove(dibujo.grupo);
   club.ponerAuto(id);
-  c = crearAuto(T, AUTOS[id]);
+  c = crearAuto(T, conAyuda ? { ...AUTOS[id], ...AYUDA.auto } : AUTOS[id]);
+  if (conAyuda) ayuda.preparar(AUTOS[id]);
   dibujo = crearDibujo(escena, AUTOS[id]);
   partida.preparar(c);
   camara.saltar();
@@ -103,6 +108,7 @@ async function cargarRival() {
 
 const menu = crearMenu({
   T, club, hoy: HOY, ref, copiloto,
+  ajustes: { leer: gusto, poner: (clave, valor) => ajustar(clave, valor), probar: () => teclas.probarSensor() },
   aviso: linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.' : '',
   rival: () => rival,
   elegirAuto: (id) => { if (pantalla !== 'jugando') ponerAuto(id); },
@@ -112,11 +118,10 @@ const menu = crearMenu({
 let pantalla = 'portada';   // portada, jugando o fin
 let modo = 'practica';      // oficial o practica
 let antes = performance.now(), resto = 0, reloj3d = 0, tactil = false, grabacion = null, tFin = 0, avisado = '', trabado = false, paraAtras = false;
-// lo que se eligio la ultima vez: la camara, y si van el sonido y la voz del copiloto. Los botones muestran como quedo.
-let conVoz = club.gusto('voz') !== false;
+let conVoz = true, conFlechas = false, hayVolante = null;   // hayVolante: si el celular tiene sensor de inclinacion (null = todavia no se sabe)
+// la camara que se eligio la ultima vez (el boton muestra cual es)
 if (club.gusto('camara')) camara.cambiar(club.gusto('camara'));
-if (club.gusto('sonido') === false) sonido.alternar();
-hud.camara(camara.modo().id); hud.prendido('sonido', !sonido.mudo()); hud.prendido('voz', conVoz);
+hud.camara(camara.modo().id);
 const lugar = { x: 0, z: 0, rumbo: 0, alto: 0 };
 const ent = { x: 0, y: 0, mano: false }, QUIETO = { x: 0, y: 0, mano: true };
 
@@ -124,10 +129,10 @@ const ent = { x: 0, y: 0, mano: false }, QUIETO = { x: 0, y: 0, mano: true };
 // porque el permiso del sensor y la pantalla completa solo se pueden pedir desde un toque.
 function mandosDeCelular() {
   tactil = true;
-  const raiz = document.documentElement;
   raiz.classList.add('tactil');
   $('tactil').hidden = false;
-  teclas.celular((inclina) => { raiz.classList.toggle('sin-volante', !inclina); encuadrar(); });
+  teclas.celular((inclina) => { hayVolante = inclina; pintarVolante(); });
+  pintarVolante();
   if (raiz.requestFullscreen) raiz.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
 }
@@ -136,9 +141,9 @@ function largar() {
   if (pantalla === 'jugando') return;
   if (!tactil && teclas.esTactil()) mandosDeCelular();
   modo = club.sePuedeOficial() ? 'oficial' : 'practica';
-  document.documentElement.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
+  raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
   pantalla = 'jugando';
-  tFin = 0; avisado = '';
+  tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda;
   partida.preparar(c);
   partida.largar();
   grabacion = crearGrabacion(T);
@@ -148,7 +153,7 @@ function largar() {
   huellas.limpiar();
   camara.saltar();
   mundo.reiniciar();
-  hud.sectores('', 0); hud.aviso(''); hud.grande(''); hud.sinRival(); hud.mostrar(true);
+  hud.sectores('', 0); hud.aviso(''); hud.grande(''); hud.sinRival(); hud.frenaSola(false); hud.mostrar(true);
   encuadrar();
   menu.cerrarFin();
   menu.portada(false);
@@ -162,7 +167,7 @@ function terminar() {
   hud.llamar(false); trabado = false;
   const llego = partida.estado === 'llegada';
   const r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: club.auto(),
-    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica' };
+    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada };
   if (modo === 'oficial') club.cerrarOficial(r); else club.anotarPractica(r);
   // el link se arma con el nombre que haya en ese momento (si lo cambia, se arma de nuevo)
   const g = grabacion;
@@ -176,7 +181,7 @@ function terminar() {
   };
   armarLink().then(cargarRival);
   for (const id in espectros) espectros[id].ocultar();
-  hud.aviso(''); hud.grande('');
+  hud.aviso(''); hud.grande(''); hud.frenaSola(false);
   hud.mostrar(false);
   menu.fin(r, armarLink);
 }
@@ -216,9 +221,25 @@ const teclas = crearTeclas((tecla) => {
   else if (tecla === 'KeyR') { if (pantalla === 'jugando') partida.volver(c, 'pedido'); }
   else if (tecla === 'Escape') aLaPortada();
   else if (tecla === 'KeyC') { const m = camara.cambiar(); club.gusto('camara', m.id); hud.camara(m.id); hud.aviso(m.nombre, 1.2); }
-  else if (tecla === 'KeyM') { const mudo = sonido.alternar(); club.gusto('sonido', !mudo); hud.prendido('sonido', !mudo); }
-  else if (tecla === 'KeyV') { conVoz = !conVoz; club.gusto('voz', conVoz); copiloto.voz(conVoz); hud.prendido('voz', conVoz); }
+  else if (tecla === 'KeyM') ajustar('sonido', !gusto('sonido'));
+  else if (tecla === 'KeyV') ajustar('voz', !gusto('voz'));
 });
+
+// --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
+const APLICAR = {
+  ayuda: (v) => { conAyuda = !!v; if (pantalla !== 'jugando') ponerAuto(club.auto()); },
+  lejos: (v) => camara.alejar(v),
+  sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
+  botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
+  pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
+  efectos: (v) => post.prender(!!v && !consulta.has('simple')),   // (?simple en la direccion tambien los saca)
+  sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
+  voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); hud.prendido('voz', conVoz); },
+};
+function ajustar(clave, valor) { club.gusto(clave, valor); APLICAR[clave](valor); menu.pintar(); }
+for (const clave in APLICAR) if (clave !== 'ayuda') APLICAR[clave](gusto(clave));   // (la ayuda ya se tuvo en cuenta al armar el auto)
+// En el celular, si no hay sensor de inclinacion (o se eligio doblar con flechas), aparecen las flechas.
+function pintarVolante() { raiz.classList.toggle('sin-volante', tactil && (hayVolante === false || conFlechas)); encuadrar(); }
 
 // Donde puede quedar el auto en la pantalla. En el celular, nunca mas abajo que el freno de mano (parado)
 // o que los pedales (acostado), ni tan al costado como para quedar detras de un boton.
@@ -262,6 +283,7 @@ function cuadro(ahora) {
   reloj3d += dt;
   const corriendo = pantalla === 'jugando' && partida.estado === 'corriendo';
   const manda = corriendo ? teclas.leer(ent) : QUIETO;
+  if (corriendo && ayudaDeLaPasada) { ayuda.aplicar(c, partida.indice, partida.lejos, ent); hud.frenaSola(ayuda.frenando()); }
   resto += dt;
   while (resto >= JUEGO.paso) { c.paso(manda, JUEGO.paso); resto -= JUEGO.paso; }
   if (pantalla === 'jugando') {
@@ -276,7 +298,7 @@ function cuadro(ahora) {
     const dice = !enCarrera ? '' : quedo ? (tactil ? '' : 'R para volver al camino: ') + '+' + JUEGO.penalizacion + ' s' : partida.contramano ? 'Vas para atrás' : '';
     if (dice !== avisado) { hud.aviso(dice, 0, quedo ? 'volver' : ''); avisado = dice; }
     if (quedo !== trabado) { trabado = quedo; hud.llamar(quedo); }
-    if ((c.velocidad < -0.5) !== paraAtras) { paraAtras = !paraAtras; document.documentElement.classList.toggle('marcha-atras', paraAtras); }
+    if ((c.velocidad < -0.5) !== paraAtras) { paraAtras = !paraAtras; raiz.classList.toggle('marcha-atras', paraAtras); }
     hud.actualizar(c, partida, dt);
     hud.volante(teclas.volante());
     hud.notas(copiloto.proximas(partida.indice, c.velocidad), partida.indice);
@@ -292,6 +314,7 @@ function cuadro(ahora) {
       }
     }
   }
+  else menu.prueba(teclas.inclinacion());   // (en la configuracion se puede probar la sensibilidad de la inclinacion)
   dibujo.actualizar(c);
   fx.actualizar(c, dt);
   camara.seguir(c, dt);
@@ -316,7 +339,7 @@ requestAnimationFrame(cuadro);
 
 // para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino
 window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto,
   auto: () => c,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre }),
   largar,

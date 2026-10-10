@@ -31,8 +31,10 @@ export function crearTeclas(alTocar) {
   });
 
   // --- inclinacion del celular ---
-  const RAD = Math.PI / 180, FONDO = Math.sin(24 * RAD);   // con 24 grados de inclinacion el volante llega a fondo
-  let tactil = false, hayInclina = false, inclina = 0, toque = '', avisar = null;
+  const RAD = Math.PI / 180;
+  let fondo = Math.sin(24 * RAD);   // con cuanta inclinacion el volante llega a fondo (se cambia en la configuracion)
+  let conFlechas = false;           // true = se eligio doblar con las flechas en pantalla, aunque haya sensor
+  let tactil = false, hayInclina = false, inclina = 0, toque = '', avisar = null, pedido = false, sabido = null;
   window.addEventListener('pointerdown', (e) => { toque = e.pointerType; }, true);
 
   function orientacion(e) {
@@ -43,10 +45,21 @@ export function crearTeclas(alTocar) {
     // eso dice que lado de la pantalla esta mas bajo
     const a = (screen.orientation ? screen.orientation.angle : window.orientation) || 0, giro = ((a % 360) + 360) % 360;
     const lado = giro === 90 ? -uy : giro === 270 ? uy : giro === 180 ? -ux : ux;
-    let v = -lado / FONDO;
+    let v = -lado / fondo;
     v = Math.abs(v) < 0.08 ? 0 : (v - Math.sign(v) * 0.08) / 0.92;   // zona muerta en el centro
     inclina = Math.max(-1, Math.min(1, v));
-    if (!hayInclina) { hayInclina = true; if (avisar) avisar(true); }
+    if (!hayInclina) { hayInclina = true; sabido = true; if (avisar) avisar(true); }
+  }
+  // Empieza a escuchar el sensor. Hay que llamarlo desde un toque: el iPhone pide permiso.
+  // Si al rato no llego nada, se da por hecho que no hay sensor (y se muestran las flechas).
+  function pedirSensor() {
+    if (pedido) return;
+    pedido = true;
+    const D = window.DeviceOrientationEvent;
+    const escuchar = () => window.addEventListener('deviceorientation', orientacion);
+    if (D && D.requestPermission) D.requestPermission().then((r) => { if (r === 'granted') escuchar(); }).catch(() => {});
+    else if (D) escuchar();
+    setTimeout(() => { if (!hayInclina) { sabido = false; if (avisar) avisar(false); } }, 1500);
   }
 
   return {
@@ -57,21 +70,23 @@ export function crearTeclas(alTocar) {
     // "alSaber" recibe true cuando la inclinacion empieza a funcionar, o false si al rato no llego nada
     // (entonces hay que mostrar las flechas).
     celular: (alSaber) => {
-      if (tactil) return;
       tactil = true;
       avisar = alSaber;
-      const D = window.DeviceOrientationEvent;
-      const escuchar = () => window.addEventListener('deviceorientation', orientacion);
-      if (D && D.requestPermission) D.requestPermission().then((r) => { if (r === 'granted') escuchar(); }).catch(() => {});
-      else if (D) escuchar();
-      setTimeout(() => { if (!hayInclina) alSaber(false); }, 1500);
+      pedirSensor();
+      if (sabido !== null) alSaber(sabido);
     },
+    // (para la configuracion) empieza a escuchar el sensor sin prender los mandos, para poder probar la sensibilidad
+    probarSensor: pedirSensor,
+    // la inclinacion ahora mismo, de -1 a 1, o null si no hay sensor (o todavia no se sabe)
+    inclinacion: () => (hayInclina ? inclina : null),
+    // cambia como se dobla. grados: cuanto hay que inclinar para llevar el volante a fondo. flechas: true = con las flechas en pantalla.
+    ajustar: (o) => { if (o.grados) fondo = Math.sin(Math.max(6, Math.min(70, o.grados)) * RAD); if (o.flechas !== undefined) conFlechas = !!o.flechas; },
     // posicion del volante por inclinacion (-1 a 1), o null si no se esta usando
-    volante: () => (tactil && hayInclina ? inclina : null),
+    volante: () => (tactil && hayInclina && !conFlechas ? inclina : null),
     leer: (ent) => {
       const t = (a, b) => (abajo.has(a) || abajo.has(b) ? 1 : 0);
       ent.x = t('KeyD', 'ArrowRight') - t('KeyA', 'ArrowLeft');
-      if (ent.x === 0 && tactil && hayInclina) ent.x = inclina;
+      if (ent.x === 0 && tactil && hayInclina && !conFlechas) ent.x = inclina;
       ent.y = t('KeyW', 'ArrowUp') - t('KeyS', 'ArrowDown');
       ent.mano = abajo.has('Space');
       return ent;

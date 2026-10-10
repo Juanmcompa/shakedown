@@ -6,7 +6,7 @@ const RAD = Math.PI / 180;
 
 export function crearCamara(T) {
   const cam = new THREE.PerspectiveCamera(30, 1, 2, 900);
-  const e = { modo: 0, rumbo: 0, dist: 60, alto: 60, fov: 30, x: 0, y: 0, z: 0, listo: false, cerca: 1, ancha: 1, adelante: 1, baja: 0, tiembla: 0, apuro: 0 };
+  const e = { modo: 0, rumbo: 0, dist: 60, alto: 60, fov: 30, x: 0, y: 0, z: 0, listo: false, cerca: 1, lejos: 1, ancha: 1, adelante: 1, baja: 0, tiembla: 0, apuro: 0 };
   // La parte de la pantalla donde tiene que quedar el auto, para que no lo tapen los controles (fracciones de pantalla):
   // nunca mas abajo que "abajo", ni mas arriba que "arriba", ni mas cerca de los costados que "lados".
   const zona = { abajo: 0.16, arriba: 0.2, lados: 0.22 };
@@ -30,7 +30,7 @@ export function crearCamara(T) {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     e.rumbo += d * (1 - Math.exp(-dt / m.sigue));
     // mas rapido: se aleja, baja un poco y mira mas adelante, para ver venir la curva
-    e.dist = hacia(e.dist, (m.dist[0] + (m.dist[1] - m.dist[0]) * rapido) * e.cerca, dt, 0.9 * calma);
+    e.dist = hacia(e.dist, (m.dist[0] + (m.dist[1] - m.dist[0]) * rapido) * e.cerca * e.lejos, dt, 0.9 * calma);
     e.alto = hacia(e.alto, m.alto[0] + (m.alto[1] - m.alto[0] - e.baja) * rapido, dt, 0.9 * calma);
     e.fov = hacia(e.fov, Math.min(56, 2 * Math.atan(Math.tan(m.fov * Math.PI / 360) * e.ancha) * 180 / Math.PI), dt, 0.4);
     const ad = (m.mira[0] + (m.mira[1] - m.mira[0]) * rapido) * e.adelante * (c.velocidad < -1 ? -0.4 : 1);
@@ -77,6 +77,8 @@ export function crearCamara(T) {
       e.adelante = w < h ? 1.3 : 1;
       cam.updateProjectionMatrix();
     },
+    // La distancia que se eligio en la configuracion: 1 = la normal, menos = mas cerca, mas = mas lejos.
+    alejar: (cuanto) => { e.lejos = Math.max(0.5, Math.min(2, cuanto || 1)); e.apuro = 1; },
     // Donde tiene que quedar el auto en la pantalla (ver "zona"). Lo llama el juego segun donde estan los controles.
     encuadrar: (abajo, arriba, lados) => { zona.abajo = abajo; zona.arriba = arriba; zona.lados = lados; },
     // cual esta puesta: { id, nombre, ... } (ver CAMARAS)

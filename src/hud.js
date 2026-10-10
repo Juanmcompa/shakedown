@@ -39,6 +39,8 @@ export function crearHud() {
     },
     // "volver al camino" titila cuando el auto quedo trabado
     llamar: (si) => boton('volver').classList.toggle('llama', si),
+    // el salvavidas del tablero: se ve mientras la ayuda de manejo esta frenando sola
+    frenaSola: (si) => { if ($('frenaSola').hidden === si) $('frenaSola').hidden = !si; },
     // aviso chico: que paso y que hacer. seg = cuanto dura (0 = hasta que se saque). dibujo: un icono que va adelante.
     aviso: (txt, seg, dibujo) => {
       const clave = txt + '|' + (dibujo || '');

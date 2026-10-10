@@ -68,6 +68,19 @@ export const AUTOS = {
 // con que auto se calcula el tiempo de referencia de cada pista (el mismo para todos)
 export const REFERENCIA = 'vitarita';
 
+// La ayuda de manejo (se prende en la configuracion): es para el que recien arranca. Mas facil, pero mas lento.
+//   auto: lo que cambia del manejo de cualquier auto: se cruza menos y se endereza mas solo.
+//   ritmo: el auto frena solo para llegar a cada curva a esta parte de la velocidad de un piloto muy bueno.
+//   frena: con cuanta fuerza cuenta para frenar a tiempo, en m/s2 (menos = empieza a frenar antes y mas suave).
+export const AYUDA = { auto: { firme: 0.8, estable: 1.1, alinea: 0.85 }, ritmo: 0.72, frena: 3.6 };
+
+// La configuracion que puede tocar cada uno (se guarda en su aparato): lo que vale cada cosa si nunca se la toco.
+//   sensible: de 0 a 100, cuanto dobla al inclinar el celular. Con 55 hacen falta 24 grados para llevar el volante a fondo;
+//             con 100, unos 14; con 0, unos 48.
+//   lejos: la distancia de la camara, en partes de la normal (0.7 a 1.5).   pedales: su tamaño, igual.
+export const GUSTOS = { ayuda: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, sonido: true, voz: true };
+export const gradosDeInclinacion = (sensible) => 24 * 2 ** ((55 - sensible) / 55);
+
 // Camaras (tecla C, o el boton de la camara). Lo que va entre corchetes cambia con la velocidad: [despacio, rapido].
 // dist: metros hasta el auto.  alto: grados sobre el horizonte (90 = justo desde arriba).
 // mira: metros que mira por delante del auto.  sigue: segundos que tarda en ponerse atras del auto.

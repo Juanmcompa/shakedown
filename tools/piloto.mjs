@@ -9,7 +9,8 @@ import { generarPista } from '../src/generador.js';
 import { crearAuto } from '../src/vehicle.js';
 import { crearPartida } from '../src/reglas.js';
 import { crearReferencia } from '../src/referencia.js';
-import { AUTOS, REFERENCIA, JUEGO } from '../src/config.js';
+import { AUTOS, REFERENCIA, JUEGO, AYUDA } from '../src/config.js';
+import { crearAyuda } from '../src/ayuda.js';
 import { azar } from '../src/noise.js';
 
 const DT = JUEGO.paso;
@@ -48,6 +49,7 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
   if (Math.abs(e) > o.susto || p.lejos > 0.5) quiere = Math.min(quiere, 7);
   ent.y = v < quiere - 0.5 ? 1 : v > quiere + 1.2 ? -1 : 0;
   if (!o.teclas && ent.y === 1) ent.y = Math.min(1, 0.35 + (quiere - v) * 0.4);
+  if (o.pie) ent.y = 1;                                                  // pie de plomo: no suelta nunca el acelerador
   if (c.enPiso === 0) ent.x = 0;                                         // en el aire no dobla
   if (p.trabado && !(t < m.atras)) m.atras = t + 1.4;                    // trabado: un rato de marcha atras
   if (t < m.atras) { ent.y = -1; ent.x = -ent.x; }
@@ -57,16 +59,20 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
 // Un piloto corre la pista entera.
 //   ritmo: que parte de la velocidad de referencia se anima a usar.  reaccion: cada cuantos segundos corrige.
 //   teclas: true = todo o nada, como con el teclado.  desvio: cuantos metros se aparta de la trazada.
+//   pie: true = no suelta nunca el acelerador.  ayuda: true = corre con la ayuda de manejo del juego.
 export function correr(T, par, auto, o) {
   // el piloto se guia por la referencia de SU auto; los colores salen de la referencia comun (par)
   const ref = crearReferencia(T, AUTOS[auto]);
-  const P = T.camino, c = crearAuto(T, AUTOS[auto]), p = crearPartida(T, par.sectores), rnd = azar(o.semilla || 1);
-  const ent = { x: 0, y: 0, mano: false }, problemas = [], m = {};
+  const P = T.camino, c = crearAuto(T, o.ayuda ? { ...AUTOS[auto], ...AYUDA.auto } : AUTOS[auto]), p = crearPartida(T, par.sectores), rnd = azar(o.semilla || 1);
+  const pide = { x: 0, y: 0, mano: false }, ent = { x: 0, y: 0, mano: false }, problemas = [], m = {}, ayuda = o.ayuda ? crearAyuda(T) : null;
+  if (ayuda) ayuda.preparar(AUTOS[auto]);
   let t = 0, prox = 0, vmax = 0, golpes = 0, cruzado = 0, fuera = 0;
   p.preparar(c); p.largar();
   while (t < 700 && p.estado !== 'llegada' && p.estado !== 'abandono') {
-    if (p.estado === 'corriendo' && t >= prox) { prox = t + o.reaccion * (0.7 + 0.6 * rnd()); decidir(T, ref, c, p, o, m, rnd, t, ent); }
-    if (o.teclas && t > m.hasta && !(t < m.atras)) ent.x = 0;   // solto la tecla
+    if (p.estado === 'corriendo' && t >= prox) { prox = t + o.reaccion * (0.7 + 0.6 * rnd()); decidir(T, ref, c, p, o, m, rnd, t, pide); }
+    if (o.teclas && t > m.hasta && !(t < m.atras)) pide.x = 0;   // solto la tecla
+    ent.x = pide.x; ent.y = pide.y;
+    if (ayuda && p.estado === 'corriendo') ayuda.aplicar(c, p.indice, p.lejos, ent);
     c.paso(p.estado === 'corriendo' ? ent : { x: 0, y: 0, mano: true }, DT); t += DT;
     if (Math.abs(c.velocidad) > vmax) vmax = Math.abs(c.velocidad);
     if (p.estado === 'corriendo') {
@@ -95,6 +101,15 @@ export const PILOTOS = {
   manso:  { ritmo: 0.64, reaccion: 0.22, umbral: 0.14, desvio: 1.2, frena: 3.4, mano: 2.6, mira: 0.5, susto: 0.55, teclas: true },
   bruto:  { ritmo: 1.08, reaccion: 0.2,  umbral: 0.14, desvio: 1.3, frena: 4.6, mano: 3.4, mira: 0.5, susto: 0.6, teclas: true },
 };
+// Los que prueban la ayuda de manejo (no corren con los otros; se piden con SOLO=novato,ayudado,...):
+//   novato: el que recien agarra el juego: reacciona tarde, se va de la trazada y no suelta nunca el acelerador.
+//   ayudado: el mismo, con la ayuda de manejo.   mansoAyudado y normalAyudado: esos pilotos, con la ayuda.
+export const NOVATOS = {
+  novato:        { ...PILOTOS.manso, pie: true, susto: 9 },
+  ayudado:       { ...PILOTOS.manso, pie: true, susto: 9, ayuda: true },
+  mansoAyudado:  { ...PILOTOS.manso, ayuda: true },
+  normalAyudado: { ...PILOTOS.normal, ayuda: true },
+};
 
 if (typeof process !== 'undefined' && process.argv[1].endsWith('piloto.mjs')) {
   const desde = Number(process.argv[2] || 1), cuantas = Number(process.argv[3] || 6), soloAuto = process.argv[4], traza = process.argv[5] === 't', corto = process.argv[5] === 'r';
@@ -103,8 +118,10 @@ if (typeof process !== 'undefined' && process.argv[1].endsWith('piloto.mjs')) {
   for (let n = desde; n < desde + cuantas; n++) {
     const etapa = generarPista(n), T = crearTerreno(etapa), ref = crearReferencia(T, AUTOS[REFERENCIA]);
     if (!corto) console.log(`\n#${n} ${T.bioma.emoji}${T.clima.emoji} ${etapa.caracter} ${etapa.largo} m | referencia ${reloj(ref.total)} (${ref.sectores.map((s) => s.toFixed(0)).join(' ')}) | media ${(etapa.largo / ref.total * 3.6).toFixed(0)} km/h`);
-    for (const auto of soloAuto && AUTOS[soloAuto] ? [soloAuto] : Object.keys(AUTOS)) for (const [nombre, pf] of Object.entries(PILOTOS)) {
-      if (AMBIENTE.SOLO && !AMBIENTE.SOLO.split(',').includes(nombre)) continue;
+    const quienes = AMBIENTE.SOLO ? AMBIENTE.SOLO.split(',') : Object.keys(PILOTOS), todos = { ...PILOTOS, ...NOVATOS };
+    for (const auto of soloAuto && AUTOS[soloAuto] ? [soloAuto] : Object.keys(AUTOS)) for (const nombre of quienes) {
+      const pf = todos[nombre];
+      if (!pf) continue;
       const r = correr(T, ref, auto, { ...pf, semilla: n * 7 + 1 });
       if (!corto) console.log(`  ${auto.padEnd(8)} ${nombre.padEnd(6)} ${r.estado === 'llegada' ? reloj(r.t) : ('ABANDONO ' + r.motivo + ' m' + r.m).padEnd(6)} ${[...r.colores].map((x) => cuadro[x]).join('')} x${(r.t / ref.total).toFixed(2)} | vueltas ${r.vueltas} | daño ${r.roto.toFixed(0)} (${r.golpes} golpes) | max ${(r.vmax * 3.6).toFixed(0)} km/h | cruzado ${r.cruzado.toFixed(1)} s, afuera ${r.fuera.toFixed(1)} s`);
       if (traza) for (const x of r.problemas) console.log('      ' + x);

@@ -18,6 +18,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **En piso suelto el auto derrapa.** Manejando tranquilo va por donde se lo apunta; exigido, hay que llevarlo cruzado. Las ruedas de adelante se acomodan solas hacia donde va el auto, así se lo puede llevar de costado sin que se vaya en trompo. La cámara mira hacia donde va el auto, no hacia donde apunta.
 - **Tres cámaras:** aérea, de atrás y desde arriba (casi vertical: 78 grados, para que los dibujos planos se vean enteros).
 - **Menos palabras, más íconos.** En el celular todos los botones son íconos y muestran su estado.
+- **Rally puro, pero con una mano para el que arranca.** La ayuda de manejo es optativa y está apagada de fábrica: frena sola antes de las curvas y hace que el auto se cruce menos. Es más lenta que manejar bien, así que no da ventaja; igual, esos tiempos van marcados en la tabla. Un piloto de prueba que no suelta nunca el acelerador rompe el auto en 7 de 8 pistas; con la ayuda llega en las 8.
 - **Lenguaje visual:** bloques con dibujos de pocos píxeles (un píxel = 25 cm), público y plantas como dibujos planos que miran a la cámara, colores apagados y polvorientos, y un "revelado" de maqueta (desenfoque, brillos, bruma cálida). Los instrumentos son carteles viales, amarillos y negros.
 - **Sin instalación ni compilado.** HTML y JavaScript, publicado con GitHub Pages en `/shakedown`.
 
@@ -38,6 +39,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Derrape en piso suelto, huellas marcadas y polvo que queda flotando sobre el camino
 - [x] En el celular, el auto nunca queda tapado por los pedales
 - [x] Link a la mitad de largo, y número de versión de las pistas (lo guardado de una versión anterior se descarta solo)
+- [x] Configuración: ayuda de manejo, distancia de la cámara, sensibilidad al inclinar, doblar con flechas, tamaño de los pedales, efectos, sonido y voz
 
 ## Lo que sigue
 

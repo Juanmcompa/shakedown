@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="7">
+<html lang="es" data-pagina="8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -19,7 +19,7 @@
   // Mientras el juego esta en desarrollo, sus archivos se piden de nuevo en cada visita (el numero V
   // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas'];
   const mapa = { three: './vendor/three.module.js' };
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -39,6 +39,8 @@
     </div>
     <div class="placa marcha">
       <span class="vel"><b id="vel">0</b> km/h</span>
+      <!-- se prende cuando la ayuda de manejo esta frenando sola -->
+      <span id="frenaSola" class="frena-sola" data-icono="salvavidas" title="La ayuda de manejo está frenando" hidden></span>
       <span class="medidor" data-icono="dano" title="Daño"><span class="barra roto"><i id="roto"></i></span></span>
     </div>
   </div>
@@ -86,6 +88,7 @@
   <div class="col">
     <div id="autos" class="autos" role="radiogroup" aria-label="Tu auto"></div>
     <p id="desafio" class="desafio" data-icono="fantasma" data-color="#000000" hidden><span></span></p>
+    <p id="avisoAyuda" class="chico" data-icono="salvavidas" hidden> Con ayuda de manejo: frena solo antes de las curvas.</p>
     <div id="miResultado" class="resultado" hidden></div>
     <div class="botones">
       <button id="largar" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Armando la pista</span></button>
@@ -96,6 +99,7 @@
       <button data-panel="tabla" data-icono="podio" aria-label="Tabla del club"><span class="rotulo">Tabla</span></button>
       <button data-panel="pasadas" data-icono="calendario" aria-label="Pistas pasadas"><span class="rotulo">Pasadas</span></button>
       <button data-panel="ayuda" data-icono="ayuda" aria-label="Cómo se juega"><span class="rotulo">Cómo se juega</span></button>
+      <button data-panel="ajustes" data-icono="ajustes" class="solo-icono" aria-label="Configuración" title="Configuración"><span class="rotulo">Configuración</span></button>
     </nav>
   </div>
 </main>
@@ -120,6 +124,48 @@
     <h2>Cómo se juega</h2>
     <div id="comoSeJuega"></div>
   </div>
+  <!-- Las configuraciones. Cada grupo de botones (data-ajuste) y cada barra (input con data-ajuste) cambia un gusto,
+       que se guarda en el aparato. Los que llevan "solo-dedos" se ven solo en el celular. -->
+  <div id="panelAjustes" hidden>
+    <h2>Configuración</h2>
+    <div class="ajuste">
+      <span class="que" data-icono="salvavidas">Ayuda de manejo</span>
+      <div class="opciones" data-ajuste="ayuda" role="radiogroup" aria-label="Ayuda de manejo"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
+      <p class="chico">Con ayuda, el auto frena solo antes de las curvas y se cruza menos. Es más fácil y más lento. En la tabla, esos tiempos llevan el salvavidas.</p>
+    </div>
+    <div class="ajuste">
+      <label class="que" data-icono="cam-aerea" for="ajLejos">Distancia de la cámara</label>
+      <div class="barra-ajuste"><span>cerca</span><input id="ajLejos" type="range" data-ajuste="lejos" min="70" max="150" step="5"><span>lejos</span></div>
+    </div>
+    <div class="ajuste solo-dedos">
+      <span class="que" data-icono="volante">Doblar</span>
+      <div class="opciones" data-ajuste="botones" role="radiogroup" aria-label="Cómo doblar"><button type="button" data-valor="no">Inclinando</button><button type="button" data-valor="si">Con flechas</button></div>
+    </div>
+    <div class="ajuste solo-dedos" id="ajusteInclina">
+      <label class="que" data-icono="volante" for="ajInclina">Sensibilidad al inclinar</label>
+      <div class="barra-ajuste"><span>menos</span><input id="ajInclina" type="range" data-ajuste="sensible" min="0" max="100" step="5"><span>más</span></div>
+      <!-- muestra el volante en vivo, para probar la sensibilidad sin salir de aca -->
+      <div class="prueba-volante" aria-hidden="true"><i id="pruebaVolante"></i></div>
+      <p class="chico">Inclinalo para probar: el punto amarillo es el volante. Si no se mueve, este aparato no tiene sensor y se dobla con las flechas.</p>
+    </div>
+    <div class="ajuste solo-dedos">
+      <span class="que" data-icono="arriba" data-color="#f2c200">Pedales</span>
+      <div class="opciones" data-ajuste="pedales" role="radiogroup" aria-label="Tamaño de los pedales"><button type="button" data-valor="0.82">Chicos</button><button type="button" data-valor="1">Normales</button><button type="button" data-valor="1.2">Grandes</button></div>
+    </div>
+    <div class="ajuste">
+      <span class="que" data-icono="brillo">Desenfoque y brillos</span>
+      <div class="opciones" data-ajuste="efectos" role="radiogroup" aria-label="Desenfoque y brillos"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
+      <p class="chico">Sin ellos se ve más simple y anda más liviano.</p>
+    </div>
+    <div class="ajuste">
+      <span class="que" data-icono="sonido">Sonido</span>
+      <div class="opciones" data-ajuste="sonido" role="radiogroup" aria-label="Sonido"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
+    </div>
+    <div class="ajuste">
+      <span class="que" data-icono="voz">Voz del copiloto</span>
+      <div class="opciones" data-ajuste="voz" role="radiogroup" aria-label="Voz del copiloto"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
+    </div>
+  </div>
 </section>
 
 <!-- al terminar -->
@@ -129,6 +175,8 @@
   <p id="finGrande"></p>
   <div id="finCuadros" class="sectores"></div>
   <p id="finDetalle"></p>
+  <!-- aparece despues de una pasada complicada, si se corrio sin ayuda -->
+  <p id="finAyuda" class="sugerencia" hidden><span>¿Se complicó?</span> <button id="probarAyuda" type="button" class="con-texto" data-icono="salvavidas" data-color="#000000">Probar con ayuda de manejo</button></p>
   <div id="social" class="social">
     <label for="nombre">Tu nombre</label>
     <input id="nombre" type="text" maxlength="14" autocomplete="nickname" autocapitalize="words" spellcheck="false">

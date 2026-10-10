@@ -26,6 +26,7 @@ Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el t
 - **Rally puro.** No hay nafta ni rescates. Si te salís o volcás, volvés al camino con 8 segundos de recargo. Si rompés el auto, es abandono.
 - **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
+- **Ayuda de manejo, para arrancar.** Se prende en la configuración: el auto frena solo antes de las curvas y se cruza menos. Es más fácil y más lento. En la tabla, esos tiempos llevan un salvavidas. Después de una pasada complicada, el juego la ofrece.
 
 ## El club: correr contra amigos
 
@@ -60,11 +61,24 @@ En el celular los botones son íconos y muestran su estado:
 
 Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla.
 
+## Configuración
+
+La tuerca de la portada abre la configuración. Lo que se elige queda guardado en el aparato.
+
+- **Ayuda de manejo:** sí o no.
+- **Distancia de la cámara:** más cerca o más lejos. Mientras se mueve la barra, el panel se corre para ver cómo queda.
+- **Doblar** (celular): inclinando o con flechas en pantalla.
+- **Sensibilidad al inclinar** (celular): cuánto hay que inclinar para llevar el volante a fondo. Se prueba ahí mismo: un punto amarillo muestra el volante.
+- **Pedales** (celular): chicos, normales o grandes.
+- **Desenfoque y brillos:** sin ellos el juego anda más liviano.
+- **Sonido** y **voz del copiloto.**
+
 ## Qué tocar para cambiar el juego
 
 | Para cambiar | Archivo |
 | --- | --- |
 | Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
+| Cuánto ayuda la ayuda de manejo (`AYUDA`) y con qué configuración arranca el juego (`GUSTOS`) | `src/config.js` |
 | Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` (y subir `VERSION` ahí mismo: ver abajo) |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
@@ -94,6 +108,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/referencia.js` | Calcula la trazada y el tiempo de referencia de cada sector |
 | `src/vehicle.js` | La física del auto |
 | `src/reglas.js` | Cuenta regresiva, sectores, recargos, daño y abandono |
+| `src/ayuda.js` | La ayuda de manejo: frena sola antes de las curvas |
 | `src/copiloto.js` | Las notas y la voz que las canta |
 | `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus gustos) |
 | `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
@@ -123,6 +138,7 @@ Direcciones útiles para probar:
 Con Node instalado, desde la carpeta del repo:
 
 - `node tools/piloto.mjs 1 12`: cinco pilotos de distinto nivel corren las pistas 1 a 12 con cada auto. Dice si llegan, en cuánto, y dónde se salen.
+- `SOLO=novato,ayudado node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo. Sirve para ver cuánto ayuda.
 - `node tools/fisica.mjs`: aceleración, frenada, curvas y subidas en cada suelo.
 - `node tools/maniobras.mjs`: qué tan fácil se descontrola cada auto con volantazos.
 
