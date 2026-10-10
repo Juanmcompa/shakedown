@@ -1,0 +1,9 @@
+{
+  "name": "encajados",
+  "private": true,
+  "type": "module",
+  "description": "Juego web de manejo 4x4 visto desde arriba",
+  "scripts": {
+    "test": "node tools/piloto.mjs"
+  }
+}

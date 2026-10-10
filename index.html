@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encajados</title>
+<meta name="description" content="Un juego de manejo 4x4 visto desde arriba: barro, piedra y cornisa.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23f2c200'/%3E%3Cpath d='M0 23c5-3 9 1 16-1s10-2 16 0v10H0z' fill='%237d3a20'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="lienzo"></canvas>
+
+<div id="hud" hidden>
+  <div class="placa tiempo">
+    <span id="reloj">0:00.0</span>
+    <span class="chico"><span id="etapa"></span><br><span id="mejor"></span></span>
+  </div>
+
+  <div class="placa marcha">
+    <span class="vel"><b id="vel">0</b> km/h</span>
+    <span class="piso">
+      <span class="ruedas" role="img" aria-label="Agarre de cada rueda"><i></i><i></i><i></i><i></i></span>
+      <span id="suelo">Asfalto</span>
+    </span>
+  </div>
+
+  <div class="placa perfil">
+    <svg id="perfil" viewBox="0 0 320 50" role="img" aria-label="Perfil de alturas de la etapa">
+      <path id="perfilForma"></path>
+      <g id="perfilControles"></g>
+      <circle id="perfilAca" r="4.5"></circle>
+    </svg>
+    <span id="control"></span>
+  </div>
+
+  <div class="placa inclina">
+    <span class="dial" id="dialCabeceo">
+      <svg viewBox="-30 -30 60 60" aria-hidden="true">
+        <circle r="27" class="aro"></circle><path d="M-27 0h6M21 0h6" class="aro"></path>
+        <g id="figCabeceo"><rect x="-18" y="-5" width="36" height="9" rx="1.5"></rect><rect x="-12" y="-13" width="21" height="9" rx="1.5"></rect><circle cx="-11" cy="6" r="5.5"></circle><circle cx="11" cy="6" r="5.5"></circle></g>
+      </svg>
+      <span><b id="gCabeceo">0</b>° subida</span>
+    </span>
+    <span class="dial" id="dialRolido">
+      <svg viewBox="-30 -30 60 60" aria-hidden="true">
+        <circle r="27" class="aro"></circle><path d="M-27 0h6M21 0h6" class="aro"></path>
+        <g id="figRolido"><rect x="-11" y="-13" width="22" height="17" rx="2"></rect><rect x="-16" y="1" width="6" height="10" rx="1"></rect><rect x="10" y="1" width="6" height="10" rx="1"></rect></g>
+      </svg>
+      <span><b id="gRolido">0</b>° de costado</span>
+    </span>
+  </div>
+
+  <p id="cartel" class="cartel" hidden></p>
+  <p id="aviso" class="aviso" hidden></p>
+</div>
+
+<main id="portada">
+  <svg class="marca" viewBox="0 0 900 262" role="img" aria-label="Encajados">
+    <text x="8" y="214" textLength="884" lengthAdjust="spacingAndGlyphs" transform="rotate(-3 450 130)">ENCAJADOS</text>
+    <path class="barro" d="M0 196c50-16 96 12 160 2s118-18 190-2 120 14 196-4 132-12 190 0 104 10 164-2v72H0z"></path>
+    <path class="barro2" d="M0 226c80-12 150 8 240 0s170-12 260-2 180 10 250-2 100-4 150 2v38H0z"></path>
+  </svg>
+  <p class="bajada">Llegá a la cumbre. No es una carrera: es no quedarse en el camino.</p>
+  <dl class="teclas">
+    <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o las flechas</dt><dd>manejar</dd></div>
+    <div><dt><kbd>Espacio</kbd></dt><dd>freno de mano</dd></div>
+    <div><dt><kbd>R</kbd></dt><dd>volver al último control</dd></div>
+    <div><dt><kbd>C</kbd></dt><dd>cambiar la cámara</dd></div>
+    <div><dt><kbd>M</kbd></dt><dd>sonido</dd></div>
+  </dl>
+  <button id="largar" disabled>Armando el terreno</button>
+</main>
+
+<section id="llegada" hidden>
+  <h2>Llegaste a la cumbre</h2>
+  <p id="tFinal">0:00.0</p>
+  <p id="medalla"></p>
+  <p id="detalle"></p>
+  <button id="otra">Correr de nuevo</button>
+</section>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

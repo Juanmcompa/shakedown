@@ -1,0 +1,5 @@
+# archivos de prueba y del sistema
+node_modules/
+out/
+.DS_Store
+Thumbs.db
