@@ -24,6 +24,7 @@ Hay tres formas de fallar, de menor a mayor castigo:
 ## Decisiones tomadas
 
 - **Vista aérea en 3D**, con tres cámaras: aérea que gira con la camioneta, aérea fija y una cercana.
+- **Se juega en compu y en celular.** En el celular se dobla inclinándolo y se acelera y frena con dos pedales en pantalla.
 - **Física propia y simple** en vez de un motor de física: cuatro ruedas con suspensión y agarre según el suelo. Son pocos números, todos en `src/config.js`.
 - **Las etapas se escriben como una lista de tramos** (`src/etapa1.js`): largo, giro, pendiente, ancho, suelo. El terreno se arma solo alrededor.
 - **Sin instalación ni compilado.** HTML y JavaScript, publicado con GitHub Pages.
@@ -39,6 +40,8 @@ Hay tres formas de fallar, de menor a mayor castigo:
 - [x] Cronómetro, medallas y mejor tiempo guardado
 - [x] Instrumentos: velocidad, suelo, agarre por rueda, inclinómetro, perfil de la etapa
 - [x] Huellas, barro y agua que saltan, sonido de motor
+- [x] Mandos para celular: inclinar para doblar y pedales en pantalla
+- [ ] **Probar los mandos en celulares de verdad.** La inclinación está probada con un sensor simulado, no con un teléfono en la mano.
 - [ ] **Probarlo a mano y ajustar el manejo.** Hasta ahora está calibrado con simulaciones, no manejando.
 
 ### 2. Sensación
@@ -64,7 +67,6 @@ Hay tres formas de fallar, de menor a mayor castigo:
 
 ### 5. Extras
 
-- [ ] Controles táctiles para celular
 - [ ] Soporte de joystick
 - [ ] Lluvia que cambia el agarre en medio de la etapa
 - [ ] Modo travesía: una ruta larga con combustible y daños

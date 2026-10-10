@@ -4,7 +4,7 @@ import { CAMARAS } from './config.js';
 
 export function crearCamara(T) {
   const cam = new THREE.PerspectiveCamera(30, 1, 2, 900);
-  const e = { modo: 0, rumbo: 0, dist: 70, alto: 58, fov: 30, x: 0, y: 0, z: 0, listo: false };
+  const e = { modo: 0, rumbo: 0, dist: 70, alto: 58, fov: 30, x: 0, y: 0, z: 0, listo: false, cerca: 1, ancha: 1, adelante: 1 };
   const hacia = (a, b, dt, seg) => a + (b - a) * (1 - Math.exp(-dt / seg));
 
   function seguir(c, dt) {
@@ -14,11 +14,11 @@ export function crearCamara(T) {
     let d = rumbo - e.rumbo;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     e.rumbo += d * (1 - Math.exp(-dt / (m.sigue || 0.8)));
-    e.dist = hacia(e.dist, m.dist[0] + (m.dist[1] - m.dist[0]) * Math.min(1, v / 15), dt, 0.9);
+    e.dist = hacia(e.dist, (m.dist[0] + (m.dist[1] - m.dist[0]) * Math.min(1, v / 15)) * e.cerca, dt, 0.9);
     e.alto = hacia(e.alto, m.alto, dt, 0.4);
-    e.fov = hacia(e.fov, m.fov, dt, 0.4);
+    e.fov = hacia(e.fov, Math.min(56, 2 * Math.atan(Math.tan(m.fov * Math.PI / 360) * e.ancha) * 180 / Math.PI), dt, 0.4);
     // mira un poco adelante de la camioneta, mas cuanto mas rapido va
-    const ad = Math.min(11, m.adelante * (4 + v * 0.9)) * (c.velocidad < -1 ? -0.4 : 1);
+    const ad = Math.min(11, m.adelante * (4 + v * 0.9)) * e.adelante * (c.velocidad < -1 ? -0.4 : 1);
     const tx = c.pos[0] + f[0] * ad, ty = c.pos[1], tz = c.pos[2] + f[2] * ad;
     if (!e.listo) { e.x = tx; e.y = ty; e.z = tz; e.rumbo = rumbo; e.listo = true; }
     e.x = hacia(e.x, tx, dt, 0.25); e.y = hacia(e.y, ty, dt, 0.5); e.z = hacia(e.z, tz, dt, 0.25);
@@ -30,6 +30,14 @@ export function crearCamara(T) {
   }
   return {
     cam, estado: e, seguir,
+    // se adapta a la pantalla: se acerca si es chica y abre el angulo si es angosta (celular vertical)
+    pantalla: (w, h) => {
+      cam.aspect = w / h;
+      e.cerca = Math.min(1, Math.max(0.62, Math.min(w, h) / 700));
+      e.ancha = Math.max(1, 1.25 * h / w);
+      e.adelante = w < h ? 1.5 : 1;
+      cam.updateProjectionMatrix();
+    },
     cambiar: () => { e.modo = (e.modo + 1) % CAMARAS.length; return CAMARAS[e.modo].nombre; },
     saltar: () => { e.listo = false; },
   };

@@ -8,10 +8,15 @@
   --placa: rgba(0, 0, 0, .8);
   --titulos: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
   --texto: 'Barlow', 'Segoe UI', system-ui, sans-serif;
+  /* margenes: 16 px, o mas si la pantalla del celular tiene recortes */
+  --mi: max(16px, env(safe-area-inset-left));
+  --md: max(16px, env(safe-area-inset-right));
+  --ma: max(16px, env(safe-area-inset-top));
+  --mb: max(16px, env(safe-area-inset-bottom));
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe2e8; color: #fff; font: 500 15px/1.35 var(--texto); }
-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #cfe2e8; color: #fff; font: 500 15px/1.35 var(--texto); -webkit-text-size-adjust: 100%; }
+canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 [hidden] { display: none !important; }
 p { margin: 0; }
 
@@ -19,11 +24,11 @@ p { margin: 0; }
 #hud { position: fixed; inset: 0; pointer-events: none; }
 .placa { position: absolute; background: var(--placa); border-radius: 5px; padding: 8px 12px; }
 
-.tiempo { left: 16px; top: 16px; display: flex; align-items: center; gap: 12px; }
+.tiempo { left: var(--mi); top: var(--ma); display: flex; align-items: center; gap: 12px; }
 #reloj { font: 700 46px/1 var(--titulos); font-variant-numeric: tabular-nums; }
 .chico { font-size: 13px; line-height: 1.3; }
 
-.marcha { left: 16px; bottom: 16px; display: grid; gap: 6px; min-width: 148px; }
+.marcha { left: var(--mi); bottom: var(--mb); display: grid; gap: 6px; min-width: 148px; }
 .vel { font-size: 14px; }
 .vel b { font: 700 54px/.9 var(--titulos); font-variant-numeric: tabular-nums; margin-right: 3px; }
 .piso { display: flex; align-items: center; gap: 9px; font: 700 21px/1 var(--titulos); }
@@ -33,35 +38,37 @@ p { margin: 0; }
 .ruedas i.patina { background: var(--amarillo); }
 .ruedas i.fondo { background: var(--rojo); }
 
-.perfil { left: 50%; top: 16px; transform: translateX(-50%); width: min(360px, 38vw); text-align: center; font-size: 13px; }
+.perfil { left: 50%; top: var(--ma); transform: translateX(-50%); width: min(360px, 38vw); text-align: center; font-size: 13px; }
 #perfil { display: block; width: 100%; height: auto; overflow: visible; }
 #perfilForma { fill: rgba(255, 255, 255, .2); stroke: #fff; stroke-width: 1.5; stroke-linejoin: round; }
 #perfilControles line { stroke: #fff; stroke-width: 2; }
 #perfilControles line.pasado { stroke: var(--verde); }
 #perfilAca { fill: var(--amarillo); stroke: #000; stroke-width: 1.5; }
 
-.inclina { right: 16px; bottom: 16px; display: flex; gap: 14px; }
+.inclina { right: var(--md); bottom: var(--mb); display: flex; gap: 14px; }
 .dial { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; }
 .dial svg { width: 62px; height: 62px; }
 .dial b { font: 700 21px/1 var(--titulos); }
+.dial em { font-style: normal; }
 .dial g { fill: #fff; }
 .aro { fill: none; stroke: rgba(255, 255, 255, .6); stroke-width: 1.5; }
 .dial.peligro { color: var(--rojo); }
 .dial.peligro g { fill: var(--rojo); }
 .dial.peligro .aro { stroke: var(--rojo); }
 
-/* cartel amarillo: nombre del tramo. aviso negro: que hacer. */
-.cartel { position: absolute; left: 50%; top: 158px; transform: translateX(-50%); background: var(--amarillo); color: #000; font: 700 32px/1 var(--titulos); padding: 9px 22px 11px; border-radius: 7px; border: 3px solid #000; outline: 3px solid var(--amarillo); white-space: nowrap; }
-.aviso { position: absolute; left: 50%; top: 106px; transform: translateX(-50%); background: var(--placa); padding: 9px 16px; border-radius: 5px; font-size: 16px; text-align: center; width: max-content; max-width: min(540px, 88vw); }
+/* aviso negro: que paso y que hacer. cartel amarillo: nombre del tramo. Van apilados arriba, al centro. */
+.carteles { position: absolute; left: 50%; top: calc(var(--ma) + 90px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; width: max-content; max-width: min(540px, 88vw); }
+.aviso { background: var(--placa); padding: 9px 16px; border-radius: 5px; font-size: 16px; text-align: center; }
+.cartel { margin: 3px; background: var(--amarillo); color: #000; font: 700 32px/1 var(--titulos); padding: 9px 22px 11px; border-radius: 7px; border: 3px solid #000; outline: 3px solid var(--amarillo); text-align: center; }
 
 /* --- portada --- */
-#portada { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 14px; padding: clamp(20px, 5vw, 64px); background: linear-gradient(90deg, rgba(0, 0, 0, .8), rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, 0) 74%); }
-.marca { width: min(720px, 92vw); height: auto; overflow: visible; }
+#portada { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 14px; padding: clamp(20px, 5vw, 64px); padding-left: max(clamp(20px, 5vw, 64px), env(safe-area-inset-left)); background: linear-gradient(90deg, rgba(0, 0, 0, .8), rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, 0) 74%); }
+.marca { width: min(720px, 88vw, 100vh); height: auto; flex: none; overflow: visible; }
 .marca text { font: 800 236px var(--titulos); fill: var(--amarillo); }
 .marca .barro { fill: var(--barro); }
 .marca .barro2 { fill: var(--barro-hondo); }
 .bajada { font-size: clamp(17px, 1.6vw, 21px); max-width: 32em; }
-.teclas { margin: 4px 0 8px; display: grid; grid-template-columns: max-content max-content; gap: 7px 16px; align-items: baseline; }
+.teclas { margin: 4px 0 8px; width: 100%; max-width: 520px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 16px; align-items: baseline; }
 .teclas div { display: contents; }
 .teclas dd { margin: 0; }
 kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 3px; border-radius: 4px; background: #fff; color: #000; font: 600 13px/1.4 var(--texto); text-align: center; }
@@ -76,11 +83,62 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 #medalla { font: 700 30px/1 var(--titulos); }
 #detalle { margin: 2px 0 18px; max-width: 30em; }
 
+/* --- celular: pedales en pantalla. La portada muestra las teclas o los pedales segun el aparato. --- */
+.dedos { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .dedos { display: grid; }
+  .teclado { display: none; }
+}
+#tactil { position: fixed; inset: 0; pointer-events: none; }
+#tactil button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.pedal { position: absolute; bottom: var(--mb); width: 96px; height: 116px; padding: 0; display: grid; place-items: center; align-content: center; gap: 4px; border: 2px solid rgba(255, 255, 255, .6); border-radius: 16px; background: rgba(0, 0, 0, .5); color: #fff; font: 700 17px/1 var(--titulos); }
+.pedal svg { width: 40px; height: 40px; fill: currentColor; }
+.pedal.gas { right: var(--md); color: var(--amarillo); border-color: var(--amarillo); }
+.pedal.freno { left: var(--mi); }
+.pedal.apretado { background: rgba(255, 255, 255, .34); }
+.pedal.izq, .pedal.der { display: none; }
+.botoncito { position: absolute; right: var(--md); padding: 9px 14px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; font: 600 14px/1 var(--texto); }
+.botoncito.volver { bottom: calc(var(--mb) + 132px); }
+.botoncito.camara { bottom: calc(var(--mb) + 176px); }
+.botoncito.apretado { background: rgba(255, 255, 255, .34); }
+#volante { position: absolute; left: 50%; bottom: calc(var(--mb) + 12px); width: min(34vw, 190px); height: 6px; margin-left: calc(min(34vw, 190px) / -2); border-radius: 3px; background: rgba(0, 0, 0, .55); }
+#volante::before { content: ''; position: absolute; left: 50%; top: -5px; width: 2px; height: 16px; margin-left: -1px; background: #fff; }
+#volanteAca { position: absolute; top: -6px; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--amarillo); border: 2px solid #000; }
+/* sin sensor de inclinacion: flechas a la izquierda, pedales juntos a la derecha */
+.sin-volante #volante { display: none; }
+.sin-volante .pedal.izq, .sin-volante .pedal.der { display: grid; }
+.sin-volante { --pedal: min(96px, calc((100vw - var(--mi) - var(--md) - 24px) / 4)); }
+.sin-volante .pedal { width: var(--pedal); }
+.sin-volante .pedal.izq { left: var(--mi); }
+.sin-volante .pedal.der { left: calc(var(--mi) + var(--pedal) + 8px); }
+.sin-volante .pedal.freno { left: auto; right: calc(var(--md) + var(--pedal) + 8px); }
+/* con pedales abajo, los instrumentos suben */
+.tactil .marcha { bottom: auto; top: calc(var(--ma) + 62px); min-width: 0; }
+.tactil .inclina { bottom: auto; top: var(--ma); }
+.tactil .chico { display: none; }
+.tactil .vel b { font-size: 38px; }
+.tactil #reloj { font-size: 34px; }
+.tactil .dial svg { width: 44px; height: 44px; }
+.tactil .dial em { display: none; }
+.tactil .carteles { top: calc(var(--ma) + 150px); }
+.tactil .cartel { font-size: 26px; }
+
+@media (max-height: 480px) {
+  #portada { gap: 8px; padding-top: 12px; padding-bottom: 12px; }
+  .marca { width: min(88vw, 86vh); }
+  .teclas { gap: 4px 16px; }
+  .pedal { height: 96px; }
+  .botoncito.volver { bottom: calc(var(--mb) + 110px); }
+  .botoncito.camara { bottom: calc(var(--mb) + 152px); }
+  .tactil .carteles { top: calc(var(--ma) + 88px); }
+}
+
 @media (max-width: 760px) {
   .perfil { display: none; }
-  .aviso { top: 76px; }
-  .cartel { top: 124px; font-size: 26px; }
+  .carteles { top: calc(var(--ma) + 62px); }
+  .cartel { font-size: 26px; }
   #reloj { font-size: 34px; }
   .vel b { font-size: 40px; }
   .dial svg { width: 46px; height: 46px; }
+  .dial em { display: none; }
 }

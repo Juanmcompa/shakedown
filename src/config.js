@@ -47,8 +47,8 @@ export const CAMIONETA = {
 
 // Camaras (tecla C). dist: metros hasta la camioneta. alto: grados sobre el horizonte.
 export const CAMARAS = [
-  { nombre: 'Aerea', dist: [52, 78], alto: 58, fov: 30, sigue: 1.1, adelante: 0.7 },
-  { nombre: 'Aerea fija', dist: [60, 84], alto: 64, fov: 30, sigue: 0, adelante: 0.5 },
+  { nombre: 'Aérea', dist: [52, 78], alto: 58, fov: 30, sigue: 1.1, adelante: 0.7 },
+  { nombre: 'Aérea fija', dist: [60, 84], alto: 64, fov: 30, sigue: 0, adelante: 0.5 },
   { nombre: 'Cerca', dist: [10, 13], alto: 22, fov: 55, sigue: 0.35, adelante: 0.3 },
 ];
 

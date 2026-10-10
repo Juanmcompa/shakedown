@@ -7,10 +7,12 @@ const AMARILLO = 0xf2c200, VERDE = 0x3f9150;
 
 // Lo que esta mas abajo que la camioneta se ve mas oscuro y azulado: asi se nota el precipicio desde arriba.
 // En el terreno ademas se dibujan curvas de nivel cada 2 m (mas marcadas cada 10 m).
-const bajo = { value: 0 };
-function conAltura(mat, curvas) {
+// A las copas de los arboles ademas se les abre un hueco alrededor de la camioneta, para que no la tapen.
+const bajo = { value: 0 }, hueco = { value: new THREE.Vector3(-9999, -9999, 1) };
+function conAltura(mat, curvas, calada) {
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uBajo = bajo;
+    sh.uniforms.uHueco = hueco;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vAlto;')
       .replace('#include <begin_vertex>', [
         '#include <begin_vertex>',
@@ -20,19 +22,22 @@ function conAltura(mat, curvas) {
         '#endif',
         'vAlto = (modelMatrix * enMundo).y;',
       ].join('\n'));
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAlto;\nuniform float uBajo;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAlto;\nuniform float uBajo;\nuniform vec3 uHueco;')
       .replace('#include <color_fragment>', [
         '#include <color_fragment>',
         curvas ? 'float c1 = abs(fract(vAlto / 2.0 - 0.5) - 0.5) / max(fwidth(vAlto / 2.0), 0.0001);' : '',
         curvas ? 'float c2 = abs(fract(vAlto / 10.0 - 0.5) - 0.5) / max(fwidth(vAlto / 10.0), 0.0001);' : '',
         curvas ? 'diffuseColor.rgb *= 1.0 - max((1.0 - smoothstep(0.3, 1.2, c1)) * 0.2, (1.0 - smoothstep(0.6, 1.8, c2)) * 0.36);' : '',
         'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.12, 0.2), smoothstep(1.5, 28.0, uBajo - vAlto) * 0.68);',
+        calada ? 'float lejosDelHueco = distance(gl_FragCoord.xy, uHueco.xy) / uHueco.z;' : '',
+        calada ? 'vec2 trama = mod(floor(gl_FragCoord.xy), 2.0);' : '',
+        calada ? 'if (lejosDelHueco < 1.0 && (lejosDelHueco < 0.62 ? trama.x + trama.y > 0.5 : trama.x == trama.y)) discard;' : '',
       ].join('\n'));
   };
   return mat;
 }
 
-export function crearMundo(T, escena) {
+export function crearMundo(T, escena, liviano) {
   const { nx, nz, H, S, celda, x0, z0 } = T, ruido = crearRuido(99);
   const tmp = new THREE.Color(), base = SUELO.map((s) => new THREE.Color(s.color)), pastoOscuro = new THREE.Color(0x3f6f33);
 
@@ -87,7 +92,7 @@ export function crearMundo(T, escena) {
   // --- arboles y piedras, agrupados por zona ---
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), E = new THREE.Vector3(), ARRIBA = new THREE.Vector3(0, 1, 0);
   const gCopa = new THREE.IcosahedronGeometry(1, 1), gTronco = new THREE.CylinderGeometry(0.2, 0.32, 1, 6), gPiedra = new THREE.DodecahedronGeometry(1, 0);
-  const mCopa = conAltura(new THREE.MeshLambertMaterial({ flatShading: true })), mTronco = conAltura(new THREE.MeshLambertMaterial({ color: 0x5a4030 })), mPiedra = conAltura(new THREE.MeshLambertMaterial({ flatShading: true }));
+  const mCopa = conAltura(new THREE.MeshLambertMaterial({ flatShading: true }), false, true), mTronco = conAltura(new THREE.MeshLambertMaterial({ color: 0x5a4030 })), mPiedra = conAltura(new THREE.MeshLambertMaterial({ flatShading: true }));
   const verdes = [new THREE.Color(0x2f6b34), new THREE.Color(0x5c9a3e), new THREE.Color(0xd9799b)], gris = new THREE.Color(0x8b8780);
   const zonas = new Map();
   for (const o of T.cosas) {
@@ -163,13 +168,14 @@ export function crearMundo(T, escena) {
   escena.add(new THREE.HemisphereLight(0xe2eef7, 0x6e5a45, 1.15));
   const sol = new THREE.DirectionalLight(0xfff1d8, 2.5), haciaElSol = new THREE.Vector3(-0.5, 0.8, -0.2).normalize();
   sol.castShadow = true;
-  sol.shadow.mapSize.set(2048, 2048);
+  const lado = liviano ? 1024 : 2048;   // tamano del mapa de sombras
+  sol.shadow.mapSize.set(lado, lado);
   const sc = sol.shadow.camera, R = 90;
   sc.left = sc.bottom = -R; sc.right = sc.top = R; sc.near = 10; sc.far = 480;
   sol.shadow.bias = -0.0005; sol.shadow.normalBias = 0.5;
   escena.add(sol, sol.target);
   const ejeX = new THREE.Vector3().crossVectors(ARRIBA, haciaElSol).normalize(), ejeY = new THREE.Vector3().crossVectors(haciaElSol, ejeX);
-  const paso = 2 * R / 2048;
+  const paso = 2 * R / lado;
   function sombra(x, y, z) {
     // se mueve de a un pixel de sombra para que los bordes no tiemblen
     V.set(x, y, z);
@@ -182,6 +188,12 @@ export function crearMundo(T, escena) {
   return {
     sombra,
     bajo: (y) => { bajo.value = y; },
+    // donde esta la camioneta en la pantalla (en pixeles) y que radio ocupa: ahi se calan las copas
+    hueco: (cam, p, ancho, alto) => {
+      const lejos = Math.hypot(cam.position.x - p[0], cam.position.y - p[1], cam.position.z - p[2]);
+      V.set(p[0], p[1] + 0.6, p[2]).project(cam);
+      hueco.value.set((V.x * 0.5 + 0.5) * ancho, (V.y * 0.5 + 0.5) * alto, 3.8 * alto / (2 * Math.tan(cam.fov * Math.PI / 360)) / lejos);
+    },
     pasar: (i) => arcos[i].material.color.setHex(VERDE),
     reiniciar: () => arcos.forEach((a) => a.material.color.setHex(AMARILLO)),
   };

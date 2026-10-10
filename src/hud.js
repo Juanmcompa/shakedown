@@ -36,6 +36,8 @@ export function crearHud(T) {
       $('control').textContent = n < marcas.length ? 'Control ' + n + ' de ' + marcas.length : 'Falta la cumbre';
     },
     mejor: (s) => { $('mejor').textContent = s ? 'Mejor ' + reloj(s) : ''; },
+    // punto amarillo que muestra el volante cuando se dobla inclinando el celular
+    volante: (v) => { if (v !== null) $('volanteAca').style.left = (50 + v * 50).toFixed(1) + '%'; },
     actualizar: (c, tiempo, indice, dt) => {
       $('reloj').textContent = reloj(tiempo);
       $('vel').textContent = Math.round(Math.abs(c.velocidad) * 3.6);

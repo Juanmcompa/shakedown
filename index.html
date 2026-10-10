@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Encajados</title>
 <meta name="description" content="Un juego de manejo 4x4 visto desde arriba: barro, piedra y cornisa.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23f2c200'/%3E%3Cpath d='M0 23c5-3 9 1 16-1s10-2 16 0v10H0z' fill='%237d3a20'/%3E%3C/svg%3E">
@@ -44,19 +44,31 @@
         <circle r="27" class="aro"></circle><path d="M-27 0h6M21 0h6" class="aro"></path>
         <g id="figCabeceo"><rect x="-18" y="-5" width="36" height="9" rx="1.5"></rect><rect x="-12" y="-13" width="21" height="9" rx="1.5"></rect><circle cx="-11" cy="6" r="5.5"></circle><circle cx="11" cy="6" r="5.5"></circle></g>
       </svg>
-      <span><b id="gCabeceo">0</b>° subida</span>
+      <span><b id="gCabeceo">0</b>° <em>subida</em></span>
     </span>
     <span class="dial" id="dialRolido">
       <svg viewBox="-30 -30 60 60" aria-hidden="true">
         <circle r="27" class="aro"></circle><path d="M-27 0h6M21 0h6" class="aro"></path>
         <g id="figRolido"><rect x="-11" y="-13" width="22" height="17" rx="2"></rect><rect x="-16" y="1" width="6" height="10" rx="1"></rect><rect x="10" y="1" width="6" height="10" rx="1"></rect></g>
       </svg>
-      <span><b id="gRolido">0</b>° de costado</span>
+      <span><b id="gRolido">0</b>° <em>de costado</em></span>
     </span>
   </div>
 
-  <p id="cartel" class="cartel" hidden></p>
-  <p id="aviso" class="aviso" hidden></p>
+  <div class="carteles">
+    <p id="aviso" class="aviso" hidden></p>
+    <p id="cartel" class="cartel" hidden></p>
+  </div>
+</div>
+
+<div id="tactil" hidden>
+  <button class="pedal freno" data-tecla="ArrowDown" aria-label="Frenar y marcha atrás"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19 4 6h16z"></path></svg>Freno</button>
+  <button class="pedal gas" data-tecla="ArrowUp" aria-label="Acelerar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l8 13H4z"></path></svg>Acelerar</button>
+  <button class="pedal izq" data-tecla="ArrowLeft" aria-label="Doblar a la izquierda"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l13-8v16z"></path></svg></button>
+  <button class="pedal der" data-tecla="ArrowRight" aria-label="Doblar a la derecha"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12L6 4v16z"></path></svg></button>
+  <button class="botoncito volver" data-tecla="KeyR">Volver al control</button>
+  <button class="botoncito camara" data-tecla="KeyC">Cámara</button>
+  <div id="volante" aria-hidden="true"><i id="volanteAca"></i></div>
 </div>
 
 <main id="portada">
@@ -66,7 +78,12 @@
     <path class="barro2" d="M0 226c80-12 150 8 240 0s170-12 260-2 180 10 250-2 100-4 150 2v38H0z"></path>
   </svg>
   <p class="bajada">Llegá a la cumbre. No es una carrera: es no quedarse en el camino.</p>
-  <dl class="teclas">
+  <dl class="teclas dedos">
+    <div><dt>Inclinar el celu</dt><dd>doblar</dd></div>
+    <div><dt>Pedal derecho</dt><dd>acelerar</dd></div>
+    <div><dt>Pedal izquierdo</dt><dd>frenar y marcha atrás</dd></div>
+  </dl>
+  <dl class="teclas teclado">
     <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o las flechas</dt><dd>manejar</dd></div>
     <div><dt><kbd>Espacio</kbd></dt><dd>freno de mano</dd></div>
     <div><dt><kbd>R</kbd></dt><dd>volver al último control</dd></div>

@@ -18,15 +18,16 @@ try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true })
   $('largar').textContent = 'Este navegador no pudo iniciar los gráficos 3D';
   throw e;
 }
-render.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const liviano = window.matchMedia('(pointer: coarse)').matches;   // celular o tablet: menos pixeles y sombras mas chicas
+render.setPixelRatio(Math.min(window.devicePixelRatio, liviano ? 1.5 : 2));
 render.shadowMap.enabled = true;
 
 const T = crearTerreno(ETAPA), P = T.camino, escena = new THREE.Scene();
-const mundo = crearMundo(T, escena), c = crearCamioneta(T), dibujo = crearDibujo(escena);
+const mundo = crearMundo(T, escena, liviano), c = crearCamioneta(T), dibujo = crearDibujo(escena);
 const camara = crearCamara(T), fx = crearEfectos(escena), sonido = crearSonido(), hud = crearHud(T);
 
 let estado = 'portada', tiempo = 0, corriendo = false, control = T.largada, pasados = 0, indice = T.largada.i, tramo = -1;
-let vueltas = 0, quieto = 0, volcado = 0, caida = 0, pegado = false, antes = performance.now(), resto = 0, mejor = 0;
+let vueltas = 0, quieto = 0, volcado = 0, caida = 0, pegado = false, antes = performance.now(), resto = 0, mejor = 0, tactil = false;
 try { mejor = Number(localStorage.getItem('encajados.etapa1')) || 0; } catch (e) { /* sin memoria no se guarda el record */ }
 const ent = { x: 0, y: 0, mano: false }, QUIETO = { x: 0, y: 0, mano: true };
 
@@ -37,7 +38,23 @@ function apoyar(p) {
   camara.saltar();
 }
 
+// En el celular: pedales en pantalla y doblar inclinando. Se prende al largar con el dedo,
+// porque el permiso del sensor y la pantalla completa solo se pueden pedir desde un toque.
+function mandosDeCelular() {
+  tactil = true;
+  const raiz = document.documentElement;
+  raiz.classList.add('tactil');
+  $('tactil').hidden = false;
+  teclas.celular((inclina) => {
+    raiz.classList.toggle('sin-volante', !inclina);
+    hud.aviso(inclina ? 'Incliná el celu para doblar.' : 'No pude leer la inclinación del celu: doblá con las flechas.', 3.5);
+  });
+  if (raiz.requestFullscreen) raiz.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
+}
+
 function largar() {
+  if (!tactil && teclas.esTactil()) mandosDeCelular();
   estado = 'jugando'; tiempo = 0; corriendo = false; control = T.largada; pasados = 0; vueltas = 0; tramo = -1;
   apoyar(control);
   mundo.reiniciar();
@@ -90,8 +107,8 @@ function reglas(dt) {
   caida = c.pos[1] < P.Y[indice] - 10 || lejos > 45 ? caida + dt : 0;
   quieto = c.gas > 0.5 && Math.abs(c.velocidad) < 0.7 && c.enPiso > 1 ? quieto + dt : 0;
   if (caida > 1.2 || !(c.pos[1] === c.pos[1])) volver(lejos > 45 ? 'Te saliste del camino. Volvés al último control.' : 'Te desbarrancaste. Volvés al último control.');
-  else if (volcado > 2) { hud.aviso('Volcaste. Tocá R para volver al último control.'); pegado = true; }
-  else if (quieto > 2.5) { hud.aviso('Te encajaste. Probá marcha atrás y entrá con más envión, o tocá R.'); pegado = true; }
+  else if (volcado > 2) { hud.aviso('Volcaste. ' + (tactil ? 'Tocá Volver al control.' : 'Tocá R para volver al último control.')); pegado = true; }
+  else if (quieto > 2.5) { hud.aviso('Te encajaste. Probá marcha atrás y entrá con más envión, o tocá ' + (tactil ? 'Volver al control.' : 'R.')); pegado = true; }
   else if (pegado && quieto === 0 && volcado === 0) { hud.aviso(''); pegado = false; }
 }
 
@@ -104,8 +121,7 @@ const teclas = crearTeclas((tecla) => {
 
 function medir() {
   render.setSize(window.innerWidth, window.innerHeight, false);
-  camara.cam.aspect = window.innerWidth / window.innerHeight;
-  camara.cam.updateProjectionMatrix();
+  camara.pantalla(window.innerWidth, window.innerHeight);
 }
 
 function cuadro(ahora) {
@@ -115,12 +131,13 @@ function cuadro(ahora) {
   const manda = estado === 'jugando' ? teclas.leer(ent) : QUIETO;
   resto += dt;
   while (resto >= JUEGO.paso) { c.paso(manda, JUEGO.paso); resto -= JUEGO.paso; }
-  if (estado === 'jugando') { reglas(dt); hud.actualizar(c, tiempo, indice, dt); }
+  if (estado === 'jugando') { reglas(dt); hud.actualizar(c, tiempo, indice, dt); hud.volante(teclas.volante()); }
   dibujo.actualizar(c);
   fx.actualizar(c, dt);
   camara.seguir(c, dt);
   mundo.sombra(camara.estado.x, camara.estado.y, camara.estado.z);
   mundo.bajo(camara.estado.y);
+  mundo.hueco(camara.cam, c.pos, render.domElement.width, render.domElement.height);
   sonido.actualizar(c);
   render.render(escena, camara.cam);
 }
@@ -137,7 +154,7 @@ requestAnimationFrame(cuadro);
 
 // para probar desde la consola: encajados.ir(400) lleva la camioneta al metro 400 del camino
 window.encajados = {
-  c, T, camara,
+  c, T, camara, teclas,
   estado: () => ({ estado, tiempo, indice, pasados, vueltas }),
   simular: (seg, x, y) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano: false }, JUEGO.paso); if (i % 2) fx.actualizar(c, JUEGO.paso * 2); } },
   ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); indice = i; fx.cortar(); camara.saltar(); },

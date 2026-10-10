@@ -16,6 +16,13 @@ Versión 0.1: un prototipo para probar si manejar es divertido. Tiene una etapa 
 | `C` | Cambiar la cámara: aérea, aérea fija, cerca |
 | `M` | Sonido |
 
+En el celular no hay teclas:
+
+- **Inclinar el celu** para doblar, como un volante. En iPhone pide permiso para usar el sensor.
+- **Pedal derecho** para acelerar. **Pedal izquierdo** para frenar y, ya frenado, ir marcha atrás.
+- Si el sensor no responde, aparecen flechas para doblar con el dedo.
+- Sirve con el celu vertical u horizontal. Vertical se ve más camino por delante.
+
 Lo que conviene saber:
 
 - **El barro frena y hace patinar.** Con el acelerador a fondo las ruedas patinan y la camioneta se va de costado. A veces rinde más soltar un poco.
@@ -45,7 +52,7 @@ Es HTML, CSS y JavaScript sin instalación ni compilado. Subir al repo es public
 | `src/vehicle.js` | La física de la camioneta |
 | `src/world.js`, `src/truck.js` | Dibujan el terreno y la camioneta |
 | `src/camera.js`, `src/fx.js`, `src/audio.js` | Cámaras, huellas y barro que salta, sonido del motor |
-| `src/hud.js`, `src/input.js`, `src/noise.js` | Instrumentos, teclado, ruido para el relieve |
+| `src/hud.js`, `src/input.js`, `src/noise.js` | Instrumentos, mandos (teclado, pedales e inclinación), ruido para el relieve |
 | `vendor/` | Three.js, la biblioteca 3D (licencia MIT) |
 | `tools/` | Pruebas de la física sin gráficos (opcionales) |
 
