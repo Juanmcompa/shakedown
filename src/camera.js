@@ -4,7 +4,8 @@ import { CAMARAS } from './config.js';
 
 export function crearCamara(T) {
   const cam = new THREE.PerspectiveCamera(30, 1, 2, 900);
-  const e = { modo: 0, rumbo: 0, dist: 70, alto: 58, fov: 30, x: 0, y: 0, z: 0, listo: false, cerca: 1, ancha: 1, adelante: 1 };
+  const e = { modo: 0, rumbo: 0, dist: 70, alto: 58, fov: 30, x: 0, y: 0, z: 0, listo: false, cerca: 1, ancha: 1, adelante: 1, tiembla: 0 };
+  const quieta = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const hacia = (a, b, dt, seg) => a + (b - a) * (1 - Math.exp(-dt / seg));
 
   function seguir(c, dt) {
@@ -24,6 +25,10 @@ export function crearCamara(T) {
     e.x = hacia(e.x, tx, dt, 0.25); e.y = hacia(e.y, ty, dt, 0.5); e.z = hacia(e.z, tz, dt, 0.25);
     const a = e.alto * Math.PI / 180, h = Math.cos(a) * e.dist;
     cam.position.set(e.x - Math.sin(e.rumbo) * h, e.y + Math.sin(a) * e.dist, e.z + Math.cos(e.rumbo) * h);
+    if (e.tiembla > 0.01) {   // sacudon por un golpe
+      cam.position.x += (Math.random() - 0.5) * e.tiembla; cam.position.z += (Math.random() - 0.5) * e.tiembla;
+      e.tiembla *= Math.exp(-dt * 9);
+    }
     cam.position.y = Math.max(cam.position.y, T.altura(cam.position.x, cam.position.z) + 2.5);
     if (cam.fov !== e.fov) { cam.fov = e.fov; cam.updateProjectionMatrix(); }
     cam.lookAt(e.x, e.y, e.z);
@@ -40,5 +45,6 @@ export function crearCamara(T) {
     },
     cambiar: () => { e.modo = (e.modo + 1) % CAMARAS.length; return CAMARAS[e.modo].nombre; },
     saltar: () => { e.listo = false; },
+    sacudir: (cuanto) => { if (!quieta) e.tiembla = Math.min(1.6, 0.3 + cuanto / 25); },
   };
 }

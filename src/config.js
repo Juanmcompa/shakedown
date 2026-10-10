@@ -13,6 +13,7 @@ export const SUELOS = {
   barro:   { id: 5, nombre: 'Barro',   agarre: 0.40, freno: 0.14,  pasta: 95,  rugoso: [0.09, 5],   blando: 1,   color: 0x7d3a20 },
   pantano: { id: 6, nombre: 'Pantano', agarre: 0.27, freno: 0.33,  pasta: 210, rugoso: [0.05, 4],   blando: 1,   color: 0x4a2414 },
   lecho:   { id: 7, nombre: 'Agua',    agarre: 0.62, freno: 0.06,  pasta: 25,  rugoso: [0.13, 2.6], blando: 0.2, color: 0x8d8a76 },
+  derrumbe: { id: 8, nombre: 'Derrumbe', agarre: 0.5, freno: 0.09, pasta: 18,  rugoso: [0.14, 2.2], blando: 0.7, color: 0x9a8468 },
 };
 export const SUELO = Object.values(SUELOS); // lista ordenada por id
 
@@ -28,11 +29,12 @@ export const CAMIONETA = {
   recorrido: 0.34,              // cuanto se puede comprimir
   resorte: 31000,               // dureza del resorte
   amortigua: [3300, 4800],      // amortiguador: comprimiendo, estirando
-  empuje: 0.72,                 // fuerza maxima del motor, en "g"
-  potencia: 80000,              // watts: define la velocidad final
+  // Reductora (tecla Shift). empuje: fuerza maxima en "g". potencia: watts. tope: velocidad maxima en m/s.
+  // frenoMotor: cuanto frena al soltar el acelerador, en "g".
+  alta: { empuje: 0.42, potencia: 80000, tope: 25,  frenoMotor: 0.10 },   // rapida, pero no trepa lo empinado
+  baja: { empuje: 0.95, potencia: 55000, tope: 8.5, frenoMotor: 0.40 },   // lenta, con fuerza y freno motor
   aire: 5.5,                    // freno del aire
   frenos: 0.95,                 // fuerza de frenado, en "g"
-  frenoMotor: 0.14,             // cuanto frena al soltar el acelerador
   traseras: 1.3,                // cuanto mas empujan las ruedas de atras (1 = parejo; mas = colea mas)
   reversa: 0.5,                 // fraccion del empuje marcha atras
   aceleraEn: 0.45,              // segundos que tarda el acelerador en llegar a fondo
@@ -55,5 +57,10 @@ export const CAMARAS = [
 export const JUEGO = {
   paso: 1 / 120,        // paso de la fisica
   gravedad: 9.81,
-  medallas: [115, 150, 200],  // segundos para oro, plata, bronce
+  medallas: [150, 195, 260],  // segundos para oro, plata, bronce
+  rescates: 3,          // veces que se puede volver al ultimo control
+  // Nafta: el tanque tiene 100. Se gasta por segundo: en ralenti, acelerando, y extra por patinar.
+  nafta: { ralenti: 0.06, acelerando: 0.42, patinando: 0.8, enBaja: 1.25, bidon: 25 },
+  // Daño: los golpes a mas de "desde" m/s suman "porMetro" puntos por cada m/s de mas. A los 100 se rompe.
+  golpes: { desde: 3.5, porMetro: 7 },
 };

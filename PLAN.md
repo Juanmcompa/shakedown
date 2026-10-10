@@ -15,11 +15,15 @@ Esto es lo que hay que lograr antes que cualquier otra cosa. Si alguno de estos 
 3. **Los laterales y las cornisas te llevan hacia el vacío.**
 4. **Fallar es rápido y reintentar es inmediato.** `R` y volvés al último control.
 
-Hay tres formas de fallar, de menor a mayor castigo:
+Se parece a SnowRunner en lo que pide (pensar el agarre) y a Art of Rally en cómo se ve (desde arriba, estilizado).
 
-- **Encajarse o no subir:** se pierde tiempo, pero se sale solo (marcha atrás y envión).
-- **Volcar:** hay que volver al último control.
-- **Desbarrancarse:** vuelve solo al último control.
+Fallar cuesta, de menor a mayor:
+
+- **Encajarse o no subir:** se pierde tiempo y nafta, pero se sale solo (marcha atrás y envión).
+- **Golpear:** suma daño.
+- **Volcar o desbarrancarse:** gasta uno de los tres rescates y se vuelve al último control.
+
+Y se pierde la etapa por tres cosas: quedarse sin nafta, romper la camioneta o necesitar un rescate cuando ya no quedan.
 
 ## Decisiones tomadas
 
@@ -41,6 +45,8 @@ Hay tres formas de fallar, de menor a mayor castigo:
 - [x] Instrumentos: velocidad, suelo, agarre por rueda, inclinómetro, perfil de la etapa
 - [x] Huellas, barro y agua que saltan, sonido de motor
 - [x] Mandos para celular: inclinar para doblar y pedales en pantalla
+- [x] Travesía: nafta, reductora alta y baja, daño, tres rescates y tres formas de perder
+- [x] Piezas nuevas: derrumbe que arrastra hacia el borde, autos tirados, bidones de nafta
 - [ ] **Probar los mandos en celulares de verdad.** La inclinación está probada con un sensor simulado, no con un teléfono en la mano.
 - [ ] **Probarlo a mano y ajustar el manejo.** Hasta ahora está calibrado con simulaciones, no manejando.
 
@@ -50,7 +56,6 @@ Hay tres formas de fallar, de menor a mayor castigo:
 - [ ] Barro que se pega a la camioneta y la va ensuciando
 - [ ] Sacudón de cámara en los golpes
 - [ ] Sonidos de golpe, de agua y de derrape
-- [ ] Indicador de daño, o que un golpe fuerte rompa la camioneta
 
 ### 3. Contenido
 

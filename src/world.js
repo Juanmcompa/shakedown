@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { SUELO } from './config.js';
 import { crearRuido } from './noise.js';
+import { armarCamioneta } from './truck.js';
 
 const AMARILLO = 0xf2c200, VERDE = 0x3f9150;
 
@@ -96,6 +97,7 @@ export function crearMundo(T, escena, liviano) {
   const verdes = [new THREE.Color(0x2f6b34), new THREE.Color(0x5c9a3e), new THREE.Color(0xd9799b)], gris = new THREE.Color(0x8b8780);
   const zonas = new Map();
   for (const o of T.cosas) {
+    if (o.tipo > 3) continue;   // los autos tirados se dibujan aparte
     const k = Math.floor(o.z / 110) * 2 + (o.tipo === 3 ? 1 : 0);
     if (!zonas.has(k)) zonas.set(k, []);
     zonas.get(k).push(o);
@@ -132,6 +134,58 @@ export function crearMundo(T, escena, liviano) {
   T.mojones.forEach((o, i) => postes.setMatrixAt(i, M.makeTranslation(o.x, o.y + 0.35, o.z)));
   postes.castShadow = true;
   escena.add(postes);
+
+  // --- autos tirados: abandonados, volcados o hundidos en el barro ---
+  const COLORES = [0x6f8fa3, 0xb5503a, 0xd8d2c2, 0x4f7a55, 0x8a6f9a];
+  for (const a of T.autos) {
+    const g = armarCamioneta(COLORES[a.n % COLORES.length]).grupo;
+    // se acuesta sobre la pendiente del lugar y despues se lo gira segun como quedo
+    const sx = (T.altura(a.x + 1, a.z) - T.altura(a.x - 1, a.z)) / 2, sz = (T.altura(a.x, a.z + 1) - T.altura(a.x, a.z - 1)) / 2;
+    V.set(-sx, 1, -sz).normalize();
+    g.quaternion.setFromUnitVectors(ARRIBA, V).multiply(Q.setFromAxisAngle(ARRIBA, -a.rumbo));
+    if (a.estado === 1) g.quaternion.multiply(Q.setFromAxisAngle(E.set(0, 0, 1), 1.45));
+    if (a.estado === 2) g.quaternion.multiply(Q.setFromAxisAngle(E.set(1, 0, 0.5).normalize(), 0.22));
+    g.position.set(a.x, a.y + [0.8, 0.95, 0.3][a.estado], a.z);
+    escena.add(g);
+  }
+
+  // --- bidones de nafta: giran despacio sobre una marca amarilla ---
+  const gBidon = new THREE.BoxGeometry(0.55, 0.75, 0.3), mBidon = new THREE.MeshLambertMaterial({ color: 0xc8341f });
+  const gMarca = new THREE.RingGeometry(0.9, 1.25, 20).rotateX(-Math.PI / 2), mMarca = new THREE.MeshBasicMaterial({ color: AMARILLO });
+  const bidones = T.bidones.map((b) => {
+    const g = new THREE.Group(), lata = new THREE.Mesh(gBidon, mBidon);
+    lata.position.y = 1.1;
+    lata.castShadow = true;
+    const marca = new THREE.Mesh(gMarca, mMarca);
+    marca.position.y = 0.12;
+    g.add(lata, marca);
+    g.position.set(b.x, b.y, b.z);
+    escena.add(g);
+    return { g, lata };
+  });
+
+  // --- derrumbes: cascotes que cruzan el camino con la tierra que se corre ---
+  const NC = 46, cascotes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0x7d6a55, flatShading: true }), NC * Math.max(1, T.derrumbes.length));
+  const donde = [];   // por cascote: a lo largo, a lo ancho, tamano
+  T.derrumbes.forEach(() => { for (let i = 0; i < NC; i++) donde.push(Math.random(), Math.random(), 0.22 + Math.random() * 0.4); });
+  cascotes.count = donde.length / 3;
+  cascotes.castShadow = true;
+  escena.add(cascotes);
+  function animar(dt, t) {
+    for (const b of bidones) { b.lata.rotation.y = t * 1.6; b.lata.position.y = 1.1 + Math.sin(t * 2.4) * 0.12; }
+    T.derrumbes.forEach((d, k) => {
+      const hx = Math.sin(d.rumbo), hz = -Math.cos(d.rumbo), ancho = d.ancho + 5;
+      for (let i = 0; i < NC; i++) {
+        const o = (k * NC + i) * 3;
+        donde[o + 1] = (donde[o + 1] + d.vel * dt / ancho) % 1;
+        const u = (donde[o] - 0.5) * (d.largo - 4), v = (donde[o + 1] - 0.5) * ancho;
+        const x = d.x + hx * u - hz * v, z = d.z + hz * u + hx * v, s = donde[o + 2] * Math.min(1, donde[o + 1] * 8, (1 - donde[o + 1]) * 8);
+        Q.setFromAxisAngle(ARRIBA, donde[o] * 40 + donde[o + 1] * 6);
+        cascotes.setMatrixAt(k * NC + i, M.compose(V.set(x, T.altura(x, z) + s * 0.35, z), Q, E.set(s, s, s)));
+      }
+    });
+    cascotes.instanceMatrix.needsUpdate = true;
+  }
 
   // --- arcos: uno por control y uno mas grande en la meta ---
   function arco(p, color, alto) {
@@ -194,7 +248,9 @@ export function crearMundo(T, escena, liviano) {
       V.set(p[0], p[1] + 0.6, p[2]).project(cam);
       hueco.value.set((V.x * 0.5 + 0.5) * ancho, (V.y * 0.5 + 0.5) * alto, 3.8 * alto / (2 * Math.tan(cam.fov * Math.PI / 360)) / lejos);
     },
+    animar,
     pasar: (i) => arcos[i].material.color.setHex(VERDE),
-    reiniciar: () => arcos.forEach((a) => a.material.color.setHex(AMARILLO)),
+    juntar: (i) => { bidones[i].g.visible = false; },
+    reiniciar: () => { arcos.forEach((a) => a.material.color.setHex(AMARILLO)); bidones.forEach((b) => { b.g.visible = true; }); },
   };
 }

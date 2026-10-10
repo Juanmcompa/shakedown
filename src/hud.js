@@ -1,5 +1,5 @@
 // Instrumentos y carteles en pantalla (el HTML esta en index.html).
-import { SUELO } from './config.js';
+import { SUELO, JUEGO } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 export const reloj = (s) => { const m = Math.floor(s / 60), r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); };
@@ -20,6 +20,9 @@ export function crearHud(T) {
     return l;
   });
   $('etapa').textContent = T.etapa.nombre + ', ' + T.etapa.lugar;
+  // un punto por rescate
+  const puntos = [];
+  for (let i = 0; i < JUEGO.rescates; i++) puntos.push($('rescates').appendChild(document.createElement('i')));
   let tCartel = 0, tAviso = 0, dicho = '';
 
   return {
@@ -36,10 +39,18 @@ export function crearHud(T) {
       $('control').textContent = n < marcas.length ? 'Control ' + n + ' de ' + marcas.length : 'Falta la cumbre';
     },
     mejor: (s) => { $('mejor').textContent = s ? 'Mejor ' + reloj(s) : ''; },
+    // reductora: alta o baja
+    cambio: (baja) => { $('cambio').textContent = baja ? 'Baja' : 'Alta'; $('cambio').classList.toggle('puesta', baja); $('botonBaja').classList.toggle('puesta', baja); },
     // punto amarillo que muestra el volante cuando se dobla inclinando el celular
     volante: (v) => { if (v !== null) $('volanteAca').style.left = (50 + v * 50).toFixed(1) + '%'; },
-    actualizar: (c, tiempo, indice, dt) => {
-      $('reloj').textContent = reloj(tiempo);
+    actualizar: (c, p, dt) => {
+      const indice = p.indice, roto = p.rotura();
+      $('reloj').textContent = reloj(p.tiempo);
+      $('nafta').style.width = p.nafta.toFixed(1) + '%';
+      $('nafta').parentNode.classList.toggle('alerta', p.nafta < 20);
+      $('roto').style.width = roto.toFixed(1) + '%';
+      $('roto').parentNode.classList.toggle('alerta', roto > 65);
+      puntos.forEach((el, i) => el.classList.toggle('usado', i >= p.rescates));
       $('vel').textContent = Math.round(Math.abs(c.velocidad) * 3.6);
       $('suelo').textContent = c.agua > 0.05 ? 'Agua' : SUELO[c.suelo].nombre;
       c.ruedas.forEach((r, i) => { ruedas[i].className = !r.toca ? 'aire' : r.patina > 0.5 ? 'fondo' : r.patina > 0.08 ? 'patina' : ''; });

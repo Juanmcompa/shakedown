@@ -4,15 +4,16 @@ Juego web de manejo 4x4 visto desde arriba, en 3D. No es una carrera: es llegar 
 
 **Jugar:** https://juanmcompa.github.io/encajados/
 
-Versión 0.1: un prototipo para probar si manejar es divertido. Tiene una etapa de 975 metros (Yungas) con asfalto roto, bañado, vado, lateral, caracoles, cornisa, bajada y trepada.
+Es un prototipo. Tiene una etapa de 975 metros (Yungas) con asfalto roto, bañado, vado, un lateral con derrumbe, caracoles, cornisa, bajada y trepada. Se puede perder: por quedarse sin nafta, por romper la camioneta o por gastar los tres rescates.
 
 ## Cómo se juega
 
 | Tecla | Qué hace |
 | --- | --- |
 | `W` `A` `S` `D` o flechas | Acelerar, doblar, frenar y marcha atrás |
+| `Shift` | Reductora: cambia entre alta y baja |
 | `Espacio` | Freno de mano (traba las ruedas de atrás) |
-| `R` | Volver al último control |
+| `R` | Volver al último control (gasta un rescate) |
 | `C` | Cambiar la cámara: aérea, aérea fija, cerca |
 | `M` | Sonido |
 
@@ -20,11 +21,18 @@ En el celular no hay teclas:
 
 - **Inclinar el celu** para doblar, como un volante. En iPhone pide permiso para usar el sensor.
 - **Pedal derecho** para acelerar. **Pedal izquierdo** para frenar y, ya frenado, ir marcha atrás.
+- Botones para la **reductora**, para volver al control y para cambiar la cámara.
 - Si el sensor no responde, aparecen flechas para doblar con el dedo.
 - Sirve con el celu vertical u horizontal. Vertical se ve más camino por delante.
 
 Lo que conviene saber:
 
+- **No es una carrera.** Gana el que llega; el tiempo solo desempata.
+- **La nafta no sobra.** Se gasta al acelerar y casi el triple patinando. Hay bidones para juntar, casi siempre en lugares incómodos.
+- **Reductora.** En baja hay fuerza para trepar y freno motor para bajar, pero se va lento y en el barro se patina más. En alta se va rápido, pero no se sube lo empinado.
+- **Los golpes suman daño.** Con la camioneta rota se termina la etapa. Ojo con los autos tirados, los árboles y las piedras.
+- **Hay tres rescates** para volver al último control. Desbarrancarse gasta uno solo.
+- **En el derrumbe la tierra se corre** hacia el borde y te lleva. Hay que apuntar cuesta arriba y no parar.
 - **El barro frena y hace patinar.** Con el acelerador a fondo las ruedas patinan y la camioneta se va de costado. A veces rinde más soltar un poco.
 - **Los charcos claros son pantano.** Si entrás despacio te encajás. Esquivalos o pasalos con envión.
 - **Las subidas de barro piden envión.** Si no llegás arriba, retrocedé y tomá carrera.
@@ -35,8 +43,8 @@ Lo que conviene saber:
 
 Dos archivos concentran casi todo lo que se ajusta:
 
-- `src/config.js`: agarre de cada suelo, motor, suspensión, cámaras y tiempos de las medallas.
-- `src/etapa1.js`: el camino, escrito como una lista de tramos (largo, giro, pendiente, ancho, suelo, laderas, pozos).
+- `src/config.js`: agarre de cada suelo, motor y reductora, suspensión, cámaras, nafta, daño, rescates y tiempos de las medallas.
+- `src/etapa1.js`: el camino, escrito como una lista de tramos (largo, giro, pendiente, ancho, suelo, laderas, pozos, autos tirados, bidones, derrumbes).
 
 ## Cómo está armado
 
@@ -47,11 +55,12 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | Archivo | Qué hace |
 | --- | --- |
 | `index.html`, `style.css` | La página, la portada y los instrumentos en pantalla |
-| `src/main.js` | Arma todo, corre el ciclo del juego y aplica las reglas |
+| `src/main.js` | Arma todo y corre el ciclo del juego |
 | `src/config.js` | Los números para ajustar |
 | `src/etapa1.js` | La etapa, tramo por tramo |
 | `src/terrain.js` | Convierte los tramos en terreno: alturas, suelos, río, árboles |
 | `src/vehicle.js` | La física de la camioneta |
+| `src/reglas.js` | Las reglas: controles, meta, nafta, daño, rescates y formas de perder |
 | `src/world.js`, `src/truck.js` | Dibujan el terreno y la camioneta |
 | `src/camera.js`, `src/fx.js`, `src/audio.js` | Cámaras, huellas y barro que salta, sonido del motor |
 | `src/hud.js`, `src/input.js`, `src/noise.js` | Instrumentos, mandos (teclado, pedales e inclinación), ruido para el relieve |
@@ -70,8 +79,8 @@ Abrir `index.html` con doble clic no funciona: el navegador no carga los módulo
 Con Node instalado, desde la carpeta del repo:
 
 - `node tools/fisica.mjs`: aceleración, frenada, subidas y laterales en cada suelo.
-- `node tools/piloto.mjs`: un piloto automático recorre la etapa y avisa dónde no pasa.
-- `node tools/humano.mjs`: pilotos imperfectos (con teclas) para estimar la dificultad.
+- `node tools/piloto.mjs`: un piloto prolijo recorre la etapa a distintas velocidades: dice si llega y con cuánta nafta.
+- `node tools/humano.mjs`: pilotos imperfectos (con teclas) para estimar la dificultad: cuántos llegan y por qué pierden.
 - `node tools/deriva.mjs`: cuánto dobla y cuánto colea en cada suelo.
 
 Sirven para revisar que la etapa se pueda terminar después de tocar `config.js` o `etapa1.js`.

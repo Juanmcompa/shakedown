@@ -2,9 +2,12 @@
 import * as THREE from 'three';
 import { CAMIONETA as C } from './config.js';
 
-export function crearDibujo(escena) {
-  const grupo = new THREE.Group(), mats = {};
-  const mat = (color) => mats[color] || (mats[color] = new THREE.MeshLambertMaterial({ color, flatShading: true }));
+const mats = {};
+const mat = (color) => mats[color] || (mats[color] = new THREE.MeshLambertMaterial({ color, flatShading: true }));
+
+// Arma una camioneta del color pedido. La usan la del jugador y los autos tirados en el camino.
+export function armarCamioneta(CUERPO = 0xe2a81e) {
+  const grupo = new THREE.Group();
   const caja = (padre, color, w, h, d, x, y, z) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
     m.position.set(x, y, z);
@@ -12,7 +15,7 @@ export function crearDibujo(escena) {
     padre.add(m);
     return m;
   };
-  const CUERPO = 0xe2a81e, NEGRO = 0x1b1b1d, BLANCO = 0xf0ece2, VIDRIO = 0x27333d;
+  const NEGRO = 0x1b1b1d, BLANCO = 0xf0ece2, VIDRIO = 0x27333d;
 
   caja(grupo, NEGRO, 1.5, 0.16, 4.0, 0, -0.38, 0);            // chasis
   caja(grupo, CUERPO, 1.84, 0.6, 4.4, 0, 0, 0.02);             // carroceria
@@ -56,9 +59,15 @@ export function crearDibujo(escena) {
       taco.rotation.x = k * 1.5708;
     }
     pivote.add(rueda);
+    pivote.position.set((i % 2 ? 1 : -1) * C.trocha * 1.06, C.anclaje - 0.43, (i < 2 ? -1 : 1) * C.ejes);
     grupo.add(pivote);
     ruedas.push({ pivote, rueda });
   }
+  return { grupo, ruedas };
+}
+
+export function crearDibujo(escena) {
+  const { grupo, ruedas } = armarCamioneta();
   escena.add(grupo);
 
   function actualizar(c) {

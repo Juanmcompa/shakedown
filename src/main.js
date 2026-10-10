@@ -4,6 +4,7 @@ import { JUEGO } from './config.js';
 import { ETAPA } from './etapa1.js';
 import { crearTerreno } from './terrain.js';
 import { crearCamioneta } from './vehicle.js';
+import { crearPartida } from './reglas.js';
 import { crearMundo } from './world.js';
 import { crearDibujo } from './truck.js';
 import { crearCamara } from './camera.js';
@@ -16,7 +17,7 @@ const $ = (id) => document.getElementById(id);
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (document.documentElement.dataset.pagina !== '2' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now());
+if (document.documentElement.dataset.pagina !== '3' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now());
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
@@ -28,20 +29,13 @@ render.setPixelRatio(Math.min(window.devicePixelRatio, liviano ? 1.5 : 2));
 render.shadowMap.enabled = true;
 
 const T = crearTerreno(ETAPA), P = T.camino, escena = new THREE.Scene();
-const mundo = crearMundo(T, escena, liviano), c = crearCamioneta(T), dibujo = crearDibujo(escena);
+const mundo = crearMundo(T, escena, liviano), c = crearCamioneta(T), dibujo = crearDibujo(escena), partida = crearPartida(T);
 const camara = crearCamara(T), fx = crearEfectos(escena), sonido = crearSonido(), hud = crearHud(T);
 
-let estado = 'portada', tiempo = 0, corriendo = false, control = T.largada, pasados = 0, indice = T.largada.i, tramo = -1;
-let vueltas = 0, quieto = 0, volcado = 0, caida = 0, pegado = false, antes = performance.now(), resto = 0, mejor = 0, tactil = false;
-try { mejor = Number(localStorage.getItem('encajados.etapa1')) || 0; } catch (e) { /* sin memoria no se guarda el record */ }
+let pantalla = 'portada';   // portada, jugando o fin
+let antes = performance.now(), resto = 0, reloj3d = 0, mejor = 0, tactil = false, pegado = false, pocaNafta = false;
+try { mejor = Number(localStorage.getItem('encajados.etapa' + ETAPA.version)) || 0; } catch (e) { /* sin memoria no se guarda el record */ }
 const ent = { x: 0, y: 0, mano: false }, QUIETO = { x: 0, y: 0, mano: true };
-
-function apoyar(p) {
-  c.poner(p.x, p.z, p.rumbo);
-  indice = p.i; quieto = volcado = caida = 0;
-  fx.cortar();
-  camara.saltar();
-}
 
 // En el celular: pedales en pantalla y doblar inclinando. Se prende al largar con el dedo,
 // porque el permiso del sensor y la pantalla completa solo se pueden pedir desde un toque.
@@ -60,66 +54,78 @@ function mandosDeCelular() {
 
 function largar() {
   if (!tactil && teclas.esTactil()) mandosDeCelular();
-  estado = 'jugando'; tiempo = 0; corriendo = false; control = T.largada; pasados = 0; vueltas = 0; tramo = -1;
-  apoyar(control);
+  pantalla = 'jugando';
+  pegado = pocaNafta = false;
+  c.baja = false;
+  partida.empezar(c);
+  fx.cortar();
+  camara.saltar();
   mundo.reiniciar();
-  hud.controles(0); hud.mejor(mejor); hud.aviso(''); hud.mostrar(true);
-  $('portada').hidden = true; $('llegada').hidden = true;
+  hud.controles(0); hud.mejor(mejor); hud.aviso(''); hud.cambio(false); hud.mostrar(true);
+  $('portada').hidden = true; $('fin').hidden = true;
   sonido.iniciar();
 }
 
-function volver(motivo) {
-  if (estado !== 'jugando') return;
-  vueltas++;
-  apoyar(control);
-  hud.aviso(motivo, 2.5);
+function cambiar() {
+  if (pantalla !== 'jugando') return;
+  c.baja = !c.baja;
+  hud.cambio(c.baja);
+  hud.aviso(c.baja ? 'Reductora en baja: más fuerza, menos velocidad.' : 'Reductora en alta: más velocidad, menos fuerza.', 2);
 }
 
-function llegar() {
-  estado = 'llegada';
-  const m = JUEGO.medallas, medalla = tiempo <= m[0] ? 'oro' : tiempo <= m[1] ? 'plata' : tiempo <= m[2] ? 'bronce' : '';
-  const record = !mejor || tiempo < mejor;
-  if (record) { mejor = tiempo; try { localStorage.setItem('encajados.etapa1', String(tiempo)); } catch (e) { /* idem */ } }
-  $('tFinal').textContent = reloj(tiempo);
-  $('medalla').textContent = medalla ? 'Medalla de ' + medalla : 'Sin medalla esta vez';
-  $('detalle').textContent = (record ? 'Es tu mejor tiempo. ' : 'Tu mejor tiempo es ' + reloj(mejor) + '. ')
-    + (vueltas === 0 ? 'No volviste a ningún control. ' : vueltas === 1 ? 'Volviste una vez a un control. ' : 'Volviste ' + vueltas + ' veces a un control. ')
-    + 'Oro ' + reloj(m[0]) + ', plata ' + reloj(m[1]) + ', bronce ' + reloj(m[2]) + '.';
+// Cierra la etapa: llegaste o perdiste.
+const PERDER = {
+  nafta: ['Te quedaste sin nafta', 'Patinar gasta casi el triple. En el barro conviene ir en alta y sin pisar a fondo.'],
+  rota: ['Rompiste la camioneta', 'Los golpes suman. Frená antes de los autos tirados, los árboles y las piedras.'],
+  rescates: ['Te quedaste sin rescates', 'Hay ' + JUEGO.rescates + ' por etapa. En la cornisa y en el derrumbe, despacio y mirando el borde.'],
+};
+function terminar(llego) {
+  pantalla = 'fin';
+  const t = partida.tiempo, m = JUEGO.medallas;
+  if (llego) {
+    const medalla = t <= m[0] ? 'oro' : t <= m[1] ? 'plata' : t <= m[2] ? 'bronce' : '';
+    const record = !mejor || t < mejor;
+    if (record) { mejor = t; try { localStorage.setItem('encajados.etapa' + ETAPA.version, String(t)); } catch (e) { /* idem */ } }
+    $('finTitulo').textContent = 'Llegaste a la cumbre';
+    $('finGrande').textContent = reloj(t);
+    $('finMedalla').textContent = medalla ? 'Medalla de ' + medalla : 'Sin medalla esta vez';
+    $('finDetalle').textContent = (record ? 'Es tu mejor tiempo. ' : 'Tu mejor tiempo es ' + reloj(mejor) + '. ')
+      + 'Te sobró ' + Math.round(partida.nafta) + ' de nafta y usaste ' + partida.usados + ' de ' + JUEGO.rescates + ' rescates. '
+      + 'Oro ' + reloj(m[0]) + ', plata ' + reloj(m[1]) + ', bronce ' + reloj(m[2]) + '.';
+  } else {
+    const nombre = ETAPA.tramos.slice(0, P.T[partida.indice] + 1).reverse().find((x) => x.nombre);
+    $('finTitulo').textContent = PERDER[partida.motivo][0];
+    $('finGrande').textContent = partida.indice + ' m';
+    $('finMedalla').textContent = 'de ' + P.n + '. Llegaste hasta ' + (nombre ? nombre.nombre : 'la largada') + '.';
+    $('finDetalle').textContent = PERDER[partida.motivo][1];
+  }
+  $('otra').textContent = llego ? 'Correr de nuevo' : 'Probar de nuevo';
   hud.aviso('');
   $('cartel').hidden = true;
-  $('llegada').hidden = false;
+  $('fin').hidden = false;
 }
 
-// Reglas: controles, meta y los tres problemas (encajarse, volcar, desbarrancarse).
-function reglas(dt) {
-  indice = T.indice(c.pos[0], c.pos[2], indice);
-  if (!corriendo && ent.y !== 0) corriendo = true;
-  if (corriendo) tiempo += dt;
-  const lejos = Math.hypot(c.pos[0] - P.X[indice], c.pos[2] - P.Z[indice]) - P.W[indice] / 2;
-
-  const t = P.T[indice];
-  if (t !== tramo) { if (t > tramo && ETAPA.tramos[t].nombre) hud.cartel(ETAPA.tramos[t].nombre); tramo = t; }
-  if (lejos < 4 && pasados < T.controles.length && indice >= T.controles[pasados].i) {
-    control = T.controles[pasados];
-    mundo.pasar(pasados);
-    pasados++;
-    hud.controles(pasados);
-    hud.aviso('Control ' + pasados + ' de ' + T.controles.length, 2);
-  }
-  if (lejos < 4 && indice >= T.meta.i) return llegar();
-
-  volcado = c.arriba[1] < 0.35 ? volcado + dt : 0;
-  caida = c.pos[1] < P.Y[indice] - 10 || lejos > 45 ? caida + dt : 0;
-  quieto = c.gas > 0.5 && Math.abs(c.velocidad) < 0.7 && c.enPiso > 1 ? quieto + dt : 0;
-  if (caida > 1.2 || !(c.pos[1] === c.pos[1])) volver(lejos > 45 ? 'Te saliste del camino. Volvés al último control.' : 'Te desbarrancaste. Volvés al último control.');
-  else if (volcado > 2) { hud.aviso('Volcaste. ' + (tactil ? 'Tocá Volver al control.' : 'Tocá R para volver al último control.')); pegado = true; }
-  else if (quieto > 2.5) { hud.aviso('Te encajaste. Probá marcha atrás y entrá con más envión, o tocá ' + (tactil ? 'Volver al control.' : 'R.')); pegado = true; }
-  else if (pegado && quieto === 0 && volcado === 0) { hud.aviso(''); pegado = false; }
+// Lo que van avisando las reglas se muestra en pantalla.
+const RESCATE = { caida: 'Te desbarrancaste. ', afuera: 'Te saliste del camino. ', pedido: '' };
+function atender(e) {
+  if (e.tipo === 'tramo') hud.cartel(e.dato);
+  else if (e.tipo === 'control') { mundo.pasar(e.dato - 1); hud.controles(e.dato); hud.aviso('Control ' + e.dato + ' de ' + T.controles.length, 2); }
+  else if (e.tipo === 'bidon') { mundo.juntar(e.dato); hud.aviso('Bidón: +' + JUEGO.nafta.bidon + ' de nafta.', 2); }
+  else if (e.tipo === 'golpe') camara.sacudir(e.dato);
+  else if (e.tipo === 'derrumbe') hud.aviso('Derrumbe: la tierra se corre hacia el borde. Apuntá cuesta arriba y no pares.', 4);
+  else if (e.tipo === 'rescate') {
+    fx.cortar();
+    camara.saltar();
+    const n = partida.rescates;
+    hud.aviso(RESCATE[e.dato] + (n === 0 ? 'Era el último rescate.' : n === 1 ? 'Te queda 1 rescate.' : 'Te quedan ' + n + ' rescates.'), 3);
+  } else if (e.tipo === 'llegada') terminar(true);
+  else if (e.tipo === 'perdido') terminar(false);
 }
 
 const teclas = crearTeclas((tecla) => {
-  if (tecla === 'Enter') { if (estado !== 'jugando' && document.activeElement.tagName !== 'BUTTON') largar(); }
-  else if (tecla === 'KeyR') volver('Volvés al último control.');
+  if (tecla === 'Enter') { if (pantalla !== 'jugando' && document.activeElement.tagName !== 'BUTTON') largar(); }
+  else if (tecla === 'KeyR') { if (pantalla === 'jugando') partida.rescatar(c, 'pedido'); }
+  else if (tecla === 'ShiftLeft' || tecla === 'ShiftRight' || tecla === 'KeyX') cambiar();
   else if (tecla === 'KeyC') hud.aviso('Cámara: ' + camara.cambiar().toLowerCase(), 1.5);
   else if (tecla === 'KeyM') hud.aviso(sonido.alternar() ? 'Sonido apagado' : 'Sonido prendido', 1.5);
 });
@@ -133,13 +139,29 @@ function cuadro(ahora) {
   requestAnimationFrame(cuadro);
   const dt = Math.min(0.05, (ahora - antes) / 1000);
   antes = ahora;
-  const manda = estado === 'jugando' ? teclas.leer(ent) : QUIETO;
+  reloj3d += dt;
+  const manda = pantalla === 'jugando' ? teclas.leer(ent) : QUIETO;
   resto += dt;
   while (resto >= JUEGO.paso) { c.paso(manda, JUEGO.paso); resto -= JUEGO.paso; }
-  if (estado === 'jugando') { reglas(dt); hud.actualizar(c, tiempo, indice, dt); hud.volante(teclas.volante()); }
+  if (pantalla === 'jugando') {
+    partida.paso(c, ent.y, dt);
+    for (const e of partida.eventos.splice(0)) atender(e);
+  }
+  if (pantalla === 'jugando') {
+    // avisos que quedan mientras dure el problema
+    const volver = tactil ? 'tocá Volver al control' : 'tocá R para volver al control';
+    if (partida.volcado) { hud.aviso('Volcaste: ' + volver + ' (gasta un rescate).'); pegado = true; }
+    else if (partida.encajado) { hud.aviso('Te encajaste. Probá marcha atrás y entrá con más envión, o ' + volver + '.'); pegado = true; }
+    else if (pegado) { hud.aviso(''); pegado = false; }
+    if (partida.nafta < 20 && !pocaNafta) { pocaNafta = true; hud.aviso('Queda poca nafta.', 3); }
+    if (partida.nafta > 25) pocaNafta = false;
+    hud.actualizar(c, partida, dt);
+    hud.volante(teclas.volante());
+  }
   dibujo.actualizar(c);
   fx.actualizar(c, dt);
   camara.seguir(c, dt);
+  mundo.animar(dt, reloj3d);
   mundo.sombra(camara.estado.x, camara.estado.y, camara.estado.z);
   mundo.bajo(camara.estado.y);
   mundo.hueco(camara.cam, c.pos, render.domElement.width, render.domElement.height);
@@ -151,7 +173,7 @@ window.addEventListener('resize', medir);
 $('largar').addEventListener('click', largar);
 $('otra').addEventListener('click', largar);
 medir();
-apoyar(T.largada);
+partida.apoyar(c, T.largada);
 $('largar').disabled = false;
 $('largar').textContent = 'Largar';
 $('largar').focus();
@@ -159,8 +181,8 @@ requestAnimationFrame(cuadro);
 
 // para probar desde la consola: encajados.ir(400) lleva la camioneta al metro 400 del camino
 window.encajados = {
-  c, T, camara, teclas,
-  estado: () => ({ estado, tiempo, indice, pasados, vueltas }),
+  c, T, camara, teclas, partida,
+  estado: () => ({ pantalla, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, pasados: partida.pasados, nafta: partida.nafta, roto: partida.rotura(), rescates: partida.rescates, baja: c.baja }),
   simular: (seg, x, y) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano: false }, JUEGO.paso); if (i % 2) fx.actualizar(c, JUEGO.paso * 2); } },
-  ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); indice = i; fx.cortar(); camara.saltar(); },
+  ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); partida.indice = i; fx.cortar(); camara.saltar(); },
 };

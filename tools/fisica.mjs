@@ -9,7 +9,7 @@ export function plano(gradosAdelante, gradosCostado, suelo) {
   return {
     altura: (x, z) => -a * z + b * x,
     normal: (x, z, o) => { const l = Math.hypot(b, 1, a); o[0] = -b / l; o[1] = 1 / l; o[2] = a / l; return o; },
-    suelo: (x, z, o) => { o.agarre = s.agarre; o.freno = s.freno; o.pasta = s.pasta; o.id = s.id; o.agua = 0; return o; },
+    suelo: (x, z, o) => { o.agarre = s.agarre; o.freno = s.freno; o.pasta = s.pasta; o.id = s.id; o.agua = 0; o.vx = 0; o.vz = 0; return o; },
     cosasCerca: () => null,
   };
 }

@@ -3,7 +3,7 @@
 import { CAMIONETA as C, JUEGO } from './config.js';
 
 const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
-const N = [0, 1, 0], S = { agarre: 1, freno: 0, pasta: 0, id: 0, agua: 0 };
+const N = [0, 1, 0], S = { agarre: 1, freno: 0, pasta: 0, id: 0, agua: 0, vx: 0, vz: 0 };
 
 export function crearCamioneta(terreno) {
   const c = {
@@ -11,6 +11,8 @@ export function crearCamioneta(terreno) {
     adelante: [0, 0, -1], arriba: [0, 1, 0], derecha: [1, 0, 0],
     volante: 0, gas: 0, sentido: 1, frenando: false, mano: false, giroRuedas: 0,
     velocidad: 0, enPiso: 0, patina: 0, suelo: 0, agua: 0, golpe: 0, ruedas: [],
+    baja: false,    // reductora puesta
+    impacto: 0,     // golpe mas fuerte desde la ultima vez que se leyo, en m/s (lo usan las reglas para el daño)
   };
   for (let i = 0; i < 4; i++) {
     c.ruedas.push({ x: (i % 2 ? 1 : -1) * C.trocha, z: (i < 2 ? -1 : 1) * C.ejes, delantera: i < 2,
@@ -29,7 +31,7 @@ export function crearCamioneta(terreno) {
     c.q[0] = a * cy - b * sy; c.q[1] = d * sy; c.q[2] = b * cy + a * sy; c.q[3] = d * cy;
     c.pos[0] = x + nx * 0.82; c.pos[1] = terreno.altura(x, z) + ny * 0.82; c.pos[2] = z + nz * 0.82;
     c.vel.fill(0); c.w.fill(0);
-    c.volante = 0; c.gas = 0; c.sentido = 1; c.velocidad = 0;
+    c.volante = 0; c.gas = 0; c.sentido = 1; c.velocidad = 0; c.impacto = 0;
     c.adelante[0] = Math.sin(rumbo); c.adelante[1] = 0; c.adelante[2] = -Math.cos(rumbo);
     for (const r of c.ruedas) r.tope = 1;
   };
@@ -56,7 +58,8 @@ export function crearCamioneta(terreno) {
     const rapidez = C.giroVel * (Math.abs(ent.x) < Math.abs(c.volante) ? 1.7 : 1) * dt;
     c.volante += lim(ent.x - c.volante, -rapidez, rapidez);
     c.giroRuedas = c.volante * giroMax;
-    let empuje = c.gas * c.sentido * Math.min(C.empuje * m * g, C.potencia / Math.max(Math.abs(vf), 1));
+    const G = c.baja ? C.baja : C.alta;   // la reductora cambia fuerza, velocidad maxima y freno motor
+    let empuje = c.gas * c.sentido * Math.min(G.empuje * m * g, G.potencia / Math.max(Math.abs(vf), 1)) * lim((G.tope - Math.abs(vf)) / 1.5, 0, 1);
     if (c.sentido < 0) empuje *= vf < -9 ? 0 : C.reversa;
 
     // --- fuerzas: gravedad y aire ---
@@ -91,7 +94,7 @@ export function crearCamioneta(terreno) {
       const ritmo = -(vx * nx + vy * ny + vz * nz) / den;
       // suspension: resorte + amortiguador (+ tope de goma al final del recorrido)
       let Fs = C.resorte * comp + C.amortigua[ritmo > 0 ? 0 : 1] * ritmo;
-      if (comp > C.recorrido) Fs += C.resorte * 7 * (comp - C.recorrido);
+      if (comp > C.recorrido) { Fs += C.resorte * 7 * (comp - C.recorrido); if (ritmo > c.impacto) c.impacto = ritmo; }
       const Nf = lim(Fs, 0, m * g * 3) / den;
       r.carga = Nf;
 
@@ -102,9 +105,10 @@ export function crearCamioneta(terreno) {
       lx -= nx * k; ly -= ny * k; lz -= nz * k;
       k = 1 / Math.hypot(lx, ly, lz); lx *= k; ly *= k; lz *= k;
       const sx = ly * nz - lz * ny, sy = lz * nx - lx * nz, sz = lx * ny - ly * nx;
-      const vl = vx * lx + vy * ly + vz * lz, vs = vx * sx + vy * sy + vz * sz;
-      r.vl = vl;
       terreno.suelo(cx, cz, S);
+      const mx = vx - S.vx, mz = vz - S.vz;   // velocidad respecto del piso: en un derrumbe el piso se mueve
+      const vl = mx * lx + vy * ly + mz * lz, vs = mx * sx + vy * sy + mz * sz;
+      r.vl = vl;
       const tope = S.agarre * Nf;   // lo maximo que la cubierta puede agarrar
       r.tope = tope;
 
@@ -115,9 +119,11 @@ export function crearCamioneta(terreno) {
         const cap = C.frenos * m * g / 4;
         Fl += lim(-mr / dt * 0.5 * vl + mr * g * ly, -cap, cap);
       } else if (c.gas < 0.02) {
-        const cap = C.frenoMotor * m * g / 4;
-        Fl -= lim(vl * 280, -cap, cap);
+        const cap = G.frenoMotor * m * g / 4;
+        Fl -= lim(vl * (c.baja ? 900 : 280), -cap, cap);
       }
+      // en baja el motor no deja pasar de su velocidad maxima, ni siquiera cuesta abajo
+      if (c.baja && Math.abs(vl) > G.tope) Fl -= Math.sign(vl) * Math.min(G.frenoMotor * m * g / 4, (Math.abs(vl) - G.tope) * 1500);
       const pide = Math.abs(Fl);
       if (pide > tope) { if (c.gas > 0.02 && !c.frenando) r.patina = 1 - tope / pide; Fl *= tope / pide; }
       // de costado: lo que sobra del agarre despues de acelerar o frenar
@@ -152,6 +158,7 @@ export function crearCamioneta(terreno) {
       const vx = v[0] + w[1] * oz - w[2] * oy, vy = v[1] + w[2] * ox - w[0] * oz, vz = v[2] + w[0] * oy - w[1] * ox;
       const vn = vx * N[0] + vy * N[1] + vz * N[2];
       const Fn = lim(C.chasis[0] * hondo * N[1] - C.chasis[1] * vn, 0, m * g * 4);
+      if (-vn > c.impacto) c.impacto = -vn;
       const tx = vx - N[0] * vn, ty = vy - N[1] * vn, tz = vz - N[2] * vn, tv = Math.hypot(tx, ty, tz) + 1e-6;
       const Fr = -Math.min(C.chasis[2] * Fn, m / 8 / dt * 0.4 * tv) / tv;
       const Ax = N[0] * Fn + tx * Fr, Ay = N[1] * Fn + ty * Fr, Az = N[2] * Fn + tz * Fr;
@@ -170,6 +177,7 @@ export function crearCamioneta(terreno) {
         if (mete <= 0 || p[1] + oy > o.y + 6) continue;
         const vn = ((v[0] + w[1] * oz - w[2] * oy) * dx + (v[2] + w[0] * oy - w[1] * ox) * dz) / d;
         const Fn = Math.max(0, 140000 * mete - 9000 * vn) / d, Ax = dx * Fn, Az = dz * Fn;
+        if (-vn > c.impacto) c.impacto = -vn;
         Fx += Ax; Fz += Az;
         Tx += oy * Az; Ty += oz * Ax - ox * Az; Tz -= oy * Ax;
         if (Fn * d > golpe) golpe = Fn * d;

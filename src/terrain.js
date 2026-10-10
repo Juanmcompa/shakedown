@@ -59,6 +59,7 @@ export function crearTerreno(etapa) {
   const nx = Math.ceil((x1 + margen - x0) / celda) + 1, nz = Math.ceil((z1 + margen - z0) / celda) + 1;
   x1 = x0 + (nx - 1) * celda; z1 = z0 + (nz - 1) * celda;
   const H = new Float32Array(nx * nz), S = new Uint8Array(nx * nz).fill(255), BORDE = new Float32Array(nx * nz);
+  const PVX = new Float32Array(nx * nz), PVZ = new Float32Array(nx * nz);   // velocidad del piso (solo en los derrumbes)
 
   // --- 1. Relieve general: se interpola la altura del camino y de sus laderas ---
   const pts = [];
@@ -127,6 +128,12 @@ export function crearTerreno(etapa) {
         const dd = Math.hypot(u - p[0], lado - p[1]);
         if (dd < p[2]) { const f = 1 - suave(0.45 * p[2], p[2], dd); hc -= p[3] * f; if (f > 0.35) suelo = SUELOS[p[4]].id; }
       }
+      if (t.derrumbe && u > t.derrumbe[0] && u < t.derrumbe[1] && d < medio + 2) {
+        // la tierra se corre hacia la derecha del camino a "vel" m/s, mas despacio en los bordes de la zona
+        const fd = suave(t.derrumbe[0], t.derrumbe[0] + 4, u) * (1 - suave(t.derrumbe[1] - 4, t.derrumbe[1], u));
+        PVX[k] = -P.HZ[c] * t.derrumbe[2] * fd; PVZ[k] = P.HX[c] * t.derrumbe[2] * fd;
+        if (fd > 0.25) suelo = SUELOS.derrumbe.id;
+      }
       const f = suave(medio, medio + (t.hombro || 4), d);
       h = mezcla(hc, h + lomas * suave(medio + 2, medio + 18, d) + pozitos, f);
       borde = d - medio;
@@ -172,6 +179,15 @@ export function crearTerreno(etapa) {
 
   // --- 5. Arboles y piedras (tipo 0, 1 y 2 = arboles; 3 = piedra) ---
   const cosas = [], cajasCosas = new Map();
+  function anotar(o) {   // guarda algo con lo que se puede chocar (un circulo de radio r)
+    cosas.push(o);
+    const e = o.r + 1.1;
+    for (let cx = Math.floor((o.x - e) / 8); cx <= Math.floor((o.x + e) / 8); cx++) for (let cz = Math.floor((o.z - e) / 8); cz <= Math.floor((o.z + e) / 8); cz++) {
+      const kk = clave(cx, cz);
+      if (!cajasCosas.has(kk)) cajasCosas.set(kk, []);
+      cajasCosas.get(kk).push(o);
+    }
+  }
   for (let z = z0 + 6; z < z1 - 6; z += 4.4) for (let x = x0 + 6; x < x1 - 6; x += 4.4) {
     const px = x + (rnd() - 0.5) * 4, pz = z + (rnd() - 0.5) * 4, a = rnd(), b = rnd();
     const k = Math.round((pz - z0) / celda) * nx + Math.round((px - x0) / celda);
@@ -182,18 +198,28 @@ export function crearTerreno(etapa) {
     else if (S[k] === SUELOS.roca.id && a < 0.16) o = { r: 0.7 + b * 1.1, alto: 0.5 + b * 0.6, tipo: 3 };
     if (!o) continue;
     o.x = px; o.z = pz; o.y = H[k]; o.vuelta = a * 6.28;
-    cosas.push(o);
-    const e = o.r + 1.1;
-    for (let cx = Math.floor((px - e) / 8); cx <= Math.floor((px + e) / 8); cx++) for (let cz = Math.floor((pz - e) / 8); cz <= Math.floor((pz + e) / 8); cz++) {
-      const kk = clave(cx, cz);
-      if (!cajasCosas.has(kk)) cajasCosas.set(kk, []);
-      cajasCosas.get(kk).push(o);
-    }
+    anotar(o);
   }
 
   // --- 6. Charcos (los pozos de pantano) y mojones blancos al borde de los precipicios ---
-  const charcos = [], mojones = [];
+  const charcos = [], mojones = [], autos = [], bidones = [], derrumbes = [];
+  const lugar = (t, en, lado) => { const i = Math.min(P.n - 1, t.desde + Math.round(en)); return { i, x: P.X[i] - P.HZ[i] * lado, z: P.Z[i] + P.HX[i] * lado, rumbo: Math.atan2(P.HX[i], -P.HZ[i]) }; };
   for (const t of etapa.tramos) {
+    // autos tirados: [metros desde el inicio del tramo, metros a la derecha, giro en grados, estado]
+    // estado 0 = abandonado, 1 = volcado de costado, 2 = hundido en el barro
+    for (const a of t.autos || []) {
+      const l = lugar(t, a[0], a[1]), rumbo = l.rumbo + (a[2] || 0) * RAD;
+      autos.push({ x: l.x, z: l.z, y: altura(l.x, l.z), rumbo, estado: a[3] || 0, n: autos.length });
+      for (const s of [-1.15, 1.15]) {   // se choca contra dos circulos, uno por cada mitad del auto
+        const x = l.x + Math.sin(rumbo) * s, z = l.z - Math.cos(rumbo) * s;
+        anotar({ x, z, y: altura(x, z), r: 1.1, alto: 1, tipo: 4 });
+      }
+    }
+    for (const b of t.bidones || []) { const l = lugar(t, b[0], b[1]); bidones.push({ x: l.x, z: l.z, y: altura(l.x, l.z) }); }
+    if (t.derrumbe) {
+      const l = lugar(t, (t.derrumbe[0] + t.derrumbe[1]) / 2, 0);
+      derrumbes.push({ x: l.x, z: l.z, y: P.Y[l.i], rumbo: l.rumbo, largo: t.derrumbe[1] - t.derrumbe[0], ancho: P.W[l.i], vel: t.derrumbe[2], peralte: P.B[l.i] });
+    }
     for (const p of t.pozos || []) {
       if (p[4] !== 'pantano') continue;
       const i = t.desde + Math.round(p[0]);
@@ -231,6 +257,8 @@ export function crearTerreno(etapa) {
     o.freno = FR[k] * w0 + FR[k + 1] * w1 + FR[k + nx] * w2 + FR[k + nx + 1] * w3;
     o.pasta = PA[k] * w0 + PA[k + 1] * w1 + PA[k + nx] * w2 + PA[k + nx + 1] * w3;
     o.id = S[k + (fu > 0.5 ? 1 : 0) + (fv > 0.5 ? nx : 0)];
+    o.vx = PVX[k] * w0 + PVX[k + 1] * w1 + PVX[k + nx] * w2 + PVX[k + nx + 1] * w3;
+    o.vz = PVZ[k] * w0 + PVZ[k + 1] * w1 + PVZ[k + nx] * w2 + PVZ[k + nx + 1] * w3;
     o.agua = agua(x, z, altura(x, z));
     if (o.agua > 0) { const a = Math.min(1, o.agua); o.pasta += a * 170; o.agarre *= 1 - 0.2 * a; }
     return o;
@@ -253,7 +281,7 @@ export function crearTerreno(etapa) {
   const controles = etapa.tramos.filter((t) => t.control).map((t) => pose(t.hasta - 1));
 
   return {
-    etapa, camino: P, x0, z0, x1, z1, nx, nz, celda, H, S, aguas, cosas, charcos, mojones,
+    etapa, camino: P, x0, z0, x1, z1, nx, nz, celda, H, S, aguas, cosas, charcos, mojones, autos, bidones, derrumbes,
     altura, normal, suelo, indice, controles, largada: pose(8), meta: pose(P.n - 22),
     cosasCerca: (x, z) => cajasCosas.get(clave(Math.floor(x / 8), Math.floor(z / 8))),
   };
