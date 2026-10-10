@@ -30,7 +30,7 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
   if (!(t < m.tDesvio)) { m.tDesvio = t + 1 + rnd() * 2; m.objetivo = (rnd() * 2 - 1) * o.desvio; }
   m.desvio = (m.desvio || 0) + (m.objetivo - (m.desvio || 0)) * 0.3;
   // a donde apunta: un punto de la trazada, mas lejos cuanto mas rapido va
-  const a = Math.min(P.n - 1, i + Math.round(4 + 0.5 * Math.abs(v))), libre = Math.max(0, P.W[a] / 2 - 1.5);
+  const a = Math.min(P.n - 1, i + Math.round(4 + o.mira * Math.abs(v))), libre = Math.max(0, P.W[a] / 2 - 1.5);
   const lado = Math.max(-libre, Math.min(libre, ref.corre[a] + m.desvio));
   const dx = P.X[a] - P.HZ[a] * lado - c.pos[0], dz = P.Z[a] + P.HX[a] * lado - c.pos[2], f = c.adelante;
   const e = Math.atan2(f[0] * dz - f[2] * dx, f[0] * dx + f[2] * dz);
@@ -45,7 +45,7 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
     quiere = Math.min(quiere, Math.sqrt(vr * vr + 2 * o.frena * k));
   }
   // si viene cruzado o se fue del camino, afloja hasta acomodarse
-  if (Math.abs(e) > 0.45 || p.lejos > 0.5) quiere = Math.min(quiere, 7);
+  if (Math.abs(e) > o.susto || p.lejos > 0.5) quiere = Math.min(quiere, 7);
   ent.y = v < quiere - 0.5 ? 1 : v > quiere + 1.2 ? -1 : 0;
   if (!o.teclas && ent.y === 1) ent.y = Math.min(1, 0.35 + (quiere - v) * 0.4);
   if (c.enPiso === 0) ent.x = 0;                                         // en el aire no dobla
@@ -88,11 +88,12 @@ export function correr(T, par, auto, o) {
 
 export const PILOTOS = {
   // mano: cuanto volante pone por cada radian que tiene que corregir.  umbral: debajo de esto no toca el volante.
-  as:     { ritmo: 0.97, reaccion: 0.05, umbral: 0.02, desvio: 0.2, frena: 5.2, mano: 2.6, teclas: false },
-  bueno:  { ritmo: 0.88, reaccion: 0.12, umbral: 0.1,  desvio: 0.5, frena: 4.6, mano: 2.6, teclas: true },
-  normal: { ritmo: 0.78, reaccion: 0.16, umbral: 0.12, desvio: 0.9, frena: 4.0, mano: 2.6, teclas: true },
-  manso:  { ritmo: 0.64, reaccion: 0.22, umbral: 0.14, desvio: 1.2, frena: 3.4, mano: 2.6, teclas: true },
-  bruto:  { ritmo: 1.08, reaccion: 0.2,  umbral: 0.14, desvio: 1.3, frena: 4.6, mano: 3.4, teclas: true },
+  // mira: cuantos metros adelante apunta por cada m/s que lleva.  susto: con cuantos radianes de cruzado levanta el pie.
+  as:     { ritmo: 0.97, reaccion: 0.05, umbral: 0.02, desvio: 0.2, frena: 5.2, mano: 2.6, mira: 0.5, susto: 0.7, teclas: false },
+  bueno:  { ritmo: 0.88, reaccion: 0.12, umbral: 0.1,  desvio: 0.5, frena: 4.6, mano: 2.6, mira: 0.5, susto: 0.65, teclas: true },
+  normal: { ritmo: 0.78, reaccion: 0.16, umbral: 0.12, desvio: 0.9, frena: 4.0, mano: 2.6, mira: 0.5, susto: 0.6, teclas: true },
+  manso:  { ritmo: 0.64, reaccion: 0.22, umbral: 0.14, desvio: 1.2, frena: 3.4, mano: 2.6, mira: 0.5, susto: 0.55, teclas: true },
+  bruto:  { ritmo: 1.08, reaccion: 0.2,  umbral: 0.14, desvio: 1.3, frena: 4.6, mano: 3.4, mira: 0.5, susto: 0.6, teclas: true },
 };
 
 if (typeof process !== 'undefined' && process.argv[1].endsWith('piloto.mjs')) {

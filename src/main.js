@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { JUEGO, AUTOS, REFERENCIA } from './config.js';
 import { hoy } from './dia.js';
-import { generarPista } from './generador.js';
+import { generarPista, VERSION } from './generador.js';
 import { crearTerreno } from './terrain.js';
 import { crearReferencia } from './referencia.js';
 import { crearAuto } from './vehicle.js';
@@ -43,18 +43,25 @@ const enlace = /[#&]r=([\w-]+)/.exec(location.hash), leido = enlace ? await leer
 const numero = leido && leido.marca.pista <= HOY ? leido.marca.pista : pedida >= 1 && (pedida <= HOY || consulta.has('futuro')) ? pedida : HOY;
 
 const etapa = generarPista(numero), T = crearTerreno(etapa), P = T.camino, ref = crearReferencia(T, AUTOS[REFERENCIA]);
-const club = crearClub(numero, HOY), copiloto = crearCopiloto(T);
+const club = crearClub(numero, HOY, VERSION), copiloto = crearCopiloto(T);
 // lo que trajo el link: el resultado del amigo (con su fantasma) y los otros que el conocia. El queda de rival.
+// (Si el link es de una version anterior de la pista, ya no sirve: ese camino no existe mas.)
+let linkViejo = false;
 if (leido && leido.marca.pista === numero) {
-  club.anotarAmigo({ ...leido.marca, codigo: enlace[1] });
-  for (const o of leido.tabla) club.anotarAmigo(o);
-  if (leido.vuelta && leido.marca.nombre !== club.nombre()) club.elegirRival(leido.marca.nombre + (leido.marca.practica ? '|p' : ''));
+  if (leido.version !== VERSION) linkViejo = true;
+  else {
+    club.anotarAmigo({ ...leido.marca, codigo: enlace[1] });
+    for (const o of leido.tabla) club.anotarAmigo(o);
+    if (leido.tieneVuelta && leido.marca.nombre !== club.nombre()) club.elegirRival(leido.marca.nombre + (leido.marca.practica ? '|p' : ''));
+  }
   history.replaceState(null, '', location.pathname + (numero !== HOY ? '?p=' + numero : ''));
 }
 
 const escena = new THREE.Scene();
 const huellas = crearHuellas(T, render), mundo = crearMundo(T, escena, liviano, huellas), partida = crearPartida(T, ref.sectores);
-const camara = crearCamara(T), fx = crearEfectos(escena, huellas), sonido = crearSonido(), hud = crearHud();
+// el polvo: no hay si llueve, y se lo lleva un viento suave que cambia con la pista
+const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
+const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento]), sonido = crearSonido(), hud = crearHud();
 const post = crearPost(render, etapa.clima, liviano);
 if (consulta.has('simple')) post.prender(false);   // ?simple: sin desenfoque ni brillos
 
@@ -87,7 +94,8 @@ function buscarRival() {
 }
 async function cargarRival() {
   const r = buscarRival(), l = r ? await leerCodigo(r.codigo) : null;
-  rival = l && l.vuelta && l.marca.pista === numero ? { clave: r.mio ? '*' : r.nombre, nombre: r.mio ? 'Vos' : r.nombre, t: r.t, ab: r.ab, practica: !!r.practica, auto: r.auto, fantasma: crearFantasma(l.vuelta, T) } : null;
+  const vuelta = l && l.version === VERSION && l.marca.pista === numero ? l.vuelta(P) : null;
+  rival = vuelta ? { clave: r.mio ? '*' : r.nombre, nombre: r.mio ? 'Vos' : r.nombre, t: r.t, ab: r.ab, practica: !!r.practica, auto: r.auto, fantasma: crearFantasma(vuelta, T) } : null;
   for (const id in espectros) espectros[id].ocultar();
   if (rival) espectroDe(rival.auto).nombre(rival.nombre);
   menu.pintar();
@@ -95,6 +103,7 @@ async function cargarRival() {
 
 const menu = crearMenu({
   T, club, hoy: HOY, ref, copiloto,
+  aviso: linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.' : '',
   rival: () => rival,
   elegirAuto: (id) => { if (pantalla !== 'jugando') ponerAuto(id); },
   elegirRival: (clave, deLaPractica) => { club.elegirRival(clave ? clave + (deLaPractica ? '|p' : '') : '-'); cargarRival(); },
@@ -118,7 +127,7 @@ function mandosDeCelular() {
   const raiz = document.documentElement;
   raiz.classList.add('tactil');
   $('tactil').hidden = false;
-  teclas.celular((inclina) => raiz.classList.toggle('sin-volante', !inclina));
+  teclas.celular((inclina) => { raiz.classList.toggle('sin-volante', !inclina); encuadrar(); });
   if (raiz.requestFullscreen) raiz.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
 }
@@ -135,11 +144,12 @@ function largar() {
   grabacion = crearGrabacion(T);
   copiloto.reiniciar();
   copiloto.voz(conVoz);
-  fx.cortar();
+  fx.cortar(); fx.limpiar();
   huellas.limpiar();
   camara.saltar();
   mundo.reiniciar();
   hud.sectores('', 0); hud.aviso(''); hud.grande(''); hud.sinRival(); hud.mostrar(true);
+  encuadrar();
   menu.cerrarFin();
   menu.portada(false);
   for (const id in espectros) espectros[id].ocultar();
@@ -210,10 +220,23 @@ const teclas = crearTeclas((tecla) => {
   else if (tecla === 'KeyV') { conVoz = !conVoz; club.gusto('voz', conVoz); copiloto.voz(conVoz); hud.prendido('voz', conVoz); }
 });
 
+// Donde puede quedar el auto en la pantalla. En el celular, nunca mas abajo que el freno de mano (parado)
+// o que los pedales (acostado), ni tan al costado como para quedar detras de un boton.
+function encuadrar() {
+  const W = window.innerWidth, H = window.innerHeight, parado = W < H;
+  let abajo = 0.16, lados = 0.2;
+  if (tactil) {
+    const mano = document.querySelector('.redondo.mano').getBoundingClientRect(), pedal = document.querySelector('.pedal.gas').getBoundingClientRect();
+    if (mano.height) abajo = parado ? (H - mano.top - mano.height / 2) / H : (H - pedal.top + 10) / H;
+    lados = parado ? 0.24 : 0.28;
+  }
+  camara.encuadrar(Math.min(0.4, abajo), parado ? 0.24 : 0.2, lados);
+}
 function medir() {
   render.setSize(window.innerWidth, window.innerHeight, false);
   camara.pantalla(window.innerWidth, window.innerHeight);
   post.medir(render.domElement.width, render.domElement.height);
+  encuadrar();
 }
 
 // Si el aparato no da abasto (menos de 30 cuadros por segundo durante un rato), primero se apagan
@@ -298,7 +321,8 @@ window.shakedown = {
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre }),
   largar,
   saltearEspera: () => { if (tFin > 0) tFin = 0.001; },   // (para las pruebas) muestra el resultado sin esperar
-  simular: (seg, x, y) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano: false }, JUEGO.paso); if (i % 2) fx.actualizar(c, JUEGO.paso * 2); } },
+  // (para las pruebas) maneja unos segundos con el volante y el pedal fijos, con la camara y los efectos siguiendolo
+  simular: (seg, x, y, mano = false) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano }, JUEGO.paso); if (i % 2) { fx.actualizar(c, JUEGO.paso * 2); camara.seguir(c, JUEGO.paso * 2); } } },
   avanzar: (dt) => { partida.paso(c, dt); if (partida.estado === 'corriendo') grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
   ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); partida.indice = i; fx.cortar(); camara.saltar(); },
 };

@@ -69,7 +69,7 @@ export function crearMenu(o) {
     rotular($('largar'), puede ? 'Largar' : 'Practicar');
     $('largar').dataset.icono = puede ? 'bandera' : 'cono';
     $('compartirPortada').hidden = !(oficial && !oficial.corriendo && oficial.codigo);
-    $('queEs').textContent = puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.';
+    $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
     pintarTabla($('tabla'), club.tabla());
     pintarTabla($('practicas'), club.practicas());
     $('tablaVacia').hidden = club.tabla().length > 0;

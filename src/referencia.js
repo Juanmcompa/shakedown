@@ -8,7 +8,7 @@ const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 // T: el terreno. C: el auto (de config.js). o.margen: metros que deja libres a cada borde. o.usa: que parte del agarre aprovecha (0 a 1).
 export function crearReferencia(T, C, o = {}) {
-  const P = T.camino, n = P.n, g = JUEGO.gravedad, margen = o.margen || 1.4, usa = o.usa || 0.8;
+  const P = T.camino, n = P.n, g = JUEGO.gravedad, margen = o.margen || 1.4, usa = o.usa || 0.76;
   const tramos = T.etapa.tramos;
 
   // --- 1. la trazada: cuanto se corre del medio en cada metro (positivo = a la derecha) ---

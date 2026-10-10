@@ -7,11 +7,13 @@
 const CLAVE = 'shakedown';
 const GUARDA_FANTASMAS = 21;   // dias: de las pistas mas viejas se guardan los tiempos, pero no los fantasmas
 
-export function crearClub(pista, hoy) {
+// version: la version de las pistas (ver generador.js). Lo guardado con otra version se descarta: era otro camino.
+export function crearClub(pista, hoy, version = 1) {
   let datos = { nombre: '', auto: 'vitarita', dias: {} };
   try { datos = Object.assign(datos, JSON.parse(localStorage.getItem(CLAVE) || '{}')); } catch (e) { /* sin memoria: se pierde al cerrar */ }
   const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(datos)); } catch (e) { /* idem */ } };
-  const dia = (n) => datos.dias[n] || (datos.dias[n] = { oficial: null, practica: null, club: [], rival: '' });
+  for (const n in datos.dias) if ((datos.dias[n].v || 1) !== version) delete datos.dias[n];
+  const dia = (n) => datos.dias[n] || (datos.dias[n] = { oficial: null, practica: null, club: [], rival: '', v: version });
   const D = dia(pista);
   // si quedo una pasada oficial empezada y sin terminar (se cerro el juego en el medio), es un abandono
   for (const n in datos.dias) {

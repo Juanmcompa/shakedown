@@ -16,9 +16,10 @@ export function crearAuto(terreno, C) {
     rompio: [],     // postes y fardos que se llevo puestos (los saca de aca el dibujo del mundo, para tirarlos)
   };
   const cubierta = SUELO.map((s) => C.cubiertas[s.blando >= 0.5 ? 1 : 0]);   // agarre de las cubiertas de este auto en cada suelo
+  const deriva = SUELO.map((s) => C.deriva * (s.suelto || 1));                // cuanto de costado hay que ir en cada suelo para agarrar todo
   for (let i = 0; i < 4; i++) {
     c.ruedas.push({ x: (i % 2 ? 1 : -1) * C.trocha, z: (i < 2 ? -1 : 1) * C.ejes + C.centro, delantera: i < 2, empuja: C.traccion[i < 2 ? 0 : 1],
-      largo: C.resorteLargo, toca: false, patina: 0, giro: 0, suelo: 0, carga: 0, tope: 1, vl: 0, p: [0, 0, 0] });
+      largo: C.resorteLargo, toca: false, patina: 0, cruza: 0, giro: 0, suelo: 0, carga: 0, tope: 1, vl: 0, p: [0, 0, 0] });
   }
   // puntos del chasis que pueden golpear contra el piso: la panza (en los ejes y en el medio), las esquinas y el techo
   const [ax, az, panza, techo] = C.caja;
@@ -64,7 +65,15 @@ export function crearAuto(terreno, C) {
     const giroMax = Math.min(C.giro, C.giroFino + 2 * C.ejes * 9 / Math.max(vf * vf, 4));
     const rapidez = C.giroVel * (Math.abs(ent.x) < Math.abs(c.volante) ? 1.7 : 1) * dt;
     c.volante += lim(ent.x - c.volante, -rapidez, rapidez);
-    c.giroRuedas = c.volante * giroMax;
+    // Si el auto viene de costado, las ruedas de adelante se acomodan solas hacia donde va (como al soltar el volante
+    // en un auto de verdad): es un contravolante a medias, que deja llevar el auto cruzado sin que se vaya en trompo.
+    let acomoda = 0;
+    if (vf > 2 && C.alinea > 0) {
+      const d = C.ejes - C.centro;   // del centro del auto al eje de adelante
+      const ex = v[0] + (w[1] * fz - w[2] * fy) * d, ey = v[1] + (w[2] * fx - w[0] * fz) * d, ez = v[2] + (w[0] * fy - w[1] * fx) * d;
+      acomoda = Math.atan2(ex * rx + ey * ry + ez * rz, ex * fx + ey * fy + ez * fz) * C.alinea * Math.min(1, (vf - 2) / 4);
+    }
+    c.giroRuedas = lim(c.volante * giroMax + acomoda, -C.giro, C.giro);
     let empuje = c.gas * c.sentido * Math.min(C.empuje * m * g, C.potencia / Math.max(Math.abs(vf), 1));
     if (c.sentido < 0) empuje *= vf < -9 ? 0 : C.reversa;
 
@@ -87,7 +96,7 @@ export function crearAuto(terreno, C) {
       r.toca = t < total;
       r.largo = lim(t - C.radio, C.resorteLargo - C.recorrido - 0.08, C.resorteLargo);
       const parte = r.tope * r.empuja / agarreTotal;
-      r.patina = 0; r.carga = 0; r.tope = 0;
+      r.patina = 0; r.cruza = 0; r.carga = 0; r.tope = 0;
       if (!r.toca) { r.giro += r.vl / C.radio * dt; continue; }
       enPiso++;
       const comp = lim(total - t, 0, C.recorrido + 0.3);
@@ -135,10 +144,14 @@ export function crearAuto(terreno, C) {
       const gasta = bloqueada ? 0.96 : c.frenando ? C.patinaje * 0.6 : C.patinaje;
       let lat = Math.sqrt(Math.max(0, tope * tope - gasta * gasta * Fl * Fl));
       if (!r.delantera && !bloqueada) lat *= C.colaFirme;
-      // la cubierta agarra de a poco: llega a su tope recien cuando el auto va unos grados de costado ("deriva").
-      // Por eso el auto avisa antes de irse, y se lo puede corregir.
-      const rigidez = Math.min(mr / dt * C.lateral, tope / (C.deriva * Math.max(Math.abs(vl), 4)));
-      const Fq = lim(-rigidez * vs + mr * g * sy, -lat, lat) - S.pasta * 0.6 * vs;
+      // La cubierta agarra de a poco, segun cuanto de costado va la rueda ("cruza": 0.1 = unos 6 grados).
+      // En piso firme llega a su tope enseguida. En piso suelto lo hace en dos etapas: la primera parte del agarre
+      // ("firme") responde igual de rapido, y el resto llega recien yendo bien cruzado. Asi, manejando tranquilo
+      // el auto va por donde se lo apunta; exigido, hay que llevarlo de costado, y avisa mucho antes de irse.
+      const cruza = Math.abs(vs) / Math.max(Math.abs(vl), 4), tarde = deriva[S.id], pronto = C.firme * C.deriva;
+      const cuanto = cruza <= pronto || tarde <= C.deriva ? cruza / C.deriva : C.firme + (1 - C.firme) * (cruza - pronto) / (tarde - pronto);
+      const agarra = Math.min(tope * cuanto, mr / dt * C.lateral * Math.abs(vs));
+      const Fq = lim((vs > 0 ? -agarra : agarra) + mr * g * sy, -lat, lat) - S.pasta * 0.6 * vs;
       // resistencia a rodar y pasta del barro o del agua
       Fl -= S.freno * Nf * Math.tanh(vl / 0.4) + S.pasta * vl;
 
@@ -151,6 +164,7 @@ export function crearAuto(terreno, C) {
       Tx += (py * sz - pz * sy) * Fq; Ty += (pz * sx - px * sz) * Fq; Tz += (px * sy - py * sx) * Fq;
 
       r.giro += (vl / C.radio + r.patina * c.sentido * 22) * dt;
+      r.cruza = Math.abs(vs) / Math.max(Math.abs(vl), 3);   // cuanto va de costado (0 = rueda derecho; 0.3 = unos 17 grados)
       r.suelo = S.id; r.p[0] = cx; r.p[1] = cy; r.p[2] = cz;
       if (r.patina > patina) patina = r.patina;
       if (S.agua > aguaMax) aguaMax = S.agua;

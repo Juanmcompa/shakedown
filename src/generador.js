@@ -22,6 +22,10 @@
 import { azar } from './noise.js';
 
 const RAD = Math.PI / 180;
+// La version de las pistas. Hay que subirla cada vez que un cambio hace que el mismo dia de OTRA pista
+// (tocar este archivo o como se arma el terreno). Con eso, los resultados y los fantasmas guardados de la version
+// anterior se descartan solos (ya no coinciden con el camino) y se puede volver a correr la oficial.
+export const VERSION = 1;
 
 // --- biomas: como es el lugar ---
 // suelos: [suelo, peso]. pendiente: [cuanto cambia de un tramo a otro, maxima], en grados. relieve: alto de las lomas lejos del camino.

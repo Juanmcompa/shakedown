@@ -32,7 +32,7 @@ Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el t
 No hay servidor. La tabla se arma en cada aparato con los links que se abren.
 
 - Al terminar, poné tu nombre y compartí. En la compu se copia el mensaje con el link; en el celular se abre el menú de compartir.
-- El link lleva tu pasada completa. Quien lo abre te ve en su tabla y **corre su pasada oficial contra tu fantasma**.
+- El link lleva tu pasada completa (por eso es largo: unas 800 letras). Quien lo abre te ve en su tabla y **corre su pasada oficial contra tu fantasma**.
 - Sin link de nadie, la oficial se corre solo. En las prácticas, el fantasma es tu mejor pasada.
 - En la tabla, el botón del fantasma elige contra quién corrés.
 - El link también lleva los tiempos que ya conocés, así la tabla se va completando entre todos.
@@ -65,7 +65,7 @@ Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (cu
 | Para cambiar | Archivo |
 | --- | --- |
 | Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
-| Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` |
+| Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` (y subir `VERSION` ahí mismo: ver abajo) |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
 | La luz y la bruma de cada clima | `LUCES` en `src/world.js` y `REVELADOS` en `src/post.js` |
@@ -101,7 +101,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/autos.js` | Los modelos de los autos y el fantasma |
 | `src/material.js`, `src/pixel.js`, `src/arte.js`, `src/sprites.js` | El estilo: materiales, herramientas para pintar de a píxeles, y los dibujos |
 | `src/post.js` | El "revelado": desenfoque de maqueta, brillos y ajuste de color. Se apaga solo si el aparato no da |
-| `src/huellas.js`, `src/fx.js` | Las huellas en el piso y lo que salta de las ruedas |
+| `src/huellas.js`, `src/fx.js` | Las huellas en el piso, el polvo que queda flotando y el barro y el agua que saltan de las ruedas |
 | `src/camera.js`, `src/audio.js`, `src/input.js`, `src/noise.js` | Cámaras, sonido del motor, mandos y ruido para el relieve |
 | `vendor/` | Three.js (la biblioteca 3D) y las tipografías |
 | `tools/` | Pruebas sin gráficos (opcionales) |
@@ -127,6 +127,8 @@ Con Node instalado, desde la carpeta del repo:
 - `node tools/maniobras.mjs`: qué tan fácil se descontrola cada auto con volantazos.
 
 Sirven para revisar que las pistas se puedan terminar después de tocar `config.js` o `generador.js`.
+
+**Si un cambio hace que la pista de un día sea otra** (tocar el generador o cómo se arma el terreno), hay que subir el número `VERSION` de `src/generador.js`. Con eso, lo que cada uno tenía guardado de la versión anterior se descarta solo (esos tiempos y fantasmas eran de otro camino) y la oficial del día se puede correr de nuevo.
 
 ## Plan
 

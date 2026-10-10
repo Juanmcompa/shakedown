@@ -13,8 +13,9 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Rally puro.** Sin nafta ni rescates. Salirse o volcar: volver al camino con 8 segundos. Romper el auto: abandono.
 - **Cinco sectores, cinco cuadraditos.** El color sale de comparar el sector con un tiempo de referencia (verde hasta 1,3 veces, amarillo hasta 1,6). Volver al camino pone el sector en rojo.
 - **Tabla del club sin servidor.** Se arma con los links de WhatsApp que se abren. Con un link, la oficial se corre contra el fantasma de quien lo mandó.
-- **El fantasma es fiel.** El link es largo (unas 1500 letras) porque lleva la pasada completa, con los saltos.
+- **El fantasma es fiel.** El link lleva la pasada completa, con los saltos y las salidas de pista. Para que no sea eterno, la pasada se guarda respecto del camino (cuánto avanzó y cuánto se corrió del medio) y comprimida: unas 800 letras, la mitad que al principio, con la misma precisión (10 cm).
 - **Dos autos noventosos:** La Vitarita (4x4, alta) y El Kacito (tracción delantera, bajo). Parejos en tiempo, distintos de manejar.
+- **En piso suelto el auto derrapa.** Manejando tranquilo va por donde se lo apunta; exigido, hay que llevarlo cruzado. Las ruedas de adelante se acomodan solas hacia donde va el auto, así se lo puede llevar de costado sin que se vaya en trompo. La cámara mira hacia donde va el auto, no hacia donde apunta.
 - **Tres cámaras:** aérea, de atrás y desde arriba (casi vertical: 78 grados, para que los dibujos planos se vean enteros).
 - **Menos palabras, más íconos.** En el celular todos los botones son íconos y muestran su estado.
 - **Lenguaje visual:** bloques con dibujos de pocos píxeles (un píxel = 25 cm), público y plantas como dibujos planos que miran a la cámara, colores apagados y polvorientos, y un "revelado" de maqueta (desenfoque, brillos, bruma cálida). Los instrumentos son carteles viales, amarillos y negros.
@@ -34,6 +35,9 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Clima: lluvia, niebla, atardecer con fogones, bengalas y faros
 - [x] Paleta apagada y revelado de maqueta, que se apagan solos si el aparato no da
 - [x] Tres cámaras y botones con íconos que muestran su estado
+- [x] Derrape en piso suelto, huellas marcadas y polvo que queda flotando sobre el camino
+- [x] En el celular, el auto nunca queda tapado por los pedales
+- [x] Link a la mitad de largo, y número de versión de las pistas (lo guardado de una versión anterior se descarta solo)
 
 ## Lo que sigue
 
@@ -56,7 +60,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 
 - **Rendimiento en celulares.** Hay más cosas en pantalla que antes (dibujos planos, revelado, lluvia). El juego baja solo la calidad si anda a menos de 30 cuadros por segundo, pero falta medirlo en aparatos reales.
 - **Que una pista generada salga injusta.** El generador se prueba con pilotos automáticos, pero cada día es una pista nueva.
-- **Tocar el generador cambia todas las pistas**, también la de hoy y las pasadas: los fantasmas ya guardados dejan de coincidir con el camino. Mientras se desarrolla no importa. Cuando haya gente jugando, los cambios de pistas, de terreno o de manejo tienen que entrar a la medianoche, o el generador tiene que llevar un número de versión por fecha.
+- **Tocar el generador cambia todas las pistas**, también la de hoy y las pasadas: los fantasmas ya guardados dejan de coincidir con el camino. Por eso las pistas llevan un número de versión (`VERSION`, en `src/generador.js`): al subirlo, cada aparato descarta lo guardado de la versión anterior, los links viejos avisan que ya no valen y la oficial del día se puede correr de nuevo. Cuando haya mucha gente jugando, conviene que esos cambios entren a la medianoche.
 - **Que el link sea demasiado largo para algún mensajero.** WhatsApp lo acepta; falta probar otros.
 
 ## Cómo seguir trabajando

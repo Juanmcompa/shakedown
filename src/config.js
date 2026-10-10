@@ -2,18 +2,21 @@
 // Todo lo que cambia "como se siente" manejar esta en este archivo.
 
 // Suelos. agarre: cuanto se prende la cubierta (1 = firme y seco).
+// suelto: cuanto de costado tiene que ir el auto para que la cubierta agarre todo (1 = asfalto: agarra enseguida;
+//         2 o mas = piso suelto: el auto "flota", hay que tirarlo antes a la curva y viaja cruzado).
 // freno: resistencia a rodar. pasta: frena mas cuanto mas rapido vas (barro, agua).
 // rugoso: [alto de los pozos en metros, distancia entre pozos]. blando: cuanto marca huella.
+// polvo: cuanto polvo levanta en seco (0 = nada).
 export const SUELOS = {
-  asfalto: { id: 0, nombre: 'Asfalto', agarre: 0.95, freno: 0.015, pasta: 0,  rugoso: [0.0, 3],    blando: 0,   color: 0x55565c },
-  ripio:   { id: 1, nombre: 'Ripio',   agarre: 0.72, freno: 0.035, pasta: 0,  rugoso: [0.04, 3],   blando: 0.3, color: 0xc2ab84 },
-  tierra:  { id: 2, nombre: 'Tierra',  agarre: 0.76, freno: 0.045, pasta: 0,  rugoso: [0.05, 4],   blando: 0.5, color: 0xa4572f },
-  roca:    { id: 3, nombre: 'Roca',    agarre: 0.86, freno: 0.03,  pasta: 0,  rugoso: [0.09, 2.7], blando: 0,   color: 0x8f8b85 },
-  pasto:   { id: 4, nombre: 'Pasto',   agarre: 0.52, freno: 0.09,  pasta: 12, rugoso: [0.12, 3.5], blando: 0.6, color: 0x5f8f3c },
-  barro:   { id: 5, nombre: 'Barro',   agarre: 0.46, freno: 0.06,  pasta: 9,  rugoso: [0.06, 5],   blando: 1,   color: 0x7d3a20 },
-  pantano: { id: 6, nombre: 'Pantano', agarre: 0.36, freno: 0.1,   pasta: 60, rugoso: [0.05, 4],   blando: 1,   color: 0x4a2414 },
-  lecho:   { id: 7, nombre: 'Agua',    agarre: 0.62, freno: 0.06,  pasta: 25, rugoso: [0.08, 2.6], blando: 0.2, color: 0x8d8a76 },
-  charco:  { id: 8, nombre: 'Charco',  agarre: 0.5,  freno: 0.06,  pasta: 45, rugoso: [0.03, 4],   blando: 0.9, color: 0x7c8f94 },
+  asfalto: { id: 0, nombre: 'Asfalto', agarre: 0.95, suelto: 1.0, freno: 0.015, pasta: 0,  rugoso: [0.0, 3],    blando: 0,   polvo: 0.05, color: 0x55565c },
+  ripio:   { id: 1, nombre: 'Ripio',   agarre: 0.72, suelto: 2.9, freno: 0.035, pasta: 0,  rugoso: [0.04, 3],   blando: 0.3, polvo: 1,    color: 0xc2ab84 },
+  tierra:  { id: 2, nombre: 'Tierra',  agarre: 0.76, suelto: 2.7, freno: 0.045, pasta: 0,  rugoso: [0.05, 4],   blando: 0.5, polvo: 0.9,  color: 0xa4572f },
+  roca:    { id: 3, nombre: 'Roca',    agarre: 0.86, suelto: 1.5, freno: 0.03,  pasta: 0,  rugoso: [0.09, 2.7], blando: 0,   polvo: 0.25, color: 0x8f8b85 },
+  pasto:   { id: 4, nombre: 'Pasto',   agarre: 0.52, suelto: 3.2, freno: 0.09,  pasta: 12, rugoso: [0.12, 3.5], blando: 0.6, polvo: 0.12, color: 0x5f8f3c },
+  barro:   { id: 5, nombre: 'Barro',   agarre: 0.46, suelto: 3.3, freno: 0.06,  pasta: 9,  rugoso: [0.06, 5],   blando: 1,   polvo: 0,    color: 0x7d3a20 },
+  pantano: { id: 6, nombre: 'Pantano', agarre: 0.36, suelto: 3.4, freno: 0.1,   pasta: 60, rugoso: [0.05, 4],   blando: 1,   polvo: 0,    color: 0x4a2414 },
+  lecho:   { id: 7, nombre: 'Agua',    agarre: 0.62, suelto: 2.8, freno: 0.06,  pasta: 25, rugoso: [0.08, 2.6], blando: 0.2, polvo: 0,    color: 0x8d8a76 },
+  charco:  { id: 8, nombre: 'Charco',  agarre: 0.5,  suelto: 3.0, freno: 0.06,  pasta: 45, rugoso: [0.03, 4],   blando: 0.9, polvo: 0,    color: 0x7c8f94 },
 };
 export const SUELO = Object.values(SUELOS); // lista ordenada por id
 
@@ -27,8 +30,13 @@ export const SUELO = Object.values(SUELOS); // lista ordenada por id
 //   traccion: cuanto empuja cada eje [adelante, atras].  frenoMotor: cuanto frena al soltar, en "g".
 //   cubiertas: por cuanto se multiplica el agarre [en suelo firme, en suelo blando].
 //   giro: angulo maximo de las ruedas.  giroFino: lo que doblan de mas a alta velocidad (mas = mas nervioso).
-//   deriva: cuanto de costado tiene que ir la cubierta para agarrar todo (0.13 = unos 7 grados; mas = mas "flotado").
-//   colaFirme: cuanto mas agarran de costado las ruedas de atras (mas de 1 = el auto tiende a seguir derecho, perdona).
+//   deriva: cuanto de costado tiene que ir la cubierta para agarrar todo en asfalto (0.11 = unos 6 grados).
+//           En piso suelto se multiplica por el "suelto" del suelo: en ripio, unos 18 grados. Mas = mas "flotado".
+//   firme: en piso suelto, que parte del agarre responde enseguida, como en asfalto (0.5 = la mitad). El resto llega
+//          recien cuando el auto va bien cruzado. Mas = mas facil de llevar despacio; menos = derrapa siempre.
+//   colaFirme: cuanto mas agarran de costado las ruedas de atras (mas de 1 = el auto tiende a seguir derecho; menos de 1 = colea).
+//   alinea: cuando el auto viene de costado, cuanto se acomodan solas las ruedas de adelante hacia donde va
+//           (0 = nada: hay que contravolantear todo a mano; 1 = del todo: el auto se endereza casi solo).
 //   estable: resistencia a girar sobre si mismo (0 = nada).  lateral: rigidez de la cubierta casi parado.
 //   patinaje: cuanto agarre de costado se pierde acelerando.
 //   alturaLateral: 0 = vuelca facil, 1 = no vuelca nunca.
@@ -36,7 +44,7 @@ export const SUELO = Object.values(SUELOS); // lista ordenada por id
 //   choque: [radio, separacion] de los tres circulos con los que choca contra arboles y piedras.
 const COMUN = {
   frenos: 0.95, frenoAdelante: 0.7, reversa: 0.5, aceleraEn: 0.3, giroVel: 3.2, patinaje: 0.7,
-  deriva: 0.11, colaFirme: 1.12, giroFino: 0.2, estable: 1,
+  deriva: 0.11, firme: 0.5, colaFirme: 1.03, alinea: 0.6, giroFino: 0.26, estable: 0.3,
   chasis: [150000, 9000, 0.5],  // golpes del chasis contra el piso: dureza, amortiguacion, roce
 };
 export const AUTOS = {

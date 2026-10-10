@@ -55,7 +55,7 @@ const PISO = {
     if (espejo && azar12(pix + floor(uTiempo * 3.0) * 7.0) > 0.975) piso = mix(piso, vec3(0.92, 0.94, 0.9), 0.75);
     // huellas: el pixel se oscurece, mas si la rueda patino o el suelo es blando
     float marca = plano != 0 ? 0.0 : texelFetch(uHuellas, clamp(ivec2(pix) - ivec2(uCampo.xy) * 4, ivec2(0), ivec2(uCampo.zw) * 4 - 1), 0).r;
-    if (marca > 0.1) piso *= marca > 0.55 ? vec3(0.62, 0.57, 0.54) : vec3(0.8, 0.77, 0.75);
+    if (marca > 0.1) piso *= marca > 0.55 ? vec3(0.48, 0.43, 0.41) : marca > 0.3 ? vec3(0.6, 0.56, 0.54) : vec3(0.72, 0.69, 0.67);
     // curvas de nivel cada 2 metros (mas marcadas cada 10), de un pixel de ancho, solo donde el terreno es empinado
     float hx = dFdx(vMundo.y), hy = dFdy(vMundo.y);
     float salto = abs(det) > 1e-10 ? length(vec2(dyz.y * hx - dxz.y * hy, dxz.x * hy - dyz.x * hx) / det) * 0.25 : 0.0;
