@@ -1,0 +1,132 @@
+// Iconos de pocos pixeles para la interfaz: las notas del copiloto, los botones y los autos.
+// Unos se dibujan con cuentas (las flechas de las curvas) y otros estan escritos como texto, una letra por pixel:
+// '#' es el color del icono, '+' una version mas clara, '-' una mas oscura y '.' nada.
+// Se muestran ampliados y sin suavizar (ver .icono en style.css).
+
+const VERDE = '#5cc070', AMARILLO = '#f2c200', NARANJA = '#f58a2a', ROJO = '#ff6a52', AZUL = '#49b3d6', BLANCO = '#ffffff', BARRO = '#b5703f';
+const hechos = new Map();
+
+function lienzo(w, h, pintar) {
+  const l = document.createElement('canvas');
+  l.width = w; l.height = h;
+  const x = l.getContext('2d');
+  pintar({ px: (a, b, color) => { x.fillStyle = color; x.fillRect(Math.round(a), Math.round(b), 1, 1); }, borrar: (a, b) => x.clearRect(a, b, 1, 1),
+    rect: (a, b, c, d, color) => { x.fillStyle = color; x.fillRect(Math.round(a), Math.round(b), Math.round(c), Math.round(d)); } });
+  return l.toDataURL();
+}
+const tonos = (color) => {
+  const n = parseInt(color.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255], f = (k) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(k > 1 ? v + (255 - v) * (k - 1) : v * k))).toString(16).padStart(2, '0')).join('');
+  const claro = c[0] * 0.3 + c[1] * 0.6 + c[2] * 0.1 > 128;
+  return { '#': color, '+': f(1.5), '-': f(0.62), '=': claro ? f(0.55) : f(1.45), r: ROJO, a: AMARILLO };
+};
+// un icono escrito como texto
+function deTexto(filas, color, tachado) {
+  const t = tonos(color), w = filas[0].length, h = filas.length;
+  return lienzo(w, h, (g) => {
+    filas.forEach((fila, y) => { for (let x = 0; x < fila.length; x++) if (t[fila[x]]) g.px(x, y, t[fila[x]] + (tachado ? '70' : '')); });
+    // la raya: de abajo a la izquierda a arriba a la derecha, de dos pixeles de ancho
+    if (tachado) for (let k = 0; k < Math.min(w, h); k++) { const x = Math.round(k * (w - 1) / (Math.min(w, h) - 1)), y = h - 1 - k; g.borrar(x, y); g.borrar(x, y - 1); g.px(x, y, ROJO); if (y > 0) g.px(x, y - 1, ROJO); }
+  });
+}
+
+// --- las notas del copiloto ---
+// cuanto dobla la flecha segun el grado de la curva, y de que color es
+const CURVAS = { 6: [22, VERDE], 5: [38, VERDE], 4: [55, AMARILLO], 3: [72, AMARILLO], 2: [92, NARANJA], 1: [118, ROJO] };
+// una linea de 2 pixeles de ancho
+function trazo(g, x0, y0, x1, y1, color) {
+  const n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2);
+  for (let i = 0; i <= n; i++) g.rect(x0 + (x1 - x0) * i / n - 0.5, y0 + (y1 - y0) * i / n - 0.5, 2, 2, color);
+}
+// la punta de la flecha: un triangulo que apunta hacia (dx, dy)
+function punta(g, x, y, dx, dy, color) {
+  for (let k = 0; k < 4; k++) for (let s = -k; s <= k; s++) g.rect(x - dx * k - dy * s * 0.8 - 0.5, y - dy * k + dx * s * 0.8 - 0.5, 1.6, 1.6, color);
+}
+function flecha(grado, lado) {
+  const m = lado === 'izq' ? -1 : 1;
+  return lienzo(15, 15, (g) => {
+    const X = (x) => 7 + (x - 7) * m;   // de un lado o del otro
+    if (grado === 'h') {
+      trazo(g, X(4), 13, X(4), 4, ROJO); trazo(g, X(4), 3, X(10), 3, ROJO); trazo(g, X(10), 3, X(10), 8, ROJO);
+      punta(g, X(10.5), 12, 0, 1, ROJO);
+      return;
+    }
+    const [angulo, color] = CURVAS[grado] || CURVAS[3], a = angulo * Math.PI / 180, x0 = 5 - angulo / 60, largo = 5.5;
+    const x1 = x0 + Math.sin(a) * largo, y1 = 8 - Math.cos(a) * largo;
+    trazo(g, X(x0), 13, X(x0), 8, color);
+    trazo(g, X(x0), 8, X(x1), y1, color);
+    punta(g, X(x1 + Math.sin(a) * 3), y1 - Math.cos(a) * 3, Math.sin(a) * m, -Math.cos(a), color);
+  });
+}
+const NOTAS = {
+  salto: [['............', '............', '....####....', '...#....#...', '..#......#..', '.#........#.', '............', '.....##.....', '....####....', '...######...', '..########..', '.##########.'], AMARILLO],
+  vado: [['............', '............', '.##...##...#', '#..#.#..#.#.', '....#....#..', '............', '.##...##...#', '#..#.#..#.#.', '....#....#..', '............', '.##...##...#', '#..#.#..#.#.'], AZUL],
+  barro: [['............', '.....#......', '....##...#..', '.........#..', '..######....', '.########...', '##########..', '###########.', '############', '.##########.', '..#######...', '............'], BARRO],
+  angosto: [['#..........#', '#..........#', '.#........#.', '.#........#.', '..#......#..', '..#......#..', '..#......#..', '..#......#..', '.#........#.', '.#........#.', '#..........#', '#..........#'], BLANCO],
+  cornisa: [['.....##.....', '....####....', '....#..#....', '...##..##...', '...#.##.#...', '..##.##.##..', '..#..##..#..', '.##..##..##.', '.#........#.', '##...##...##', '#....##....#', '############'], ROJO],
+  meta: [['#...........', '##.##.##.##.', '#.##.##.##..', '##.##.##.##.', '#.##.##.##..', '##.##.##.##.', '#...........', '#...........', '#...........', '#...........', '#...........', '#...........'], BLANCO],
+};
+// El dibujo de una nota (devuelve una direccion de imagen para poner en un <img>) y su texto corto.
+export function iconoDeNota(n) {
+  const clave = n.tipo === 'curva' ? n.lado + n.grado : n.tipo;
+  if (!hechos.has(clave)) hechos.set(clave, n.tipo === 'curva' ? flecha(n.grado, n.lado) : deTexto(...(NOTAS[n.tipo] || NOTAS.cornisa)));
+  return hechos.get(clave);
+}
+export const textoDeNota = (n) => (n.tipo !== 'curva' ? '' : n.grado === 'h' ? 'H' : String(n.grado) + (n.larga ? '+' : ''));
+
+// --- iconos de la interfaz ---
+// Todos miden 12 x 12. Las letras de mas que se pueden usar aca: '=' un tono intermedio (para rayas), 'r' rojo, 'a' amarillo.
+const ICONOS = {
+  // la portada y el resultado
+  bandera: [['#...........', '##.##.##.##.', '#.##.##.##..', '##.##.##.##.', '#.##.##.##..', '##.##.##.##.', '#...........', '#...........', '#...........', '#...........', '#...........', '............'], BLANCO],
+  cono: [['............', '.....##.....', '.....##.....', '....####....', '....====....', '...######...', '...######...', '..========..', '..########..', '.##########.', '############', '............'], BLANCO],
+  compartir: [['.......#....', '.......##...', '..#########.', '.###########', '.##....###..', '.##....##...', '.##....#....', '.##.........', '.##.......#.', '.##########.', '..########..', '............'], BLANCO],
+  podio: [['............', '............', '....####....', '....####....', '....####....', '####=###....', '####=###....', '####=###=###', '####=###=###', '####=###=###', '####=###=###', '............'], BLANCO],
+  calendario: [['............', '...#....#...', '.##########.', '.##########.', '.#........#.', '.#.##.##..#.', '.#........#.', '.#.##.##..#.', '.#........#.', '.##########.', '............', '............'], BLANCO],
+  ayuda: [['............', '...######...', '..##....##..', '..##....##..', '........##..', '.......##...', '.....###....', '.....##.....', '............', '.....##.....', '.....##.....', '............'], BLANCO],
+  fantasma: [['...######...', '..########..', '.##########.', '.##..##..##.', '.##..##..##.', '.##########.', '.##########.', '.##########.', '.##########.', '.##########.', '.##.####.##.', '.#...##...#.'], BLANCO],
+  atras: [['............', '............', '....#.......', '...##.......', '..###.......', '.##########.', '.##########.', '..###.......', '...##.......', '....#.......', '............', '............'], BLANCO],
+  cerrar: [['............', '.##......##.', '..##....##..', '...##..##...', '....####....', '.....##.....', '....####....', '...##..##...', '..##....##..', '.##......##.', '............', '............'], BLANCO],
+  ok: [['............', '..........#.', '.........##.', '........##..', '.#.....##...', '.##...##....', '..##.##.....', '...###......', '....#.......', '............', '............', '............'], VERDE],
+  // mientras se corre
+  dano: [['............', '.......###..', '......##....', '......##..#.', '......#####.', '.....####...', '....###.....', '...###......', '..###.......', '.###........', '.##.........', '............'], BLANCO],
+  reloj: [['....####....', '.....##.....', '...######...', '..##....##..', '.##..#...##.', '.##..#...##.', '.##..###.##.', '.##......##.', '..##....##..', '...######...', '............', '............'], BLANCO],
+  sonido: [['............', '......#.....', '.....##...#.', '....###.#..#', '#######..#.#', '#######..#.#', '#######..#.#', '#######..#.#', '....###.#..#', '.....##...#.', '......#.....', '............'], BLANCO],
+  voz: [['............', '..###.......', '.#####...#..', '.#####.#..#.', '.#####..#.#.', '..###...#.#.', '..###..#..#.', '.#####...#..', '#######.....', '#######.....', '#######.....', '............'], BLANCO],
+  mano: [['............', '....####....', '.#.#....#.#.', '#.#.###..#.#', '#.#.#..#.#.#', '#.#.#..#.#.#', '#.#.###..#.#', '#.#.#....#.#', '#.#.#....#.#', '.#.#....#.#.', '....####....', '............'], BLANCO],
+  volver: [['............', '....#.......', '...##.......', '..########..', '...##....##.', '....#.....##', '..........##', '..........##', '.#........##', '.##......##.', '..########..', '............'], BLANCO],
+  // la camara: el auto como se lo ve con cada una (desde arriba y atras, desde atras, y desde arriba)
+  'cam-aerea': [['............', '....####....', '...######...', '...#....#...', '..########..', '..########..', '..#......#..', '.##########.', '.#r######r#.', '.##########.', '.==......==.', '............'], BLANCO],
+  'cam-atras': [['............', '............', '...######...', '..##....##..', '..#......#..', '.##########.', '.#r######r#.', '.##########.', '.##########.', '.==......==.', '.==......==.', '............'], BLANCO],
+  'cam-arriba': [['............', '....####....', '..=######=..', '..=######=..', '...#....#...', '...######...', '...######...', '...#....#...', '..=######=..', '..=######=..', '....####....', '............'], BLANCO],
+  // los pedales
+  arriba: [['............', '............', '............', '.....##.....', '....####....', '...######...', '..########..', '.##########.', '############', '............', '............', '............'], BLANCO],
+  abajo: [['............', '............', '............', '############', '.##########.', '..########..', '...######...', '....####....', '.....##.....', '............', '............', '............'], BLANCO],
+  izquierda: [['........#...', '.......##...', '......###...', '.....####...', '....#####...', '...######...', '...######...', '....#####...', '.....####...', '......###...', '.......##...', '........#...'], BLANCO],
+  derecha: [['...#........', '...##.......', '...###......', '...####.....', '...#####....', '...######...', '...######...', '...#####....', '...####.....', '...###......', '...##.......', '...#........'], BLANCO],
+};
+export const NOMBRES = () => Object.keys(ICONOS);
+// Devuelve la direccion de imagen de un icono, del color pedido (por defecto, el suyo).
+// tachado: el dibujo queda tenue y cruzado por una raya roja (para lo que esta apagado).
+export function icono(nombre, color, tachado) {
+  const clave = nombre + (color || '') + (tachado ? '/' : '');
+  if (!hechos.has(clave)) { const [filas, propio] = ICONOS[nombre] || ICONOS.ayuda; hechos.set(clave, deTexto(filas, color || propio, tachado)); }
+  return hechos.get(clave);
+}
+// Pone los iconos en todos los elementos que los piden con data-icono="nombre" (y data-color opcional).
+// Si el elemento cambia de icono, se lo cambia.
+export function ponerIconos(raiz = document) {
+  for (const el of raiz.querySelectorAll('[data-icono]')) {
+    let img = el.querySelector(':scope > img.icono');
+    if (!img) { img = document.createElement('img'); img.className = 'icono'; img.alt = ''; el.prepend(img); }
+    const src = icono(el.dataset.icono, el.dataset.color, el.dataset.tachado === 'si');
+    if (img.getAttribute('src') !== src) img.src = src;
+  }
+}
+// Le pone (o le cambia) el texto a un boton que lleva icono. En el celular el texto no se ve: queda el icono solo,
+// pero sigue estando para quien usa lector de pantalla.
+export function rotular(el, texto) {
+  let r = el.querySelector(':scope > .rotulo');
+  if (!r) { r = document.createElement('span'); r.className = 'rotulo'; el.append(r); }
+  r.textContent = texto;
+  el.setAttribute('aria-label', texto);
+}

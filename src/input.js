@@ -19,7 +19,7 @@ export function crearTeclas(alTocar) {
     const soltar = () => { abajo.delete(tecla); b.classList.remove('apretado'); };
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      b.setPointerCapture(e.pointerId);
+      try { b.setPointerCapture(e.pointerId); } catch (x) { /* sin captura: igual anda */ }
       if (!abajo.has(tecla)) alTocar(tecla);
       abajo.add(tecla);
       b.classList.add('apretado');

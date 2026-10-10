@@ -3,6 +3,29 @@
 import * as THREE from 'three';
 import { azar } from './noise.js';
 
+// --- la paleta: todo color que se pinta pasa por aca, asi el mundo entero tiene el mismo aire ---
+// Los colores se escriben "puros" en los dibujos y aca se apagan, se les baja el contraste y se les echa un velo de polvo.
+//   apagar: cuanta saturacion se saca (0 = nada, 1 = gris).   polvo / cuanto: el color del velo y cuanto tiñe.
+//   contraste: 1 = como esta escrito; menos = oscuros mas claros y claros mas oscuros.
+// Cada dibujo dice con que fuerza le pega (1 = el paisaje; menos = lo que tiene que resaltar, como los autos).
+export const PALETA = { apagar: 0.4, polvo: [216, 186, 158], cuanto: 0.15, contraste: 0.88 };
+const ajustados = new Map();
+export function deLaPaleta(color, fuerza = 1) {
+  if (!(fuerza > 0) || typeof color !== 'string' || color[0] !== '#' || color.length !== 7) return color;
+  const clave = color + fuerza;
+  let hecho = ajustados.get(clave);
+  if (hecho) return hecho;
+  const n = parseInt(color.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255], gris = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  hecho = '#' + c.map((v, i) => {
+    v = gris + (v - gris) * (1 - PALETA.apagar * fuerza);                       // menos saturacion
+    v = 128 + (v - 128) * (1 - (1 - PALETA.contraste) * fuerza);                // menos contraste
+    v += (PALETA.polvo[i] - v) * PALETA.cuanto * fuerza;                        // el velo de polvo
+    return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  }).join('');
+  ajustados.set(clave, hecho);
+  return hecho;
+}
+
 // --- pincel: pinta de a pixeles enteros sobre una zona de un lienzo ---
 //   p.fondo(color)                         pinta toda la zona
 //   p.rect(x, y, ancho, alto, color)       rectangulo
@@ -10,9 +33,9 @@ import { azar } from './noise.js';
 //   p.motas(color, cuantas, ancho, alto)   manchas sueltas en lugares al azar (siempre los mismos)
 //   p.marco(color)                         borde de un pixel
 //   p.azar()                               numero entre 0 y 1
-function pincel(x, w, h, semilla) {
+function pincel(x, w, h, semilla, fuerza = 1) {
   const r = azar(semilla || 1);
-  const rect = (a, b, ancho, alto, color) => { x.fillStyle = color; x.fillRect(Math.round(a), Math.round(b), Math.round(ancho), Math.round(alto)); };
+  const rect = (a, b, ancho, alto, color) => { x.fillStyle = deLaPaleta(color, fuerza); x.fillRect(Math.round(a), Math.round(b), Math.round(ancho), Math.round(alto)); };
   return {
     w, h, rect, azar: r,
     fondo: (color) => rect(0, 0, w, h, color),
@@ -38,14 +61,15 @@ function comoTextura(lienzo) {
 }
 
 // Un lienzo suelto de w x h pixeles, ya pintado.
-export function lienzoPintado(w, h, pintar, semilla) {
+// fuerza: cuanto le pega la paleta (ver PALETA). 0 = los colores quedan como estan escritos.
+export function lienzoPintado(w, h, pintar, semilla, fuerza = 1) {
   const lienzo = document.createElement('canvas');
   lienzo.width = w; lienzo.height = h;
-  pintar(pincel(lienzo.getContext('2d'), w, h, semilla));
+  pintar(pincel(lienzo.getContext('2d'), w, h, semilla, fuerza));
   return lienzo;
 }
 // Lo mismo, listo para usar como textura.
-export const textura = (w, h, pintar, semilla) => comoTextura(lienzoPintado(w, h, pintar, semilla));
+export const textura = (w, h, pintar, semilla, fuerza) => comoTextura(lienzoPintado(w, h, pintar, semilla, fuerza));
 
 // Pedazo de shader que comparten el piso y el agua: ubica el pixel de 25 cm del mundo que se esta dibujando
 // ("pix"), su centro en el mapa ("centro") y deja EN_PIXEL(v) para leer cualquier dato en ese centro.
@@ -70,18 +94,19 @@ export const glslPixel = (conParedes) => `
 export const GLSL_AZAR = 'float azar12(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }';
 
 // Un lienzo con muchos dibujos chicos, uno al lado del otro ("zonas"), para dibujar muchas cajas de una vez.
-export function crearAtlas(ancho, alto) {
+// fuerza: cuanto le pega la paleta a lo que se pinte aca (cada zona puede pedir otra).
+export function crearAtlas(ancho, alto, fuerza = 1) {
   const lienzo = document.createElement('canvas');
   lienzo.width = ancho; lienzo.height = alto;
   const x = lienzo.getContext('2d'), lisas = {};
   let cx = 0, cy = 0, fila = 0, tex = null;
   // reserva una zona de w x h pixeles y la pinta. Devuelve donde quedo.
-  function zona(w, h, pintar, semilla) {
+  function zona(w, h, pintar, semilla, fuerzaDeEsta = fuerza) {
     if (cx + w + 2 > ancho) { cx = 0; cy += fila; fila = 0; }
     if (cy + h + 2 > alto) throw new Error('No entra otra zona de ' + w + ' x ' + h + ' en el atlas');
     const z = { x: cx + 1, y: cy + 1, w, h };
     x.save(); x.beginPath(); x.rect(z.x, z.y, w, h); x.clip(); x.translate(z.x, z.y);
-    pintar(pincel(x, w, h, semilla));
+    pintar(pincel(x, w, h, semilla, fuerzaDeEsta));
     x.restore();
     // el borde se repite un pixel hacia afuera, para que de lejos no se mezcle con la zona vecina
     x.drawImage(lienzo, z.x, z.y, w, 1, z.x, z.y - 1, w, 1); x.drawImage(lienzo, z.x, z.y + h - 1, w, 1, z.x, z.y + h, w, 1);
@@ -119,9 +144,10 @@ export function crearLote() {
   // Caja general. m: matriz que la lleva a su lugar. d: [x0, y0, z0, x1, y1, z1].
   // lugar(nombreDeCara, esquina) devuelve [u, v] en pixeles del atlas, o null para no dibujar esa cara.
   // cuña: cuanto se corre hacia atras el borde de arriba del frente (para un parabrisas inclinado).
-  function caja(m, d, lugar, cuña = 0) {
+  // cuñaAtras: lo mismo para el borde de arriba de la cola, hacia adelante (un porton inclinado).
+  function caja(m, d, lugar, cuña = 0, cuñaAtras = 0) {
     for (let k = 0; k < 8; k++) E[k].set(k & 1 ? d[3] : d[0], k & 2 ? d[4] : d[1], k & 4 ? d[5] : d[2]);
-    E[2].z += cuña; E[3].z += cuña;
+    E[2].z += cuña; E[3].z += cuña; E[6].z -= cuñaAtras; E[7].z -= cuñaAtras;
     const W = E.map((e) => e.clone().applyMatrix4(m));
     for (const nombre in CARAS) {
       const t = [];
@@ -130,11 +156,12 @@ export function crearLote() {
     }
   }
   // Caja de escenografia: medidas en pixeles enteros y una zona por tipo de cara.
-  // zonas: { arriba, abajo, lados }. Si la zona es mas grande que la cara, se toma un pedazo al azar (rnd).
+  // zonas: { arriba, abajo, lados }. Sin "abajo" se usa la de arriba; con abajo: null, esa cara no se dibuja.
+  // Si la zona es mas grande que la cara, se toma un pedazo al azar (rnd).
   function bloque(m, d, zonas, rnd) {
     const corr = {};
     caja(m, d, (nombre, e) => {
-      const z = nombre === 'py' ? zonas.arriba : nombre === 'ny' ? (zonas.abajo || zonas.arriba) : zonas.lados;
+      const z = nombre === 'py' ? zonas.arriba : nombre === 'ny' ? (zonas.abajo === undefined ? zonas.arriba : zonas.abajo) : zonas.lados;
       if (!z) return null;
       const lado = nombre[1] === 'x' ? d[5] - d[2] : d[3] - d[0], alto = nombre[1] === 'y' ? d[5] - d[2] : d[4] - d[1];
       if (!corr[nombre]) corr[nombre] = [Math.floor((rnd ? rnd() : 0) * (z.w - lado + 1)), Math.floor((rnd ? rnd() : 0) * (z.h - alto + 1))];

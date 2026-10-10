@@ -1,9 +1,9 @@
 {
-  "name": "encajados",
+  "name": "shakedown",
   "private": true,
   "type": "module",
-  "description": "Juego web de manejo 4x4 visto desde arriba",
+  "description": "Rally diario: cada medianoche, una pista nueva y una sola pasada oficial",
   "scripts": {
-    "test": "node tools/piloto.mjs"
+    "test": "node tools/piloto.mjs 1 6"
   }
 }

@@ -42,5 +42,6 @@ export function crearSonido() {
     volBarro.gain.setTargetAtTime(mudo ? 0 : Math.min(0.09, c.patina * 0.09 + (c.agua > 0.05 ? v * 0.006 : 0)), t, 0.08);
   }
 
-  return { iniciar, actualizar, alternar: () => { mudo = !mudo; return mudo; } };
+  // alternar: prende o apaga el sonido, y devuelve si quedo apagado
+  return { iniciar, actualizar, alternar: () => { mudo = !mudo; return mudo; }, mudo: () => mudo };
 }

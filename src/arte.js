@@ -35,25 +35,24 @@ function grieta(p, color, largo) {
 }
 
 // --- pisos: un dibujo de 64 x 64 pixeles (16 metros de lado) por cada suelo, que se repite ---
-// El orden es el de los suelos en config.js; el ultimo (monte) es el piso debajo de los arboles.
-export const MONTE = 9, PARED = 10;   // PARED: la roca cuando se la ve de costado, en un paredon
-const PISOS = [
-  (p) => {   // asfalto
+// Cada bioma tiene su pasto, su "manchon" (lo que rompe la monotonia del pasto) y su piso debajo de los arboles.
+const PISOS = {
+  asfalto: (p) => {   // asfalto
     p.fondo('#46484e');
     veces(9, () => mancha(p, '#4e5158', entero(p, 5, 9)));
     veces(7, () => mancha(p, '#3e4045', entero(p, 4, 7)));
     p.motas('#5f626a', 60); p.motas('#383a3f', 46);
     veces(5, () => grieta(p, '#2b2c30', entero(p, 8, 16)));
   },
-  (p) => {   // ripio
-    p.fondo('#bda57c');
-    veces(14, () => mancha(p, '#c8b189', entero(p, 4, 7)));
-    veces(12, () => mancha(p, '#b0976e', entero(p, 4, 6)));
-    p.motas('#a58c64', 50);
-    veces(70, () => piedrita(p, '#e3d4b2', '#917a57'));
-    veces(22, () => canto(p, ['#9c988d', '#b5b1a5', '#cfcbbd'], '#8c7450'));
+  ripio: (p) => {   // ripio
+    p.fondo('#d0b88c');
+    veces(14, () => mancha(p, '#dac398', entero(p, 4, 7)));
+    veces(12, () => mancha(p, '#c4ab7e', entero(p, 4, 6)));
+    p.motas('#b89e72', 34);
+    veces(44, () => piedrita(p, '#efe0be', '#a38a62'));
+    veces(16, () => canto(p, ['#aaa69a', '#c0bcb0', '#d8d4c6'], '#9c8460'));
   },
-  (p) => {   // tierra
+  tierra: (p) => {   // tierra
     p.fondo('#9c5f3a');
     veces(18, () => mancha(p, '#8b5232', entero(p, 4, 7)));
     veces(10, () => mancha(p, '#a96a43', entero(p, 3, 5)));
@@ -61,17 +60,17 @@ const PISOS = [
     p.motas('#74432a', 36); p.motas('#b77a50', 30);
     veces(10, () => piedrita(p, '#cfae88', '#6b3d26'));
   },
-  (p) => {   // roca: lajas con un borde claro arriba y a la izquierda y uno oscuro abajo y a la derecha
-    p.fondo('#87827a');
+  roca: (p) => {   // roca: lajas con un borde claro arriba y a la izquierda y uno oscuro abajo y a la derecha
+    p.fondo('#9a958c');   // (clara: el camino de roca tiene que distinguirse del pedregal que lo rodea)
     veces(16, (i) => {
       const w = entero(p, 7, 15), h = entero(p, 5, 11), x = entero(p, 0, p.w - w), y = entero(p, 0, p.h - h);
-      p.rect(x, y, w, h, i % 2 ? '#928d84' : '#7b7770');
-      p.rect(x, y, w, 1, '#a9a49a'); p.rect(x, y, 1, h, '#a09b91'); p.rect(x, y + h - 1, w, 1, '#66635d'); p.rect(x + w - 1, y, 1, h, '#6c6862');
+      p.rect(x, y, w, h, i % 2 ? '#a6a198' : '#8e897f');
+      p.rect(x, y, w, 1, '#bcb7ac'); p.rect(x, y, 1, h, '#b2ada2'); p.rect(x, y + h - 1, w, 1, '#75716a'); p.rect(x + w - 1, y, 1, h, '#7b7770');
     });
-    veces(7, () => grieta(p, '#514e49', entero(p, 6, 14)));
-    p.motas('#b5b0a5', 24); p.motas('#6a6660', 30); p.motas('#8f9a58', 6, 2, 1);
+    veces(7, () => grieta(p, '#5c5953', entero(p, 6, 14)));
+    p.motas('#c6c1b5', 24); p.motas('#7a766f', 30); p.motas('#8f9a58', 6, 2, 1);
   },
-  (p) => {   // pasto
+  pasto: (p) => {   // pasto
     p.fondo('#4e8a3a');
     veces(20, () => mancha(p, '#478136', entero(p, 4, 8)));
     veces(8, () => mancha(p, '#57953f', entero(p, 4, 6)));
@@ -79,40 +78,33 @@ const PISOS = [
     p.motas('#66a546', 60, 1, 2); p.motas('#80ba52', 18);     // briznas claras
     p.motas('#ead451', 4); p.motas('#f1efe0', 3);             // florcitas
   },
-  (p) => {   // barro
+  barro: (p) => {   // barro
     p.fondo('#6e3c24');
     veces(22, () => mancha(p, '#5c311d', entero(p, 4, 8)));
     veces(9, () => mancha(p, '#7c4629', entero(p, 3, 6)));
     p.motas('#482518', 40);
     p.motas('#96603e', 26, 2, 1); p.motas('#b98558', 8);      // brillo del barro mojado
   },
-  (p) => {   // pantano: barro aguado, claro, para que no se confunda con una sombra
+  pantano: (p) => {   // pantano: barro aguado, claro, para que no se confunda con una sombra
     p.fondo('#9a8560');
     veces(12, () => mancha(p, '#a48f69', entero(p, 5, 9)));
     veces(8, () => mancha(p, '#8a7652', entero(p, 4, 6)));
     p.motas('#b9a57f', 26, 4, 1); p.motas('#cdbb96', 12, 2, 1);   // reflejos
     p.motas('#6b5a3c', 26); p.motas('#7b8a4b', 10, 2, 1);         // hojas y lama
   },
-  (p) => {   // lecho del rio: cantos rodados
+  lecho: (p) => {   // lecho del rio: cantos rodados
     p.fondo('#84806c');
     veces(170, () => canto(p, ['#6f6b5a', '#8f8b77', '#a6a28d', '#bcb8a3'], '#5c594b'));
     p.motas('#5c594b', 40);
   },
-  (p) => {   // derrumbe: tierra suelta con cascotes
-    p.fondo('#8c6e50');
-    veces(16, () => mancha(p, '#7a5e43', entero(p, 4, 7)));
-    veces(12, () => mancha(p, '#9d7f5e', entero(p, 3, 6)));
-    p.motas('#5e4833', 50); p.motas('#b39473', 30);
-    veces(34, () => canto(p, ['#8f8a80', '#aaa59a', '#c4bfb2'], '#5e4833'));
-  },
-  (p) => {   // monte: el piso sombreado debajo de los arboles, con hojas secas
+  monteCampo: (p) => {   // monte: el piso sombreado debajo de los arboles, con hojas secas
     p.fondo('#3f6f33');
     veces(18, () => mancha(p, '#376430', entero(p, 4, 8)));
     veces(8, () => mancha(p, '#467a37', entero(p, 3, 6)));
     p.motas('#2e562b', 60, 1, 2); p.motas('#538a3d', 30, 1, 2);
     p.motas('#6b5a34', 34); p.motas('#8a7240', 12, 2, 1); p.motas('#27482a', 24);
   },
-  (p) => {   // pared: bancos de roca apilados, cada uno con luz arriba y sombra abajo, partidos en bloques
+  pared: (p) => {   // pared: bancos de roca apilados, cada uno con luz arriba y sombra abajo, partidos en bloques
     const tonos = ['#6f6b65', '#7b7770', '#86817a', '#918c83'];
     let y = 0, t = 0;
     while (y < p.h) {
@@ -131,17 +123,122 @@ const PISOS = [
     }
     p.motas('#64615b', 26);
   },
-];
+  charco: (p) => {   // charco: agua turbia que refleja el cielo
+    p.fondo('#6f7f86');
+    veces(14, () => mancha(p, '#7c8f94', entero(p, 5, 9)));
+    veces(10, () => mancha(p, '#62727a', entero(p, 4, 7)));
+    p.motas('#a9bcc0', 22, 4, 1); p.motas('#cfdcdc', 9, 2, 1);   // reflejos
+    p.motas('#55534a', 18); p.motas('#7d6a50', 14, 2, 1);        // barro que asoma
+  },
+  pinocha: (p) => {   // piso del bosque: musgo, pinocha y ramitas
+    p.fondo('#4a6b34');
+    veces(18, () => mancha(p, '#3f5f30', entero(p, 4, 8)));
+    veces(12, () => mancha(p, '#587a3a', entero(p, 3, 6)));
+    veces(9, () => mancha(p, '#6b5a34', entero(p, 3, 6)));       // manchones de pinocha
+    p.motas('#33502b', 50, 1, 2); p.motas('#6f9344', 34, 1, 2);
+    p.motas('#8a7240', 40, 2, 1); p.motas('#a88a52', 14, 3, 1); p.motas('#5a4426', 20, 1, 2);   // agujas y ramitas
+    p.motas('#d9c8a0', 4);
+  },
+  pastoSeco: (p) => {   // estepa: pasto amarillento y tierra pelada
+    p.fondo('#948a50');
+    veces(18, () => mancha(p, '#857c46', entero(p, 4, 8)));
+    veces(12, () => mancha(p, '#a3985a', entero(p, 3, 6)));
+    veces(7, () => mancha(p, '#a08a66', entero(p, 3, 5)));       // tierra pelada
+    p.motas('#766c38', 60, 1, 2); p.motas('#c4b869', 44, 1, 2); p.motas('#d8cd80', 12);
+    veces(10, () => piedrita(p, '#cbbf9a', '#6e6440'));
+  },
+  manchonBosque: (p) => {   // claro de tierra y hojas secas
+    p.fondo('#6f5a3a');
+    veces(16, () => mancha(p, '#5f4c30', entero(p, 4, 7)));
+    veces(10, () => mancha(p, '#806a45', entero(p, 3, 6)));
+    p.motas('#4a3a24', 40); p.motas('#9a8255', 30, 2, 1); p.motas('#b5472a', 14); p.motas('#d8702f', 8); p.motas('#4f7038', 26, 1, 2);
+  },
+  manchonCampo: (p) => {   // pasto mas alto y oscuro, con flores
+    p.fondo('#3f7a34');
+    veces(18, () => mancha(p, '#376f30', entero(p, 4, 8)));
+    veces(10, () => mancha(p, '#4a8a3a', entero(p, 3, 6)));
+    p.motas('#2c5f2a', 70, 1, 2); p.motas('#5c9c42', 46, 1, 2);
+    p.motas('#f2c200', 12); p.motas('#ffffff', 9); p.motas('#c08ae0', 6);
+  },
+  manchonMontana: (p) => {   // pedregullo
+    p.fondo('#a59a82');
+    veces(14, () => mancha(p, '#978c74', entero(p, 4, 7)));
+    veces(40, () => canto(p, ['#8a8478', '#a39d90', '#bdb7a8'], '#6e6858'));
+    p.motas('#7a705c', 40); p.motas('#c4b869', 16, 1, 2);
+  },
+  monteBosque: (p) => {   // debajo de los pinos: pinocha en sombra
+    p.fondo('#4f4a2c');
+    veces(18, () => mancha(p, '#433f26', entero(p, 4, 8)));
+    veces(10, () => mancha(p, '#3a5230', entero(p, 3, 6)));
+    p.motas('#6b5a34', 50, 2, 1); p.motas('#2f3a22', 40, 1, 2); p.motas('#8a7240', 14, 2, 1);
+  },
+  monteMontana: (p) => {   // debajo de los arboles, en lo seco
+    p.fondo('#6b6438');
+    veces(16, () => mancha(p, '#5c5630', entero(p, 4, 8)));
+    p.motas('#4a4526', 50, 1, 2); p.motas('#857c46', 30, 1, 2); p.motas('#3f5a30', 16);
+  },
+  // la banquina: la franja pisada entre el camino y el pasto
+  banquinaBosque: (p) => {
+    p.fondo('#5d5136');
+    veces(16, () => mancha(p, '#524830', entero(p, 4, 8)));
+    veces(10, () => mancha(p, '#6a5c3e', entero(p, 3, 6)));
+    p.motas('#3f4a2c', 40, 1, 2); p.motas('#7d6c48', 24, 2, 1); veces(8, () => piedrita(p, '#9a8c6c', '#3e3626'));
+  },
+  banquinaCampo: (p) => {
+    p.fondo('#6f7440');
+    veces(16, () => mancha(p, '#64693a', entero(p, 4, 8)));
+    veces(10, () => mancha(p, '#7d7e48', entero(p, 3, 6)));
+    p.motas('#4f5a30', 44, 1, 2); p.motas('#8f8a55', 22, 2, 1); veces(8, () => piedrita(p, '#a89f78', '#4a4a2c'));
+  },
+  banquinaMontana: (p) => {
+    p.fondo('#6c644e');
+    veces(16, () => mancha(p, '#615945', entero(p, 4, 8)));
+    veces(10, () => mancha(p, '#787058', entero(p, 3, 6)));
+    p.motas('#4f4837', 40); veces(26, () => canto(p, ['#6e695e', '#868074', '#9e988b'], '#4a4435'));
+  },
+  // lo sembrado, en surcos
+  trigo: (p) => {
+    p.fondo('#c2a654');
+    for (let y = 0; y < p.h; y += 4) { p.rect(0, y, p.w, 1, '#a88c40'); p.rect(0, y + 1, p.w, 1, '#d2b866'); }
+    p.motas('#dcc478', 60, 2, 1); p.motas('#9a7e36', 40, 2, 1);
+  },
+  arado: (p) => {
+    p.fondo('#6a4a34');
+    for (let y = 0; y < p.h; y += 4) { p.rect(0, y, p.w, 2, '#553a28'); p.rect(0, y + 2, p.w, 1, '#7c5a40'); }
+    p.motas('#8a684a', 40, 2, 1); p.motas('#45301f', 34, 2, 1);
+  },
+  girasol: (p) => {
+    p.fondo('#4c6a34');
+    for (let y = 0; y < p.h; y += 4) p.rect(0, y, p.w, 1, '#3c5a2c');
+    for (let y = 1; y < p.h; y += 4) for (let x = (y >> 2) % 2; x < p.w; x += 3) if (p.azar() < 0.8) p.punto(x, y, p.azar() < 0.8 ? '#d9b233' : '#b8922a');
+  },
+  soja: (p) => {
+    p.fondo('#4f7038');
+    for (let y = 0; y < p.h; y += 3) p.rect(0, y, p.w, 1, '#3f5f30');
+    p.motas('#5e8042', 80, 2, 1); p.motas('#36522a', 30, 2, 1);
+  },
+};
+// que dibujos usa cada bioma para el pasto, el manchon, el piso de abajo de los arboles y la banquina
+const NATURAL = {
+  pinocha: ['pinocha', 'manchonBosque', 'monteBosque', 'banquinaBosque'],
+  pasto: ['pasto', 'manchonCampo', 'monteCampo', 'banquinaCampo'],
+  pastoSeco: ['pastoSeco', 'manchonMontana', 'monteMontana', 'banquinaMontana'],
+};
+// En que capa de la textura queda cada cosa: primero los suelos, en el orden de config.js, y despues estas.
+// Los sembrados van en SEMBRADO + 1 (trigo), + 2 (tierra arada), + 3 (girasol) y + 4 (soja).
+export const MONTE = 9, PARED = 10, MANCHON = 11, BANQUINA = 12, SEMBRADO = 12;
 
-// Todos los pisos en una sola textura de varias capas.
-export function texturaDePisos() {
-  const M = 64, datos = new Uint8Array(M * M * 4 * PISOS.length);
-  PISOS.forEach((pintar, i) => {
-    const l = lienzoPintado(M, M, pintar, 100 + i);
-    lienzos['piso' + i] = l;
+// Todos los pisos en una sola textura de varias capas. "piso" es el pasto del bioma: pinocha, pasto o pastoSeco.
+export function texturaDePisos(piso) {
+  const [pasto, manchon, monte, banquina] = NATURAL[piso] || NATURAL.pasto;
+  const capas = ['asfalto', 'ripio', 'tierra', 'roca', pasto, 'barro', 'pantano', 'lecho', 'charco', monte, 'pared', manchon, banquina, 'trigo', 'arado', 'girasol', 'soja'];
+  const M = 64, datos = new Uint8Array(M * M * 4 * capas.length);
+  capas.forEach((nombre, i) => {
+    const l = lienzoPintado(M, M, PISOS[nombre], 100 + i);
+    lienzos['piso-' + nombre] = l;
     datos.set(l.getContext('2d').getImageData(0, 0, M, M).data, i * M * M * 4);
   });
-  const t = new THREE.DataArrayTexture(datos, M, M, PISOS.length);
+  const t = new THREE.DataArrayTexture(datos, M, M, capas.length);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
@@ -150,12 +247,17 @@ export function texturaDePisos() {
 }
 
 // --- arboles y piedras ---
-// cinco tonos por follaje, de oscuro a claro: monte oscuro, verde claro y lapacho rosado
-const HOJAS = [
-  ['#1c4426', '#28592e', '#356f37', '#48883f', '#5fa04a'],
-  ['#2f6a2a', '#458535', '#5c9c3e', '#77b449', '#96cb5a'],
-  ['#8f3d68', '#b3527f', '#d06f9a', '#e794b4', '#f7bfd1'],
-];
+// cinco tonos por follaje, de oscuro a claro
+const HOJAS = {
+  pino: ['#16382a', '#1f4a33', '#2a5f3c', '#3a7848', '#559458'],
+  pinoAlto: ['#1a3b24', '#24502c', '#316837', '#43823f', '#5f9d4c'],
+  lenga: ['#7a2418', '#a83a1e', '#cf5a22', '#e8862c', '#f6b545'],      // otoño: del rojo al naranja
+  nire: ['#8a5a14', '#b9801c', '#dba526', '#f0c43a', '#fbe06a'],       // otoño: amarillo
+  alamo: ['#3d6a24', '#55872c', '#73a336', '#96bf45', '#bcd75e'],
+  eucalipto: ['#33503f', '#46695a', '#5c8272', '#7a9d8a', '#a0bba8'],
+  araucaria: ['#12302a', '#1a4034', '#24523f', '#33684c', '#4b825c'],
+};
+const CORTEZAS = { araucaria: ['#5a5148', '#463e37', '#756a5e'], pino: ['#5c4130', '#473021', '#75573f'], lenga: ['#4a3a34', '#382a26', '#63504a'], alamo: ['#b9b3a2', '#8f8a7c', '#d6d1c2'], eucalipto: ['#c2b59c', '#9a8d76', '#ded3bd'] };
 const ROCA = ['#55524d', '#6c6862', '#86817a', '#9f9a90', '#b8b3a8'];
 
 // la copa vista de arriba: racimos de hojas claras con su sombra, y el borde desparejo
@@ -175,6 +277,17 @@ function copaDeArriba(p, h) {
     if (p.azar() < 0.7) p.punto(n - 1, i, h[1]);
   }
 }
+// un piso de pino visto de arriba: ramas que salen del centro, mas claras hacia las puntas
+function pinoDeArriba(p, h) {
+  const n = p.w, c = (n - 1) / 2;
+  p.fondo(h[1]);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dx = Math.abs(x - c), dy = Math.abs(y - c), d = Math.max(dx, dy) / (n / 2), rama = Math.min(dx, dy) < 0.8 || Math.abs(dx - dy) < 0.8;
+    const t = (rama ? 2 : 1) + (d > 0.55 ? 1 : 0) + (p.azar() < 0.18 ? 1 : 0) - (p.azar() < 0.2 ? 1 : 0);
+    p.punto(x, y, h[Math.max(0, Math.min(4, t))]);
+  }
+  p.rect(Math.floor(c), Math.floor(c), n % 2 ? 1 : 2, n % 2 ? 1 : 2, h[0]);
+}
 // la copa vista de costado: clara arriba, donde le da la luz, y oscura abajo
 function copaDeCostado(p, h) {
   const a = p.h;
@@ -193,6 +306,19 @@ function copaDeCostado(p, h) {
     if (p.azar() < 0.55) p.punto(x, a - 1, h[0]);
   }
 }
+// un piso de pino visto de costado: agujas que cuelgan, con el borde de abajo en flecos
+function pinoDeCostado(p, h) {
+  const a = p.h;
+  p.fondo(h[1]);
+  p.rect(0, 0, p.w, 1, h[3]);
+  for (let x = 0; x < p.w; x++) {
+    const largo = entero(p, 1, Math.max(1, a - 1));
+    p.rect(x, 0, 1, largo, x % 3 === 0 ? h[2] : x % 3 === 1 ? h[1] : h[2]);
+    if (p.azar() < 0.4) p.punto(x, 0, h[4]);
+    if (p.azar() < 0.5) p.punto(x, Math.min(a - 1, largo), h[0]);
+  }
+  p.rect(0, a - 1, p.w, 1, h[0]);
+}
 function piedraDeArriba(p) {
   p.fondo(ROCA[2]);
   p.rect(0, 0, p.w, 1, ROCA[3]); p.rect(0, 0, 1, p.h, ROCA[3]); p.rect(0, p.h - 1, p.w, 1, ROCA[1]); p.rect(p.w - 1, 0, 1, p.h, ROCA[1]);
@@ -207,18 +333,34 @@ function piedraDeCostado(p) {
   p.motas(ROCA[0], Math.round(p.w * p.h / 10), 3, 1); p.motas(ROCA[2], Math.round(p.w * p.h / 12), 2, 1);
 }
 
+// letras de 3 x 5 pixeles para los carteles
+const LETRAS = {
+  A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', G: '011100101101011', H: '101101111101101',
+  I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '101111111111101', O: '010101101101010', R: '110101110101101',
+  S: '011100010001110', T: '111010010010010', W: '101101111111101', ' ': '000000000000000',
+  0: '111101101101111', 1: '010110010010111', 2: '110001010100111', 3: '110001010001110', 4: '101101111001001', 5: '111100110001110', '#': '101111101111101', '!': '010010010000010',
+};
+export function escribir(p, texto, x, y, color) {
+  for (const letra of texto) {
+    const d = LETRAS[letra] || LETRAS[' '];
+    for (let i = 0; i < 15; i++) if (d[i] === '1') p.punto(x + i % 3, y + Math.floor(i / 3), color);
+    x += 4;
+  }
+}
+
 // Un atlas con todos los dibujos de la escenografia. Cada dibujo se pinta la primera vez que se pide.
 export function crearEscenografia() {
-  const atlas = crearAtlas(256, 256), hechas = {};
+  const atlas = crearAtlas(512, 256), hechas = {};
   const una = (clave, w, h, pintar) => hechas[clave] || (hechas[clave] = atlas.zona(w, h, pintar, semillaDe(clave)));
   lienzos.escenografia = atlas.lienzo;
+  const pino = (tipo) => tipo === 'pino' || tipo === 'pinoAlto' || tipo === 'araucaria';
   return {
     atlas,
-    copa: (tipo, lado) => una('copa' + tipo + 'x' + lado, lado, lado, (p) => copaDeArriba(p, HOJAS[tipo])),
-    follaje: (tipo, alto) => una('follaje' + tipo + 'x' + alto, 32, alto, (p) => copaDeCostado(p, HOJAS[tipo])),
+    copa: (tipo, lado) => una('copa' + tipo + 'x' + lado, lado, lado, (p) => (pino(tipo) ? pinoDeArriba : copaDeArriba)(p, HOJAS[tipo])),
+    follaje: (tipo, alto) => una('follaje' + tipo + 'x' + alto, 32, alto, (p) => (pino(tipo) ? pinoDeCostado : copaDeCostado)(p, HOJAS[tipo])),
     debajo: (tipo) => una('debajo' + tipo, 8, 8, (p) => { p.fondo(HOJAS[tipo][0]); p.motas(HOJAS[tipo][1], 12); }),
     corteza: (tipo) => una('corteza' + tipo, 8, 24, (p) => {
-      const c = tipo === 2 ? ['#4a3a34', '#382a26', '#63504a'] : ['#5c4130', '#473021', '#75573f'];
+      const c = CORTEZAS[tipo] || CORTEZAS[pino(tipo) ? 'pino' : 'lenga'];
       p.fondo(c[0]);
       for (const x of [1, 4, 6]) for (let y = 0; y < p.h; y++) if (p.azar() < 0.75) p.punto(x, y, c[1]);
       p.motas(c[2], 14, 1, 2);
@@ -227,35 +369,51 @@ export function crearEscenografia() {
     canto: (alto) => una('canto' + alto, 32, alto, piedraDeCostado),
     // mojon: poste blanco con una banda roja (a 8 pixeles por metro)
     mojon: () => una('mojon', 2, 10, (p) => { p.fondo('#efece2'); p.rect(0, 1, 2, 2, '#d23a2c'); p.rect(0, 0, 2, 1, '#fbf9f2'); p.rect(1, 3, 1, 7, '#d6d2c6'); p.rect(0, 9, 2, 1, '#a7a398'); }),
-    tapaDeMojon: () => atlas.liso('#fbf9f2'),
+    liso: (color) => atlas.liso(color),
+    // poste de alambrado: madera gastada
+    poste: () => una('poste', 2, 10, (p) => { p.fondo('#8a6f52'); p.rect(1, 0, 1, 10, '#6b543c'); p.rect(0, 0, 2, 1, '#b39a78'); p.punto(0, 4, '#5a4632'); p.punto(0, 7, '#a08464'); }),
+    // la cinta del publico: rayas rojas y blancas
+    cinta: (largo) => una('cinta' + largo, largo, 1, (p) => { for (let x = 0; x < largo; x++) p.punto(x, 0, (x >> 1) % 2 ? '#f4f0e6' : '#d8402f'); }),
+    estaca: () => una('estaca', 1, 8, (p) => { p.fondo('#e9e4d6'); p.rect(0, 0, 1, 2, '#d8402f'); p.rect(0, 4, 1, 2, '#d8402f'); }),
+    // carteles de curva: flechas negras sobre amarillo (o blancas sobre rojo en las horquillas), de 16 x 8
+    flecha: (lado) => una('flecha' + lado, 16, 8, (p) => {
+      p.fondo('#f2c200'); p.marco('#1b1b1d');
+      for (const x0 of [3, 8]) for (let k = 0; k < 3; k++) {
+        const x = lado === 'der' ? x0 + k : x0 + 4 - k;
+        p.rect(x, 1 + k, 2, 1, '#1b1b1d'); p.rect(x, 6 - k, 2, 1, '#1b1b1d');
+      }
+    }),
+    // cartel de cuidado: un signo de admiracion
+    ojo: () => una('ojo', 8, 8, (p) => { p.fondo('#f2c200'); p.marco('#1b1b1d'); p.rect(3, 1, 2, 4, '#1b1b1d'); p.rect(3, 6, 2, 1, '#1b1b1d'); }),
+    dorso: () => una('dorso', 8, 8, (p) => { p.fondo('#8f9aa3'); p.marco('#6b757d'); p.rect(3, 0, 2, 8, '#6b757d'); }),
+    // la tela de un arco: un fondo de color con algo escrito en letras de pixeles
+    tela: (texto, ancho, fondo, letra, borde) => una('tela' + texto + ancho + fondo, ancho, 9, (p) => {
+      p.fondo(fondo); p.rect(0, 0, ancho, 1, borde); p.rect(0, 8, ancho, 1, borde);
+      escribir(p, texto, Math.round((ancho - texto.length * 4 + 1) / 2), 2, letra);
+    }),
+    cuadros: (ancho) => una('cuadros' + ancho, ancho, 9, (p) => { for (let x = 0; x < ancho; x++) for (let y = 0; y < 9; y++) p.punto(x, y, ((x >> 1) + ((y + 1) >> 1)) % 2 ? '#111111' : '#ffffff'); }),
+    rayas: (ancho, a, b) => una('rayas' + ancho + a, ancho, 4, (p) => { for (let x = 0; x < ancho; x++) for (let y = 0; y < 4; y++) p.punto(x, y, ((x + y) >> 1) % 2 ? a : b); }),
+    // banderin: un triangulo de color (lo que no es bandera queda transparente)
+    banderin: (color) => una('banderin' + color, 3, 4, (p) => { p.rect(0, 0, 3, 1, color); p.rect(0, 1, 3, 1, color); p.rect(1, 2, 1, 2, color); p.punto(0, 2, color); p.punto(2, 2, color); }),
+    // fardo de pasto: redondo, atado con dos hilos
+    fardo: () => una('fardo', 12, 10, (p) => { p.fondo('#c9a646'); p.motas('#b08c36', 30, 2, 1); p.motas('#e2c462', 26, 2, 1); p.rect(3, 0, 1, 10, '#7a5a2a'); p.rect(8, 0, 1, 10, '#7a5a2a'); p.rect(0, 9, 12, 1, '#8f7230'); }),
+    // el molino de viento: la torre de hierros cruzados, la rueda de aspas y la cola
+    torre: (ancho, alto) => una('torre' + ancho + 'x' + alto, ancho, alto, (p) => {
+      p.rect(0, 0, 1, alto, '#8f9499'); p.rect(ancho - 1, 0, 1, alto, '#6f7479');
+      for (let y = 0; y < alto; y += ancho) { p.rect(0, y, ancho, 1, '#7d8287'); for (let k = 1; k < ancho - 1; k++) p.punto(k, y + 1 + (k % (ancho - 1)), '#9aa0a5'); }
+    }),
+    aspas: () => una('aspas', 27, 27, (p) => {
+      for (let y = 0; y < 27; y++) for (let x = 0; x < 27; x++) {
+        const dx = x - 13, dy = y - 13, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+        if (d > 13.4 || d < 1.2) continue;
+        if (d < 3 || (d > 4 && Math.floor((a + Math.PI) / (Math.PI / 9)) % 2 === 0)) p.punto(x, y, d > 11.5 ? '#c9ced2' : (dx + dy) % 3 ? '#a9aeb3' : '#8f9499');
+      }
+    }),
+    chapa: (alto) => una('chapa' + alto, 32, alto, (p) => { p.fondo('#8a8f93'); for (let x = 0; x < 32; x += 2) p.rect(x, 0, 1, alto, '#73787c'); p.rect(0, 0, 32, 1, '#b0b5b8'); p.motas('#7a5a40', 8); }),
+    aguaQuieta: (lado) => una('aguaQuieta' + lado, lado, lado, (p) => { p.fondo('#8f9aa0'); p.rect(1, 1, lado - 2, lado - 2, '#4f7f86'); p.motas('#6f9aa0', lado, 3, 1); p.motas('#3f6a72', lado, 2, 1); }),
+    tapaDeFardo: () => una('tapaDeFardo', 10, 10, (p) => { p.fondo('#d6b552'); for (let r = 1; r < 5; r += 2) p.marco('#b08c36'); p.rect(2, 2, 6, 6, '#c9a646'); p.rect(4, 4, 2, 2, '#b08c36'); p.motas('#e8cf78', 10); }),
   };
 }
 
-// --- cosas sueltas ---
-// bidon de nafta: 4 x 6 x 2 pixeles (a 8 por metro)
-export function dibujosDeBidon(atlas) {
-  return {
-    lados: atlas.zona(4, 6, (p) => {
-      p.fondo('#d23a2c');
-      p.rect(0, 5, 4, 1, '#8f1f18'); p.rect(3, 1, 1, 4, '#a8281e'); p.punto(0, 0, '#a8281e'); p.punto(3, 0, '#a8281e');
-      p.punto(1, 2, '#a8281e'); p.punto(2, 3, '#a8281e'); p.punto(2, 2, '#f0685a'); p.punto(1, 3, '#f0685a'); p.punto(0, 1, '#f0685a');
-    }),
-    arriba: atlas.zona(4, 2, (p) => { p.fondo('#a8281e'); p.punto(0, 0, '#1e1f23'); p.punto(1, 0, '#f2c200'); p.rect(2, 0, 2, 1, '#d23a2c'); }),
-  };
-}
-// la marca amarilla en el piso, debajo de cada bidon: cuatro esquinas
-export const marcaDeBidon = () => textura(12, 12, (p) => {
-  for (const [x, y] of [[0, 0], [8, 0], [0, 8], [8, 8]]) {
-    p.rect(x, y === 0 ? 0 : 10, 4, 2, '#f2c200'); p.rect(x === 0 ? 0 : 10, y, 2, 4, '#f2c200');
-  }
-});
-// la viga de un arco de control: rayas en diagonal, blancas y negras (el color lo pone el arco)
-export const rayasDeArco = (ancho) => textura(ancho, 4, (p) => {
-  for (let x = 0; x < ancho; x++) for (let y = 0; y < 4; y++) p.punto(x, y, ((x + y) >> 1) % 2 ? '#1b1b1d' : '#ffffff');
-});
-// la de la meta: a cuadros
-export const cuadrosDeMeta = (ancho) => textura(ancho, 4, (p) => {
-  for (let x = 0; x < ancho; x++) for (let y = 0; y < 4; y++) p.punto(x, y, ((x >> 1) + (y >> 1)) % 2 ? '#111111' : '#ffffff');
-});
 // cascotes y tierra que salta: un cubito con dos tonos
 export const granito = () => textura(4, 4, (p) => { p.fondo('#ffffff'); p.rect(0, 3, 4, 1, '#b9b9b9'); p.rect(3, 0, 1, 4, '#cfcfcf'); p.punto(1, 1, '#dddddd'); });

@@ -1,70 +1,81 @@
-# Encajados
+# Shakedown
 
-Juego web de manejo 4x4 visto desde arriba, en 3D, hecho de bloques con dibujos de pocos píxeles. No es una carrera: es llegar a la cumbre sin quedarse en el camino.
+Rally diario. Cada medianoche hay una pista nueva, la misma para todos, y una sola pasada oficial. Como el Wordle, pero con autos de rally.
 
-**Jugar:** https://juanmcompa.github.io/encajados/
+**Jugar:** https://juanmcompa.github.io/shakedown/
 
-Es un prototipo. Tiene una etapa de 975 metros (Yungas) con asfalto roto, bañado, vado, un lateral con derrumbe, caracoles, cornisa, bajada y trepada. Se puede perder: por quedarse sin nafta, por romper la camioneta o por gastar los tres rescates.
+El resultado se comparte así, con un link que lleva tu pasada:
+
+```
+Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
+```
+
+## La historia
+
+Un club clandestino de puristas del rally, cansados de los circuitos cerrados, busca caminos olvidados. Cada medianoche, el organizador anónimo publica en un foro cerrado las coordenadas y las notas del copiloto del desafío del día: un sendero forestal embarrado, una ruta rural castigada por la lluvia o un paso de montaña de ripio.
+
+No hay vueltas de reconocimiento. Sos vos, tu lectura del terreno y un auto noventero contra el cronómetro: una Vitara del 92 levantada ("La Vitarita") o un Ka con chapón cubrecárter ("El Kacito").
+
+Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el trazado. Al final del día los tiempos se comparan en la tabla del club.
+
+## Cómo es
+
+- **La pista sale de la fecha.** El número del día genera todo: el recorrido, el lugar (bosque, campo o montaña), el clima (seco, lluvia, niebla o atardecer) y las notas del copiloto. La #1 es la del 10 de octubre de 2026. El día cambia a la medianoche de Argentina.
+- **Pasadas cortas.** Entre dos y tres minutos, en cinco sectores.
+- **Una pasada oficial por día.** Después se puede practicar todo lo que se quiera, pero no cuenta para la tabla.
+- **Rally puro.** No hay nafta ni rescates. Si te salís o volcás, volvés al camino con 8 segundos de recargo. Si rompés el auto, es abandono.
+- **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
+- **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
+
+## El club: correr contra amigos
+
+No hay servidor. La tabla se arma en cada aparato con los links que se abren.
+
+- Al terminar, poné tu nombre y compartí. En la compu se copia el mensaje con el link; en el celular se abre el menú de compartir.
+- El link lleva tu pasada completa. Quien lo abre te ve en su tabla y **corre su pasada oficial contra tu fantasma**.
+- Sin link de nadie, la oficial se corre solo. En las prácticas, el fantasma es tu mejor pasada.
+- En la tabla, el botón del fantasma elige contra quién corrés.
+- El link también lleva los tiempos que ya conocés, así la tabla se va completando entre todos.
 
 ## Cómo se juega
 
 | Tecla | Qué hace |
 | --- | --- |
 | `W` `A` `S` `D` o flechas | Acelerar, doblar, frenar y marcha atrás |
-| `Shift` | Reductora: cambia entre alta y baja |
-| `Espacio` | Freno de mano (traba las ruedas de atrás) |
-| `R` | Volver al último control (gasta un rescate) |
-| `C` | Cambiar la cámara: aérea, aérea fija, cerca |
-| `M` | Sonido |
+| `Espacio` | Freno de mano |
+| `R` | Volver al camino (suma 8 segundos) |
+| `C` | Cámara: aérea, de atrás o desde arriba |
+| `M` / `V` | Sonido / voz del copiloto |
+| `Enter` | Largar |
+| `Esc` | Dejar una práctica |
 
-En el celular no hay teclas:
+En el celular los botones son íconos y muestran su estado:
 
-- **Inclinar el celu** para doblar, como un volante. En iPhone pide permiso para usar el sensor.
-- **Pedal derecho** para acelerar. **Pedal izquierdo** para frenar y, ya frenado, ir marcha atrás.
-- Botones para la **reductora**, para volver al control y para cambiar la cámara.
-- Si el sensor no responde, aparecen flechas para doblar con el dedo.
-- Sirve con el celu vertical u horizontal. Vertical se ve más camino por delante.
+- **Inclinar el celu** para doblar. En iPhone pide permiso para usar el sensor. Si el sensor no responde, aparecen flechas.
+- **Pedales:** el derecho acelera, el izquierdo frena y da marcha atrás (aparece una R). Pisados se llenan de color.
+- **Freno de mano:** arriba del freno. Se pone amarillo mientras está apretado.
+- **Cámara:** el ícono es el auto visto como lo ves, y tres puntitos marcan cuál de las tres está puesta.
+- **Sonido y voz del copiloto:** apagados se ven tenues y tachados.
+- **Volver al camino:** lleva el "+8" de lo que cuesta. Titila en amarillo cuando el auto quedó trabado.
 
-Lo que conviene saber:
-
-- **No es una carrera.** Gana el que llega; el tiempo solo desempata.
-- **La nafta no sobra.** Se gasta al acelerar y casi el triple patinando. Hay bidones para juntar, casi siempre en lugares incómodos.
-- **Reductora.** En baja hay fuerza para trepar y freno motor para bajar, pero se va lento y en el barro se patina más. En alta se va rápido, pero no se sube lo empinado.
-- **Los golpes suman daño.** Con la camioneta rota se termina la etapa. Ojo con los autos tirados, los árboles y las piedras.
-- **Hay tres rescates** para volver al último control. Desbarrancarse gasta uno solo.
-- **En el derrumbe la tierra se corre** hacia el borde y te lleva. Hay que apuntar cuesta arriba y no parar.
-- **El barro frena y hace patinar.** Con el acelerador a fondo las ruedas patinan y la camioneta se va de costado. A veces rinde más soltar un poco.
-- **Los charcos claros son pantano.** Si entrás despacio te encajás. Esquivalos o pasalos con envión.
-- **Las subidas de barro piden envión.** Si no llegás arriba, retrocedé y tomá carrera.
-- **En la cornisa, despacio.** Los mojones blancos marcan el borde. Lo que se ve oscuro y azulado está muy abajo.
-- **Mirá los cuatro cuadraditos** al lado del nombre del suelo: son las ruedas. Blanco agarra, amarillo patina, rojo patina mucho, hueco está en el aire.
-- **Las huellas quedan** marcadas toda la vuelta: sirven para ver por dónde pasaste en el intento anterior.
-
-## Competir con amigos
-
-- Al llegar, poné tu nombre y tocá **Compartir mi marca**. En la compu copia un link; en el celular abre el menú de compartir.
-- Quien abre el link ve tu tiempo, corre contra tu **fantasma** y tu marca queda en su ranking.
-- Si nadie te desafió, después de tu primera llegada corrés contra el fantasma de tu mejor vuelta.
-- El link también lleva los tiempos que ya conocés, así el ranking se va completando entre todos.
-- En el ranking, **Correr contra** elige el fantasma de cualquiera que tenga la vuelta guardada. Arriba a la izquierda se ve cuánto le llevás o le perdés.
-
-No hay servidor: el ranking se guarda en cada aparato y crece con los links que se abren. Si cambia la etapa (`version` en `src/etapa1.js`), las marcas viejas dejan de valer.
+Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla.
 
 ## Qué tocar para cambiar el juego
 
-Dos archivos concentran casi todo lo que se ajusta:
+| Para cambiar | Archivo |
+| --- | --- |
+| Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
+| Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` |
+| Qué día es la pista #1 | `src/dia.js` |
+| Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
+| La luz y la bruma de cada clima | `LUCES` en `src/world.js` y `REVELADOS` en `src/post.js` |
+| Los dibujos de los pisos, árboles y carteles | `src/arte.js` |
+| Los dibujos planos: público, plantas, vacas, fogones | `src/sprites.js` |
+| Los autos: forma, pintura y números | `src/autos.js` |
+| Los íconos de los botones y de las notas | `src/iconos.js` |
+| Los textos de la portada y la ayuda | `src/menu.js` |
 
-- `src/config.js`: agarre de cada suelo, motor y reductora, suspensión, cámaras, nafta, daño, rescates y tiempos de las medallas.
-- `src/etapa1.js`: el camino, escrito como una lista de tramos (largo, giro, pendiente, ancho, suelo, laderas, pozos, autos tirados, bidones, derrumbes).
-
-## Cómo cambiar los dibujos
-
-No hay archivos de imagen: todo se pinta con código, de a píxeles, cuando arranca el juego.
-
-- Un píxel del mundo mide 25 cm. El piso, las sombras, la orilla del agua y las huellas están hechos de esos píxeles.
-- `src/arte.js` tiene un dibujo de 64 x 64 píxeles por cada suelo (asfalto, ripio, barro...), y los de árboles, piedras, bidones y arcos. Cambiando colores o cantidades ahí cambia todo el paisaje.
-- `src/truck.js` tiene la camioneta: cinco vistas pintadas a mano (de arriba, de abajo, de costado, de frente y de atrás) que se pegan sobre una lista de cajas. Los autos tirados y el fantasma son la misma camioneta con otra pintura.
-- `src/pixel.js` son las herramientas: el pincel (`rect`, `punto`, `motas`) y el armado de cajas.
+El juego no usa archivos de imagen: todo se pinta con código, de a píxeles, cuando arranca. Un píxel del mundo mide 25 cm.
 
 ## Cómo está armado
 
@@ -74,21 +85,26 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 
 | Archivo | Qué hace |
 | --- | --- |
-| `index.html`, `style.css` | La página, la portada y los instrumentos en pantalla |
+| `index.html`, `style.css` | La página: portada, tablero, botones y paneles |
+| `vista-previa.jpg` | La imagen que muestra WhatsApp cuando se pega el link |
 | `src/main.js` | Arma todo y corre el ciclo del juego |
 | `src/config.js` | Los números para ajustar |
-| `src/etapa1.js` | La etapa, tramo por tramo |
-| `src/terrain.js` | Convierte los tramos en terreno: alturas, suelos, río, árboles |
-| `src/vehicle.js` | La física de la camioneta |
-| `src/reglas.js` | Las reglas: controles, meta, nafta, daño, rescates y formas de perder |
-| `src/fantasma.js`, `src/social.js` | Graban la vuelta y la meten en un link; ranking, desafíos y nombre del jugador |
-| `src/world.js`, `src/truck.js` | Dibujan el terreno, el agua, los árboles y la camioneta |
-| `src/pixel.js`, `src/arte.js` | El estilo: herramientas para pintar de a píxeles y armar cajas, y los dibujos de los pisos, árboles y piedras |
-| `src/huellas.js`, `src/fx.js` | Las huellas que quedan en el piso y los cubitos de barro, agua o polvo que saltan |
-| `src/camera.js`, `src/audio.js` | Cámaras y sonido del motor |
-| `src/hud.js`, `src/input.js`, `src/noise.js` | Instrumentos, mandos (teclado, pedales e inclinación), ruido para el relieve |
-| `vendor/` | Three.js, la biblioteca 3D (licencia MIT) |
-| `tools/` | Pruebas de la física sin gráficos (opcionales) |
+| `src/dia.js`, `src/generador.js` | El calendario y el generador: de un número de día sale una pista |
+| `src/terrain.js` | Convierte la pista en terreno: alturas, suelos, agua, árboles, público |
+| `src/referencia.js` | Calcula la trazada y el tiempo de referencia de cada sector |
+| `src/vehicle.js` | La física del auto |
+| `src/reglas.js` | Cuenta regresiva, sectores, recargos, daño y abandono |
+| `src/copiloto.js` | Las notas y la voz que las canta |
+| `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus gustos) |
+| `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
+| `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, el público, la lluvia y los faros |
+| `src/autos.js` | Los modelos de los autos y el fantasma |
+| `src/material.js`, `src/pixel.js`, `src/arte.js`, `src/sprites.js` | El estilo: materiales, herramientas para pintar de a píxeles, y los dibujos |
+| `src/post.js` | El "revelado": desenfoque de maqueta, brillos y ajuste de color. Se apaga solo si el aparato no da |
+| `src/huellas.js`, `src/fx.js` | Las huellas en el piso y lo que salta de las ruedas |
+| `src/camera.js`, `src/audio.js`, `src/input.js`, `src/noise.js` | Cámaras, sonido del motor, mandos y ruido para el relieve |
+| `vendor/` | Three.js (la biblioteca 3D) y las tipografías |
+| `tools/` | Pruebas sin gráficos (opcionales) |
 
 ## Probarlo en tu compu
 
@@ -97,16 +113,20 @@ Abrir `index.html` con doble clic no funciona: el navegador no carga los módulo
 - En VS Code, con la extensión Live Server: clic derecho sobre `index.html` y "Open with Live Server".
 - O subir los cambios y probar en la página publicada.
 
+Direcciones útiles para probar:
+
+- `?p=3` abre la pista #3, si ya pasó. Con `?p=6&futuro` se abre cualquiera, aunque todavía no haya llegado su día (como práctica).
+- `?simple` saca el desenfoque y los brillos.
+
 ## Pruebas (opcional)
 
 Con Node instalado, desde la carpeta del repo:
 
-- `node tools/fisica.mjs`: aceleración, frenada, subidas y laterales en cada suelo.
-- `node tools/piloto.mjs`: un piloto prolijo recorre la etapa a distintas velocidades: dice si llega y con cuánta nafta.
-- `node tools/humano.mjs`: pilotos imperfectos (con teclas) para estimar la dificultad: cuántos llegan y por qué pierden.
-- `node tools/deriva.mjs`: cuánto dobla y cuánto colea en cada suelo.
+- `node tools/piloto.mjs 1 12`: cinco pilotos de distinto nivel corren las pistas 1 a 12 con cada auto. Dice si llegan, en cuánto, y dónde se salen.
+- `node tools/fisica.mjs`: aceleración, frenada, curvas y subidas en cada suelo.
+- `node tools/maniobras.mjs`: qué tan fácil se descontrola cada auto con volantazos.
 
-Sirven para revisar que la etapa se pueda terminar después de tocar `config.js` o `etapa1.js`.
+Sirven para revisar que las pistas se puedan terminar después de tocar `config.js` o `generador.js`.
 
 ## Plan
 
@@ -114,4 +134,4 @@ El plan de desarrollo está en [PLAN.md](PLAN.md).
 
 ## Créditos
 
-Hecho con [Three.js](https://threejs.org/) (MIT). Tipografía [Barlow](https://fonts.google.com/specimen/Barlow) (OFL).
+Hecho con [Three.js](https://threejs.org/) (licencia MIT). Tipografías [Barlow y Barlow Condensed](https://github.com/jpt/barlow) (licencia OFL), incluidas en `vendor/fuentes`.

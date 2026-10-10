@@ -1,11 +1,19 @@
-/* Encajados. Lenguaje visual: carteles viales (amarillo y negro) sobre el terreno. */
+/* Shakedown. Lenguaje visual: carteles viales (amarillo y negro) y dibujos de pocos pixeles sobre el terreno. */
+/* Las letras son Barlow y Barlow Condensed (licencia libre OFL), guardadas en vendor/fuentes. */
+@font-face { font-family: 'Barlow Condensed'; font-weight: 600; font-display: swap; src: url(vendor/fuentes/barlow-condensed-600.woff2) format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-weight: 700; font-display: swap; src: url(vendor/fuentes/barlow-condensed-700.woff2) format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-weight: 800; font-display: swap; src: url(vendor/fuentes/barlow-condensed-800.woff2) format('woff2'); }
+@font-face { font-family: 'Barlow'; font-weight: 500; font-display: swap; src: url(vendor/fuentes/barlow-500.woff2) format('woff2'); }
+@font-face { font-family: 'Barlow'; font-weight: 600; font-display: swap; src: url(vendor/fuentes/barlow-600.woff2) format('woff2'); }
+@font-face { font-family: 'Barlow'; font-weight: 700; font-display: swap; src: url(vendor/fuentes/barlow-700.woff2) format('woff2'); }
 :root {
   --amarillo: #f2c200;
   --barro: #7d3a20;
   --barro-hondo: #4a2414;
   --rojo: #ff6a52;
   --verde: #5cc070;
-  --placa: rgba(0, 0, 0, .8);
+  --placa: rgba(12, 13, 15, .82);
+  --boton: rgba(0, 0, 0, .55);
   --titulos: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
   --texto: 'Barlow', 'Segoe UI', system-ui, sans-serif;
   /* margenes: 16 px, o mas si la pantalla del celular tiene recortes */
@@ -15,131 +23,189 @@
   --mb: max(16px, env(safe-area-inset-bottom));
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #cfe2e8; color: #fff; font: 500 15px/1.35 var(--texto); -webkit-text-size-adjust: 100%; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #16181b; color: #fff; font: 500 15px/1.35 var(--texto); -webkit-text-size-adjust: 100%; }
 canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 [hidden] { display: none !important; }
-p { margin: 0; }
+p, h1, h2, h3 { margin: 0; }
+/* Los iconos son dibujos de 12 x 12 pixeles: se muestran al doble o al triple, sin suavizar. */
+.icono { image-rendering: pixelated; image-rendering: crisp-edges; width: 24px; height: 24px; vertical-align: -6px; flex: none; }
+.chico { font-size: 13px; opacity: .85; }
+.verde { color: var(--verde); } .amarillo { color: var(--amarillo); } .rojo { color: var(--rojo); }
 
-/* --- instrumentos --- */
+/* los cuadraditos de los sectores */
+.cuadros { display: inline-flex; gap: 4px; }
+.cuadros i { width: 14px; height: 14px; background: rgba(255, 255, 255, .18); }
+.cuadros i.verde { background: var(--verde); } .cuadros i.amarillo { background: var(--amarillo); } .cuadros i.rojo { background: var(--rojo); } .cuadros i.negro { background: #000; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .35); }
+.cuadros i.ahora { background: none; box-shadow: inset 0 0 0 2px #fff; animation: titila 1s steps(2) infinite; }
+@keyframes titila { 50% { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35); } }
+
+/* --- mientras se corre --- */
 #hud { position: fixed; inset: 0; pointer-events: none; }
+.tablero { display: contents; }
 .placa { position: absolute; background: var(--placa); border-radius: 5px; padding: 8px 12px; }
-
-.tiempo { left: var(--mi); top: var(--ma); display: flex; align-items: center; gap: 12px; }
+.tiempo { left: var(--mi); top: var(--ma); display: grid; gap: 6px; justify-items: start; }
 #reloj { font: 700 46px/1 var(--titulos); font-variant-numeric: tabular-nums; }
-.chico { font-size: 13px; line-height: 1.3; }
-#mejor.adelante { color: var(--verde); }
-#mejor.atras { color: var(--rojo); }
-.rescates { display: flex; align-items: center; gap: 7px; font-size: 13px; }
-#rescates { display: flex; gap: 4px; }
-#rescates i { width: 11px; height: 11px; border-radius: 50%; background: var(--amarillo); }
-#rescates i.usado { background: none; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6); }
-
-.marcha { left: var(--mi); bottom: var(--mb); display: grid; gap: 6px; min-width: 148px; }
+#rival { display: flex; align-items: center; gap: 5px; font: 700 17px/1 var(--titulos); font-variant-numeric: tabular-nums; }
+#rival .icono { width: 12px; height: 12px; }
+#rival .quien { max-width: 7em; color: #fff; }
+#rival.adelante b { color: var(--verde); } #rival.atras b { color: var(--rojo); }
+.marcha { left: var(--mi); bottom: var(--mb); display: grid; gap: 6px; min-width: 132px; }
 .vel { font-size: 14px; }
 .vel b { font: 700 54px/.9 var(--titulos); font-variant-numeric: tabular-nums; margin-right: 3px; }
-.cambio { display: inline-block; margin-left: 6px; padding: 3px 8px 4px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .7); font: 700 17px/1 var(--titulos); vertical-align: 6px; }
-.cambio.puesta { background: var(--amarillo); color: #000; box-shadow: none; }
-.piso { display: flex; align-items: center; gap: 9px; font: 700 21px/1 var(--titulos); }
-.medidor { display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 8px; font-size: 13px; }
-.barra { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .22); overflow: hidden; }
-.barra i { display: block; height: 100%; background: var(--amarillo); }
-.barra.roto i { background: #fff; }
+.medidor { display: flex; align-items: center; gap: 6px; }
+.medidor .icono { width: 12px; height: 12px; opacity: .8; }
+.barra { flex: 1; display: block; height: 8px; border-radius: 0; background: rgba(255, 255, 255, .22); overflow: hidden; }
+.barra i { display: block; height: 100%; background: #fff; }
 .barra.alerta i { background: var(--rojo); }
-.ruedas { display: grid; grid-template-columns: 9px 9px; gap: 3px; }
-.ruedas i { width: 9px; height: 11px; border-radius: 2px; background: #fff; }
-.ruedas i.aire { background: none; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .65); }
-.ruedas i.patina { background: var(--amarillo); }
-.ruedas i.fondo { background: var(--rojo); }
-
-.perfil { left: 50%; top: var(--ma); transform: translateX(-50%); width: min(360px, 38vw); text-align: center; font-size: 13px; }
-#perfil { display: block; width: 100%; height: auto; overflow: visible; }
-#perfilForma { fill: rgba(255, 255, 255, .2); stroke: #fff; stroke-width: 1.5; stroke-linejoin: round; }
-#perfilControles line { stroke: #fff; stroke-width: 2; }
-#perfilControles line.pasado { stroke: var(--verde); }
-#perfilAca { fill: var(--amarillo); stroke: #000; stroke-width: 1.5; }
-
-.inclina { right: var(--md); bottom: var(--mb); display: flex; gap: 14px; }
-.dial { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; }
-.dial svg { width: 62px; height: 62px; }
-.dial b { font: 700 21px/1 var(--titulos); }
-.dial em { font-style: normal; }
-.dial g { fill: #fff; }
-.aro { fill: none; stroke: rgba(255, 255, 255, .6); stroke-width: 1.5; }
-.dial.peligro { color: var(--rojo); }
-.dial.peligro g { fill: var(--rojo); }
-.dial.peligro .aro { stroke: var(--rojo); }
-
-/* aviso negro: que paso y que hacer. cartel amarillo: nombre del tramo. Van apilados arriba, al centro. */
-.carteles { position: absolute; left: 50%; top: calc(var(--ma) + 90px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; width: max-content; max-width: min(540px, 88vw); }
+/* las notas del copiloto: la que viene y la siguiente */
+.notas { position: absolute; left: 50%; top: var(--ma); transform: translateX(-50%); display: flex; align-items: flex-start; gap: 10px; }
+.nota { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 6px; background: var(--placa); border-radius: 5px; padding: 6px 10px 4px; }
+.nota .icono { width: 60px; height: 60px; vertical-align: 0; }
+.nota b { font: 800 44px/1 var(--titulos); }
+.nota small { grid-column: 1 / -1; text-align: center; font: 600 14px/1.2 var(--titulos); opacity: .8; min-height: 1.2em; }
+.nota.despues { opacity: .85; padding: 4px 7px 2px; column-gap: 4px; }
+.nota.despues .icono { width: 36px; height: 36px; }
+.nota.despues b { font-size: 26px; }
+.nota.despues small { font-size: 11px; }
+.carteles { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 10px; width: max-content; max-width: min(540px, 88vw); }
 .aviso { background: var(--placa); padding: 9px 16px; border-radius: 5px; font-size: 16px; text-align: center; }
-.cartel { margin: 3px; background: var(--amarillo); color: #000; font: 700 32px/1 var(--titulos); padding: 9px 22px 11px; border-radius: 7px; border: 3px solid #000; outline: 3px solid var(--amarillo); text-align: center; }
+.aviso .icono { margin-right: 8px; }
+.grande { font: 800 clamp(64px, 12vw, 120px)/1 var(--titulos); text-shadow: 0 3px 0 #000, 0 0 18px rgba(0, 0, 0, .5); }
+.grande.ya { color: var(--amarillo); } .grande.verde, .grande.amarillo, .grande.rojo { font-size: clamp(40px, 7vw, 68px); }
+
+/* --- los botones que estan siempre mientras se corre: camara, sonido, voz, salir de la practica y volver al camino ---
+   Cada uno muestra su estado: la camara, el auto como se lo ve y un puntito por cada una de las tres;
+   el sonido y la voz, tenues y tachados si estan apagados; "volver" titila en amarillo cuando el auto quedo trabado. */
+#mandos { position: fixed; top: var(--ma); right: var(--md); display: flex; flex-direction: column; align-items: flex-end; gap: 12px; pointer-events: none; }
+#mandos button, #tactil button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.fila { display: flex; gap: 6px; }
+.mando { position: relative; width: 48px; height: 48px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 8px; background: var(--boton); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .32); }
+.mando .icono, .redondo .icono { width: 36px; height: 36px; display: block; }
+.puntos { display: flex; gap: 4px; margin: -5px 0 1px; }
+.puntos i { width: 6px; height: 6px; background: rgba(255, 255, 255, .3); }
+.puntos i.aca { background: var(--amarillo); }
+.mando.apagado { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .14); }
+.mando.apretado { background: rgba(255, 255, 255, .3); }
+html:not(.practica) .mando.salir { display: none; }
+.redondo { position: relative; width: 60px; height: 60px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--boton); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .6); }
+.redondo.apretado { background: rgba(255, 255, 255, .3); }
+.costo { position: absolute; right: -5px; bottom: -4px; padding: 1px 5px 3px; border-radius: 4px; background: var(--rojo); color: #000; font: 800 15px/1 var(--titulos); }
+.redondo.volver.llama { animation: llama .6s step-end infinite; }
+.redondo.volver.llama .icono { animation: llamaIcono .6s step-end infinite; }
+@keyframes llama { 50% { background: var(--amarillo); box-shadow: inset 0 0 0 2px #000; } }
+@keyframes llamaIcono { 50% { filter: brightness(0); } }
+/* en la compu, cada boton lleva abajo la tecla que hace lo mismo */
+@media (hover: hover) and (pointer: fine) {
+  #mandos { gap: 22px; }
+  .mando::after, .redondo.volver::after { content: attr(data-letra); position: absolute; left: -6px; right: -6px; top: 100%; margin-top: 3px; text-align: center; font: 700 11px/1 var(--texto); color: #fff; opacity: .8; text-shadow: 0 1px 0 #000, 0 0 4px #000; }
+  .mando:hover, .redondo:hover { background: rgba(0, 0, 0, .8); }
+}
 
 /* --- portada --- */
-#portada { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 14px; padding: clamp(20px, 5vw, 64px); padding-left: max(clamp(20px, 5vw, 64px), env(safe-area-inset-left)); background: linear-gradient(90deg, rgba(0, 0, 0, .8), rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, 0) 74%); }
-.marca { width: min(780px, 90vw, 150vh); height: auto; flex: none; }
-.bajada { font-size: clamp(17px, 1.6vw, 21px); max-width: 32em; }
-.teclas { margin: 4px 0 8px; width: 100%; max-width: 520px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 16px; align-items: baseline; }
-.teclas div { display: contents; }
-.teclas dd { margin: 0; }
-kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 3px; border-radius: 4px; background: #fff; color: #000; font: 600 13px/1.4 var(--texto); text-align: center; }
+#portada { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: safe center; align-items: flex-start; gap: 12px; padding: clamp(16px, 4vw, 48px); padding-left: max(clamp(16px, 4vw, 48px), env(safe-area-inset-left)); background: linear-gradient(90deg, rgba(8, 9, 10, .9), rgba(8, 9, 10, .72) 34rem, rgba(8, 9, 10, 0) 52rem); }
+#portada > .col { max-width: 30rem; width: 100%; flex: none; display: flex; flex-direction: column; gap: 12px; }
+.marca { width: min(30rem, 100%); height: auto; }
+.aviso-del-club { background: var(--placa); border-left: 4px solid var(--amarillo); padding: 12px 14px; display: grid; gap: 6px; }
+.fecha { font-size: 14px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.fecha b { font: 800 22px/1 var(--titulos); color: var(--amarillo); }
+.lugar { margin-left: auto; opacity: .7; font-variant-numeric: tabular-nums; }
+#pistaNombre { font: 800 clamp(26px, 5vw, 36px)/1.05 var(--titulos); }
+.datos { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.hoja { display: flex; flex-wrap: wrap; gap: 2px 3px; margin-top: 4px; }
+.hoja .nota { display: inline-flex; flex-direction: column; align-items: center; background: none; padding: 0; width: 30px; }
+.hoja .nota .icono { width: 30px; height: 30px; }
+.hoja .nota b { font: 700 13px/1 var(--titulos); min-height: 13px; }
+.autos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+button.auto { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; text-align: left; padding: 8px 10px; background: var(--placa); color: #fff; border-radius: 5px; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .18); font: 500 13px/1.25 var(--texto); }
+button.auto .foto { grid-row: 1 / 3; width: 90px; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+button.auto .emoji { grid-row: 1 / 3; font-size: 26px; }
+button.auto b { font: 700 19px/1.1 var(--titulos); align-self: end; }
+button.auto small { opacity: .75; align-self: start; }
+button.auto.elegido { box-shadow: inset 0 0 0 3px var(--amarillo); }
+.desafio { background: var(--amarillo); color: #000; font: 700 20px/1.15 var(--titulos); padding: 8px 14px 9px; border-radius: 5px; display: flex; align-items: center; gap: 10px; }
+.resultado { background: var(--placa); padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-radius: 5px; }
+.resultado .tiempo, .tiempoMarca { position: static; background: none; padding: 0; font: 700 22px/1 var(--titulos); font-variant-numeric: tabular-nums; }
+.botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 button { font: 700 27px/1 var(--titulos); padding: 12px 28px 14px; border: 0; border-radius: 6px; background: var(--amarillo); color: #000; cursor: pointer; }
 button:disabled { background: rgba(255, 255, 255, .22); color: #fff; cursor: progress; }
-button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-
-/* --- ranking, desafio y compartir --- */
-.desafio { background: var(--amarillo); color: #000; font: 700 21px/1.15 var(--titulos); padding: 8px 14px 9px; border-radius: 6px; max-width: 22em; }
-.ranking { background: var(--placa); border-radius: 6px; padding: 12px 16px 14px; width: min(360px, 100%); text-align: left; }
-.ranking h2 { margin: 0 0 6px; font: 700 22px/1 var(--titulos); }
-.tabla { margin: 0; padding: 0; list-style: none; counter-reset: puesto; display: grid; gap: 5px; }
-.tabla li { counter-increment: puesto; display: grid; grid-template-columns: 1.4em 1fr auto auto; gap: 10px; align-items: center; }
-.tabla li::before { content: counter(puesto); font: 700 18px/1 var(--titulos); }
-.tiempoMarca { font: 700 19px/1 var(--titulos); font-variant-numeric: tabular-nums; }
-button.chiquito { font: 600 13px/1 var(--texto); padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #fff; }
-button.chiquito.elegido { background: var(--amarillo); color: #000; }
+button:disabled > .icono { filter: invert(1); }
+button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 button.segundo { font-size: 20px; padding: 9px 18px 10px; background: #fff; }
-button.segundo:disabled { background: rgba(255, 255, 255, .22); cursor: default; }
-.social { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; max-width: 34em; }
+.rotulo { margin-left: .4em; }
+/* el boton de cada renglon de la tabla: correr contra el fantasma de esa pasada (amarillo = es el rival elegido) */
+button.chiquito { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 6px; background: rgba(255, 255, 255, .14); }
+button.chiquito .icono { opacity: .75; vertical-align: 0; }
+button.chiquito.elegido { background: var(--amarillo); }
+button.chiquito.elegido .icono { filter: brightness(0); opacity: 1; }
+.solapas { display: flex; gap: 8px; flex-wrap: wrap; }
+.solapas button { font: 600 15px/1 var(--texto); padding: 8px 14px 8px 10px; background: var(--placa); color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
+
+/* --- paneles: tabla, pasadas, ayuda --- */
+.panel { position: fixed; inset: 0; overflow-y: auto; background: rgba(8, 9, 10, .97); padding: clamp(16px, 4vw, 48px); display: grid; align-content: start; justify-items: center; }
+.panel > div { width: min(34rem, 100%); display: grid; gap: 12px; }
+.panel h2 { font: 800 30px/1.1 var(--titulos); padding-right: 56px; }
+.panel h3 { font: 700 20px/1.1 var(--titulos); margin-top: 8px; }
+.panel p { max-width: 34rem; }
+#historia, #comoSeJuega { display: grid; gap: 10px; }
+.cerrar { position: fixed; top: var(--ma); right: var(--md); width: 48px; height: 48px; padding: 0; display: grid; place-items: center; background: #fff; z-index: 1; }
+.cerrar .icono { width: 36px; height: 36px; vertical-align: 0; }
+.tabla, .pasadas { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.tabla { counter-reset: puesto; }
+.tabla li { counter-increment: puesto; display: grid; grid-template-columns: 1.4em auto 1fr auto auto 36px; gap: 10px; align-items: center; padding: 6px 10px; background: rgba(255, 255, 255, .07); }
+.tabla li::before { content: counter(puesto); font: 700 18px/1 var(--titulos); }
+.tabla li.mio { box-shadow: inset 3px 0 0 var(--amarillo); }
+.quien { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pasadas a { display: grid; grid-template-columns: 3em auto 1fr auto auto auto; gap: 10px; align-items: center; padding: 8px 10px; background: rgba(255, 255, 255, .07); color: #fff; text-decoration: none; }
+.pasadas a.aca { box-shadow: inset 3px 0 0 var(--amarillo); }
+.pasadas b { font: 800 18px/1 var(--titulos); color: var(--amarillo); }
+.teclas { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 9px 16px; align-items: center; }
+.teclas div { display: contents; }
+.teclas dd { margin: 0; }
+.teclas dt .icono { margin-right: 4px; }
+kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 3px; border-radius: 4px; background: #fff; color: #000; font: 600 13px/1.4 var(--texto); text-align: center; }
+
+/* --- el resultado --- */
+#fin { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 10px; padding: 24px; background: rgba(8, 9, 10, .78); text-align: center; }
+#fin > * { flex: none; }
+#fin h2 { font: 700 30px/1.1 var(--titulos); }
+#finGrande { font: 800 clamp(64px, 13vw, 140px)/.95 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+#finGrande.abandono { color: var(--rojo); }
+.sectores { display: flex; gap: 8px; }
+.sector { display: grid; justify-items: center; gap: 3px; min-width: 52px; }
+.sector i { width: 44px; height: 44px; background: rgba(255, 255, 255, .18); }
+.sector.verde i { background: var(--verde); } .sector.amarillo i { background: var(--amarillo); } .sector.rojo i { background: var(--rojo); } .sector.negro i { background: #000; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35); }
+.sector b { font: 700 18px/1 var(--titulos); font-variant-numeric: tabular-nums; color: #fff; }
+.sector small { font-size: 12px; opacity: .8; color: #fff; }
+.social { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; max-width: 34em; margin-top: 6px; }
 .social label { font-size: 14px; }
 .social input { width: 9.5em; padding: 8px 10px; border: 0; border-radius: 5px; font: 600 16px/1.2 var(--texto); color: #000; background: #fff; }
 .social input:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; }
 #compartido { flex-basis: 100%; min-height: 1.35em; font-size: 14px; overflow-wrap: anywhere; }
-@media (min-width: 900px) and (min-height: 520px) {
-  #portada .ranking { position: absolute; right: clamp(20px, 5vw, 64px); bottom: clamp(20px, 5vw, 64px); }
-}
+.ranking { width: min(30rem, 100%); text-align: left; }
+#fin .botones { justify-content: center; }
 
-/* --- llegada --- */
-#fin { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 8px; padding: 24px; background: rgba(0, 0, 0, .7); text-align: center; }
-#fin h2 { margin: 0; font: 700 36px/1.1 var(--titulos); }
-#finGrande { font: 800 clamp(72px, 13vw, 150px)/.95 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
-#finMedalla { font: 700 28px/1.1 var(--titulos); max-width: 22em; }
-#finDetalle { margin: 2px 0 8px; max-width: 30em; }
-#fin > button { margin-top: 10px; flex: none; }
-#fin .ranking { flex: none; }
-
-/* --- celular: pedales en pantalla. La portada muestra las teclas o los pedales segun el aparato. --- */
-.dedos { display: none; }
-@media (hover: none) and (pointer: coarse) {
-  .dedos { display: grid; }
-  .teclado { display: none; }
-}
+/* --- celular: pedales en pantalla --- */
 #tactil { position: fixed; inset: 0; pointer-events: none; }
-#tactil button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-.pedal { position: absolute; bottom: var(--mb); width: 96px; height: 116px; padding: 0; display: grid; place-items: center; align-content: center; gap: 4px; border: 2px solid rgba(255, 255, 255, .6); border-radius: 16px; background: rgba(0, 0, 0, .5); color: #fff; font: 700 17px/1 var(--titulos); }
-.pedal svg { width: 40px; height: 40px; fill: currentColor; }
-.pedal.gas { right: var(--md); color: var(--amarillo); border-color: var(--amarillo); }
+html:not(.jugando) #tactil { display: none; }
+.pedal { position: absolute; bottom: var(--mb); width: 96px; height: 116px; padding: 0; display: grid; place-items: center; border: 2px solid rgba(255, 255, 255, .6); border-radius: 16px; background: rgba(0, 0, 0, .5); }
+.pedal .icono { width: 48px; height: 48px; display: block; }
+.pedal.gas { right: var(--md); border-color: var(--amarillo); }
 .pedal.freno { left: var(--mi); }
-.pedal.apretado { background: rgba(255, 255, 255, .34); }
+/* apretado, el pedal se llena de color: se ve de reojo que esta pisado */
+.pedal.apretado { background: #fff; border-color: #fff; }
+.pedal.gas.apretado { background: var(--amarillo); border-color: var(--amarillo); }
+.pedal.apretado .icono, .redondo.mano.apretado .icono { filter: brightness(0); }
 .pedal.izq, .pedal.der { display: none; }
-.botoncito { position: absolute; right: var(--md); padding: 9px 14px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; font: 600 14px/1 var(--texto); }
-.botoncito.volver { bottom: calc(var(--mb) + 132px); }
-.botoncito.camara { bottom: calc(var(--mb) + 176px); }
-.botoncito.baja { right: auto; left: var(--mi); bottom: calc(var(--mb) + 132px); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .6); }
-.botoncito.baja.puesta { background: var(--amarillo); color: #000; box-shadow: none; }
-.botoncito.apretado { background: rgba(255, 255, 255, .34); }
+/* el pedal del freno tambien es la marcha atras: cuando el auto va para atras, lo dice */
+.marcha-atras .pedal.freno { border-color: var(--amarillo); }
+.marcha-atras .pedal.freno::after { content: 'R'; position: absolute; top: 9px; right: 12px; font: 800 22px/1 var(--titulos); color: var(--amarillo); }
+.marcha-atras .pedal.freno.apretado::after { color: #000; }
+.redondo.mano { position: absolute; left: calc(var(--mi) + 18px); bottom: calc(var(--mb) + 128px); }
+.redondo.mano.apretado { background: var(--amarillo); box-shadow: inset 0 0 0 2px #000; }
 #volante { position: absolute; left: 50%; bottom: calc(var(--mb) + 12px); width: min(34vw, 190px); height: 6px; margin-left: calc(min(34vw, 190px) / -2); border-radius: 3px; background: rgba(0, 0, 0, .55); }
 #volante::before { content: ''; position: absolute; left: 50%; top: -5px; width: 2px; height: 16px; margin-left: -1px; background: #fff; }
 #volanteAca { position: absolute; top: -6px; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--amarillo); border: 2px solid #000; }
-/* sin sensor de inclinacion: flechas a la izquierda, pedales juntos a la derecha */
+/* sin sensor de inclinacion: flechas a la izquierda, pedales juntos a la derecha (y el freno de mano, arriba del freno) */
 .sin-volante #volante { display: none; }
 .sin-volante .pedal.izq, .sin-volante .pedal.der { display: grid; }
 .sin-volante { --pedal: min(96px, calc((100vw - var(--mi) - var(--md) - 24px) / 4)); }
@@ -147,34 +213,71 @@ button.segundo:disabled { background: rgba(255, 255, 255, .22); cursor: default;
 .sin-volante .pedal.izq { left: var(--mi); }
 .sin-volante .pedal.der { left: calc(var(--mi) + var(--pedal) + 8px); }
 .sin-volante .pedal.freno { left: auto; right: calc(var(--md) + var(--pedal) + 8px); }
-/* con pedales abajo, los instrumentos suben */
-.tactil .marcha { bottom: auto; top: calc(var(--ma) + 62px); min-width: 0; }
-.tactil .inclina { bottom: auto; top: var(--ma); }
-.tactil .chico { display: none; }
+.sin-volante .redondo.mano { left: auto; right: calc(var(--md) + var(--pedal) + 8px + (var(--pedal) - 60px) / 2); }
+/* con pedales abajo, la velocidad sube: queda debajo del reloj */
+.tactil .tablero { position: absolute; left: var(--mi); top: var(--ma); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.tactil .tablero .placa { position: static; }
+.tactil .marcha { min-width: 0; }
 .tactil .vel b { font-size: 38px; }
 .tactil #reloj { font-size: 34px; }
-.tactil .dial svg { width: 44px; height: 44px; }
-.tactil .dial em { display: none; }
-.tactil .carteles { top: calc(var(--ma) + 196px); }
-.tactil .rescates { font-size: 0; gap: 0; }
-.tactil .cartel { font-size: 26px; }
 
-@media (max-height: 480px) {
-  #portada { gap: 8px; padding-top: 12px; padding-bottom: 12px; }
-  .marca { width: min(88vw, 130vh); }
-  .teclas { gap: 4px 16px; }
-  .pedal { height: 96px; }
-  .botoncito.volver, .botoncito.baja { bottom: calc(var(--mb) + 110px); }
-  .botoncito.camara { bottom: calc(var(--mb) + 152px); }
-  .tactil .carteles { top: calc(var(--ma) + 88px); left: 58%; }
+/* La ayuda muestra las teclas o los botones segun el aparato. En el celular, los botones son solo el icono
+   (el texto queda para los lectores de pantalla). */
+.dedos { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .dedos { display: grid; }
+  .teclado { display: none; }
+  .rotulo { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  button > .icono { width: 36px; height: 36px; vertical-align: 0; display: block; }
+  #largar, #otra { padding: 10px 44px; }
+  button.segundo, .solapas button { width: 56px; height: 56px; padding: 0; display: grid; place-items: center; }
+  button.auto small { display: none; }
+  button.auto b { grid-row: 1 / 3; align-self: center; }
+  button.chiquito { width: 44px; height: 44px; }
+  button.chiquito .icono { width: 24px; height: 24px; }
+  .tabla li { grid-template-columns: 1.4em auto 1fr auto auto 44px; gap: 8px; }
 }
 
+/* celular parado: los botones de arriba van en columna, contra el borde derecho, y las notas quedan en el medio */
+@media (orientation: portrait) and (max-width: 600px) {
+  .fila { flex-direction: column; }
+  .tactil .notas { left: calc(50% + 20px); }
+  .tactil #rival .quien { display: none; }
+  .tactil #reloj { font-size: 28px; }
+  .tactil .tiempo { padding: 7px 9px; gap: 5px; }
+  .tactil .cuadros { gap: 3px; }
+  .tactil .cuadros i { width: 12px; height: 12px; }
+  .tactil .marcha { padding: 7px 9px; }
+  .tactil .vel b { font-size: 32px; }
+}
 @media (max-width: 760px) {
-  .perfil { display: none; }
-  .carteles { top: calc(var(--ma) + 62px); }
-  .cartel { font-size: 26px; }
+  #portada { background: rgba(8, 9, 10, .78); align-items: center; }
   #reloj { font-size: 34px; }
   .vel b { font-size: 40px; }
-  .dial svg { width: 46px; height: 46px; }
-  .dial em { display: none; }
+  .notas { gap: 8px; }
+  .nota .icono { width: 45px; height: 45px; }
+  .nota b { font-size: 32px; }
+  .nota.despues .icono { width: 30px; height: 30px; }
+  .nota.despues b { font-size: 22px; }
+}
+/* pantallas bajas (una notebook): la portada se aprieta para que entre sin tener que bajar */
+@media (max-height: 780px) {
+  #portada { padding-top: 20px; padding-bottom: 20px; gap: 10px; }
+  #portada > .col { gap: 10px; }
+  .marca { width: min(24rem, 100%); }
+}
+/* celular acostado: poca altura. La portada va en dos columnas y todo se achica un poco. */
+@media (max-height: 520px) {
+  #portada { gap: 8px 20px; padding-top: 12px; padding-bottom: 12px; }
+  .pedal { height: 96px; }
+  .redondo.mano { bottom: calc(var(--mb) + 106px); }
+  #finGrande { font-size: clamp(48px, 16vh, 90px); }
+  .sector i { width: 32px; height: 32px; }
+  #fin { gap: 6px; padding: 12px 24px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  #portada { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: safe center; align-items: start; background: rgba(8, 9, 10, .78); }
+  #portada > .col { max-width: none; gap: 8px; }
+  .marca { width: min(20rem, 100%); }
+  #pistaNombre { font-size: 26px; }
 }
