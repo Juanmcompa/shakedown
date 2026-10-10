@@ -13,6 +13,11 @@ import { crearTeclas } from './input.js';
 import { crearHud, reloj } from './hud.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
+// (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
+if (document.documentElement.dataset.pagina !== '2' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now());
+
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
   $('largar').textContent = 'Este navegador no pudo iniciar los gráficos 3D';

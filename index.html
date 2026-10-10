@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-pagina="2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,8 +9,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="style.css">
-<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script>
+  // Mientras el juego esta en desarrollo, sus archivos se piden de nuevo en cada visita (el numero V
+  // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
+  const V = Date.now();
+  const modulos = ['main', 'config', 'etapa1', 'terrain', 'vehicle', 'world', 'truck', 'camera', 'fx', 'audio', 'input', 'hud', 'noise'];
+  const mapa = { three: './vendor/three.module.js' };
+  for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
+  document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
+  document.write('<script type="importmap">' + JSON.stringify({ imports: mapa }) + '<\/script>');
+</script>
 </head>
 <body>
 <canvas id="lienzo"></canvas>
@@ -101,6 +109,6 @@
   <button id="otra">Correr de nuevo</button>
 </section>
 
-<script type="module" src="src/main.js"></script>
+<script>document.write('<script type="module" src="src/main.js?v=' + V + '"><\/script>');</script>
 </body>
 </html>

@@ -42,6 +42,8 @@ Dos archivos concentran casi todo lo que se ajusta:
 
 Es HTML, CSS y JavaScript sin instalación ni compilado. Subir al repo es publicar: GitHub Pages lo actualiza en un minuto.
 
+Mientras está en desarrollo, la página vuelve a pedir los archivos del juego en cada visita, así los cambios se ven apenas se publican. Si se suma un archivo nuevo en `src/`, hay que agregarlo a la lista que está al principio de `index.html`.
+
 | Archivo | Qué hace |
 | --- | --- |
 | `index.html`, `style.css` | La página, la portada y los instrumentos en pantalla |
