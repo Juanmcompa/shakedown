@@ -27,6 +27,8 @@ p { margin: 0; }
 .tiempo { left: var(--mi); top: var(--ma); display: flex; align-items: center; gap: 12px; }
 #reloj { font: 700 46px/1 var(--titulos); font-variant-numeric: tabular-nums; }
 .chico { font-size: 13px; line-height: 1.3; }
+#mejor.adelante { color: var(--verde); }
+#mejor.atras { color: var(--rojo); }
 .rescates { display: flex; align-items: center; gap: 7px; font-size: 13px; }
 #rescates { display: flex; gap: 4px; }
 #rescates i { width: 11px; height: 11px; border-radius: 50%; background: var(--amarillo); }
@@ -87,12 +89,35 @@ button { font: 700 27px/1 var(--titulos); padding: 12px 28px 14px; border: 0; bo
 button:disabled { background: rgba(255, 255, 255, .22); color: #fff; cursor: progress; }
 button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
+/* --- ranking, desafio y compartir --- */
+.desafio { background: var(--amarillo); color: #000; font: 700 21px/1.15 var(--titulos); padding: 8px 14px 9px; border-radius: 6px; max-width: 22em; }
+.ranking { background: var(--placa); border-radius: 6px; padding: 12px 16px 14px; width: min(360px, 100%); text-align: left; }
+.ranking h2 { margin: 0 0 6px; font: 700 22px/1 var(--titulos); }
+.tabla { margin: 0; padding: 0; list-style: none; counter-reset: puesto; display: grid; gap: 5px; }
+.tabla li { counter-increment: puesto; display: grid; grid-template-columns: 1.4em 1fr auto auto; gap: 10px; align-items: center; }
+.tabla li::before { content: counter(puesto); font: 700 18px/1 var(--titulos); }
+.tiempoMarca { font: 700 19px/1 var(--titulos); font-variant-numeric: tabular-nums; }
+button.chiquito { font: 600 13px/1 var(--texto); padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #fff; }
+button.chiquito.elegido { background: var(--amarillo); color: #000; }
+button.segundo { font-size: 20px; padding: 9px 18px 10px; background: #fff; }
+button.segundo:disabled { background: rgba(255, 255, 255, .22); cursor: default; }
+.social { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; max-width: 34em; }
+.social label { font-size: 14px; }
+.social input { width: 9.5em; padding: 8px 10px; border: 0; border-radius: 5px; font: 600 16px/1.2 var(--texto); color: #000; background: #fff; }
+.social input:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; }
+#compartido { flex-basis: 100%; min-height: 1.35em; font-size: 14px; overflow-wrap: anywhere; }
+@media (min-width: 900px) and (min-height: 520px) {
+  #portada .ranking { position: absolute; right: clamp(20px, 5vw, 64px); bottom: clamp(20px, 5vw, 64px); }
+}
+
 /* --- llegada --- */
-#fin { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; background: rgba(0, 0, 0, .66); text-align: center; }
+#fin { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 8px; padding: 24px; background: rgba(0, 0, 0, .7); text-align: center; }
 #fin h2 { margin: 0; font: 700 36px/1.1 var(--titulos); }
-#finGrande { font: 800 clamp(80px, 15vw, 176px)/.95 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+#finGrande { font: 800 clamp(72px, 13vw, 150px)/.95 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
 #finMedalla { font: 700 28px/1.1 var(--titulos); max-width: 22em; }
-#finDetalle { margin: 2px 0 18px; max-width: 30em; }
+#finDetalle { margin: 2px 0 8px; max-width: 30em; }
+#fin > button { margin-top: 10px; flex: none; }
+#fin .ranking { flex: none; }
 
 /* --- celular: pedales en pantalla. La portada muestra las teclas o los pedales segun el aparato. --- */
 .dedos { display: none; }

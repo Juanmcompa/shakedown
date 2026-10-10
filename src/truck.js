@@ -81,3 +81,44 @@ export function crearDibujo(escena) {
   }
   return { grupo, actualizar };
 }
+
+// El fantasma del rival: la misma camioneta, translucida y sin sombra, con su nombre arriba.
+export function crearEspectro(escena, T) {
+  const { grupo } = armarCamioneta();
+  const blanco = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false });
+  grupo.traverse((o) => { if (o.isMesh) { o.material = blanco; o.castShadow = false; } });
+  const lienzo = document.createElement('canvas');
+  lienzo.width = 256; lienzo.height = 64;
+  const tex = new THREE.CanvasTexture(lienzo);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const cartel = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  cartel.scale.set(7, 1.75, 1);
+  cartel.position.y = 3.4;
+  cartel.renderOrder = 5;
+  grupo.add(cartel);
+  grupo.visible = false;
+  escena.add(grupo);
+  const V = new THREE.Vector3(), Q = new THREE.Quaternion(), ARRIBA = new THREE.Vector3(0, 1, 0);
+  return {
+    nombre: (txt) => {
+      const x = lienzo.getContext('2d');
+      x.clearRect(0, 0, 256, 64);
+      x.font = '700 34px "Barlow Condensed", "Arial Narrow", sans-serif';
+      const w = Math.min(244, x.measureText(txt).width + 28);
+      x.fillStyle = 'rgba(0, 0, 0, .78)';
+      x.fillRect(128 - w / 2, 8, w, 48);
+      x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(txt, 128, 33, 232);
+      tex.needsUpdate = true;
+    },
+    // lo apoya sobre el terreno en la posicion y el rumbo grabados
+    poner: (o) => {
+      const sx = (T.altura(o.x + 1, o.z) - T.altura(o.x - 1, o.z)) / 2, sz = (T.altura(o.x, o.z + 1) - T.altura(o.x, o.z - 1)) / 2;
+      V.set(-sx, 1, -sz).normalize();
+      grupo.quaternion.setFromUnitVectors(ARRIBA, V).multiply(Q.setFromAxisAngle(ARRIBA, -o.rumbo));
+      grupo.position.set(o.x, T.altura(o.x, o.z) + 0.8, o.z);
+      grupo.visible = true;
+    },
+    ocultar: () => { grupo.visible = false; },
+  };
+}

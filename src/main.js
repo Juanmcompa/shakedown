@@ -6,7 +6,9 @@ import { crearTerreno } from './terrain.js';
 import { crearCamioneta } from './vehicle.js';
 import { crearPartida } from './reglas.js';
 import { crearMundo } from './world.js';
-import { crearDibujo } from './truck.js';
+import { crearDibujo, crearEspectro } from './truck.js';
+import { crearGrabacion } from './fantasma.js';
+import { crearSocial } from './social.js';
 import { crearCamara } from './camera.js';
 import { crearEfectos } from './fx.js';
 import { crearSonido } from './audio.js';
@@ -17,7 +19,7 @@ const $ = (id) => document.getElementById(id);
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (document.documentElement.dataset.pagina !== '3' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now());
+if (document.documentElement.dataset.pagina !== '4' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now());
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
@@ -31,9 +33,11 @@ render.shadowMap.enabled = true;
 const T = crearTerreno(ETAPA), P = T.camino, escena = new THREE.Scene();
 const mundo = crearMundo(T, escena, liviano), c = crearCamioneta(T), dibujo = crearDibujo(escena), partida = crearPartida(T);
 const camara = crearCamara(T), fx = crearEfectos(escena), sonido = crearSonido(), hud = crearHud(T);
+const social = crearSocial(T), espectro = crearEspectro(escena, T);
 
 let pantalla = 'portada';   // portada, jugando o fin
-let antes = performance.now(), resto = 0, reloj3d = 0, mejor = 0, tactil = false, pegado = false, pocaNafta = false;
+let antes = performance.now(), resto = 0, reloj3d = 0, mejor = 0, tactil = false, pegado = false, pocaNafta = false, grabacion = null;
+const lugar = { x: 0, z: 0, rumbo: 0 };
 try { mejor = Number(localStorage.getItem('encajados.etapa' + ETAPA.version)) || 0; } catch (e) { /* sin memoria no se guarda el record */ }
 const ent = { x: 0, y: 0, mano: false }, QUIETO = { x: 0, y: 0, mano: true };
 
@@ -58,6 +62,7 @@ function largar() {
   pegado = pocaNafta = false;
   c.baja = false;
   partida.empezar(c);
+  grabacion = crearGrabacion();
   fx.cortar();
   camara.saltar();
   mundo.reiniciar();
@@ -99,8 +104,11 @@ function terminar(llego) {
     $('finMedalla').textContent = 'de ' + P.n + '. Llegaste hasta ' + (nombre ? nombre.nombre : 'la largada') + '.';
     $('finDetalle').textContent = PERDER[partida.motivo][1];
   }
+  if (llego) social.llegada(grabacion, partida); else social.derrota();
+  espectro.ocultar();
   $('otra').textContent = llego ? 'Correr de nuevo' : 'Probar de nuevo';
   hud.aviso('');
+  hud.mostrar(false);
   $('cartel').hidden = true;
   $('fin').hidden = false;
 }
@@ -123,7 +131,7 @@ function atender(e) {
 }
 
 const teclas = crearTeclas((tecla) => {
-  if (tecla === 'Enter') { if (pantalla !== 'jugando' && document.activeElement.tagName !== 'BUTTON') largar(); }
+  if (tecla === 'Enter') { if (pantalla !== 'jugando' && !['BUTTON', 'INPUT'].includes(document.activeElement.tagName)) largar(); }
   else if (tecla === 'KeyR') { if (pantalla === 'jugando') partida.rescatar(c, 'pedido'); }
   else if (tecla === 'ShiftLeft' || tecla === 'ShiftRight' || tecla === 'KeyX') cambiar();
   else if (tecla === 'KeyC') hud.aviso('Cámara: ' + camara.cambiar().toLowerCase(), 1.5);
@@ -157,6 +165,13 @@ function cuadro(ahora) {
     if (partida.nafta > 25) pocaNafta = false;
     hud.actualizar(c, partida, dt);
     hud.volante(teclas.volante());
+    // la vuelta se va grabando, y el fantasma del rival corre al lado
+    if (partida.estado === 'corriendo') grabacion.muestra(partida.tiempo, c);
+    const rival = social.rival();
+    if (rival) {
+      espectro.poner(rival.fantasma.pose(partida.tiempo, lugar));
+      if (partida.estado === 'corriendo') hud.rival(rival.nombre, rival.fantasma.ventaja(partida.tiempo, partida.indice));
+    }
   }
   dibujo.actualizar(c);
   fx.actualizar(c, dt);
@@ -172,6 +187,8 @@ function cuadro(ahora) {
 window.addEventListener('resize', medir);
 $('largar').addEventListener('click', largar);
 $('otra').addEventListener('click', largar);
+social.alCambiarRival((r) => { if (r) espectro.nombre(r.nombre); else espectro.ocultar(); });
+social.abrir();
 medir();
 partida.apoyar(c, T.largada);
 $('largar').disabled = false;
@@ -184,5 +201,6 @@ window.encajados = {
   c, T, camara, teclas, partida,
   estado: () => ({ pantalla, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, pasados: partida.pasados, nafta: partida.nafta, roto: partida.rotura(), rescates: partida.rescates, baja: c.baja }),
   simular: (seg, x, y) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano: false }, JUEGO.paso); if (i % 2) fx.actualizar(c, JUEGO.paso * 2); } },
+  avanzar: (gas, dt) => { partida.paso(c, gas, dt); if (partida.estado === 'corriendo') grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
   ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); partida.indice = i; fx.cortar(); camara.saltar(); },
 };

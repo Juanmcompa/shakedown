@@ -39,6 +39,15 @@ Lo que conviene saber:
 - **En la cornisa, despacio.** Los mojones blancos marcan el borde. Lo que se ve oscuro y azulado está muy abajo.
 - **Mirá los cuatro cuadraditos** al lado del nombre del suelo: son las ruedas. Blanco agarra, amarillo patina, rojo patina mucho, hueco está en el aire.
 
+## Competir con amigos
+
+- Al llegar, poné tu nombre y tocá **Compartir mi marca**. En la compu copia un link; en el celular abre el menú de compartir.
+- Quien abre el link ve tu tiempo, corre contra tu **fantasma** y tu marca queda en su ranking.
+- El link también lleva los tiempos que ya conocés, así el ranking se va completando entre todos.
+- En el ranking, **Correr contra** elige el fantasma de cualquiera que tenga la vuelta guardada. Arriba a la izquierda se ve cuánto le llevás o le perdés.
+
+No hay servidor: el ranking se guarda en cada aparato y crece con los links que se abren. Si cambia la etapa (`version` en `src/etapa1.js`), las marcas viejas dejan de valer.
+
 ## Qué tocar para cambiar el juego
 
 Dos archivos concentran casi todo lo que se ajusta:
@@ -61,6 +70,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/terrain.js` | Convierte los tramos en terreno: alturas, suelos, río, árboles |
 | `src/vehicle.js` | La física de la camioneta |
 | `src/reglas.js` | Las reglas: controles, meta, nafta, daño, rescates y formas de perder |
+| `src/fantasma.js`, `src/social.js` | Graban la vuelta y la meten en un link; ranking, desafíos y nombre del jugador |
 | `src/world.js`, `src/truck.js` | Dibujan el terreno y la camioneta |
 | `src/camera.js`, `src/fx.js`, `src/audio.js` | Cámaras, huellas y barro que salta, sonido del motor |
 | `src/hud.js`, `src/input.js`, `src/noise.js` | Instrumentos, mandos (teclado, pedales e inclinación), ruido para el relieve |

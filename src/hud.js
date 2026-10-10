@@ -38,7 +38,12 @@ export function crearHud(T) {
       marcas.forEach((l, i) => l.classList.toggle('pasado', i < n));
       $('control').textContent = n < marcas.length ? 'Control ' + n + ' de ' + marcas.length : 'Falta la cumbre';
     },
-    mejor: (s) => { $('mejor').textContent = s ? 'Mejor ' + reloj(s) : ''; },
+    mejor: (s) => { $('mejor').textContent = s ? 'Mejor ' + reloj(s) : ''; $('mejor').className = ''; },
+    // cuanto se le lleva o se le pierde al fantasma: negativo = vas adelante
+    rival: (nombre, seg) => {
+      $('mejor').textContent = nombre + ' ' + (seg < 0 ? '\u2212' : '+') + Math.abs(seg).toFixed(1) + ' s';
+      $('mejor').className = seg < 0 ? 'adelante' : 'atras';
+    },
     // reductora: alta o baja
     cambio: (baja) => { $('cambio').textContent = baja ? 'Baja' : 'Alta'; $('cambio').classList.toggle('puesta', baja); $('botonBaja').classList.toggle('puesta', baja); },
     // punto amarillo que muestra el volante cuando se dobla inclinando el celular

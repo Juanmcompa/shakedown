@@ -47,6 +47,7 @@ Y se pierde la etapa por tres cosas: quedarse sin nafta, romper la camioneta o n
 - [x] Mandos para celular: inclinar para doblar y pedales en pantalla
 - [x] Travesía: nafta, reductora alta y baja, daño, tres rescates y tres formas de perder
 - [x] Piezas nuevas: derrumbe que arrastra hacia el borde, autos tirados, bidones de nafta
+- [x] Fantasmas y ranking por link, sin servidor: se comparte la marca y el que la abre corre contra ella
 - [ ] **Probar los mandos en celulares de verdad.** La inclinación está probada con un sensor simulado, no con un teléfono en la mano.
 - [ ] **Probarlo a mano y ajustar el manejo.** Hasta ahora está calibrado con simulaciones, no manejando.
 
@@ -68,7 +69,7 @@ Y se pierde la etapa por tres cosas: quedarse sin nafta, romper la camioneta o n
 
 - [ ] Vehículos desbloqueables con distinto comportamiento: liviano y ágil, pesado y con fuerza
 - [ ] Mejoras: cubiertas de barro, bloqueo de diferencial, malacate
-- [ ] Fantasma del mejor tiempo para correr contra uno mismo
+- [ ] Ranking online único para todos (necesita un servicio aparte donde guardar las marcas)
 
 ### 5. Extras
 

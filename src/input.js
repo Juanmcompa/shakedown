@@ -5,7 +5,7 @@ export function crearTeclas(alTocar) {
   const abajo = new Set();
   const MANEJO = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
   window.addEventListener('keydown', (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.target.tagName === 'INPUT') return;   // escribiendo el nombre no se maneja
     if (MANEJO.includes(e.code)) e.preventDefault();
     if (!e.repeat) alTocar(e.code);
     abajo.add(e.code);

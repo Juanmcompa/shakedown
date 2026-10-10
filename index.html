@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="3">
+<html lang="es" data-pagina="4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -13,7 +13,7 @@
   // Mientras el juego esta en desarrollo, sus archivos se piden de nuevo en cada visita (el numero V
   // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
   const V = Date.now();
-  const modulos = ['main', 'config', 'etapa1', 'terrain', 'vehicle', 'reglas', 'world', 'truck', 'camera', 'fx', 'audio', 'input', 'hud', 'noise'];
+  const modulos = ['main', 'config', 'etapa1', 'terrain', 'vehicle', 'reglas', 'fantasma', 'social', 'world', 'truck', 'camera', 'fx', 'audio', 'input', 'hud', 'noise'];
   const mapa = { three: './vendor/three.module.js' };
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -104,7 +104,12 @@
     <div><dt><kbd>C</kbd></dt><dd>cambiar la cámara</dd></div>
     <div><dt><kbd>M</kbd></dt><dd>sonido</dd></div>
   </dl>
+  <p id="desafio" class="desafio" hidden></p>
   <button id="largar" disabled>Armando el terreno</button>
+  <div class="ranking" hidden>
+    <h2>Ranking</h2>
+    <ol class="tabla"></ol>
+  </div>
 </main>
 
 <section id="fin" hidden>
@@ -112,6 +117,16 @@
   <p id="finGrande"></p>
   <p id="finMedalla"></p>
   <p id="finDetalle"></p>
+  <div id="social" class="social" hidden>
+    <label for="nombre">Tu nombre</label>
+    <input id="nombre" type="text" maxlength="14" autocomplete="nickname" autocapitalize="words" spellcheck="false">
+    <button id="compartir" class="segundo" disabled>Compartir mi marca</button>
+    <p id="compartido" role="status"></p>
+  </div>
+  <div class="ranking" hidden>
+    <h2>Ranking</h2>
+    <ol class="tabla"></ol>
+  </div>
   <button id="otra">Correr de nuevo</button>
 </section>
 
