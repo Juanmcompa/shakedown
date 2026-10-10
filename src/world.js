@@ -1,74 +1,254 @@
 // Dibuja el mundo: terreno, agua, arboles, piedras, arcos de control y luces.
+// Todo esta hecho de bloques y de dibujos de pocos pixeles (las herramientas estan en pixel.js y los dibujos en arte.js).
 import * as THREE from 'three';
-import { SUELO } from './config.js';
-import { crearRuido } from './noise.js';
-import { armarCamioneta } from './truck.js';
+import { SUELOS } from './config.js';
+import { crearRuido, azar } from './noise.js';
+import { armarCamioneta, chatarra } from './truck.js';
+import { crearAtlas, crearLote, glslPixel, GLSL_AZAR } from './pixel.js';
+import { texturaDePisos, crearEscenografia, dibujosDeBidon, marcaDeBidon, rayasDeArco, cuadrosDeMeta, granito, MONTE, PARED } from './arte.js';
 
 const AMARILLO = 0xf2c200, VERDE = 0x3f9150;
 
-// Lo que esta mas abajo que la camioneta se ve mas oscuro y azulado: asi se nota el precipicio desde arriba.
-// En el terreno ademas se dibujan curvas de nivel cada 2 m (mas marcadas cada 10 m).
-// A las copas de los arboles ademas se les abre un hueco alrededor de la camioneta, para que no la tapen.
-const bajo = { value: 0 }, hueco = { value: new THREE.Vector3(-9999, -9999, 1) };
-function conAltura(mat, curvas, calada) {
+// --- lo que se le agrega a los materiales ---
+// Para todos: lo que esta mas abajo que la camioneta se ve mas oscuro y azulado, asi se nota el precipicio desde arriba.
+// "calada": a las copas de los arboles se les abre un hueco alrededor de la camioneta, para que no la tapen.
+// "cabeza" y "cuerpo": codigo propio de ese material (el piso y el agua). "sombras": sombras de pixeles enteros.
+const bajo = { value: 0 }, hueco = { value: new THREE.Vector3(-9999, -9999, 1) }, tiempo = { value: 0 };
+const CALADA = `
+  float lejosDelHueco = distance(gl_FragCoord.xy, uHueco.xy) / uHueco.z;
+  vec2 trama = mod(floor(gl_FragCoord.xy), 2.0);
+  if (lejosDelHueco < 1.0 && (lejosDelHueco < 0.62 ? trama.x + trama.y > 0.5 : trama.x == trama.y)) discard;`;
+const SOMBRA = `
+  #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+    #if defined( SHADOWMAP_TYPE_PCF )
+    float sombraDura(sampler2DShadow mapa, DirectionalLightShadow s, vec4 c) {
+      c.xyz /= c.w; c.z += s.shadowBias;
+      if (c.x < 0.0 || c.x > 1.0 || c.y < 0.0 || c.y > 1.0 || c.z > 1.0) return 1.0;
+      return mix(1.0, step(0.5, texture(mapa, c.xyz)), s.shadowIntensity);
+    }
+    #else
+    float sombraDura(sampler2D mapa, DirectionalLightShadow s, vec4 c) { return getShadow(mapa, s.shadowMapSize, s.shadowIntensity, s.shadowBias, s.shadowRadius, c); }
+    #endif
+  #endif`;
+const LUCES = THREE.ShaderChunk.lights_fragment_begin.replace(
+  'getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] )',
+  'sombraDura( directionalShadowMap[ i ], directionalLightShadow, sombraPix )');
+
+function estilo(mat, o = {}) {
   mat.onBeforeCompile = (sh) => {
-    sh.uniforms.uBajo = bajo;
-    sh.uniforms.uHueco = hueco;
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vAlto;')
-      .replace('#include <begin_vertex>', [
-        '#include <begin_vertex>',
-        'vec4 enMundo = vec4(transformed, 1.0);',
-        '#ifdef USE_INSTANCING',
-        'enMundo = instanceMatrix * enMundo;',
-        '#endif',
-        'vAlto = (modelMatrix * enMundo).y;',
-      ].join('\n'));
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAlto;\nuniform float uBajo;\nuniform vec3 uHueco;')
-      .replace('#include <color_fragment>', [
-        '#include <color_fragment>',
-        curvas ? 'float c1 = abs(fract(vAlto / 2.0 - 0.5) - 0.5) / max(fwidth(vAlto / 2.0), 0.0001);' : '',
-        curvas ? 'float c2 = abs(fract(vAlto / 10.0 - 0.5) - 0.5) / max(fwidth(vAlto / 10.0), 0.0001);' : '',
-        curvas ? 'diffuseColor.rgb *= 1.0 - max((1.0 - smoothstep(0.3, 1.2, c1)) * 0.2, (1.0 - smoothstep(0.6, 1.8, c2)) * 0.36);' : '',
-        'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.12, 0.2), smoothstep(1.5, 28.0, uBajo - vAlto) * 0.68);',
-        calada ? 'float lejosDelHueco = distance(gl_FragCoord.xy, uHueco.xy) / uHueco.z;' : '',
-        calada ? 'vec2 trama = mod(floor(gl_FragCoord.xy), 2.0);' : '',
-        calada ? 'if (lejosDelHueco < 1.0 && (lejosDelHueco < 0.62 ? trama.x + trama.y > 0.5 : trama.x == trama.y)) discard;' : '',
-      ].join('\n'));
+    Object.assign(sh.uniforms, { uBajo: bajo, uHueco: hueco, uTiempo: tiempo }, o.datos);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMundo;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vec4 enMundo = vec4(transformed, 1.0);
+        #ifdef USE_INSTANCING
+          enMundo = instanceMatrix * enMundo;
+        #endif
+        vMundo = (modelMatrix * enMundo).xyz;`);
+    let f = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vMundo;\nuniform float uBajo, uTiempo;\nuniform vec3 uHueco;\n' + GLSL_AZAR + (o.cabeza || ''))
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + (o.cuerpo || 'float altoPix = vMundo.y;') + `
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.07, 0.12, 0.2), smoothstep(1.5, 28.0, uBajo - altoPix) * 0.68);` + (o.calada ? CALADA : ''));
+    if (o.sombras) {
+      f = f.replace('#include <shadowmap_pars_fragment>', '#include <shadowmap_pars_fragment>\n' + SOMBRA)
+        .replace('#include <lights_fragment_begin>', `
+          #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+            vec4 sombraPix = EN_PIXEL(vDirectionalShadowCoord[ 0 ]);
+          #endif
+          ` + LUCES);
+    }
+    sh.fragmentShader = f;
   };
+  mat.customProgramCacheKey = () => 'encajados-' + (o.clave || (o.calada ? 'calada' : 'comun'));
   return mat;
 }
 
-export function crearMundo(T, escena, liviano) {
-  const { nx, nz, H, S, celda, x0, z0 } = T, ruido = crearRuido(99);
-  const tmp = new THREE.Color(), base = SUELO.map((s) => new THREE.Color(s.color)), pastoOscuro = new THREE.Color(0x3f6f33);
+// El piso: cada pixel mide 25 cm y esta alineado con el mundo. El suelo de cada pixel sale de un mapa (una celda por metro).
+const PISO = {
+  cabeza: `
+    uniform sampler2D uMapa;
+    uniform sampler2DArray uPisos;
+    uniform sampler2D uHuellas;   // por donde pasaron las ruedas (un dato por pixel del mundo)
+    uniform vec4 uCampo;      // origen del mapa (x, z) y cantidad de celdas
+    uniform vec2 uCorre[4];   // velocidad de la tierra en cada derrumbe (el 0 es "quieto")`,
+  cuerpo: glslPixel(true) + `
+    float altoPix = EN_PIXEL(vMundo.y);
+    // la celda se sortea entre las vecinas, asi el borde entre dos suelos queda salpicado y no en escalera
+    vec2 dado = vec2(azar12(pix), azar12(pix + 71.7));
+    ivec2 celda = clamp(ivec2(floor(centro + (dado - 0.5) * 0.9 - uCampo.xy + 0.5)), ivec2(0), ivec2(uCampo.zw) - 1);
+    vec4 dato = texelFetch(uMapa, celda, 0);
+    float capa = floor(dato.r * 255.0 + 0.5);
+    vec2 corrido = centro - floor(uCorre[int(dato.b * 255.0 + 0.5)] * uTiempo * 4.0) * 0.25;   // en un derrumbe, el dibujo se corre de a un pixel
+    if (plano != 0) {   // en un paredon el dibujo se pega sobre la pared, y la roca muestra sus bancos
+      corrido = vec2(centroPlano.x, -centroPlano.y);
+      if (capa == ${SUELOS.roca.id}.0) capa = ${PARED}.0;
+    }
+    vec3 piso = textureGrad(uPisos, vec3(corrido / 16.0, capa), dxz / 16.0, dyz / 16.0).rgb;
+    float tono = dato.g + (dado.y - 0.5) * 0.3;
+    piso *= tono > 0.62 ? 1.08 : tono < 0.38 ? 0.92 : 1.0;
+    // huellas: el pixel se oscurece, mas si la rueda patino o el suelo es blando
+    float marca = plano != 0 ? 0.0 : texelFetch(uHuellas, clamp(ivec2(pix) - ivec2(uCampo.xy) * 4, ivec2(0), ivec2(uCampo.zw) * 4 - 1), 0).r;
+    if (marca > 0.1) piso *= marca > 0.55 ? vec3(0.62, 0.57, 0.54) : vec3(0.8, 0.77, 0.75);
+    // curvas de nivel cada 2 metros (mas marcadas cada 10), de un pixel de ancho
+    float hx = dFdx(vMundo.y), hy = dFdy(vMundo.y);
+    float salto = abs(det) > 1e-10 ? length(vec2(dyz.y * hx - dxz.y * hy, dxz.x * hy - dyz.x * hx) / det) * 0.25 : 0.0;
+    if (salto > 0.012 && plano == 0) {
+      if (abs(fract(altoPix / 10.0 - 0.5) - 0.5) * 10.0 < salto * 0.75) piso *= 0.6;
+      else if (abs(fract(altoPix / 2.0 - 0.5) - 0.5) * 2.0 < salto * 0.5) piso *= 0.8;
+    }
+    if (capa == 6.0 && azar12(pix + floor(uTiempo * 3.0) * 7.0) > 0.985) piso = mix(piso, vec3(0.85, 0.8, 0.65), 0.7);   // el pantano brilla
+    diffuseColor.rgb = piso;`,
+};
+// El agua: se dibuja solo en los pixeles donde el piso queda por debajo, con espuma en la orilla.
+const AGUA = {
+  cabeza: `
+    uniform sampler2D uAlturas;
+    uniform vec4 uCampo;
+    uniform vec3 uRio, uClara, uHonda, uEspuma;   // uRio: hacia donde corre (x, z) y a que velocidad
+    float alturaDelPiso(vec2 p) {
+      vec2 g = p - uCampo.xy;
+      ivec2 i = clamp(ivec2(floor(g)), ivec2(0), ivec2(uCampo.zw) - 2);
+      vec2 f = clamp(g - vec2(i), 0.0, 1.0);
+      float a = texelFetch(uAlturas, i, 0).r, b = texelFetch(uAlturas, i + ivec2(1, 0), 0).r, c = texelFetch(uAlturas, i + ivec2(0, 1), 0).r, d = texelFetch(uAlturas, i + ivec2(1, 1), 0).r;
+      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }`,
+  cuerpo: glslPixel(false) + `
+    float altoPix = vMundo.y;
+    float hondo = vMundo.y - alturaDelPiso(centro);
+    if (hondo <= 0.0) discard;
+    // clara y transparente en la orilla, oscura en lo hondo
+    vec3 agua = mix(uClara, uHonda, smoothstep(0.05, 0.7, hondo));
+    float alfa = mix(0.5, 0.86, smoothstep(0.05, 0.6, hondo));
+    // brillos que bajan con la corriente, de a un pixel por vez
+    vec2 q = pix - floor(uRio.xy * uRio.z * uTiempo * 4.0 + 0.5);
+    q = floor(q / (abs(uRio.x) > abs(uRio.y) ? vec2(3.0, 1.0) : vec2(1.0, 3.0)));
+    if (azar12(q) > 0.9) agua = mix(agua, uEspuma, 0.4);
+    if (hondo < 0.05) { agua = uEspuma; alfa = 0.8; }   // espuma en la orilla
+    diffuseColor = vec4(agua, alfa);`,
+};
+
+export function crearMundo(T, escena, liviano, huellas) {
+  const { nx, nz, H, S, celda, x0, z0 } = T;
+  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), V = new THREE.Vector3(), E = new THREE.Vector3(), ARRIBA = new THREE.Vector3(0, 1, 0);
+  const campo = { value: new THREE.Vector4(x0, z0, nx, nz) };
+  // inclinacion del piso en un punto: gira "arriba" hasta la normal del terreno
+  const NORMAL = new THREE.Vector3();
+  const acostar = (x, z, q) => {
+    NORMAL.set(-(T.altura(x + 1, z) - T.altura(x - 1, z)) / 2, 1, -(T.altura(x, z + 1) - T.altura(x, z - 1)) / 2).normalize();
+    return q.setFromUnitVectors(ARRIBA, NORMAL);
+  };
+
+  // --- arboles, piedras y mojones: cajas juntadas por zona, todas con el mismo atlas ---
+  const esc = crearEscenografia(), zonas = new Map(), fijos = crearLote();
+  const par = (v) => Math.max(2, Math.round(v / 2) * 2);            // medida par, en pixeles
+  const P4 = E.clone().set(0.25, 0.25, 0.25), P8 = E.clone().set(0.125, 0.125, 0.125);
+  const monte = new Uint8Array(nx * nz);                             // celdas que quedan debajo de un arbol
+  for (const o of T.cosas) {
+    if (o.tipo > 3) continue;   // los autos tirados se dibujan aparte
+    const r = azar(Math.floor(o.x * 131 + o.z * 71) + 9);
+    if (o.tipo === 3) {
+      // piedra: un bloque acostado sobre la ladera y otro mas chico apoyado al lado
+      const w = par(o.r * 7.6), d = par(o.r * 6.4), h = Math.max(2, Math.round(o.r * o.alto * 4.6));   // tan ancha como el circulo contra el que se choca
+      M.compose(V.set(o.x, o.y, o.z), acostar(o.x, o.z, Q).multiply(Q2.setFromAxisAngle(ARRIBA, o.vuelta)), P4);
+      fijos.bloque(M, [-w / 2, -2, -d / 2, w / 2, h, d / 2], { arriba: esc.piedra(w, d), lados: esc.canto(h + 2) }, r);
+      const w2 = par(w * 0.55), d2 = par(d * 0.6), h2 = Math.max(2, Math.round(h * 0.55)), cx = Math.round((r() < 0.5 ? -1 : 1) * w * 0.45), cz = Math.round((r() - 0.5) * d * 0.6);
+      fijos.bloque(M, [cx - w2 / 2, -2, cz - d2 / 2, cx + w2 / 2, h2, cz + d2 / 2], { arriba: esc.piedra(w2, d2), lados: esc.canto(h2 + 2) }, r);
+      continue;
+    }
+    const k = Math.floor(o.z / 110), a = o.alto, t = o.tipo;
+    if (!zonas.has(k)) zonas.set(k, { copas: crearLote(), troncos: crearLote() });
+    const { copas, troncos } = zonas.get(k);
+    M.compose(V.set(o.x, o.y, o.z), Q.setFromAxisAngle(ARRIBA, o.vuelta), P4);
+    // pisos de la copa, de abajo hacia arriba: [lado, alto, corrimiento en x, corrimiento en z]
+    const pisos = [];
+    let pie;   // alto del tronco, en pixeles
+    if (t === 1) {        // alto y angosto: tres pisos cada vez mas chicos
+      const w = par(a * 9), h = par(a * 5);
+      pie = Math.round(a * 8);
+      pisos.push([w, h, 0, 0], [par(w * 0.72), h, 0, 0], [par(w * 0.45), Math.max(2, h - 2), 0, 0]);
+    } else if (t === 2) { // lapacho: copa ancha y chata
+      const w = par(a * 15);
+      pie = Math.round(a * 11);
+      pisos.push([w, par(a * 3.6), 0, 0], [par(w * 0.62), par(a * 3), Math.round((r() - 0.5) * 3), Math.round((r() - 0.5) * 3)]);
+    } else {              // monte: copa ancha con un copete y a veces un brazo al costado
+      const w = par(a * 13), h = par(a * 6.5);
+      pie = Math.round(a * 9.6);
+      pisos.push([w, h, 0, 0], [par(w * 0.6), par(h * 0.6), Math.round((r() - 0.5) * 3), Math.round((r() - 0.5) * 3)]);
+      if (r() < 0.55) {
+        const wb = par(w * 0.5), hb = par(h * 0.6), lado = r() < 0.5 ? -1 : 1, enX = r() < 0.5, corre = lado * (w / 2), y = pie + (r() < 0.5 ? 0 : 1);
+        copas.bloque(M, [(enX ? corre : 0) - wb / 2, y, (enX ? 0 : corre) - wb / 2, (enX ? corre : 0) + wb / 2, y + hb, (enX ? 0 : corre) + wb / 2], { arriba: esc.copa(t, wb), lados: esc.follaje(t, hb), abajo: esc.debajo(t) }, r);
+      }
+    }
+    let y = pie;
+    for (const [w, h, cx, cz] of pisos) {
+      copas.bloque(M, [cx - w / 2, y, cz - w / 2, cx + w / 2, y + h, cz + w / 2], { arriba: esc.copa(t, w), lados: esc.follaje(t, h), abajo: esc.debajo(t) }, r);
+      y += h;
+    }
+    troncos.bloque(M, [-1, -2, -1, 1, pie + 1, 1], { lados: esc.corteza(t) }, r);
+    // el piso de abajo queda como monte
+    const radio = pisos[0][0] / 8 + 1.2, gx = Math.round(o.x - x0), gz = Math.round(o.z - z0), n = Math.ceil(radio);
+    for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
+      if (i * i + j * j <= radio * radio && gx + i >= 0 && gx + i < nx && gz + j >= 0 && gz + j < nz) monte[(gz + j) * nx + gx + i] = 1;
+    }
+  }
+  for (const o of T.mojones) {   // mojones blancos al borde del precipicio
+    M.compose(V.set(o.x, o.y, o.z), Q.identity(), P8);
+    fijos.bloque(M, [-1, -2, -1, 1, 8, 1], { lados: esc.mojon(), arriba: esc.tapaDeMojon() });
+  }
+  const dibujo = esc.atlas.textura();
+  const mCopa = estilo(new THREE.MeshLambertMaterial({ map: dibujo }), { calada: true }), mFijo = estilo(new THREE.MeshLambertMaterial({ map: dibujo }));
+  const poner = (lote, mat, recibe) => {
+    if (lote.vacio()) return;
+    const m = new THREE.Mesh(lote.geometria(esc.atlas), mat);
+    m.castShadow = true; m.receiveShadow = !!recibe;
+    escena.add(m);
+  };
+  for (const z of zonas.values()) { poner(z.copas, mCopa); poner(z.troncos, mFijo); }
+  poner(fijos, mFijo, true);
 
   // --- terreno, en pedazos de 64 x 64 metros para dibujar solo lo que se ve ---
-  const mat = conAltura(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), true);
-  const TAM = 64;
+  // el mapa que lee el shader: por celda, que suelo es, un tono (para que no quede todo parejo) y si es un derrumbe
+  const ruido = crearRuido(99), mapa = new Uint8Array(nx * nz * 4);
+  for (let gz = 0; gz < nz; gz++) for (let gx = 0; gx < nx; gx++) {
+    const k = gz * nx + gx;
+    let corre = 0;
+    if (S[k] === SUELOS.derrumbe.id) {   // a cual de los derrumbes pertenece (el mas cercano)
+      let md = 1e9;
+      T.derrumbes.forEach((d, i) => { const dd = (d.x - x0 - gx * celda) ** 2 + (d.z - z0 - gz * celda) ** 2; if (dd < md && i < 3) { md = dd; corre = i + 1; } });
+    }
+    mapa[k * 4] = S[k] === SUELOS.pasto.id && monte[k] ? MONTE : S[k];
+    mapa[k * 4 + 1] = Math.round(ruido.n2(gx * 0.045, gz * 0.045) * 255);
+    mapa[k * 4 + 2] = corre;
+    mapa[k * 4 + 3] = 255;
+  }
+  const tMapa = new THREE.DataTexture(mapa, nx, nz, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tMapa.needsUpdate = true;
+  const corre = [new THREE.Vector2(), new THREE.Vector2(), new THREE.Vector2(), new THREE.Vector2()];
+  T.derrumbes.slice(0, 3).forEach((d, i) => corre[i + 1].set(Math.cos(d.rumbo) * d.vel, Math.sin(d.rumbo) * d.vel));
+  const mPiso = estilo(new THREE.MeshLambertMaterial(), { clave: 'piso', sombras: true, cabeza: PISO.cabeza, cuerpo: PISO.cuerpo, datos: { uMapa: { value: tMapa }, uPisos: { value: texturaDePisos() }, uHuellas: { value: huellas.textura }, uCampo: campo, uCorre: { value: corre } } });
+  const TAM = 64, alto = (i, j) => H[Math.min(nz - 1, Math.max(0, j)) * nx + Math.min(nx - 1, Math.max(0, i))];
   for (let cz = 0; cz < nz - 1; cz += TAM) for (let cx = 0; cx < nx - 1; cx += TAM) {
     const w = Math.min(TAM, nx - 1 - cx), h = Math.min(TAM, nz - 1 - cz);
-    const pos = new Float32Array((w + 1) * (h + 1) * 3), col = new Float32Array(pos.length), idx = [];
+    const pos = new Float32Array((w + 1) * (h + 1) * 3), nor = new Float32Array(pos.length), idx = [];
     for (let j = 0; j <= h; j++) for (let i = 0; i <= w; i++) {
-      const gx = cx + i, gz = cz + j, k = gz * nx + gx, o = (j * (w + 1) + i) * 3;
-      pos[o] = x0 + gx * celda; pos[o + 1] = H[k]; pos[o + 2] = z0 + gz * celda;
-      tmp.copy(base[S[k]]);
-      if (S[k] === 4) tmp.lerp(pastoOscuro, ruido.n2(gx * 0.07, gz * 0.07));
-      tmp.multiplyScalar(0.84 + ruido.n2(gx * 0.9 + 40, gz * 0.9) * 0.3);
-      col[o] = tmp.r; col[o + 1] = tmp.g; col[o + 2] = tmp.b;
+      const gx = cx + i, gz = cz + j, o = (j * (w + 1) + i) * 3;
+      pos[o] = x0 + gx * celda; pos[o + 1] = H[gz * nx + gx]; pos[o + 2] = z0 + gz * celda;
+      // la normal sale de las alturas vecinas, asi no se notan las uniones entre pedazos
+      V.set(alto(gx - 1, gz) - alto(gx + 1, gz), 2 * celda, alto(gx, gz - 1) - alto(gx, gz + 1)).normalize();
+      nor[o] = V.x; nor[o + 1] = V.y; nor[o + 2] = V.z;
       if (i < w && j < h) { const a = j * (w + 1) + i, b = a + 1, c = a + w + 1; idx.push(a, c, b, b, c, c + 1); }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
     g.setIndex(idx);
-    g.computeVertexNormals();
-    const m = new THREE.Mesh(g, mat);
+    const m = new THREE.Mesh(g, mPiso);
     m.receiveShadow = true; m.castShadow = true;
     escena.add(m);
   }
 
-  // --- agua ---
-  const matAgua = new THREE.MeshLambertMaterial({ color: 0x4f8f96, transparent: true, opacity: 0.74, depthWrite: false, side: THREE.DoubleSide });
+  // --- agua: un plano al nivel del rio; el shader lo recorta contra el piso, pixel por pixel ---
+  const tAlturas = new THREE.DataTexture(H, nx, nz, THREE.RedFormat, THREE.FloatType);
+  tAlturas.needsUpdate = true;
   for (const a of T.aguas) {
     const p = [];
     for (const [u, v] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) p.push(a.x + a.hx * a.cruce * u - a.hz * a.largo * v, a.nivel, a.z + a.hz * a.cruce * u + a.hx * a.largo * v);
@@ -76,85 +256,35 @@ export function crearMundo(T, escena, liviano) {
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(p), 3));
     g.setIndex([0, 2, 1, 1, 2, 3]);
     g.computeVertexNormals();
-    const m = new THREE.Mesh(g, matAgua);
-    m.receiveShadow = true;
-    escena.add(m);
-  }
-
-  // --- charcos de los pantanos: barro aguado, claro, para que se distingan de una sombra ---
-  const matCharco = new THREE.MeshLambertMaterial({ color: 0xb09a78, transparent: true, opacity: 0.92, depthWrite: false });
-  for (const ch of T.charcos) {
-    const m = new THREE.Mesh(new THREE.CircleGeometry(ch.r, 20).rotateX(-Math.PI / 2), matCharco);
-    m.position.set(ch.x, ch.y, ch.z);
-    m.receiveShadow = true;
-    escena.add(m);
-  }
-
-  // --- arboles y piedras, agrupados por zona ---
-  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), E = new THREE.Vector3(), ARRIBA = new THREE.Vector3(0, 1, 0);
-  const gCopa = new THREE.IcosahedronGeometry(1, 1), gTronco = new THREE.CylinderGeometry(0.2, 0.32, 1, 6), gPiedra = new THREE.DodecahedronGeometry(1, 0);
-  const mCopa = conAltura(new THREE.MeshLambertMaterial({ flatShading: true }), false, true), mTronco = conAltura(new THREE.MeshLambertMaterial({ color: 0x5a4030 })), mPiedra = conAltura(new THREE.MeshLambertMaterial({ flatShading: true }));
-  const verdes = [new THREE.Color(0x2f6b34), new THREE.Color(0x5c9a3e), new THREE.Color(0xd9799b)], gris = new THREE.Color(0x8b8780);
-  const zonas = new Map();
-  for (const o of T.cosas) {
-    if (o.tipo > 3) continue;   // los autos tirados se dibujan aparte
-    const k = Math.floor(o.z / 110) * 2 + (o.tipo === 3 ? 1 : 0);
-    if (!zonas.has(k)) zonas.set(k, []);
-    zonas.get(k).push(o);
-  }
-  for (const [k, lista] of zonas) {
-    if (k % 2 !== 0) {
-      const piedras = new THREE.InstancedMesh(gPiedra, mPiedra, lista.length);
-      lista.forEach((o, i) => {
-        Q.setFromAxisAngle(ARRIBA, o.vuelta);
-        M.compose(V.set(o.x, o.y + o.r * 0.25, o.z), Q, E.set(o.r, o.r * o.alto, o.r * 0.85));
-        piedras.setMatrixAt(i, M);
-        piedras.setColorAt(i, tmp.copy(gris).multiplyScalar(0.8 + (o.vuelta % 1) * 0.35));
-      });
-      piedras.castShadow = piedras.receiveShadow = true;
-      escena.add(piedras);
-      continue;
-    }
-    const copas = new THREE.InstancedMesh(gCopa, mCopa, lista.length), troncos = new THREE.InstancedMesh(gTronco, mTronco, lista.length);
-    lista.forEach((o, i) => {
-      const alto = 3.2 * o.alto, r = 2.1 * o.alto;
-      Q.setFromAxisAngle(ARRIBA, o.vuelta);
-      M.compose(V.set(o.x, o.y + alto / 2 - 0.4, o.z), Q, E.set(1, alto + 0.8, 1));
-      troncos.setMatrixAt(i, M);
-      M.compose(V.set(o.x, o.y + alto + r * 0.4, o.z), Q, E.set(r, r * 0.78, r));
-      copas.setMatrixAt(i, M);
-      copas.setColorAt(i, o.tipo === 2 ? verdes[2] : tmp.copy(verdes[o.tipo]).multiplyScalar(0.75 + (o.vuelta % 1) * 0.45));
+    const mat = estilo(new THREE.MeshLambertMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide }), {
+      clave: 'agua', sombras: true, cabeza: AGUA.cabeza, cuerpo: AGUA.cuerpo,
+      datos: { uAlturas: { value: tAlturas }, uCampo: campo, uRio: { value: new THREE.Vector3(-a.hz, a.hx, 1.6) }, uClara: { value: new THREE.Color(0x7fc4c2) }, uHonda: { value: new THREE.Color(0x2f6f7c) }, uEspuma: { value: new THREE.Color(0xe6f3ee) } },
     });
-    copas.castShadow = troncos.castShadow = true;
-    escena.add(copas, troncos);
+    const m = new THREE.Mesh(g, mat);
+    m.receiveShadow = true;
+    escena.add(m);
   }
-
-  // --- mojones blancos al borde del precipicio ---
-  const postes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.32, 1.3, 0.32), new THREE.MeshLambertMaterial({ color: 0xf4f1e8 }), T.mojones.length);
-  T.mojones.forEach((o, i) => postes.setMatrixAt(i, M.makeTranslation(o.x, o.y + 0.35, o.z)));
-  postes.castShadow = true;
-  escena.add(postes);
 
   // --- autos tirados: abandonados, volcados o hundidos en el barro ---
-  const COLORES = [0x6f8fa3, 0xb5503a, 0xd8d2c2, 0x4f7a55, 0x8a6f9a];
   for (const a of T.autos) {
-    const g = armarCamioneta(COLORES[a.n % COLORES.length]).grupo;
+    const g = armarCamioneta(chatarra(a.n)).grupo;
+    g.traverse((o) => { for (const m of o.isMesh ? [].concat(o.material) : []) if (!m.userData.conEstilo) { estilo(m); m.userData.conEstilo = true; } });
     // se acuesta sobre la pendiente del lugar y despues se lo gira segun como quedo
-    const sx = (T.altura(a.x + 1, a.z) - T.altura(a.x - 1, a.z)) / 2, sz = (T.altura(a.x, a.z + 1) - T.altura(a.x, a.z - 1)) / 2;
-    V.set(-sx, 1, -sz).normalize();
-    g.quaternion.setFromUnitVectors(ARRIBA, V).multiply(Q.setFromAxisAngle(ARRIBA, -a.rumbo));
-    if (a.estado === 1) g.quaternion.multiply(Q.setFromAxisAngle(E.set(0, 0, 1), 1.45));
-    if (a.estado === 2) g.quaternion.multiply(Q.setFromAxisAngle(E.set(1, 0, 0.5).normalize(), 0.22));
+    g.quaternion.copy(acostar(a.x, a.z, Q)).multiply(Q2.setFromAxisAngle(ARRIBA, -a.rumbo));
+    if (a.estado === 1) g.quaternion.multiply(Q2.setFromAxisAngle(E.set(0, 0, 1), 1.45));
+    if (a.estado === 2) g.quaternion.multiply(Q2.setFromAxisAngle(E.set(1, 0, 0.5).normalize(), 0.22));
     g.position.set(a.x, a.y + [0.8, 0.95, 0.3][a.estado], a.z);
     escena.add(g);
   }
 
   // --- bidones de nafta: giran despacio sobre una marca amarilla ---
-  const gBidon = new THREE.BoxGeometry(0.55, 0.75, 0.3), mBidon = new THREE.MeshLambertMaterial({ color: 0xc8341f });
-  const gMarca = new THREE.RingGeometry(0.9, 1.25, 20).rotateX(-Math.PI / 2), mMarca = new THREE.MeshBasicMaterial({ color: AMARILLO });
+  const chico = crearAtlas(16, 16), dBidon = dibujosDeBidon(chico), lBidon = crearLote();
+  lBidon.bloque(M.makeScale(0.2, 0.2, 0.2), [-2, -3, -1, 2, 3, 1], dBidon);   // mas grande que uno de verdad, para que se vea desde arriba
+  const gBidon = lBidon.geometria(chico), mBidon = new THREE.MeshLambertMaterial({ map: chico.textura() });
+  const gMarca = new THREE.PlaneGeometry(2.5, 2.5).rotateX(-Math.PI / 2), mMarca = new THREE.MeshBasicMaterial({ map: marcaDeBidon(), alphaTest: 0.5 });
   const bidones = T.bidones.map((b) => {
     const g = new THREE.Group(), lata = new THREE.Mesh(gBidon, mBidon);
-    lata.position.y = 1.1;
+    lata.position.y = 1.3;
     lata.castShadow = true;
     const marca = new THREE.Mesh(gMarca, mMarca);
     marca.position.y = 0.12;
@@ -165,14 +295,15 @@ export function crearMundo(T, escena, liviano) {
   });
 
   // --- derrumbes: cascotes que cruzan el camino con la tierra que se corre ---
-  const NC = 46, cascotes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0x7d6a55, flatShading: true }), NC * Math.max(1, T.derrumbes.length));
+  const NC = 46, cascotes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ map: granito(), color: 0xa8927a }), NC * Math.max(1, T.derrumbes.length));
   const donde = [];   // por cascote: a lo largo, a lo ancho, tamano
-  T.derrumbes.forEach(() => { for (let i = 0; i < NC; i++) donde.push(Math.random(), Math.random(), 0.22 + Math.random() * 0.4); });
+  T.derrumbes.forEach(() => { for (let i = 0; i < NC; i++) donde.push(Math.random(), Math.random(), 0.25 + Math.floor(Math.random() * 3) * 0.125); });
   cascotes.count = donde.length / 3;
   cascotes.castShadow = true;
   escena.add(cascotes);
   function animar(dt, t) {
-    for (const b of bidones) { b.lata.rotation.y = t * 1.6; b.lata.position.y = 1.1 + Math.sin(t * 2.4) * 0.12; }
+    tiempo.value = t;
+    for (const b of bidones) { b.lata.rotation.y = t * 1.6; b.lata.position.y = 1.3 + Math.sin(t * 2.4) * 0.12; }
     T.derrumbes.forEach((d, k) => {
       const hx = Math.sin(d.rumbo), hz = -Math.cos(d.rumbo), ancho = d.ancho + 5;
       for (let i = 0; i < NC; i++) {
@@ -187,34 +318,27 @@ export function crearMundo(T, escena, liviano) {
     cascotes.instanceMatrix.needsUpdate = true;
   }
 
-  // --- arcos: uno por control y uno mas grande en la meta ---
-  function arco(p, color, alto) {
-    const g = new THREE.Group(), a = p.ancho / 2 + 0.9;
-    const mPalo = new THREE.MeshLambertMaterial({ color: 0x26262a });
+  // --- arcos: uno por control y uno mas grande en la meta. Devuelve el material de la viga, para cambiarle el color ---
+  function arco(p, color, altura, dibujar) {
+    const g = new THREE.Group(), a = p.ancho / 2 + 0.9, px = Math.round((a * 2 + 0.5) * 8);
+    const mPalo = new THREE.MeshLambertMaterial({ color: 0x26262a }), mViga = new THREE.MeshLambertMaterial({ map: dibujar(px), color });
     for (const s of [-1, 1]) {
-      const palo = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, alto + 3, 8), mPalo);
-      palo.position.set(s * a, (alto + 3) / 2 - 3, 0);
+      const palo = new THREE.Mesh(new THREE.BoxGeometry(0.25, altura + 3, 0.25), mPalo);
+      palo.position.set(s * a, (altura + 3) / 2 - 3, 0);
       palo.castShadow = true;
       g.add(palo);
     }
-    const viga = new THREE.Mesh(new THREE.BoxGeometry(a * 2 + 0.6, 0.55, 1.1), new THREE.MeshLambertMaterial({ color }));
-    viga.position.y = alto;
+    const viga = new THREE.Mesh(new THREE.BoxGeometry(px / 8, 0.5, 0.75), [mPalo, mPalo, mViga, mViga, mViga, mViga]);
+    viga.position.y = altura;
     viga.castShadow = true;
     g.add(viga);
     g.position.set(p.x, T.altura(p.x, p.z), p.z);
     g.rotation.y = -p.rumbo;
     escena.add(g);
-    return viga;
+    return mViga;
   }
-  const arcos = T.controles.map((p) => arco(p, AMARILLO, 4.6));
-  const lona = document.createElement('canvas');
-  lona.width = 96; lona.height = 16;
-  const cx2 = lona.getContext('2d');
-  for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++) { cx2.fillStyle = (i + j) % 2 ? '#111' : '#fff'; cx2.fillRect(i * 8, j * 8, 8, 8); }
-  const tex = new THREE.CanvasTexture(lona);
-  tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.NearestFilter;
-  const meta = arco(T.meta, 0xffffff, 5.4);
-  meta.material.map = tex;
+  const arcos = T.controles.map((p) => arco(p, AMARILLO, 4.6, rayasDeArco));
+  arco(T.meta, 0xffffff, 5.4, cuadrosDeMeta);
 
   // --- luces: cielo + sol con sombras que siguen a la camara ---
   escena.background = new THREE.Color(0xcfe2e8);
@@ -243,14 +367,14 @@ export function crearMundo(T, escena, liviano) {
     sombra,
     bajo: (y) => { bajo.value = y; },
     // donde esta la camioneta en la pantalla (en pixeles) y que radio ocupa: ahi se calan las copas
-    hueco: (cam, p, ancho, alto) => {
+    hueco: (cam, p, ancho, alto2) => {
       const lejos = Math.hypot(cam.position.x - p[0], cam.position.y - p[1], cam.position.z - p[2]);
       V.set(p[0], p[1] + 0.6, p[2]).project(cam);
-      hueco.value.set((V.x * 0.5 + 0.5) * ancho, (V.y * 0.5 + 0.5) * alto, 3.8 * alto / (2 * Math.tan(cam.fov * Math.PI / 360)) / lejos);
+      hueco.value.set((V.x * 0.5 + 0.5) * ancho, (V.y * 0.5 + 0.5) * alto2, 3.8 * alto2 / (2 * Math.tan(cam.fov * Math.PI / 360)) / lejos);
     },
     animar,
-    pasar: (i) => arcos[i].material.color.setHex(VERDE),
+    pasar: (i) => arcos[i].color.setHex(VERDE),
     juntar: (i) => { bidones[i].g.visible = false; },
-    reiniciar: () => { arcos.forEach((a) => a.material.color.setHex(AMARILLO)); bidones.forEach((b) => { b.g.visible = true; }); },
+    reiniciar: () => { arcos.forEach((a) => a.color.setHex(AMARILLO)); bidones.forEach((b) => { b.g.visible = true; }); },
   };
 }

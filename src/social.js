@@ -12,7 +12,7 @@ export function crearSocial(T) {
 
   async function elegir(m) {   // pone de rival a una marca que tenga la vuelta guardada
     const leido = m && m.codigo ? await leerCodigo(m.codigo) : null;
-    rival = leido && leido.marca.etapa === etapa ? { nombre: m.nombre, tiempo: m.tiempo, fantasma: crearFantasma(leido.vuelta, T) } : null;
+    rival = leido && leido.marca.etapa === etapa ? { nombre: m.nombre, tiempo: m.tiempo, propio: !!m.mio, fantasma: crearFantasma(leido.vuelta, T) } : null;
     pintar();
     alCambiar(rival);
   }
@@ -75,7 +75,9 @@ export function crearSocial(T) {
     ultimoLink = location.origin + location.pathname + '#r=' + codigo;
     $('compartido').textContent = '';
     $('compartir').disabled = false;
-    pintar();
+    // si no se corria contra un amigo, la proxima vuelta es contra la mejor propia
+    if (!rival || rival.propio) await elegir(marcas.lista().find((x) => x.mio && x.nombre === nombre && x.codigo) || null);
+    else pintar();
   }
 
   async function compartir() {

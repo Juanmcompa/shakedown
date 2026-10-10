@@ -76,10 +76,7 @@ p { margin: 0; }
 
 /* --- portada --- */
 #portada { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 14px; padding: clamp(20px, 5vw, 64px); padding-left: max(clamp(20px, 5vw, 64px), env(safe-area-inset-left)); background: linear-gradient(90deg, rgba(0, 0, 0, .8), rgba(0, 0, 0, .55) 40%, rgba(0, 0, 0, 0) 74%); }
-.marca { width: min(720px, 88vw, 100vh); height: auto; flex: none; overflow: visible; }
-.marca text { font: 800 236px var(--titulos); fill: var(--amarillo); }
-.marca .barro { fill: var(--barro); }
-.marca .barro2 { fill: var(--barro-hondo); }
+.marca { width: min(780px, 90vw, 150vh); height: auto; flex: none; }
 .bajada { font-size: clamp(17px, 1.6vw, 21px); max-width: 32em; }
 .teclas { margin: 4px 0 8px; width: 100%; max-width: 520px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 16px; align-items: baseline; }
 .teclas div { display: contents; }
@@ -164,7 +161,7 @@ button.segundo:disabled { background: rgba(255, 255, 255, .22); cursor: default;
 
 @media (max-height: 480px) {
   #portada { gap: 8px; padding-top: 12px; padding-bottom: 12px; }
-  .marca { width: min(88vw, 86vh); }
+  .marca { width: min(88vw, 130vh); }
   .teclas { gap: 4px 16px; }
   .pedal { height: 96px; }
   .botoncito.volver, .botoncito.baja { bottom: calc(var(--mb) + 110px); }

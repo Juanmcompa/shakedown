@@ -32,7 +32,7 @@ Y se pierde la etapa por tres cosas: quedarse sin nafta, romper la camioneta o n
 - **Física propia y simple** en vez de un motor de física: cuatro ruedas con suspensión y agarre según el suelo. Son pocos números, todos en `src/config.js`.
 - **Las etapas se escriben como una lista de tramos** (`src/etapa1.js`): largo, giro, pendiente, ancho, suelo. El terreno se arma solo alrededor.
 - **Sin instalación ni compilado.** HTML y JavaScript, publicado con GitHub Pages.
-- **Lenguaje visual:** carteles viales (amarillo y negro) sobre un terreno de pocos polígonos con curvas de nivel.
+- **Lenguaje visual:** bloques con dibujos de pocos píxeles, pintados con código. Un píxel del mundo mide 25 cm: el piso, las sombras, el agua y las huellas están hechos de esos píxeles. Los instrumentos son carteles viales, amarillos y negros.
 
 ## Etapas de desarrollo
 
@@ -48,6 +48,8 @@ Y se pierde la etapa por tres cosas: quedarse sin nafta, romper la camioneta o n
 - [x] Travesía: nafta, reductora alta y baja, daño, tres rescates y tres formas de perder
 - [x] Piezas nuevas: derrumbe que arrastra hacia el borde, autos tirados, bidones de nafta
 - [x] Fantasmas y ranking por link, sin servidor: se comparte la marca y el que la abre corre contra ella
+- [x] Estilo de bloques y píxeles: camioneta, autos tirados, árboles, piedras, paredones, agua y marca de la portada
+- [x] Huellas que quedan marcadas en el piso durante toda la vuelta
 - [ ] **Probar los mandos en celulares de verdad.** La inclinación está probada con un sensor simulado, no con un teléfono en la mano.
 - [ ] **Probarlo a mano y ajustar el manejo.** Hasta ahora está calibrado con simulaciones, no manejando.
 
@@ -80,7 +82,7 @@ Y se pierde la etapa por tres cosas: quedarse sin nafta, romper la camioneta o n
 ## Riesgos
 
 - **Que la física no se sienta bien.** Es el principal. Por eso la etapa 1 va primero y sola.
-- **Rendimiento en compus sin placa de video.** El terreno se dibuja por pedazos y hay pocas luces. Si hace falta, se bajan las sombras.
+- **Rendimiento en compus sin placa de video y en celulares viejos.** El terreno se dibuja por pedazos y hay pocas luces. Si el juego anda a menos de 30 cuadros por segundo, baja solo la nitidez. Falta probarlo en celulares de verdad.
 - **Que el alcance crezca.** El núcleo son cuatro teclas y una etapa que se disfruta. Todo lo demás se suma solo si eso funciona.
 
 ## Cómo seguir trabajando

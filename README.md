@@ -1,6 +1,6 @@
 # Encajados
 
-Juego web de manejo 4x4 visto desde arriba, en 3D. No es una carrera: es llegar a la cumbre sin quedarse en el camino.
+Juego web de manejo 4x4 visto desde arriba, en 3D, hecho de bloques con dibujos de pocos píxeles. No es una carrera: es llegar a la cumbre sin quedarse en el camino.
 
 **Jugar:** https://juanmcompa.github.io/encajados/
 
@@ -38,11 +38,13 @@ Lo que conviene saber:
 - **Las subidas de barro piden envión.** Si no llegás arriba, retrocedé y tomá carrera.
 - **En la cornisa, despacio.** Los mojones blancos marcan el borde. Lo que se ve oscuro y azulado está muy abajo.
 - **Mirá los cuatro cuadraditos** al lado del nombre del suelo: son las ruedas. Blanco agarra, amarillo patina, rojo patina mucho, hueco está en el aire.
+- **Las huellas quedan** marcadas toda la vuelta: sirven para ver por dónde pasaste en el intento anterior.
 
 ## Competir con amigos
 
 - Al llegar, poné tu nombre y tocá **Compartir mi marca**. En la compu copia un link; en el celular abre el menú de compartir.
 - Quien abre el link ve tu tiempo, corre contra tu **fantasma** y tu marca queda en su ranking.
+- Si nadie te desafió, después de tu primera llegada corrés contra el fantasma de tu mejor vuelta.
 - El link también lleva los tiempos que ya conocés, así el ranking se va completando entre todos.
 - En el ranking, **Correr contra** elige el fantasma de cualquiera que tenga la vuelta guardada. Arriba a la izquierda se ve cuánto le llevás o le perdés.
 
@@ -54,6 +56,15 @@ Dos archivos concentran casi todo lo que se ajusta:
 
 - `src/config.js`: agarre de cada suelo, motor y reductora, suspensión, cámaras, nafta, daño, rescates y tiempos de las medallas.
 - `src/etapa1.js`: el camino, escrito como una lista de tramos (largo, giro, pendiente, ancho, suelo, laderas, pozos, autos tirados, bidones, derrumbes).
+
+## Cómo cambiar los dibujos
+
+No hay archivos de imagen: todo se pinta con código, de a píxeles, cuando arranca el juego.
+
+- Un píxel del mundo mide 25 cm. El piso, las sombras, la orilla del agua y las huellas están hechos de esos píxeles.
+- `src/arte.js` tiene un dibujo de 64 x 64 píxeles por cada suelo (asfalto, ripio, barro...), y los de árboles, piedras, bidones y arcos. Cambiando colores o cantidades ahí cambia todo el paisaje.
+- `src/truck.js` tiene la camioneta: cinco vistas pintadas a mano (de arriba, de abajo, de costado, de frente y de atrás) que se pegan sobre una lista de cajas. Los autos tirados y el fantasma son la misma camioneta con otra pintura.
+- `src/pixel.js` son las herramientas: el pincel (`rect`, `punto`, `motas`) y el armado de cajas.
 
 ## Cómo está armado
 
@@ -71,8 +82,10 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/vehicle.js` | La física de la camioneta |
 | `src/reglas.js` | Las reglas: controles, meta, nafta, daño, rescates y formas de perder |
 | `src/fantasma.js`, `src/social.js` | Graban la vuelta y la meten en un link; ranking, desafíos y nombre del jugador |
-| `src/world.js`, `src/truck.js` | Dibujan el terreno y la camioneta |
-| `src/camera.js`, `src/fx.js`, `src/audio.js` | Cámaras, huellas y barro que salta, sonido del motor |
+| `src/world.js`, `src/truck.js` | Dibujan el terreno, el agua, los árboles y la camioneta |
+| `src/pixel.js`, `src/arte.js` | El estilo: herramientas para pintar de a píxeles y armar cajas, y los dibujos de los pisos, árboles y piedras |
+| `src/huellas.js`, `src/fx.js` | Las huellas que quedan en el piso y los cubitos de barro, agua o polvo que saltan |
+| `src/camera.js`, `src/audio.js` | Cámaras y sonido del motor |
 | `src/hud.js`, `src/input.js`, `src/noise.js` | Instrumentos, mandos (teclado, pedales e inclinación), ruido para el relieve |
 | `vendor/` | Three.js, la biblioteca 3D (licencia MIT) |
 | `tools/` | Pruebas de la física sin gráficos (opcionales) |

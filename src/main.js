@@ -11,6 +11,7 @@ import { crearGrabacion } from './fantasma.js';
 import { crearSocial } from './social.js';
 import { crearCamara } from './camera.js';
 import { crearEfectos } from './fx.js';
+import { crearHuellas } from './huellas.js';
 import { crearSonido } from './audio.js';
 import { crearTeclas } from './input.js';
 import { crearHud, reloj } from './hud.js';
@@ -19,7 +20,7 @@ const $ = (id) => document.getElementById(id);
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (document.documentElement.dataset.pagina !== '4' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now());
+if (document.documentElement.dataset.pagina !== '5' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now());
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
@@ -27,12 +28,13 @@ try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true })
   throw e;
 }
 const liviano = window.matchMedia('(pointer: coarse)').matches;   // celular o tablet: menos pixeles y sombras mas chicas
-render.setPixelRatio(Math.min(window.devicePixelRatio, liviano ? 1.5 : 2));
+let nitidez = Math.min(window.devicePixelRatio, liviano ? 1.5 : 2), cuadros = 0, lentos = 0;   // pixeles dibujados por cada pixel de pantalla
+render.setPixelRatio(nitidez);
 render.shadowMap.enabled = true;
 
 const T = crearTerreno(ETAPA), P = T.camino, escena = new THREE.Scene();
-const mundo = crearMundo(T, escena, liviano), c = crearCamioneta(T), dibujo = crearDibujo(escena), partida = crearPartida(T);
-const camara = crearCamara(T), fx = crearEfectos(escena), sonido = crearSonido(), hud = crearHud(T);
+const huellas = crearHuellas(T, render), mundo = crearMundo(T, escena, liviano, huellas), c = crearCamioneta(T), dibujo = crearDibujo(escena), partida = crearPartida(T);
+const camara = crearCamara(T), fx = crearEfectos(escena, huellas), sonido = crearSonido(), hud = crearHud(T);
 const social = crearSocial(T), espectro = crearEspectro(escena, T);
 
 let pantalla = 'portada';   // portada, jugando o fin
@@ -64,6 +66,7 @@ function largar() {
   partida.empezar(c);
   grabacion = crearGrabacion();
   fx.cortar();
+  huellas.limpiar();
   camara.saltar();
   mundo.reiniciar();
   hud.controles(0); hud.mejor(mejor); hud.aviso(''); hud.cambio(false); hud.mostrar(true);
@@ -143,8 +146,20 @@ function medir() {
   camara.pantalla(window.innerWidth, window.innerHeight);
 }
 
+// Si el aparato no da abasto (menos de 30 cuadros por segundo durante un rato), se dibuja con menos pixeles:
+// se ve menos nitido, pero se puede manejar.
+function cuidarFluidez(seg) {
+  if (seg > 0.5) return;   // la pestaña estuvo tapada: no cuenta
+  cuadros++;
+  if (seg > 1 / 30) lentos++;
+  if (cuadros < 90) return;
+  if (lentos > 60 && nitidez > 0.6) { nitidez = Math.max(0.6, nitidez * 0.75); render.setPixelRatio(nitidez); medir(); }
+  cuadros = lentos = 0;
+}
+
 function cuadro(ahora) {
   requestAnimationFrame(cuadro);
+  cuidarFluidez((ahora - antes) / 1000);
   const dt = Math.min(0.05, (ahora - antes) / 1000);
   antes = ahora;
   reloj3d += dt;
@@ -198,8 +213,8 @@ requestAnimationFrame(cuadro);
 
 // para probar desde la consola: encajados.ir(400) lleva la camioneta al metro 400 del camino
 window.encajados = {
-  c, T, camara, teclas, partida,
-  estado: () => ({ pantalla, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, pasados: partida.pasados, nafta: partida.nafta, roto: partida.rotura(), rescates: partida.rescates, baja: c.baja }),
+  c, T, camara, teclas, partida, social, fx,
+  estado: () => ({ pantalla, nitidez, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, pasados: partida.pasados, nafta: partida.nafta, roto: partida.rotura(), rescates: partida.rescates, baja: c.baja }),
   simular: (seg, x, y) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano: false }, JUEGO.paso); if (i % 2) fx.actualizar(c, JUEGO.paso * 2); } },
   avanzar: (gas, dt) => { partida.paso(c, gas, dt); if (partida.estado === 'corriendo') grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
   ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); partida.indice = i; fx.cortar(); camara.saltar(); },
