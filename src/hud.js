@@ -70,6 +70,12 @@ export function crearHud() {
       el.className = seg < 0 ? 'adelante' : 'atras';
     },
     sinRival: () => { $('rival').hidden = true; },
+    // (vuelta cerrada) en que ronda se va y cual es la mejor guardada. n: -1 = no es una vuelta cerrada; 0 = todavia no cruzo la raya
+    ronda: (n, mejor) => {
+      const el = $('ronda');
+      el.hidden = n < 0;
+      if (n >= 0) el.textContent = (n === 0 ? 'Largada' : 'Vuelta ' + n) + (mejor ? ' · mejor ' + reloj(mejor) : '');
+    },
     // las notas del copiloto: la que viene (grande, con los metros que faltan) y la siguiente
     notas: (lista, indice) => {
       const clave = lista.map((n) => n.i).join(',');

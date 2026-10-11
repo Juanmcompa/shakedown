@@ -12,17 +12,21 @@ const mezcla = (a, b, t) => a + (b - a) * t;
 const SIN_PLANO = [0, 0];
 const planoDe = (t) => !t.plano ? SIN_PLANO : typeof t.plano === 'number' ? [t.plano, t.plano] : t.plano;
 
-function promedio(v, r) {
-  const o = new Float32Array(v.length);
-  for (let i = 0; i < v.length; i++) {
+// cierra: el camino es una vuelta cerrada (despues del ultimo metro viene el primero)
+function promedio(v, r, cierra) {
+  const n = v.length, o = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
     let s = 0, c = 0;
-    for (let j = Math.max(0, i - r); j <= Math.min(v.length - 1, i + r); j++) { s += v[j]; c++; }
+    if (cierra) for (let j = i - r; j <= i + r; j++) { s += v[(j + n) % n]; c++; }
+    else for (let j = Math.max(0, i - r); j <= Math.min(n - 1, i + r); j++) { s += v[j]; c++; }
     o[i] = s / c;
   }
   return o;
 }
 
 // Recorre los tramos y devuelve un punto del camino por metro.
+// Si la etapa es una vuelta cerrada (etapa.vuelta), el ultimo metro llega justo al primero: lo poco que falte para cerrar
+// (en el mapa y en la altura) se reparte entre todos los metros, y no se nota.
 export function crearCamino(etapa) {
   let n = 0;
   for (const t of etapa.tramos) n += Math.round(t.largo);
@@ -47,15 +51,38 @@ export function crearCamino(etapa) {
     }
     t.hasta = i;
   });
-  P.G = promedio(pend, 5); P.W = promedio(ancho, 4); P.B = promedio(peralte, 5); P.R = promedio(rug, 3);
+  const cierra = !!etapa.vuelta;
+  if (cierra) { const fx = -x / n, fz = -z / n; for (i = 0; i < n; i++) { P.X[i] += fx * (i + 1); P.Z[i] += fz * (i + 1); } }
+  P.G = promedio(pend, 5, cierra); P.W = promedio(ancho, 4, cierra); P.B = promedio(peralte, 5, cierra); P.R = promedio(rug, 3, cierra);
+  if (cierra) { let sube = 0; for (i = 0; i < n; i++) sube += P.G[i]; for (i = 0; i < n; i++) P.G[i] -= sube / n; }
   let y = 0;
   for (i = 0; i < n; i++) { y += P.G[i]; P.Y[i] = y; }
   return P;
+}
+// El mismo camino, varias vueltas seguidas una atras de la otra. En una vuelta cerrada el juego corre siempre "en la del
+// medio": asi lo que mira para adelante o para atras (las notas, la trazada, el fantasma) nunca se encuentra con un final.
+// largo: cuantos metros mide una vuelta.
+export function desenrollar(P, veces) {
+  const n = P.n, Q = { n: n * veces, largo: n };
+  for (const k in P) {
+    const a = P[k];
+    if (!a || a.length !== n) continue;
+    const b = new a.constructor(n * veces);
+    for (let v = 0; v < veces; v++) b.set(a, v * n);
+    Q[k] = b;
+  }
+  return Q;
 }
 
 export function crearTerreno(etapa) {
   const ruido = crearRuido(etapa.semilla || 1), rnd = azar((etapa.semilla || 1) * 977);
   const bioma = BIOMAS[etapa.bioma] || BIOMAS.bosque, clima = CLIMAS[etapa.clima] || CLIMAS.sol;
+  // Una pista puede pasar por mas de un ambiente: cada tramo dice el suyo con "bioma" (si no dice, es el de la etapa).
+  // De cada lugar del mapa se anota en cual esta ("zona"): de eso salen su pasto, sus arboles, sus yuyos y su relieve.
+  const biomas = [etapa.bioma];
+  for (const t of etapa.tramos) if (t.bioma && BIOMAS[t.bioma] && !biomas.includes(t.bioma)) biomas.push(t.bioma);
+  const BIO = biomas.map((id) => BIOMAS[id] || BIOMAS.bosque), varios = BIO.length > 1;
+  const zonaDeTramo = etapa.tramos.map((t) => Math.max(0, biomas.indexOf(t.bioma || etapa.bioma)));
   const P = crearCamino(etapa);
   const celda = 1, margen = 74;
   let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
@@ -77,19 +104,25 @@ export function crearTerreno(etapa) {
   }
   const G = 4, gx = Math.ceil((nx - 1) * celda / G) + 2, gz = Math.ceil((nz - 1) * celda / G) + 2;
   const M = new Float32Array(gx * gz), LEJOS = new Float32Array(gx * gz);
+  // (con varios ambientes) en la grilla gruesa: de que zona es el punto del camino mas cercano, y cuanto relieve toca ahi
+  // (el relieve se mezcla de a poco entre un ambiente y otro, para que no quede un escalon donde cambian)
+  const ZG = varios ? new Uint8Array(gx * gz) : null, RG = varios ? new Float32Array(gx * gz) : null;
   for (let j = 0; j < gz; j++) for (let i = 0; i < gx; i++) {
     const x = x0 + i * G, z = z0 + j * G;
-    let sw = 0, sh = 0, dm = 1e9;
+    let sw = 0, sh = 0, dm = 1e9, sr = 0, cual = 0;
     for (let k = 0; k < pts.length; k += 11) {
       const ax = x - pts[k], az = z - pts[k + 1], d2 = ax * ax + az * az, w = 1 / ((d2 + 12) * (d2 + 12));
       const lado = ax * pts[k + 3] + az * pts[k + 4], f = Math.max(0, Math.abs(lado) - pts[k + (lado > 0 ? 9 : 10)]);
       sw += w;
       sh += w * (pts[k + 2] + (lado > 0 ? pts[k + 5] * Math.min(1, f / pts[k + 6]) : pts[k + 7] * Math.min(1, f / pts[k + 8])));
-      if (d2 < dm) dm = d2;
+      if (varios) sr += w * BIO[zonaDeTramo[P.T[k / 11 * 2]]].relieve;
+      if (d2 < dm) { dm = d2; cual = k; }
     }
     dm = Math.sqrt(dm);
-    M[j * gx + i] = sh / sw + ruido.capas(x / 120, z / 120, 3) * bioma.relieve * suave(30, 120, dm);
+    const relieve = varios ? sr / sw : bioma.relieve;
+    M[j * gx + i] = sh / sw + ruido.capas(x / 120, z / 120, 3) * relieve * suave(30, 120, dm);
     LEJOS[j * gx + i] = dm;
+    if (varios) { ZG[j * gx + i] = zonaDeTramo[P.T[cual / 11 * 2]]; RG[j * gx + i] = relieve; }
   }
   const grueso = (A, x, z) => {
     const u = (x - x0) / G, v = (z - z0) / G, i = Math.min(gx - 2, Math.floor(u)), j = Math.min(gz - 2, Math.floor(v));
@@ -115,17 +148,24 @@ export function crearTerreno(etapa) {
     return mejor;
   }
   const lomitas = bioma.relieve > 8 ? 2.2 : 0.9;
+  // la zona de cada celda: la del camino mas cercano, con el limite desparejo (como se mezclan de verdad un bosque y un campo)
+  const ZONA = varios ? new Uint8Array(nx * nz) : null;
+  const zonaEn = (x, z) => {
+    const qx = x + (ruido.n2(x / 13 + 5.3, z / 13) - 0.5) * 22, qz = z + (ruido.n2(x / 13, z / 13 + 9.1) - 0.5) * 22;
+    return ZG[Math.max(0, Math.min(gz - 1, Math.round((qz - z0) / G))) * gx + Math.max(0, Math.min(gx - 1, Math.round((qx - x0) / G)))];
+  };
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
     const x = x0 + i * celda, z = z0 + j * celda, k = j * nx + i;
     const lejos = grueso(LEJOS, x, z);
     let h = grueso(M, x, z), borde = lejos;
-    const lomas = ruido.capas(x / 26, z / 26, 3) * lomitas, pozitos = ruido.capas(x / 6, z / 6, 2) * 0.3;
+    if (varios) ZONA[k] = zonaEn(x, z);
+    const lomas = ruido.capas(x / 26, z / 26, 3) * (varios ? 0.9 + 1.3 * suave(6, 14, grueso(RG, x, z)) : lomitas), pozitos = ruido.capas(x / 6, z / 6, 2) * 0.3;
     const c = lejos < 36 ? cerca(x, z) : -1;
     if (c < 0) h += lomas + pozitos;
     else {
       const t = etapa.tramos[P.T[c]], ax = x - P.X[c], az = z - P.Z[c];
       const largo = ax * P.HX[c] + az * P.HZ[c], lado = az * P.HX[c] - ax * P.HZ[c];
-      const fuera = (c === 0 && largo < -0.6) || (c === P.n - 1 && largo > 0.6);
+      const fuera = !etapa.vuelta && ((c === 0 && largo < -0.6) || (c === P.n - 1 && largo > 0.6));
       const d = fuera ? Math.hypot(ax, az) : Math.abs(lado), medio = P.W[c] / 2, u = P.U[c] + largo;
       let hc = P.Y[c] + P.G[c] * largo + P.B[c] * lado + ruido.capas(x / P.RL[c], z / P.RL[c], 2) * P.R[c];
       let suelo = P.S[c];
@@ -415,10 +455,10 @@ export function crearTerreno(etapa) {
   }
   // alambrado: en el campo, una fila de postes a cada lado del camino. Ceden si se los choca.
   const postes = [];
-  if (bioma.alambrado) {
+  if (BIO.some((b) => b.alambrado)) {
     for (let i = 6; i < P.n - 4; i += 7) {
       const t = etapa.tramos[P.T[i]];
-      if (t.agua || t.izq || t.der || t.plano || t.puente) continue;
+      if (t.agua || t.izq || t.der || t.plano || t.puente || !BIO[zonaDeTramo[P.T[i]]].alambrado) continue;
       for (const lado of [-1, 1]) {
         const d = lado * (P.W[i] / 2 + 4.6), x = P.X[i] - P.HZ[i] * d, z = P.Z[i] + P.HX[i] * d;
         if (claros.some((c) => (c.x - x) ** 2 + (c.z - z) ** 2 < (c.r + 1.5) ** 2) || agua(x, z, altura(x, z)) > 0) continue;
@@ -440,17 +480,17 @@ export function crearTerreno(etapa) {
     const fila = Math.floor(z / FILA), corre = (sorteo(fila, 7) - 0.5) * 60, col = Math.floor((x + corre) / COLUMNA), a = sorteo(col + fila * 57, 3);
     return [a < 0.34 ? 0 : a < 0.56 ? 1 : a < 0.7 ? 2 : a < 0.84 ? 3 : 4, Math.min(z - fila * FILA, (fila + 1) * FILA - z, x + corre - col * COLUMNA, (col + 1) * COLUMNA - x - corre), col, fila, corre];
   };
-  if (bioma.lotes) {
+  if (BIO.some((b) => b.lotes)) {
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
       const k = j * nx + i;
-      if (S[k] !== SUELOS.pasto.id || BORDE[k] < 6.4 || PELADO[k]) continue;
+      if (S[k] !== SUELOS.pasto.id || BORDE[k] < 6.4 || PELADO[k] || (varios && !BIO[ZONA[k]].lotes)) continue;
       const l = lote(x0 + i * celda, z0 + j * celda);
       if (l[1] > 1.3) CULTIVO[k] = l[0];
     }
     const libre = (x, z, lejosDelCamino) => {
       if (x < x0 + 4 || x > x1 - 4 || z < z0 + 4 || z > z1 - 4) return false;
       const k = Math.round(z - z0) * nx + Math.round(x - x0);
-      return BORDE[k] > lejosDelCamino && grueso(LEJOS, x, z) < 84 && S[k] === SUELOS.pasto.id && !claros.some((q) => (q.x - x) ** 2 + (q.z - z) ** 2 < q.r * q.r);
+      return BORDE[k] > lejosDelCamino && grueso(LEJOS, x, z) < 84 && S[k] === SUELOS.pasto.id && !(varios && !BIO[ZONA[k]].lotes) && !claros.some((q) => (q.x - x) ** 2 + (q.z - z) ** 2 < q.r * q.r);
     };
     for (let fila = Math.floor(z0 / FILA); fila <= Math.floor(z1 / FILA); fila++) {
       const corre = (sorteo(fila, 7) - 0.5) * 60;
@@ -478,21 +518,22 @@ export function crearTerreno(etapa) {
   }
 
   // --- 7. Arboles y piedras sueltas ---
-  const tipos = bioma.arboles, pesoTotal = tipos.reduce((s, t) => s + t[1], 0);
-  const umbral = 0.78 - bioma.monte * 0.78, prob = 0.4 + bioma.monte * 0.5;
+  // (lo que crece depende del ambiente de cada lugar)
+  const VERDE = BIO.map((b) => ({ tipos: b.arboles, pesoTotal: b.arboles.reduce((s, t) => s + t[1], 0), umbral: 0.78 - b.monte * 0.78, prob: 0.4 + b.monte * 0.5, borde: b.borde, piedras: b.piedras }));
   for (let z = z0 + 6; z < z1 - 6; z += 4.4) for (let x = x0 + 6; x < x1 - 6; x += 4.4) {
     const px = x + (rnd() - 0.5) * 4, pz = z + (rnd() - 0.5) * 4, a = rnd(), b = rnd(), c = rnd();
     const k = Math.round((pz - z0) / celda) * nx + Math.round((px - x0) / celda);
     if (grueso(LEJOS, px, pz) > 86 || BORDE[k] < 1.8 || PELADO[k] || agua(px, pz, H[k]) > 0) continue;
     let o = null;
+    const { tipos, pesoTotal, umbral, prob, borde: bordeDelMonte, piedras: sueltas } = VERDE[varios ? ZONA[k] : 0];
     const empinado = Math.hypot(H[k + 1] - H[k - 1], H[k + nx] - H[k - nx]) / (2 * celda) > 0.36;   // sin arboles en las laderas: se tiene que ver la caida
-    if (S[k] === SUELOS.pasto.id && !empinado && BORDE[k] > bioma.borde && !CULTIVO[k] && ruido.n2(px / 40, pz / 40) > umbral && a < prob) {
+    if (S[k] === SUELOS.pasto.id && !empinado && BORDE[k] > bordeDelMonte && !CULTIVO[k] && ruido.n2(px / 40, pz / 40) > umbral && a < prob) {
       if (claros.some((q) => (q.x - px) ** 2 + (q.z - pz) ** 2 < q.r * q.r)) continue;
       let w = c * pesoTotal, tipo = tipos[0][0];
       for (const t of tipos) { w -= t[1]; if (w <= 0) { tipo = t[0]; break; } }
       o = { r: tipo === 'arbusto' ? 0.3 : 0.45, alto: 0.8 + b * 0.9, clase: 'arbol', tipo, duro: tipo === 'arbusto' ? 0.2 : 1 };
     } else if (S[k] === SUELOS.roca.id && a < 0.16) o = { r: 0.7 + b * 1.1, alto: 0.5 + b * 0.6, clase: 'piedra', duro: 1 };
-    else if (bioma.piedras && S[k] === SUELOS.pasto.id && BORDE[k] > 2.6 && a > 1 - bioma.piedras && !claros.some((q) => (q.x - px) ** 2 + (q.z - pz) ** 2 < q.r * q.r)) o = { r: 0.5 + b * 0.9, alto: 0.5 + c * 0.6, clase: 'piedra', duro: 1 };   // bloques sueltos en la estepa
+    else if (sueltas && S[k] === SUELOS.pasto.id && BORDE[k] > 2.6 && a > 1 - sueltas && !claros.some((q) => (q.x - px) ** 2 + (q.z - pz) ** 2 < q.r * q.r)) o = { r: 0.5 + b * 0.9, alto: 0.5 + c * 0.6, clase: 'piedra', duro: 1 };   // bloques sueltos en la estepa
     if (!o) continue;
     o.x = px; o.z = pz; o.y = H[k]; o.vuelta = a * 6.28;
     anotar(o);
@@ -522,27 +563,36 @@ export function crearTerreno(etapa) {
     if (o.agua > 0) { const a = Math.min(1, o.agua); o.pasta += a * 170; o.agarre *= 1 - 0.2 * a; }
     return o;
   }
+  // En una vuelta cerrada, lo que usa el juego es el camino "desenrollado": tres vueltas seguidas. Se larga cerca del final
+  // de la primera (unos metros antes de la raya), se corre siempre en la segunda, y la tercera esta para poder mirar adelante.
+  const L = etapa.vuelta ? P.n : 0, C = L ? desenrollar(P, 3) : P;
   // punto del camino mas cercano, buscando solo alrededor del ultimo conocido:
   // asi no "salta" a otra parte de la pista que pase cerca
   function indice(x, z, pista) {
     let mejor = pista, md = 1e9;
-    for (let i = Math.max(0, pista - 30); i < Math.min(P.n, pista + 60); i++) {
-      const dx = x - P.X[i], dz = z - P.Z[i], d = dx * dx + dz * dz;
+    for (let i = Math.max(0, pista - 30); i < Math.min(C.n, pista + 60); i++) {
+      const dx = x - C.X[i], dz = z - C.Z[i], d = dx * dx + dz * dz;
       if (d < md) { md = d; mejor = i; }
     }
     return mejor;
   }
-  const pose = (i) => ({ i, x: P.X[i], y: P.Y[i], z: P.Z[i], rumbo: Math.atan2(P.HX[i], -P.HZ[i]), ancho: P.W[i] });
-  const controles = etapa.tramos.filter((t) => t.control).map((t) => pose(t.hasta - 1));
-  const largada = pose(8), meta = pose(P.n - 22);
+  const pose = (i) => ({ i, x: C.X[i], y: C.Y[i], z: C.Z[i], rumbo: Math.atan2(C.HX[i], -C.HZ[i]), ancho: C.W[i] });
+  const controles = etapa.tramos.filter((t) => t.control).map((t) => pose(L + t.hasta - 1));
+  // la largada (donde se apoya el auto), la salida (la raya) y la meta. En una vuelta cerrada la raya es una sola:
+  // esta donde empieza la vuelta, se larga 60 metros antes y la "meta" es la misma raya, una vuelta despues.
+  const largada = L ? pose(L - 60) : pose(8), salida = L ? pose(L) : pose(15), meta = L ? pose(2 * L) : pose(P.n - 22);
   // los sectores: de la largada al primer control, de control a control, y del ultimo a la meta
-  const cortes = [largada.i, ...controles.map((c) => c.i), meta.i], sectores = [];
+  const cortes = [L ? L : largada.i, ...controles.map((c) => c.i), meta.i], sectores = [];
   for (let k = 0; k < cortes.length - 1; k++) sectores.push({ desde: cortes[k], hasta: cortes[k + 1] });
 
   return {
-    etapa, bioma, clima, camino: P, x0, z0, x1, z1, nx, nz, celda, H, S, borde: BORDE, orilla: ORILLA, cultivo: CULTIVO, pelado: PELADO, claros, aguas, vacas, molinos, cosas, postes, fardos, publico, cintas, carteles, mojones, autos, estacionados,
+    etapa, bioma, clima, camino: C, x0, z0, x1, z1, nx, nz, celda, H, S, borde: BORDE,
+    // los ambientes por los que pasa la pista (el primero es el de la etapa), en cual esta cada celda (zona: null si hay uno solo)
+    // y cual toca en un lugar del mapa
+    biomas, zona: ZONA, biomaEn: (x, z) => (ZONA ? biomas[ZONA[Math.max(0, Math.min(nz - 1, Math.round(z - z0))) * nx + Math.max(0, Math.min(nx - 1, Math.round(x - x0)))]] : biomas[0]), orilla: ORILLA, cultivo: CULTIVO, pelado: PELADO, claros, aguas, vacas, molinos, cosas, postes, fardos, publico, cintas, carteles, mojones, autos, estacionados,
     casas, objetos, barandas, pircas, puentes, estorbos,
-    altura, normal, suelo, indice, controles, sectores, largada, salida: pose(15), meta,
+    vuelta: L ? { largo: L, desde: L, hasta: 2 * L } : null,   // (solo en una vuelta cerrada) cuanto mide, y entre que metros del camino se corre
+    altura, normal, suelo, indice, controles, sectores, largada, salida, meta,
     cosasCerca: (x, z) => cajasCosas.get(clave(Math.floor(x / 8), Math.floor(z / 8))),
   };
 }

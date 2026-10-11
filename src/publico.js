@@ -8,7 +8,7 @@ import { estilo } from './material.js';
 
 // clima: para pedirle los resplandores en el piso. luz: la del clima (luz.fuego = se prenden fogones y bengalas).
 export function crearPublico(T, escena, clima, luz) {
-  const P = T.camino, r = azar((T.etapa.semilla || 1) + 77), lote = crearLoteDeSprites(), cosas = crearLoteDeSprites(), fuegos = crearLoteDeSprites();
+  const P = T.camino, L = T.vuelta ? T.vuelta.largo : 0, r = azar((T.etapa.semilla || 1) + 77), lote = crearLoteDeSprites(), cosas = crearLoteDeSprites(), fuegos = crearLoteDeSprites();
   // cada persona: donde esta parada, cuanto se corrio y si festeja
   const gente = T.publico.map((g) => ({ ...g, n: lote.persona(g.ropa + Math.floor(g.fase * 12), g.x, g.y, g.z, g.rumbo, g.fase, 0.9 + (g.fase * 7 % 1) * 0.2), dx: 0, dz: 0, animo: 0 }));
   // junto a algunos grupos: reposeras y la parrilla
@@ -63,7 +63,10 @@ export function crearPublico(T, escena, clima, luz) {
     let cambio = false;
     for (const g of gente) {
       // festejan cuando el auto viene llegando o acaba de pasar
-      const falta = g.i - indice, quiere = falta < 70 && falta > -22 ? 1 : 0;
+      // (en una vuelta cerrada, los metros dan la vuelta: lo que falta se mide por el lado mas corto)
+      let falta = g.i - indice;
+      if (L) falta = ((falta % L) + L + L / 2) % L - L / 2;
+      const quiere = falta < 70 && falta > -22 ? 1 : 0;
       // si el auto se les viene encima, se corren para atras
       const ax = g.x + g.dx - c.pos[0], az = g.z + g.dz - c.pos[2], d = Math.hypot(ax, az);
       let hx = 0, hz = 0;

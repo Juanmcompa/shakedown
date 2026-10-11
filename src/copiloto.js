@@ -15,9 +15,11 @@ export function decir(n) {
 
 export function crearCopiloto(T) {
   // todas las notas, en orden: { i: en que metro empieza, tipo, lado, grado, larga }
-  const notas = [];
-  for (const t of T.etapa.tramos) if (t.nota) notas.push({ i: t.desde, ...t.nota });
-  notas.push({ i: T.meta.i, tipo: 'meta' });
+  // (en una vuelta cerrada el camino trae tres vueltas seguidas: las notas se repiten en cada una, y no hay meta)
+  const notas = [], L = T.vuelta ? T.vuelta.largo : 0;
+  for (let v = 0; v < (L ? 3 : 1); v++) for (const t of T.etapa.tramos) if (t.nota) notas.push({ i: t.desde + v * L, ...t.nota });
+  if (!L) notas.push({ i: T.meta.i, tipo: 'meta' });
+  const porVuelta = L ? notas.length / 3 : 0;
   let dicha = -1, voz = null, habla = false;
 
   function elegirVoz() {
@@ -36,6 +38,10 @@ export function crearCopiloto(T) {
 
   return {
     notas,
+    // las de una sola vuelta, para mostrarlas en la portada
+    hoja: L ? notas.slice(0, porVuelta) : notas,
+    // (vuelta cerrada) se cruzo la raya y las cuentas volvieron una vuelta atras: las notas ya cantadas tambien
+    otraVuelta: () => { dicha -= porVuelta; },
     // la nota que viene y la siguiente, para mostrarlas. Devuelve [] si no hay ninguna cerca.
     proximas: (indice, velocidad) => {
       const hasta = indice + Math.max(60, velocidad * 6) + 40, lista = [];

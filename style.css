@@ -49,6 +49,8 @@ p, h1, h2, h3 { margin: 0; }
 #rival .icono { width: 12px; height: 12px; }
 #rival .quien { max-width: 7em; color: #fff; }
 #rival.adelante b { color: var(--verde); } #rival.atras b { color: var(--rojo); }
+/* en una vuelta cerrada: en que vuelta se va y cual es la mejor */
+.ronda { font: 600 14px/1 var(--titulos); letter-spacing: .02em; color: #d9d6cc; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .marcha { left: var(--mi); bottom: var(--mb); display: grid; gap: 6px; min-width: 132px; }
 .vel { font-size: 14px; }
 .vel b { font: 700 54px/.9 var(--titulos); font-variant-numeric: tabular-nums; margin-right: 3px; }

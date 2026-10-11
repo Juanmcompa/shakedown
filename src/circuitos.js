@@ -15,6 +15,9 @@ export const CIRCUITOS = [
     detalle: 'Ancha, rápida y en bajada, toda de ripio suelto. Hay que llevarlo cruzado.' },
   { id: 'urbano', numero: 16003, version: 1, nombre: 'Callejero de Villa Cañada', corto: 'Urbano', emoji: '🏘️', bioma: 'campo', clima: 'sol', caracter: 'tecnica', lugar: '35°12′S 60°41′O',
     detalle: 'Entre las casas del pueblo: esquinas de 90 grados, la plaza, un pasaje angosto y cosas para esquivar.' },
+  // vuelta: true = es una vuelta cerrada: no tiene llegada, se dan las vueltas que se quieran y queda la mejor.
+  { id: 'practica', numero: 16004, version: 1, vuelta: true, nombre: 'Vuelta del Club', corto: 'Práctica', emoji: '🔁', bioma: 'campo', clima: 'sol', caracter: 'mixta', lugar: '37°46′S 68°12′O',
+    detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
 export const circuitoDe = (clave) => CIRCUITOS.find((c) => c.id === clave || c.numero === clave) || null;
@@ -38,6 +41,8 @@ function trazado() {
     tramos,
     fijar: (o) => { for (const k in o) { if (o[k] === null) delete fijo[k]; else fijo[k] = o[k]; } return T; },
     recta: (largo, mas) => pone(largo, 0, mas),
+    // (en un circuito cerrado) una recta cuyo largo se acomoda solo para que la vuelta cierre: hacen falta dos, y que no sean paralelas
+    libre: (largo, mas) => pone(largo, 0, Object.assign({ libre: true }, mas)),
     // una curva de tantos metros de radio que dobla tantos grados (positivo = a la derecha)
     curva: (radio, angulo, mas) => {
       const largo = Math.max(6, Math.abs(angulo) * RAD * radio), n = Math.max(1, Math.round(largo / 50)), grado = gradoDe(radio, Math.abs(angulo));
@@ -57,6 +62,13 @@ function trazado() {
     },
     // un puente: angosto y derecho, sobre una zanja de "alto" metros (con agua o seca)
     puente: (luz, alto, agua, mas) => pone(luz + 8, 0, Object.assign({ ancho: Math.min(fijo.ancho, 4.4), pendiente: Math.max(-2, Math.min(2, fijo.pendiente)), puente: { luz, alto, agua: !!agua }, nota: { tipo: 'puente' } }, sinLadera, mas)),
+    // un vado: el camino baja a un arroyo, lo cruza por el lecho y vuelve a subir (41 metros en total)
+    vado: (hondo = 0.34) => {
+      pone(14, 0, { pendiente: -5, nota: { tipo: 'vado' } });
+      const t = pone(13, 0, { pendiente: 0, suelo: 'lecho', ancho: 9, agua: { hondo, largo: 64 } });
+      pone(14, 0, { pendiente: 5.5 });
+      return t;
+    },
     // la ladera de la montaña: de que lado sube ("izq" o "der"). Del otro lado queda la caida, despues de una banquina angosta.
     ladera: (sube, cuanto = 12, cae = 20) => {
       vacio = sube ? (sube === 'izq' ? 'der' : 'izq') : null;
@@ -248,14 +260,13 @@ function arbolado(t, r, o = {}) {
   if (o.arboles !== false) for (let u = 6 + r() * 5; u < t.largo - 5; u += 11 + r() * 8) verdes.push([Math.round(u), -ladoFarol * (borde + 0.3), r() < 0.7 ? 'lenga' : 'alamo', 0.75 + r() * 0.3]);
   return t;
 }
-function urbano() {
-  const T = trazado(), r = azar(7301);
-  const calle = { ancho: 7, suelo: 'asfalto', pendiente: 0, plano: 17, vereda: 2.2, hombro: 6, lineas: 'calle' };
-  const avenida = { ancho: 9.5, suelo: 'asfalto', lineas: 'ruta' }, empedrado = { suelo: 'adoquin', lineas: null }, deCalle = { ancho: 7, suelo: 'asfalto', lineas: 'calle' };
-  // una cuadra: una recta con casas a los dos lados, faroles y arboles
+// Las dos piezas con las que se arma un pueblo sobre un trazado T (r: de donde sale el azar):
+//   cuadra(largo, mas, o): una recta con casas a los dos lados, faroles y arboles
+//   esquina(lado, mas): una esquina de 90 grados (lado 1 = a la derecha). La calle por la que se venia sigue derecho, y la
+//     que se toma tambien sigue para el otro lado: las dos van cerradas con vallas. En la esquina de enfrente, un edificio.
+const CALLE = { ancho: 7, suelo: 'asfalto', pendiente: 0, plano: 17, vereda: 2.2, hombro: 6, lineas: 'calle' };
+function pueblo(T, r) {
   const cuadra = (largo, mas, o) => arbolado(casas(T.recta(largo, mas), r, o), r, o);
-  // una esquina de 90 grados (lado 1 = a la derecha). La calle por la que se venia sigue derecho, y la que se toma
-  // tambien sigue para el otro lado: las dos van cerradas con vallas. En la esquina de enfrente, un edificio.
   const esquina = (lado, mas) => {
     const t = T.curva(8, 90 * lado, mas);
     t.bocas = [[0, 0, 34, t.ancho], [t.largo, 180, 34, t.ancho]];
@@ -263,6 +274,12 @@ function urbano() {
     t.objetos = [[Math.round(t.largo / 2), lado * (t.ancho / 2 + 1.4), 'farol', 0]];
     return t;
   };
+  return { cuadra, esquina };
+}
+function urbano() {
+  const T = trazado(), r = azar(7301), { cuadra, esquina } = pueblo(T, r);
+  const calle = CALLE;
+  const avenida = { ancho: 9.5, suelo: 'asfalto', lineas: 'ruta' }, empedrado = { suelo: 'adoquin', lineas: null }, deCalle = { ancho: 7, suelo: 'asfalto', lineas: 'calle' };
 
   // la largada, en la avenida de entrada al pueblo
   T.fijar(calle).fijar(avenida);
@@ -319,7 +336,95 @@ function urbano() {
   return T.tramos;
 }
 
-const ARMAR = { subida, bajada, urbano };
+// ================= VUELTA DEL CLUB: una vuelta cerrada por el pueblo, el bosque y el cerro, para practicar =================
+// Gira en el sentido de las agujas del reloj. Arranca en la raya, en el medio de la recta de la ruta (hacia el norte),
+// y cada pedazo dice en que ambiente esta ("bioma"): de eso salen el pasto, los arboles y el relieve de alrededor.
+function practica() {
+  const T = trazado(), r = azar(9113), { cuadra, esquina } = pueblo(T, r);
+  // --- CAMPO: la ruta, de asfalto, entre los lotes ---
+  T.fijar({ bioma: 'campo', ancho: 9, suelo: 'asfalto', pendiente: 0, lineas: 'ruta' });
+  const salida = T.recta(70);
+  salida.publico = [[10, -(9 / 2 + 7), 8], [16, 9 / 2 + 7.5, 7]];
+  // --- el pueblo: una cuadra, la esquina, adoquines, un lomo de burro y unos conos ---
+  T.fijar(CALLE).fijar({ ancho: 7.6 });
+  cuadra(50, null, { desde: 4 });
+  esquina(1);
+  T.fijar({ suelo: 'adoquin', lineas: null });
+  cuadra(58, { nota: { tipo: 'adoquin' }, objetos: [[20, 2.9, 'cajones', 20], [22.5, 3.2, 'tacho', 0], [41, -2.9, 'cubiertas', 0]] }, { tipos: [['almacen', 3], ['edificio', 2], ['casita', 1], ['casa', 2]] });
+  T.fijar({ suelo: 'asfalto', lineas: 'calle' });
+  cuadra(14, { nota: { tipo: 'lomo' }, lomos: [[7, 0.26, 3.2]] }, { desde: 1, hasta: 1, arboles: false });
+  cuadra(44, { objetos: [[22, 0.9, 'cono', 0], [24, 0.3, 'cono', 0], [26, -0.3, 'cono', 0]] }, { hasta: 8 });
+  // --- BOSQUE: se termina el asfalto. Huella de tierra entre los pinos, con un vado y un barrial ---
+  T.fijar({ bioma: 'bosque', plano: null, vereda: null, hombro: null, lineas: null, ancho: 6.4, suelo: 'tierra', pendiente: 1 });
+  T.recta(80, { nota: { tipo: 'ripio' }, ancho: 7 });
+  T.curva(45, 40);
+  T.curva(34, -62);
+  T.recta(15, { pendiente: 0 });
+  T.vado();
+  T.curva(40, 67, { pendiente: 2 });
+  T.recta(56, { suelo: 'barro', pendiente: 0, nota: { tipo: 'barro' } });
+  T.curva(30, 45, { pendiente: 2 });
+  T.recta(130, { pendiente: 2 });
+  // --- MONTAÑA: la trepada, en zigzag: horquilla, cornisa de lajas con pirca, otra horquilla y un puente ---
+  T.fijar({ bioma: 'montana', ancho: 5.6, suelo: 'ripio', pendiente: 6 });
+  T.curva(26, 45);
+  T.ladera('izq').fijar({ pendiente: 7 });
+  T.recta(60);
+  T.horquilla(-135, { publico: [[10, 9 / 2 + 8, 5]] });
+  T.ladera('der', 13, 24).fijar({ pendiente: 8, ancho: 5 });
+  lajas(T.recta(56), r, T.vacio()).nota = { tipo: 'cornisa' };
+  T.fijar({ ancho: 5.6, pendiente: 7 });
+  T.horquilla(140);
+  T.ladera('izq');
+  T.recta(40);
+  T.ladera(null).puente(11, 5, false, { tope: 10 });
+  T.ladera('izq').fijar({ pendiente: 3 });
+  T.recta(90);
+  T.curva(30, 40, { pendiente: 1 });
+  // --- la bajada: ancha y rapida, con un salto ---
+  T.fijar({ ancho: 8.2, pendiente: -7 });
+  T.libre(90);
+  T.curva(70, 32); T.curva(70, -32);
+  T.recta(40, { nota: { tipo: 'salto' } });
+  T.ladera(null);
+  T.recta(12, { pendiente: 5 }); T.recta(22, { pendiente: -10 });
+  T.fijar({ pendiente: -7 });   // (despues del salto ya no hay vacio al costado: se aterriza tranquilo)
+  T.recta(30);
+  // --- CAMPO de nuevo: un camino de tierra ancho, entre alambrados, que vuelve a la ruta ---
+  T.ladera(null).fijar({ bioma: 'campo', ancho: 8.4, suelo: 'tierra', pendiente: -4 });
+  T.curva(46, 90);
+  T.fijar({ pendiente: -1 });
+  T.libre(120, { fardos: [[40, 8.4 / 2 + 1.2], [42, 8.4 / 2 + 1.6], [80, -(8.4 / 2 + 1.3)]] });
+  T.fijar({ pendiente: 0 });
+  // la ruta otra vez: aca esta la grilla (se larga 60 metros antes de la raya)
+  T.fijar({ ancho: 9, suelo: 'asfalto', lineas: 'ruta' });
+  const llegada = T.recta(90, { nota: { tipo: 'asfalto' } });
+  llegada.publico = [[70, -(9 / 2 + 7), 9], [76, 9 / 2 + 7, 8]];
+  return cerrar(T.tramos);
+}
+
+// Cierra una vuelta: acomoda el largo de las dos rectas "libres" para que el ultimo metro llegue al primero.
+// (Lo que falte despues de redondear a metros enteros, que es menos de un metro, lo reparte terrain.js.)
+function cerrar(tramos) {
+  const libres = tramos.filter((t) => t.libre), rumbos = new Map();
+  if (libres.length !== 2) throw new Error('Una vuelta cerrada necesita dos rectas libres, y hay ' + libres.length);
+  let x = 0, z = 0, rumbo = 0;
+  for (const t of tramos) {
+    const m = Math.round(t.largo);
+    if (t.libre) rumbos.set(t, rumbo);
+    for (let j = 0; j < m; j++) { rumbo += (t.giro || 0) * RAD / m; x += Math.sin(rumbo); z -= Math.cos(rumbo); }
+  }
+  if (Math.abs(Math.abs(rumbo) - 2 * Math.PI) > 0.01) throw new Error('La vuelta no cierra: gira ' + (rumbo / RAD).toFixed(1) + ' grados y tienen que ser 360');
+  const [a, b] = libres, ra = rumbos.get(a), rb = rumbos.get(b), det = Math.sin(rb - ra);
+  if (Math.abs(det) < 0.2) throw new Error('Las dos rectas libres son casi paralelas: asi no se puede cerrar la vuelta');
+  a.largo = Math.round(a.largo + (x * Math.cos(rb) + z * Math.sin(rb)) / det);
+  b.largo = Math.round(b.largo + (-z * Math.sin(ra) - x * Math.cos(ra)) / det);
+  if (a.largo < 20 || b.largo < 20) throw new Error('Para cerrar la vuelta, una recta libre quedaria de ' + Math.min(a.largo, b.largo) + ' metros: hay que acomodar el trazado');
+  for (const t of libres) delete t.libre;
+  return tramos;
+}
+
+const ARMAR = { subida, bajada, urbano, practica };
 
 // Arma la etapa de un circuito (lo mismo que devuelve generarPista para un dia).
 export function armarCircuito(numero) {
@@ -334,5 +439,7 @@ export function armarCircuito(numero) {
     hecho += t.largo;
     if (sector <= 4 && i < tramos.length - 2 && hecho >= total * sector / 5 - t.largo / 2) { t.control = true; sector++; }
   });
-  return { numero, fijo: c.id, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1 };
+  // (biomas: los ambientes por los que pasa, en el orden en que aparecen; casi siempre es uno solo)
+  const biomas = [...new Set(tramos.map((t) => t.bioma || c.bioma))];
+  return { numero, fijo: c.id, vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1 };
 }

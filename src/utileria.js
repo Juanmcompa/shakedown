@@ -76,7 +76,8 @@ export function crearUtileria(T, escena, esc) {
     });
   }
   const anchoDeTela = (p) => Math.round((p.ancho / 2 + 0.9) * 16);
-  arco(T.salida, 34, esc.tela('LARGADA', anchoDeTela(T.salida), '#d8402f', '#ffffff', '#f2c200'), '#26262a');
+  // (en una vuelta cerrada hay una sola raya, con su arco a cuadros: la largada y la meta son el mismo lugar)
+  if (!T.vuelta) arco(T.salida, 34, esc.tela('LARGADA', anchoDeTela(T.salida), '#d8402f', '#ffffff', '#f2c200'), '#26262a');
   T.controles.forEach((p, i) => arco(p, 30, esc.tela('SECTOR ' + (i + 2), anchoDeTela(p), '#f2c200', '#1b1b1d', '#1b1b1d'), '#26262a'));
   arco(T.meta, 36, esc.cuadros(anchoDeTela(T.meta)), '#26262a');
 
@@ -106,8 +107,11 @@ export function crearUtileria(T, escena, esc) {
       }
     }
   }
-  banderines(T.largada.i - 4, Math.min(P.n - 1, T.salida.i + 26));
-  banderines(Math.max(0, T.meta.i - 44), Math.min(P.n - 1, T.meta.i + 14));
+  if (T.vuelta) banderines(T.largada.i - 4, T.salida.i + 26);
+  else {
+    banderines(T.largada.i - 4, Math.min(P.n - 1, T.salida.i + 26));
+    banderines(Math.max(0, T.meta.i - 44), Math.min(P.n - 1, T.meta.i + 14));
+  }
 
   // --- molinos de viento: la torre, la cola y, al lado, el tanque. La rueda va aparte porque gira ---
   const ruedas = crearLote(), ejes = [];

@@ -260,10 +260,17 @@ const NATURAL = {
 const NOMBRES_DE_SUELO = Object.keys(SUELOS), CUANTOS = NOMBRES_DE_SUELO.length;
 export const MONTE = CUANTOS, PARED = CUANTOS + 1, MANCHON = CUANTOS + 2, BANQUINA = CUANTOS + 3, SEMBRADO = CUANTOS + 3;
 
-// Todos los pisos en una sola textura de varias capas. "piso" es el pasto del bioma: pinocha, pasto o pastoSeco.
-export function texturaDePisos(piso) {
-  const [pasto, manchon, monte, banquina] = NATURAL[piso] || NATURAL.pasto;
+// En que capas quedan el pasto, el manchon, el piso de abajo de los arboles y la banquina del ambiente numero k de una pista
+// (el 0 es el de la etapa; los demas, si la pista pasa por varios, van al final de la textura, de a cuatro capas).
+const CAPAS_BASE = CUANTOS + 8;
+export const capasNaturales = (k) => (k === 0 ? { pasto: SUELOS.pasto.id, manchon: MANCHON, monte: MONTE, banquina: BANQUINA } : { pasto: CAPAS_BASE + (k - 1) * 4, manchon: CAPAS_BASE + (k - 1) * 4 + 1, monte: CAPAS_BASE + (k - 1) * 4 + 2, banquina: CAPAS_BASE + (k - 1) * 4 + 3 });
+
+// Todos los pisos en una sola textura de varias capas. "pisos" son los pastos de los ambientes de la pista
+// (pinocha, pasto o pastoSeco): uno solo, o una lista si pasa por varios.
+export function texturaDePisos(pisos) {
+  const lista = Array.isArray(pisos) ? pisos : [pisos], [pasto, manchon, monte, banquina] = NATURAL[lista[0]] || NATURAL.pasto;
   const capas = [...NOMBRES_DE_SUELO.map((n) => (n === 'pasto' ? pasto : n)), monte, 'pared', manchon, banquina, 'trigo', 'arado', 'girasol', 'soja'];
+  for (const otro of lista.slice(1)) { const [p2, m2, mo2, b2] = NATURAL[otro] || NATURAL.pasto; capas.push(p2, m2, mo2, b2); }
   const M = 64, datos = new Uint8Array(M * M * 4 * capas.length);
   capas.forEach((nombre, i) => {
     const l = lienzoPintado(M, M, PISOS[nombre], 100 + i);

@@ -9,7 +9,9 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 ## Decisiones tomadas
 
 - **La fecha genera la pista.** La del día no está escrita a mano: del número del día salen el recorrido, el bioma, el clima y las notas. La #1 es la del 10 de octubre de 2026 y el día cambia a la medianoche de Argentina.
-- **Circuitos fijos, para seguir corriendo.** Aparte de la del día hay recorridos escritos a mano que no cambian: una subida de montaña (técnica), una bajada (velocidad) y un callejero por un pueblo (esquinas y cosas para esquivar). Se corren las veces que se quiera, queda el mejor tiempo y se comparten como la del día. No tienen pasada oficial.
+- **Circuitos fijos, para seguir corriendo.** Aparte de la del día hay recorridos escritos a mano que no cambian: una subida de montaña (técnica), una bajada (velocidad), un callejero por un pueblo (esquinas y cosas para esquivar) y una vuelta cerrada para practicar. Se corren las veces que se quiera, queda el mejor tiempo y se comparten como la del día. No tienen pasada oficial.
+- **La práctica es una vuelta cerrada y sin apuro.** Pasa por los tres ambientes y por casi todas las piezas (pueblo, vado, barro, horquillas, cornisa, puente, salto). No tiene llegada ni límite de tiempo: se dan las vueltas que se quiera, en cada una el auto arranca arreglado, y la mejor queda de fantasma. Romper el auto dentro de una vuelta sigue siendo abandono.
+- **Una pista puede pasar por varios ambientes.** Cada pedazo del recorrido dice el suyo; el pasto, los árboles, los yuyos y el relieve de cada lugar salen del camino que tiene más cerca, y el límite entre uno y otro queda desparejo. Por ahora lo usa solo la vuelta de práctica.
 - **En la cornisa, pirca.** Donde el camino se asoma al vacío en una curva o sobre lajas hay un murito de piedra que frena al auto, y antes del vacío queda una banquina angosta. Caerse sigue siendo posible en las rectas, pero no es lo que pasa siempre. Los puentes llevan barandas que se abren en las puntas, para que arrimen al auto en vez de pararlo en seco.
 - **Rozar frena.** Pasar raspando una pared, una pirca o una piedra saca velocidad: apoyarse en un paredón no es gratis.
 - **Una pasada oficial por día.** Después, práctica libre. Las pistas pasadas se pueden practicar.
@@ -44,20 +46,20 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Link a la mitad de largo, y número de versión de las pistas (lo guardado de una versión anterior se descarta solo)
 - [x] Configuración: ayuda de manejo, distancia de la cámara, sensibilidad al inclinar, doblar con flechas, tamaño de los pedales, efectos, sonido y voz
 - [x] Tres circuitos fijos: Subida a Mina Vieja, Bajada del Portezuelo y Callejero de Villa Cañada
+- [x] Vuelta del Club: circuito cerrado de práctica por campo, bosque y montaña, con vueltas, mejor vuelta y fantasma de la mejor
 - [x] Piezas nuevas para armar pistas: puentes de madera con barandas, pircas, lajas, casas y edificios, veredas, calles cortadas con vallas y vecinos, faroles con cables, autos estacionados, colectivos, volquetes, conos, lomos de burro y calles pintadas
 
 ## Lo que sigue
 
-1. **Circuito de práctica en loop:** una vuelta cerrada que pasa por los tres ambientes y por todas las piezas (puente, pueblo, cornisa), para aprender a manejar dando vueltas.
-2. **Más variedad en la pista del día:** anchos que cambian (ruta ancha, camino vecinal, huella angosta), pedazos de asfalto entre casas, puentes; y cornisas más cortas y con pirca en las curvas.
-3. **Tres autos argentinos más** (El Fitito, El Doce y El 504). Cada día se ofrecen tres, que van rotando según el día y la pista.
-4. **Publicidad en la pista:** carteles, banderas y vallas de sponsors, fáciles de cambiar.
-5. **Probarlo en celulares y compus de verdad.** Todo está probado en un navegador sin placa de video: falta ver cómo rinde y cómo se siente con el teléfono en la mano.
-6. **Ajustar el manejo jugando.** Está calibrado con pilotos automáticos, no con las manos.
-7. **Pulir campo y montaña** al nivel del bosque. Revisar la niebla y el reflejo del agua.
-8. **Colores y texturas:** seguir acercándolos a las referencias (pisos calmos, bruma cálida, sombras lilas).
-9. **Autos dibujados en la portada**, en vez de emojis.
-10. **Sonido:** golpes, agua, derrape y público.
+1. **Más variedad en la pista del día:** anchos que cambian (ruta ancha, camino vecinal, huella angosta), pedazos de asfalto entre casas, puentes; y cornisas más cortas y con pirca en las curvas.
+2. **Tres autos argentinos más** (El Fitito, El Doce y El 504). Cada día se ofrecen tres, que van rotando según el día y la pista.
+3. **Publicidad en la pista:** carteles, banderas y vallas de sponsors, fáciles de cambiar.
+4. **Probarlo en celulares y compus de verdad.** Todo está probado en un navegador sin placa de video: falta ver cómo rinde y cómo se siente con el teléfono en la mano.
+5. **Ajustar el manejo jugando.** Está calibrado con pilotos automáticos, no con las manos.
+6. **Pulir campo y montaña** al nivel del bosque. Revisar la niebla y el reflejo del agua.
+7. **Colores y texturas:** seguir acercándolos a las referencias (pisos calmos, bruma cálida, sombras lilas).
+8. **Autos dibujados en la portada**, en vez de emojis.
+9. **Sonido:** golpes, agua, derrape y público.
 
 ## Ideas para más adelante
 
@@ -78,5 +80,5 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 
 1. Jugar y anotar qué se siente mal.
 2. Ajustar `src/config.js` (manejo) o `src/generador.js` (pistas).
-3. Correr `node tools/piloto.mjs 1 12` para ver que las pistas se sigan pudiendo terminar (y `node tools/piloto.mjs 16001 3` para los circuitos).
+3. Correr `node tools/piloto.mjs 1 12` para ver que las pistas se sigan pudiendo terminar (y `node tools/piloto.mjs 16001 4` para los circuitos).
 4. Subir los cambios. Pages publica solo.

@@ -75,6 +75,8 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
 //   ritmo: que parte de la velocidad de referencia se anima a usar.  reaccion: cada cuantos segundos corrige.
 //   teclas: true = todo o nada, como con el teclado.  desvio: cuantos metros se aparta de la trazada.
 //   pie: true = no suelta nunca el acelerador.  ayuda: true = corre con la ayuda de manejo del juego.
+// En un circuito de vuelta cerrada da "rondas" vueltas (tres si no se dice) y lo que cuenta es la mejor:
+// el tiempo, los colores y los sectores son los de esa; las vueltas al camino y el daño, la suma de todas.
 export function correr(T, par, auto, o) {
   // el piloto se guia por la referencia de SU auto; los colores salen de la referencia comun (par)
   const ref = crearReferencia(T, AUTOS[auto]);
@@ -83,7 +85,9 @@ export function correr(T, par, auto, o) {
   if (ayuda) ayuda.preparar(AUTOS[auto]);
   let t = 0, prox = 0, vmax = 0, golpes = 0, cruzado = 0, fuera = 0;
   p.preparar(c); p.largar();
-  while (t < 700 && p.estado !== 'llegada' && p.estado !== 'abandono') {
+  const V = T.vuelta, rondas = o.rondas || 3;
+  let vueltasAntes = 0, rotoAntes = 0;
+  while (t < (V ? 400 * rondas : 700) && p.estado !== 'llegada' && p.estado !== 'abandono' && !(V && p.rondas.length >= rondas)) {
     if (p.estado === 'corriendo' && t >= prox) { prox = t + o.reaccion * (0.7 + 0.6 * rnd()); decidir(T, ref, c, p, o, m, rnd, t, pide); }
     if (o.teclas && t > m.hasta && !(t < m.atras)) pide.x = 0;   // solto la tecla
     if (m.volver) { m.volver = false; p.volver(c, 'pedido'); }
@@ -100,10 +104,16 @@ export function correr(T, par, auto, o) {
       const i = p.indice, v = c.velocidad;
       p.paso(c, DT * 2);
       for (const ev of p.eventos.splice(0)) {
-        if (ev.tipo === 'vuelta') problemas.push(ev.dato + ' en el metro ' + i + ' (' + T.etapa.tramos[P.T[i]].suelo + ', a ' + (v * 3.6).toFixed(0) + ' km/h)');
-        if (ev.tipo === 'golpe') { golpes++; if (ev.dato > 8) problemas.push('golpe de ' + ev.dato.toFixed(0) + ' en el metro ' + i + ' (a ' + (v * 3.6).toFixed(0) + ' km/h)'); }
+        if (ev.tipo === 'ronda') { vueltasAntes += ev.dato.vueltas; rotoAntes += ev.dato.roto; }
+        if (ev.tipo === 'vuelta') problemas.push(ev.dato + ' en el metro ' + (V ? i % V.largo : i) + ' (' + T.etapa.tramos[P.T[i]].suelo + ', a ' + (v * 3.6).toFixed(0) + ' km/h)');
+        if (ev.tipo === 'golpe') { golpes++; if (ev.dato > 8) problemas.push('golpe de ' + ev.dato.toFixed(0) + ' en el metro ' + (V ? i % V.largo : i) + ' (a ' + (v * 3.6).toFixed(0) + ' km/h)'); }
       }
     }
+  }
+  if (V) {
+    const mejor = p.rondas.slice().sort((a, b) => a.tiempo - b.tiempo)[0];
+    return { estado: mejor ? 'llegada' : p.estado === 'abandono' ? 'abandono' : 'abandono', motivo: p.motivo || 'tiempo', t: mejor ? mejor.tiempo : 0, colores: mejor ? mejor.colores : 'nnnnn', sectores: mejor ? mejor.sectores : [],
+      rondas: p.rondas.map((x) => x.tiempo), vueltas: vueltasAntes + p.vueltas, roto: rotoAntes + p.roto, m: p.indice % V.largo, vmax, golpes, cruzado, fuera, problemas };
   }
   return { estado: p.estado, motivo: p.motivo, t: p.tiempo, colores: p.colores(), sectores: p.sectores.map((s) => s.tiempo), vueltas: p.vueltas, roto: p.roto, m: p.indice, vmax, golpes, cruzado, fuera, problemas };
 }

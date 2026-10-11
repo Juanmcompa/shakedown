@@ -21,13 +21,13 @@ import { crearEfectos } from './fx.js';
 import { crearHuellas } from './huellas.js';
 import { crearSonido } from './audio.js';
 import { crearTeclas } from './input.js';
-import { crearHud } from './hud.js';
+import { crearHud, tiempoFinal } from './hud.js';
 
 const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '9' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '10' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
@@ -123,6 +123,9 @@ const menu = crearMenu({
 let pantalla = 'portada';   // portada, jugando o fin
 let modo = 'practica';      // oficial o practica
 let antes = performance.now(), resto = 0, reloj3d = 0, tactil = false, grabacion = null, tFin = 0, avisado = '', trabado = false, paraAtras = false;
+// En un circuito de vuelta cerrada: cuantas rondas se cerraron en esta salida y cual fue la mejor
+// ({ r: su resultado, g: su grabacion, mejoro: si mejoro el tiempo que estaba guardado }).
+let rondas = 0, mejorRonda = null, mejoroAlgo = false;
 let conVoz = true, conFlechas = false, hayVolante = null;   // hayVolante: si el celular tiene sensor de inclinacion (null = todavia no se sabe)
 // la camara que se eligio la ultima vez (el boton muestra cual es)
 if (club.gusto('camara')) camara.cambiar(club.gusto('camara'));
@@ -149,6 +152,7 @@ function largar() {
   raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
   pantalla = 'jugando';
   tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda;
+  rondas = 0; mejorRonda = null; mejoroAlgo = false;
   partida.preparar(c);
   partida.largar();
   grabacion = crearGrabacion(T);
@@ -159,6 +163,7 @@ function largar() {
   camara.saltar();
   mundo.reiniciar();
   hud.sectores('', 0); hud.aviso(''); hud.grande(''); hud.sinRival(); hud.frenaSola(false); hud.mostrar(true);
+  hud.ronda(T.vuelta ? 0 : -1, mejorGuardado());
   encuadrar();
   menu.cerrarFin();
   menu.portada(false);
@@ -166,21 +171,49 @@ function largar() {
   sonido.iniciar();
 }
 
+// los resultados de otros que se conocen de esta pista: van en el link, para que la tabla se complete entre todos
+const conocidos = () => (esCircuito(numero) ? club.practicas() : club.tabla()).filter((x) => !x.mio);
+// (vuelta cerrada) el mejor tiempo que hay guardado, o null
+const mejorGuardado = () => { const g = T.vuelta && club.practica(); return g && !g.ab ? g.t : null; };
+
+// (vuelta cerrada) Se cruzo la raya: se cerro una ronda. Si es la mejor de la salida, queda como resultado (y de fantasma).
+function cerrarRonda(v) {
+  rondas++;
+  const r = { pista: numero, nombre: club.nombre(), t: v.tiempo, s: v.sectores, c: v.colores, auto: club.auto(), ab: '', vueltas: v.vueltas, roto: Math.round(v.roto), practica: true, ayuda: ayudaDeLaPasada };
+  const marca = mejorGuardado(), esLaMejor = !mejorRonda || v.tiempo < mejorRonda.r.t, g = grabacion;
+  if (esLaMejor) {
+    mejorRonda = { r, g };
+    if (club.anotarPractica(r)) {
+      mejoroAlgo = true;
+      // la mejor vuelta pasa a ser el fantasma contra el que se corre (si no se eligio otro)
+      g.codigo({ ...r, nombre: club.nombre() }, conocidos()).then((codigo) => { club.ponerCodigo(r, codigo); cargarRival(); });
+    }
+  }
+  const dif = marca === null ? null : v.tiempo - marca;
+  hud.grande(tiempoFinal(v.tiempo), 2.6, dif === null || dif < 0 ? 'verde' : dif < 2 ? 'amarillo' : 'rojo');
+  hud.aviso('Vuelta ' + rondas + (dif === null ? '' : dif < 0 ? ' · ¡tu mejor vuelta! −' + (-dif).toFixed(2) : ' · +' + dif.toFixed(2) + ' contra tu mejor'), 3.2);
+  grabacion = crearGrabacion(T);
+  copiloto.otraVuelta();
+  hud.sectores('', 0);
+  hud.ronda(rondas + 1, mejorGuardado());
+}
+
 // Cierra la pasada: llegaste o abandonaste. Guarda el resultado y lo muestra.
+// (En una vuelta cerrada se llega aca al salir o al romper el auto: el resultado es el de la mejor ronda.)
 function terminar() {
   pantalla = 'fin';
   hud.llamar(false); trabado = false;
   const llego = partida.estado === 'llegada';
-  const r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: club.auto(),
+  let r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: club.auto(),
     ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada };
-  let mejoro = false;   // (en las practicas y en los circuitos queda guardada solo la mejor)
-  if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
+  let mejoro = false, g = grabacion;   // (en las practicas y en los circuitos queda guardada solo la mejor)
+  if (T.vuelta && mejorRonda) { r = { ...mejorRonda.r, nombre: club.nombre(), rondas, seRompio: partida.estado === 'abandono' }; g = mejorRonda.g; mejoro = mejoroAlgo; }
+  else if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
   // el link se arma con el nombre que haya en ese momento (si lo cambia, se arma de nuevo)
-  const g = grabacion;
   let hecho = { nombre: null, codigo: null };
   const armarLink = async () => {
     if (hecho.nombre !== club.nombre()) {
-      hecho = { nombre: club.nombre(), codigo: await g.codigo({ ...r, nombre: club.nombre() }, club.tabla().filter((x) => !x.mio)) };
+      hecho = { nombre: club.nombre(), codigo: await g.codigo({ ...r, nombre: club.nombre() }, conocidos()) };
       club.ponerCodigo(r, hecho.codigo);
     }
     return hecho.codigo;
@@ -194,6 +227,7 @@ function terminar() {
 
 function aLaPortada() {
   if (pantalla === 'jugando' && modo === 'oficial') return;   // la oficial no se deja por la mitad
+  if (pantalla === 'jugando' && T.vuelta && mejorRonda) { terminar(); return; }   // vuelta cerrada: salir es terminar, y queda la mejor ronda
   pantalla = 'portada';
   partida.preparar(c);
   fx.cortar(); camara.saltar();
@@ -209,10 +243,12 @@ function atender(e) {
   if (e.tipo === 'cuenta') { hud.grande(String(e.dato), 0.95, 'cuenta'); copiloto.hablar(CUENTA[e.dato]); }
   else if (e.tipo === 'ya') { hud.grande('¡YA!', 0.9, 'ya'); if (modo === 'oficial') club.empezarOficial(club.auto()); }
   else if (e.tipo === 'sector') {
-    const n = partida.sectores.length, par = ref.sectores[n - 1], dif = e.dato.tiempo - par;
-    hud.sectores(partida.colores(), n);
+    const n = partida.sectores.length, par = ref.sectores[e.dato.numero], dif = e.dato.tiempo - par;
+    if (n) hud.sectores(partida.colores(), n);   // (en una vuelta cerrada, al cerrar el ultimo sector ya arranco la ronda siguiente)
     hud.grande((dif < 0 ? '−' : '+') + Math.abs(dif).toFixed(1), 1.8, e.dato.color === 'v' ? 'verde' : e.dato.color === 'a' ? 'amarillo' : 'rojo');
-  } else if (e.tipo === 'golpe') camara.sacudir(e.dato);
+  } else if (e.tipo === 'raya') { grabacion = crearGrabacion(T); hud.ronda(1, mejorGuardado()); }   // (vuelta cerrada) arranca la primera ronda
+  else if (e.tipo === 'ronda') cerrarRonda(e.dato);
+  else if (e.tipo === 'golpe') camara.sacudir(e.dato);
   else if (e.tipo === 'vuelta') {
     fx.cortar();
     camara.saltar();
@@ -311,8 +347,9 @@ function cuadro(ahora) {
     if (partida.estado === 'corriendo') {
       copiloto.paso(partida.indice, c.velocidad);
       // la pasada se va grabando, y el fantasma del rival corre al lado
-      grabacion.muestra(partida.tiempo, c);
-      if (rival) {
+      // (en una vuelta cerrada, recien desde que se cruza la raya: cada ronda se graba aparte)
+      if (partida.lanzado) grabacion.muestra(partida.tiempo, c);
+      if (rival && partida.lanzado) {
         const e = espectroDe(rival.auto);
         rival.fantasma.pose(partida.tiempo, lugar);
         if (lugar.termino) e.ocultar(); else e.poner(lugar);
@@ -347,11 +384,12 @@ requestAnimationFrame(cuadro);
 window.shakedown = {
   T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto,
   auto: () => c,
-  estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre }),
+  estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,
   saltearEspera: () => { if (tFin > 0) tFin = 0.001; },   // (para las pruebas) muestra el resultado sin esperar
   // (para las pruebas) maneja unos segundos con el volante y el pedal fijos, con la camara y los efectos siguiendolo
   simular: (seg, x, y, mano = false) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano }, JUEGO.paso); if (i % 2) { fx.actualizar(c, JUEGO.paso * 2); camara.seguir(c, JUEGO.paso * 2); } } },
-  avanzar: (dt) => { partida.paso(c, dt); if (partida.estado === 'corriendo') grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
+  avanzar: (dt) => { partida.paso(c, dt); if (partida.estado === 'corriendo' && partida.lanzado) grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
+  salir: () => aLaPortada(),
   ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); partida.indice = i; fx.cortar(); camara.saltar(); },
 };

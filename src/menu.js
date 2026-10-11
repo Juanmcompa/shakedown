@@ -43,9 +43,12 @@ export function crearMenu(o) {
   $('pistaNombre').textContent = etapa.nombre;
   if (fijo) { $('pistaDetalle').textContent = fijo.detalle; $('pistaDetalle').hidden = false; }
   const datos = $('pistaDatos');
-  for (const txt of [BIOMAS[etapa.bioma].emoji + ' ' + BIOMAS[etapa.bioma].nombre, CLIMAS[etapa.clima].emoji + ' ' + CLIMAS[etapa.clima].nombre, (etapa.largo / 1000).toFixed(1).replace('.', ',') + ' km', CARACTER[etapa.caracter].nombre]) datos.append(crear('span', 'dato', txt));
+  // (si la pista pasa por varios ambientes, se nombran todos: 🌾🌲⛰️ Campo, bosque y montaña)
+  const varios = etapa.biomas && etapa.biomas.length > 1 ? etapa.biomas.map((b) => BIOMAS[b].nombre.toLowerCase()) : null;
+  const ambiente = varios ? etapa.biomas.map((b) => BIOMAS[b].emoji).join('') + ' ' + (varios.slice(0, -1).join(', ') + ' y ' + varios[varios.length - 1]).replace(/^./, (l) => l.toUpperCase()) : BIOMAS[etapa.bioma].emoji + ' ' + BIOMAS[etapa.bioma].nombre;
+  for (const txt of [ambiente, CLIMAS[etapa.clima].emoji + ' ' + CLIMAS[etapa.clima].nombre, (etapa.largo / 1000).toFixed(1).replace('.', ',') + ' km', CARACTER[etapa.caracter].nombre]) datos.append(crear('span', 'dato', txt));
   // las notas del copiloto, todas en fila
-  for (const n of copiloto.notas) {
+  for (const n of copiloto.hoja) {
     const caja = crear('span', 'nota'), img = crear('img', 'icono');
     img.src = iconoDeNota(n); img.alt = '';
     caja.append(img, crear('b', '', textoDeNota(n)));
@@ -72,7 +75,7 @@ export function crearMenu(o) {
     mio.hidden = !oficial || !!oficial.corriendo;
     if (!mio.hidden) {
       mio.textContent = '';
-      mio.append(crear('span', 'chico', fijo ? 'Tu mejor tiempo' : 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
+      mio.append(crear('span', 'chico', T.vuelta ? 'Tu mejor vuelta' : fijo ? 'Tu mejor tiempo' : 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
     }
     $('avisoAyuda').hidden = !ajustes.leer('ayuda');
     pintarAjustes();
@@ -80,7 +83,7 @@ export function crearMenu(o) {
     rotular($('largar'), puede || fijo ? 'Largar' : 'Practicar');
     $('largar').dataset.icono = puede || fijo ? 'bandera' : 'cono';
     $('compartirPortada').hidden = !(oficial && !oficial.corriendo && oficial.codigo);
-    $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (fijo ? 'Circuito fijo: se corre las veces que quieras. Queda tu mejor tiempo.' : puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
+    $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (T.vuelta ? 'Vuelta cerrada: das las que quieras y queda la mejor. Para terminar, salí con la X' + (window.matchMedia('(pointer: coarse)').matches ? '.' : ' o con Esc.') : fijo ? 'Circuito fijo: se corre las veces que quieras. Queda tu mejor tiempo.' : puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
     // la tabla: en un circuito, los mejores tiempos de cada uno; en una pista del dia, las oficiales y, aparte, las practicas
     pintarTabla($('tabla'), fijo ? club.practicas() : club.tabla());
     pintarTabla($('practicas'), fijo ? [] : club.practicas());
@@ -172,7 +175,7 @@ export function crearMenu(o) {
       <div><dt>${dib('sonido')}${dib('voz')}</dt><dd>sonido y voz del copiloto</dd></div>
     </dl>
     <p>${dib('bandera')} larga la pasada oficial: una sola por día. ${dib('cono')} es práctica: no cuenta para la tabla.</p>
-    <p>${dib('circuito')} Además de la pista del día hay circuitos fijos, para correr las veces que quieras: una subida y una bajada de montaña y un callejero por el pueblo. Queda guardado tu mejor tiempo.</p>
+    <p>${dib('circuito')} Además de la pista del día hay circuitos fijos, para correr las veces que quieras: una subida y una bajada de montaña, un callejero por el pueblo y una vuelta cerrada para practicar, donde das las vueltas que quieras. Queda guardado tu mejor tiempo.</p>
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
     <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina.</p>
     <p>Los golpes rompen el auto. Si se rompe del todo, es abandono.</p>
@@ -254,7 +257,7 @@ export function crearMenu(o) {
     // mejoro: true si es tu mejor tiempo en esa pista (para las practicas y los circuitos).
     fin: (r, armarLink, mejoro) => {
       ultimo = r; linkDe = armarLink;
-      $('finTipo').textContent = (fijo ? 'Circuito · ' : (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ') + etapa.nombre + (mejoro ? ' · ¡tu mejor tiempo!' : '');
+      $('finTipo').textContent = (fijo ? 'Circuito · ' : (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ') + etapa.nombre + (mejoro ? (T.vuelta ? ' · ¡tu mejor vuelta!' : ' · ¡tu mejor tiempo!') : '');
       $('finTitulo').textContent = r.ab ? ABANDONO[r.ab] || 'Abandono' : '';
       $('finTitulo').hidden = !r.ab;
       $('finGrande').textContent = r.ab ? 'Abandono' : tiempoFinal(r.t);
@@ -267,7 +270,8 @@ export function crearMenu(o) {
         s.append(crear('i'), crear('b', '', x === 'n' ? '—' : r.s[k].toFixed(1)), crear('small', '', x === 'n' ? '' : (r.s[k] >= ref.sectores[k] ? '+' : '−') + Math.abs(r.s[k] - ref.sectores[k]).toFixed(1)));
         caja.append(s);
       });
-      $('finDetalle').textContent = r.ab ? '' : (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : '');
+      $('finDetalle').textContent = r.ab ? '' : (r.rondas ? (r.rondas === 1 ? 'Diste una vuelta. ' : 'La mejor de ' + r.rondas + ' vueltas. ') + (r.seRompio ? 'Después rompiste el auto. ' : '') : '')
+        + (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : '');
       // despues de una pasada complicada sin ayuda, se la ofrece
       $('finAyuda').hidden = !!r.ayuda || !!ajustes.leer('ayuda') || !(r.ab === 'roto' || r.vueltas >= 2 || (!r.ab && r.t > ref.total * 1.6));
       $('finAyuda').firstElementChild.textContent = '¿Se complicó?';

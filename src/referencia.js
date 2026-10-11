@@ -21,8 +21,8 @@ export function crearReferencia(T, C, o = {}) {
     // en la cornisa, mas lejos del vacio
     if (t.der && t.der[0] < -6) hi[i] = Math.max(0, libre - 0.6);
     if (t.izq && t.izq[0] < -6) lo[i] = -Math.max(0, libre - 0.6);
-    // la largada y la llegada, por el medio
-    const punta = Math.min(1, Math.max(0, (i - T.largada.i) / 30), (n - 1 - i) / 20);
+    // la largada y la llegada, por el medio (en una vuelta cerrada no hay: se pasa lanzado)
+    const punta = T.vuelta ? 1 : Math.min(1, Math.max(0, (i - T.largada.i) / 30), (n - 1 - i) / 20);
     lo[i] *= punta; hi[i] *= punta;
   }
   // lo que esta metido en el camino (un auto estacionado, un volquete): la trazada pasa por el lado que deja mas lugar
@@ -80,7 +80,8 @@ export function crearReferencia(T, C, o = {}) {
   for (let i = 0; i < n; i++) tope[i] = Math.min(60, tramos[P.T[i]].tope || 60, Math.sqrt(usa * mu[i] * g / Math.max(Math.abs(curva[i]), 1e-4)));
   // lo que frena solo: el piso, el barro, el aire y la subida (en m/s2, positivo = frena)
   const frena = (i, vel) => roce[i] * g + 4 * pasta[i] * vel / C.masa + C.aire * vel * vel / C.masa + g * P.G[i] / Math.hypot(1, P.G[i]);
-  const i0 = T.largada.i;
+  // (en una vuelta cerrada se arranca a contar desde el principio de todo: asi la vuelta que vale, la del medio, se toma ya lanzado)
+  const i0 = T.vuelta ? 2 : T.largada.i;
   v[i0] = 0;
   for (let i = i0; i < n - 1; i++) {
     // acelerando se aprovecha todo el agarre (es pisar a fondo); doblando y frenando, solo la parte "usa"
@@ -107,7 +108,7 @@ export function crearReferencia(T, C, o = {}) {
     auto: C, corre, velocidad: v, curva, tiempo: t,
     desde: lo, hasta: hi,   // entre que corrimientos se puede pasar en cada metro (por los bordes y por lo que haya en el camino)
     estorbo,                // 1 en los metros donde hay algo metido en el camino
-    total: t[T.meta.i],
+    total: t[T.meta.i] - (T.vuelta ? t[T.vuelta.desde] : 0),   // (en una vuelta cerrada: lo que tarda la vuelta, lanzado)
     sectores: T.sectores.map((x) => t[x.hasta] - t[x.desde]),
   };
 }

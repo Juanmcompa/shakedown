@@ -253,7 +253,7 @@ export function crearGrabacion(T) {
       w.crudo(otros.length, 4);
       for (const x of otros) pasarResultado(w, x, enc, dec, m.pista, false);
       w.crudo(xs.length, 11);
-      recorrerVuelta(w, crearModelos(), xs.length, enCamino(T.camino, xs, zs, hs, ys, T.largada.i));
+      recorrerVuelta(w, crearModelos(), xs.length, enCamino(T.camino, xs, zs, hs, ys, T.vuelta ? T.vuelta.desde : T.largada.i));
       return 'd' + aTexto(w.fin());
     },
   };
@@ -326,7 +326,7 @@ export function crearFantasma(vuelta, T) {
   const { n, xs, zs, hs, ys } = vuelta, P = T.camino;
   // a que segundo paso por cada metro del camino (para decir cuanto se le lleva o se le pierde)
   const paso = new Float32Array(P.n).fill(-1);
-  let ind = T.largada.i;
+  let ind = T.vuelta ? T.vuelta.desde : T.largada.i;   // (en una vuelta cerrada, la pasada grabada arranca en la raya)
   for (let k = 0; k < n; k++) {
     ind = T.indice(xs[k], zs[k], ind);
     if (Math.hypot(xs[k] - P.X[ind], zs[k] - P.Z[ind]) < P.W[ind] / 2 + 6 && paso[ind] < 0) paso[ind] = k * PASO;

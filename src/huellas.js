@@ -25,7 +25,7 @@ export function crearHuellas(T, render) {
     // de = cuantos metros a la derecha del medio; va = cuantos metros mas adelante que el metro i
     const en = (i, va, de, v) => pinta(P.X[i] + P.HX[i] * va - P.HZ[i] * de, P.Z[i] + P.HZ[i] * va + P.HX[i] * de, v);
     const s = T.salida.i, m = T.meta.i;
-    for (let de = -P.W[s] / 2 + 0.3; de < P.W[s] / 2 - 0.3; de += 0.2) for (const va of [0, 0.25]) en(s, va, de, PINTURA.blanca);
+    if (!T.vuelta) for (let de = -P.W[s] / 2 + 0.3; de < P.W[s] / 2 - 0.3; de += 0.2) for (const va of [0, 0.25]) en(s, va, de, PINTURA.blanca);   // (en una vuelta cerrada, solo los cuadros)
     for (let de = -P.W[m] / 2 + 0.2; de < P.W[m] / 2 - 0.2; de += 0.2) for (let f = 0; f < 4; f++) if ((Math.floor(de * 2 + 100) + (f >> 1)) % 2) en(m, f * 0.25, de, PINTURA.blanca);
     for (const t of T.etapa.tramos) {
       // los lomos de burro, a rayas amarillas cruzadas

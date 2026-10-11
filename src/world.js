@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { SUELOS } from './config.js';
 import { crearRuido } from './noise.js';
 import { glslPixel } from './pixel.js';
-import { texturaDePisos, crearEscenografia, MONTE, PARED, MANCHON, BANQUINA, SEMBRADO } from './arte.js';
+import { texturaDePisos, capasNaturales, crearEscenografia, PARED, SEMBRADO } from './arte.js';
+import { BIOMAS } from './generador.js';
 import { ambiente, estilo } from './material.js';
 import { crearFlora } from './flora.js';
 import { crearUtileria } from './utileria.js';
@@ -41,8 +42,10 @@ const PISO = {
     vec4 dato = texelFetch(uMapa, celda, 0);
     float capa = floor(dato.r * 255.0 + 0.5);
     float tono = dato.g + (dado.y - 0.5) * 0.3;
-    // el pasto se corta con manchones de otra cosa (flores, hojas secas, pedregullo, segun el lugar)
-    if (capa == ${SUELOS.pasto.id}.0 && dato.b + (dado.x - 0.5) * 0.16 > 0.63) capa = ${MANCHON}.0;
+    // el pasto se corta con manchones de otra cosa (flores, hojas secas, pedregullo, segun el lugar):
+    // donde hay pasto, el mapa trae ademas en que capa esta el manchon de ese ambiente
+    float otra = floor(dato.a * 255.0 + 0.5);
+    if (otra > 0.5 && dato.b + (dado.x - 0.5) * 0.16 > 0.63) capa = otra;
     vec2 corrido = centro;
     if (plano != 0) {   // en un paredon el dibujo se pega sobre la pared, y la roca muestra sus bancos
       corrido = vec2(centroPlano.x, -centroPlano.y);
@@ -108,19 +111,20 @@ export function crearMundo(T, escena, liviano, huellas) {
 
   // --- terreno, en pedazos de 64 x 64 metros para dibujar solo lo que se ve ---
   // el mapa que lee el shader: por celda, que suelo es, un tono (para que no quede todo parejo) y donde van los manchones
-  const ruido = crearRuido(99), mapa = new Uint8Array(nx * nz * 4);
+  const ruido = crearRuido(99), mapa = new Uint8Array(nx * nz * 4), naturales = T.biomas.map((id, k) => capasNaturales(k));
   for (let gz = 0; gz < nz; gz++) for (let gx = 0; gx < nx; gx++) {
-    const k = gz * nx + gx;
-    // el pasto puede ser: lo de abajo de un arbol, la banquina, un sembrado o pasto nomas
-    mapa[k * 4] = S[k] !== SUELOS.pasto.id ? S[k] : T.orilla[k] ? BANQUINA : flora.monte[k] ? MONTE : T.cultivo[k] ? SEMBRADO + T.cultivo[k] : S[k];
+    const k = gz * nx + gx, N = naturales[T.zona ? T.zona[k] : 0];
+    // el pasto puede ser: lo de abajo de un arbol, la banquina, un sembrado o pasto nomas (cada cosa, la del ambiente de ese lugar)
+    const pastoNomas = S[k] === SUELOS.pasto.id && !T.orilla[k] && !flora.monte[k] && !T.cultivo[k];
+    mapa[k * 4] = S[k] !== SUELOS.pasto.id ? S[k] : T.orilla[k] ? N.banquina : flora.monte[k] ? N.monte : T.cultivo[k] ? SEMBRADO + T.cultivo[k] : N.pasto;
     mapa[k * 4 + 1] = Math.round(ruido.n2(gx * 0.045, gz * 0.045) * 255);
     mapa[k * 4 + 2] = Math.round(ruido.capas(gx * 0.021 + 40, gz * 0.021 - 17, 3) * 127 + 128);
-    mapa[k * 4 + 3] = 255;
+    mapa[k * 4 + 3] = pastoNomas ? N.manchon : 0;   // (en que capa esta el manchon que corta ese pasto; 0 = no lleva)
   }
   const tMapa = new THREE.DataTexture(mapa, nx, nz, THREE.RGBAFormat, THREE.UnsignedByteType);
   tMapa.needsUpdate = true;
   const mPiso = estilo(new THREE.MeshLambertMaterial(), { clave: 'piso', sombras: true, cabeza: PISO.cabeza, cuerpo: PISO.cuerpo,
-    datos: { uMapa: { value: tMapa }, uPisos: { value: texturaDePisos(T.bioma.piso) }, uHuellas: { value: huellas.textura }, uCampo: campo, uMojado: { value: luz.mojado } } });
+    datos: { uMapa: { value: tMapa }, uPisos: { value: texturaDePisos(T.biomas.map((id) => (BIOMAS[id] || BIOMAS.bosque).piso)) }, uHuellas: { value: huellas.textura }, uCampo: campo, uMojado: { value: luz.mojado } } });
   const TAM = 64, alto = (i, j) => H[Math.min(nz - 1, Math.max(0, j)) * nx + Math.min(nx - 1, Math.max(0, i))];
   for (let cz = 0; cz < nz - 1; cz += TAM) for (let cx = 0; cx < nx - 1; cx += TAM) {
     const w = Math.min(TAM, nx - 1 - cx), h = Math.min(TAM, nz - 1 - cz);

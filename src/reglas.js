@@ -11,8 +11,12 @@ export function colorDeSector(tiempo, referencia, vueltas) {
 }
 
 // T: el terreno. par: segundos de referencia de cada sector (salen de referencia.js).
+//
+// En un circuito de vuelta cerrada (T.vuelta) no hay llegada: se larga unos metros antes de la raya, el reloj arranca
+// al cruzarla y cada vez que se la vuelve a cruzar se cierra una ronda (p.rondas) y empieza otra, con el reloj en cero,
+// los sectores de nuevo y el auto arreglado. Se corre hasta que el jugador quiera (o hasta romper el auto).
 export function crearPartida(T, par) {
-  const P = T.camino, S = T.sectores;
+  const P = T.camino, S = T.sectores, V = T.vuelta;
   const p = {
     estado: 'previa',   // previa (en la largada, esperando), cuenta (3, 2, 1), corriendo, llegada, abandono
     tiempo: 0,          // el reloj, con las penalizaciones ya sumadas
@@ -25,6 +29,9 @@ export function crearPartida(T, par) {
     vueltas: 0,         // veces que hubo que volver al camino
     motivo: '',         // por que se abandono: 'roto' o 'tiempo'
     volcado: false, trabado: false, contramano: false, eventos: [],
+    // solo en una vuelta cerrada:
+    lanzado: !V,        // si ya se cruzo la raya por primera vez (antes de eso el reloj no corre)
+    rondas: [],         // las rondas ya cerradas: { tiempo, sectores: [segundos], colores, vueltas, roto }
   };
   let reloj = 0, desde = 0, enSector = 0, golpe = 0, tGolpe = 0, tVolcado = 0, tCaida = 0, tQuieto = 0, tAlReves = 0, dicho = 0;
   const avisar = (tipo, dato) => p.eventos.push({ tipo, dato });
@@ -38,8 +45,8 @@ export function crearPartida(T, par) {
 
   // deja el auto en la largada, listo para la cuenta regresiva
   p.preparar = function (c) {
-    Object.assign(p, { estado: 'previa', tiempo: 0, cuenta: 0, sector: 0, roto: 0, vueltas: 0, motivo: '' });
-    p.sectores.length = 0; p.eventos.length = 0;
+    Object.assign(p, { estado: 'previa', tiempo: 0, cuenta: 0, sector: 0, roto: 0, vueltas: 0, motivo: '', lanzado: !V });
+    p.sectores.length = 0; p.eventos.length = 0; p.rondas.length = 0;
     reloj = desde = enSector = dicho = 0;
     apoyar(c, T.largada.i);
   };
@@ -58,7 +65,7 @@ export function crearPartida(T, par) {
   p.volver = function (c, motivo) {
     if (p.estado !== 'corriendo') return;
     p.vueltas++; enSector++;
-    p.tiempo += JUEGO.penalizacion;
+    if (p.lanzado) p.tiempo += JUEGO.penalizacion;
     apoyar(c, Math.max(T.largada.i, p.indice - 6));
     c.impacto = 0;
     avisar('vuelta', motivo);
@@ -73,19 +80,31 @@ export function crearPartida(T, par) {
       return;
     }
     if (p.estado !== 'corriendo') return;
-    p.tiempo += dt; reloj += dt;
-    const i = p.indice = T.indice(c.pos[0], c.pos[2], p.indice);
+    if (p.lanzado) p.tiempo += dt;
+    reloj += dt;
+    let i = p.indice = T.indice(c.pos[0], c.pos[2], p.indice);
     p.lejos = Math.hypot(c.pos[0] - P.X[i], c.pos[2] - P.Z[i]) - P.W[i] / 2;
+    // vuelta cerrada: la primera vez que se cruza la raya arranca el reloj
+    if (!p.lanzado && i >= V.desde && p.lejos < 4) { p.lanzado = true; p.tiempo = 0; desde = 0; enSector = 0; p.vueltas = 0; avisar('raya'); }
 
     // sectores y meta
-    if (p.lejos < 4 && i >= S[p.sector].hasta) {
-      const tiempo = p.tiempo - desde, s = { tiempo, color: colorDeSector(tiempo, par[p.sector], enSector), vueltas: enSector };
+    if (p.lanzado && p.lejos < 4 && i >= S[p.sector].hasta) {
+      const tiempo = p.tiempo - desde, s = { tiempo, color: colorDeSector(tiempo, par[p.sector], enSector), vueltas: enSector, numero: p.sector };
       p.sectores.push(s);
       desde = p.tiempo; enSector = 0; p.sector++;
       avisar('sector', s);
-      if (p.sector === S.length) { p.sector = S.length - 1; p.estado = 'llegada'; avisar('llegada'); return; }
+      if (p.sector === S.length && !V) { p.sector = S.length - 1; p.estado = 'llegada'; avisar('llegada'); return; }
+      if (p.sector === S.length) {
+        // se cerro una ronda: queda anotada y arranca la siguiente, con el auto arreglado. El auto sigue donde esta,
+        // pero para las cuentas vuelve a estar al principio de la vuelta del medio (es el mismo lugar del mapa).
+        const ronda = { tiempo: p.tiempo, sectores: p.sectores.map((x) => x.tiempo), colores: p.colores(), vueltas: p.vueltas, roto: p.roto };
+        p.rondas.push(ronda);
+        p.tiempo = 0; desde = 0; p.sector = 0; p.sectores.length = 0; p.vueltas = 0; p.roto = 0;
+        i = p.indice = i - V.largo;
+        avisar('ronda', ronda);
+      }
     }
-    if (p.tiempo > JUEGO.maximo) return abandonar('tiempo');
+    if (!V && p.tiempo > JUEGO.maximo) return abandonar('tiempo');   // (en una vuelta cerrada no hay apuro: se practica lo que se quiera)
 
     // daño: de cada choque cuenta el golpe mas fuerte. Los de una caida al vacio no cuentan: eso se paga volviendo al camino.
     const cae = c.pos[1] < P.Y[i] - 6;

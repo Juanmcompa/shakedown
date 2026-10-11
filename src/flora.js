@@ -60,7 +60,7 @@ export function crearFlora(T, escena, esc, liviano) {
     if (o.clase !== 'arbol') continue;
     const r = azar(Math.floor(o.x * 131 + o.z * 71) + 9), z = zona(o.x, o.z);
     if (o.tipo === 'arbusto') {   // un arbusto es un sprite; segun el bioma, uno u otro
-      const dibujo = T.etapa.bioma === 'montana' ? (r() < 0.6 ? 'neneo' : 'arbustoSeco') : T.etapa.bioma === 'campo' ? (r() < 0.6 ? 'arbustoClaro' : 'arbustoFlor') : 'arbusto';
+      const donde = T.biomaEn(o.x, o.z), dibujo = donde === 'montana' ? (r() < 0.6 ? 'neneo' : 'arbustoSeco') : donde === 'campo' ? (r() < 0.6 ? 'arbustoClaro' : 'arbustoFlor') : 'arbusto';
       z.yuyos.poner(dibujo, o.x, o.y - 0.05, o.z, { escala: 1.15 + r() * 0.5, azar: r(), mueve: 0.04 });
       continue;
     }
@@ -86,7 +86,8 @@ export function crearFlora(T, escena, esc, liviano) {
   }
 
   // --- yuyos: se siembran en una grilla, mas tupidos cerca del camino ---
-  const lista = YUYOS[T.etapa.bioma] || YUYOS.bosque, ruido = crearRuido((T.etapa.semilla || 1) + 31), r = azar((T.etapa.semilla || 1) + 5);
+  // (si la pista pasa por varios ambientes, en cada lugar crece lo del suyo)
+  const listas = T.biomas.map((id) => YUYOS[id] || YUYOS.bosque), ruido = crearRuido((T.etapa.semilla || 1) + 31), r = azar((T.etapa.semilla || 1) + 5);
   const paso = liviano ? 2.6 : 1.9, pasto = SUELOS.pasto.id;
   const elegir = (opciones, x, z) => {
     let total = 0;
@@ -109,7 +110,7 @@ export function crearFlora(T, escena, esc, liviano) {
       if (dibujo && a < (que === 3 ? 0.5 : que === 1 ? 0.3 : 0.12)) zona(px, pz).yuyos.poner(dibujo, px, T.altura(px, pz) - 0.04, pz, { escala: 0.9 + r() * 0.3, azar: r(), mueve: 0.05 });
       continue;
     }
-    const banda = b < 3.5 ? 0 : b < 12 ? 1 : 2;
+    const banda = b < 3.5 ? 0 : b < 12 ? 1 : 2, lista = listas[T.zona ? T.zona[k] : 0];
     if (a > lista.cuanto[banda] * (monte[k] ? 0.45 : 1)) continue;
     if (T.claros.some((q) => (q.x - px) ** 2 + (q.z - pz) ** 2 < (q.r - 1) * (q.r - 1))) continue;
     const dibujo = elegir(banda === 0 ? lista.cerca : banda === 1 ? lista.medio : lista.lejos, px, pz);
