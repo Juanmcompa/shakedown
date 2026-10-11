@@ -19,6 +19,7 @@ import { crearDibujo, crearEspectro } from './autos.js';
 import { crearCamara } from './camera.js';
 import { crearEfectos } from './fx.js';
 import { crearHuellas } from './huellas.js';
+import { crearTrazada } from './trazada.js';
 import { crearSonido } from './audio.js';
 import { crearTeclas } from './input.js';
 import { crearHud, tiempoFinal } from './hud.js';
@@ -27,7 +28,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '12' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '13' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
@@ -76,24 +77,30 @@ await respiro('Plantando el paisaje…');
 const escena = new THREE.Scene();
 const huellas = crearHuellas(T, render), mundo = crearMundo(T, escena, liviano, huellas), partida = crearPartida(T, ref.sectores);
 huellas.pintar();   // la raya de largada, la meta y las lineas del asfalto
+const trazada = crearTrazada(T, escena, ref);   // la linea para seguir (se prende en la configuracion)
 // el polvo: no hay si llueve, y se lo lleva un viento suave que cambia con la pista
 const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
 const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento]), sonido = crearSonido(), hud = crearHud();
 const post = crearPost(render, etapa.clima, liviano);
-// lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica)
-const gusto = (clave) => { const v = club.gusto(clave); return v === undefined ? GUSTOS[clave] : v; };
+// lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica).
+// La trazada, mientras nadie la toque, acompaña a la ayuda de manejo: con ayuda se ve, para entender por donde va a ir el auto.
+const gusto = (clave) => { const v = club.gusto(clave); return v !== undefined ? v : clave === 'trazada' ? !!gusto('ayuda') : GUSTOS[clave]; };
 
 await respiro('Preparando el auto…');
 // --- el auto del jugador (se puede cambiar en la portada) y los fantasmas ---
-// Con la ayuda de manejo, el mismo auto se cruza menos (y ademas frena solo: ver ayuda.js).
+// Con la ayuda de manejo, el mismo auto se cruza menos (y ademas sigue la trazada y frena solo: ver ayuda.js).
 const ayuda = crearAyuda(T);
-let c = null, dibujo = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false;
+// la referencia de cada auto (donde frenar depende del auto): la usan la ayuda de manejo y los colores de la trazada.
+// Se calcula recien cuando hace falta.
+const refs = { [REFERENCIA]: ref }, refDe = (id) => refs[id] || (refs[id] = crearReferencia(T, AUTOS[id]));
+let c = null, dibujo = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false, conTrazada = !!gusto('trazada');
 function ponerAuto(id) {
   if (!AUTOS[id]) id = 'vitarita';
   if (dibujo) escena.remove(dibujo.grupo);
   club.ponerAuto(id);
   c = crearAuto(T, conAyuda ? { ...AUTOS[id], ...AYUDA.auto } : AUTOS[id]);
-  if (conAyuda) ayuda.preparar(AUTOS[id]);
+  if (conAyuda) ayuda.preparar(AUTOS[id], refDe(id));
+  if (conTrazada) trazada.usar(refDe(id));
   dibujo = crearDibujo(escena, AUTOS[id]);
   partida.preparar(c);
   camara.saltar();
@@ -174,6 +181,7 @@ function largar() {
   huellas.limpiar();
   camara.saltar();
   mundo.reiniciar();
+  trazada.mostrar(conTrazada);
   hud.sectores('', 0); hud.aviso(''); hud.grande(''); hud.sinRival(); hud.frenaSola(false); hud.mostrar(true);
   hud.ronda(T.vuelta ? 0 : -1, mejorGuardado());
   encuadrar();
@@ -232,6 +240,7 @@ function terminar() {
   };
   armarLink().then(cargarRival);
   for (const id in espectros) espectros[id].ocultar();
+  trazada.mostrar(false);
   hud.aviso(''); hud.grande(''); hud.frenaSola(false);
   hud.mostrar(false);
   menu.fin(r, armarLink, mejoro);
@@ -243,6 +252,7 @@ function aLaPortada() {
   pantalla = 'portada';
   partida.preparar(c);
   fx.cortar(); camara.saltar();
+  trazada.mostrar(false);
   hud.mostrar(false);
   menu.cerrarFin();
   menu.portada(true);
@@ -277,11 +287,13 @@ const teclas = crearTeclas((tecla) => {
   else if (tecla === 'KeyC') { const m = camara.cambiar(); club.gusto('camara', m.id); hud.camara(m.id); hud.aviso(m.nombre, 1.2); }
   else if (tecla === 'KeyM') ajustar('sonido', !gusto('sonido'));
   else if (tecla === 'KeyV') ajustar('voz', !gusto('voz'));
+  else if (tecla === 'KeyT') { ajustar('trazada', !gusto('trazada')); if (pantalla === 'jugando') hud.aviso(conTrazada ? 'Trazada' : 'Sin trazada', 1.2); }
 });
 
 // --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
 const APLICAR = {
-  ayuda: (v) => { conAyuda = !!v; if (pantalla !== 'jugando') ponerAuto(club.auto()); },
+  ayuda: (v) => { conAyuda = !!v; if (pantalla !== 'jugando') ponerAuto(club.auto()); APLICAR.trazada(gusto('trazada')); },
+  trazada: (v) => { conTrazada = !!v; if (conTrazada) trazada.usar(refDe(club.auto())); trazada.mostrar(conTrazada && pantalla === 'jugando'); },
   lejos: (v) => camara.alejar(v),
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
@@ -376,6 +388,7 @@ function cuadro(ahora) {
   fx.actualizar(c, dt);
   camara.seguir(c, dt);
   mundo.animar(dt, reloj3d, c, partida.indice);
+  trazada.actualizar(c, partida.indice);
   mundo.mirar(camara, c, render.domElement.width, render.domElement.height);
   sonido.actualizar(c);
   // el foco de la imagen va en el auto: a cuantos metros esta, medido hacia donde mira la camara
@@ -403,7 +416,7 @@ requestAnimationFrame(cuadro);
 
 // para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino
 window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda,
   auto: () => c,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,

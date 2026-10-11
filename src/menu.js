@@ -173,6 +173,7 @@ export function crearMenu(o) {
       <div><dt><kbd>R</kbd> ${dib('volver')}</dt><dd>volver al camino (suma 8 segundos)</dd></div>
       <div><dt><kbd>C</kbd> ${dib('cam-aerea')}${dib('cam-atras')}${dib('cam-arriba')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
       <div><dt><kbd>M</kbd> ${dib('sonido')} <kbd>V</kbd> ${dib('voz')}</dt><dd>sonido y voz del copiloto</dd></div>
+      <div><dt><kbd>T</kbd> ${dib('trazada')}</dt><dd>trazada: la línea para seguir</dd></div>
     </dl>
     <dl class="teclas dedos">
       <div><dt>Inclinar el celu</dt><dd>doblar</dd></div>
@@ -187,10 +188,11 @@ export function crearMenu(o) {
     <p>${dib('circuito')} Además de la pista del día hay circuitos fijos, para correr las veces que quieras: una subida y una bajada de montaña, un callejero por el pueblo y una vuelta cerrada para practicar, donde das las vueltas que quieras. Queda guardado tu mejor tiempo.</p>
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
     <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina.</p>
-    <p>Los golpes rompen el auto. Si se rompe del todo, es abandono.</p>
+    <p>Los golpes rompen el auto. Si se rompe del todo, es abandono. Las piedras que están pegadas al camino llevan una antorcha roja.</p>
     <p>${dib('fantasma')} En la tabla, el fantasma elige contra quién corrés. Si te mandan un link, corrés contra quien te lo mandó.</p>
     <p>${dib('ajustes')} En la configuración se cambian la distancia de la cámara y, en el celular, la sensibilidad al inclinar y el tamaño de los pedales.</p>
-    <p>${dib('salvavidas')} Si recién arrancás, prendé ahí la ayuda de manejo: el auto frena solo antes de las curvas y se cruza menos. Es más lento, pero llegás.</p>`;
+    <p>${dib('trazada')} Ahí también se prende la trazada: una línea pintada en el camino que muestra por dónde pasar. Está <b class="verde">verde</b> donde podés acelerar, <b class="amarillo">amarilla</b> donde venís justo y <b class="rojo">roja</b> donde venís pasado: cuando el rojo llega al auto, hay que frenar.</p>
+    <p>${dib('salvavidas')} Si recién arrancás, prendé la ayuda de manejo: el auto sigue solo la trazada, frena antes de las curvas y se cruza menos. Vos acelerás y corregís con el volante. Es más lento, pero llegás.</p>`;
 
   // --- la configuracion ---
   // Cada grupo de botones y cada barra dice que gusto cambia (data-ajuste). "si" y "no" valen verdadero y falso;

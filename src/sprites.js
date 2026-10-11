@@ -126,6 +126,13 @@ function fogata(p) {
 function bengala(p) {
   p.rect(0, 1, 3, 2, '#ff5a3c'); p.rect(1, 0, 1, 4, '#ff5a3c'); p.punto(1, 1, '#ffffff'); p.punto(1, 2, '#ffe0c8');
 }
+// antorcha: la señal de peligro que marca las piedras del borde del camino. Un palo corto y una llama roja
+// (se dibuja con luz propia, como las bengalas: se ve de dia y de noche)
+function antorcha(p) {
+  p.rect(2, 7, 1, 5, '#4a3a30');
+  p.rect(1, 1, 3, 6, '#e0261c'); p.rect(0, 2, 5, 4, '#e0261c');
+  p.rect(1, 3, 3, 3, '#ff6a2c'); p.rect(2, 0, 1, 2, '#ff4a2c'); p.rect(2, 4, 1, 2, '#ffd27a'); p.punto(2, 3, '#ff9a3c');
+}
 // reposera
 function reposera(p, color) {
   p.rect(1, 0, 1, 6, '#9aa0a8'); p.rect(1, 0, 4, 1, color); p.rect(2, 1, 3, 3, color); p.rect(2, 4, 5, 1, oscuro(color)); p.rect(6, 4, 1, 3, '#9aa0a8'); p.rect(2, 5, 1, 2, '#9aa0a8');
@@ -155,7 +162,7 @@ const DIBUJOS = {
   violetas: [8, 5, (p) => flores(p, VERDES.oscuro, ['#9c6fd0', '#c9a6ee'])],
   piedra: [7, 4, piedra], piedraGrande: [10, 6, piedra], tocon: [7, 6, tocon], parrilla: [10, 7, parrilla],
   reposeraRoja: [7, 7, (p) => reposera(p, '#d8402f')], reposeraAzul: [7, 7, (p) => reposera(p, '#2f6fd0')],
-  fogata: [9, 8, fogata], bengala: [3, 4, bengala],
+  fogata: [9, 8, fogata], bengala: [3, 4, bengala], antorcha: [5, 12, antorcha],
   girasol: [5, 11, girasol], trigo: [8, 6, (p) => mata(p, ['#a08236', '#bfa048', '#d6ba60', '#e6d07e'], 6)],
   vacaOvera: [11, 8, (p) => vaca(p, '#e9e4d6', '#26262a', '#e9e4d6')], vacaColorada: [11, 8, (p) => vaca(p, '#8a4a2c', '#74391f', '#e9e4d6')],
 };

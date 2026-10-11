@@ -108,7 +108,7 @@ export function crearMundo(T, escena, liviano, huellas) {
   // --- lo que hay sobre el terreno ---
   const esc = crearEscenografia();
   const clima = crearClima(T, escena, luz);
-  const flora = crearFlora(T, escena, esc, liviano), utileria = crearUtileria(T, escena, esc), publico = crearPublico(T, escena, clima, luz), pueblo = crearPueblo(T, escena, clima, luz);
+  const flora = crearFlora(T, escena, esc, liviano), utileria = crearUtileria(T, escena, esc, clima), publico = crearPublico(T, escena, clima, luz), pueblo = crearPueblo(T, escena, clima, luz);
   const publicidad = crearPublicidad(T, escena, utileria.arcos);
 
   // --- terreno, en pedazos de 64 x 64 metros para dibujar solo lo que se ve ---

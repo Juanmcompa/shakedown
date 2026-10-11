@@ -10,7 +10,7 @@ export function crearAuto(terreno, C) {
     datos: C,
     pos: [0, 0, 0], vel: [0, 0, 0], q: [0, 0, 0, 1], w: [0, 0, 0],
     adelante: [0, 0, -1], arriba: [0, 1, 0], derecha: [1, 0, 0],
-    volante: 0, gas: 0, sentido: 1, frenando: false, mano: false, giroRuedas: 0,
+    volante: 0, gas: 0, freno: 1, sentido: 1, frenando: false, mano: false, giroRuedas: 0,
     velocidad: 0, enPiso: 0, patina: 0, suelo: 0, agua: 0, golpe: 0, ruedas: [],
     impacto: 0,     // golpe mas fuerte desde la ultima vez que se leyo, en m/s (lo usan las reglas para el daño)
     rompio: [],     // postes y fardos que se llevo puestos (los saca de aca el dibujo del mundo, para tirarlos)
@@ -59,6 +59,7 @@ export function crearAuto(terreno, C) {
     c.frenando = false;
     if (ent.y > 0) { quiereGas = ent.y; c.sentido = 1; }
     else if (ent.y < 0) { if (vf > 1.2) c.frenando = true; else { quiereGas = -ent.y; c.sentido = -1; } }
+    c.freno = c.frenando ? Math.min(1, -ent.y) : 1;   // cuanto se pisa el freno (el pedal del jugador es todo o nada; la ayuda de manejo frena de a poco)
     c.gas += lim(quiereGas - c.gas, -dt * 6, dt / C.aceleraEn);
     c.mano = !!ent.mano;
     // cuanto doblan las ruedas con el volante a fondo: a mas velocidad, menos (lo justo para la curva mas cerrada que se puede dar)
@@ -131,7 +132,7 @@ export function crearAuto(terreno, C) {
       let Fl = bloqueada ? 0 : empuje * parte;
       if (c.frenando || bloqueada || (c.gas < 0.02 && Math.abs(vl) < 0.7)) {
         // los frenos de adelante frenan mas que los de atras: asi, frenando y doblando, el auto no se cruza
-        const cap = C.frenos * m * g / 2 * (bloqueada || !c.frenando ? 0.5 : r.delantera ? C.frenoAdelante : 1 - C.frenoAdelante);
+        const cap = C.frenos * m * g / 2 * (bloqueada || !c.frenando ? 0.5 : (r.delantera ? C.frenoAdelante : 1 - C.frenoAdelante) * c.freno);
         Fl += lim(-mr / dt * 0.5 * vl + mr * g * ly, -cap, cap);
       } else if (c.gas < 0.02 && r.empuja > 0) {
         const cap = C.frenoMotor * m * g / 4;

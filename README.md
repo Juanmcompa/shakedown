@@ -27,7 +27,9 @@ Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el t
 - **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
 - **Circuitos fijos.** Además de la pista del día hay cuatro recorridos que no cambian nunca, para correr las veces que se quiera. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día. Uno es una vuelta cerrada para practicar: no tiene llegada, se dan las vueltas que se quiera.
-- **Ayuda de manejo, para arrancar.** Se prende en la configuración: el auto frena solo antes de las curvas y se cruza menos. Es más fácil y más lento. En la tabla, esos tiempos llevan un salvavidas. Después de una pasada complicada, el juego la ofrece.
+- **Trazada para seguir.** Optativa: una línea pintada en el camino muestra por dónde pasar, como en los juegos de carreras. Está verde donde se puede acelerar, amarilla donde venís justo y roja donde venís pasado: cuando el rojo llega al auto, hay que frenar. Se prende en la configuración o con la `T`. Es solo un dibujo: no cambia el manejo ni marca el tiempo.
+- **Ayuda de manejo, para arrancar.** Se prende en la configuración: el auto sigue solo la trazada, frena antes de las curvas y se cruza menos; vos acelerás y corregís con el volante. Es más fácil y más lento. En la tabla, esos tiempos llevan un salvavidas. Después de una pasada complicada, el juego la ofrece.
+- **Antorchas rojas.** Las piedras que quedaron pegadas al camino llevan una antorcha roja, para verlas venir.
 - **Sponsors de mentira.** Las pistas llevan publicidad, como un rally de verdad: FPY, CAC y Mercado Ladri. Son solo de adorno y se cambian tocando una lista (ver "Los sponsors").
 
 ## Los circuitos
@@ -83,6 +85,7 @@ No hay servidor. La tabla se arma en cada aparato con los links que se abren.
 | `R` | Volver al camino (suma 8 segundos) |
 | `C` | Cámara: aérea, de atrás o desde arriba |
 | `M` / `V` | Sonido / voz del copiloto |
+| `T` | Trazada: prende o apaga la línea para seguir |
 | `Enter` | Largar |
 | `Esc` | Dejar una práctica |
 
@@ -105,6 +108,7 @@ Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (cu
 La tuerca de la portada abre la configuración. Lo que se elige queda guardado en el aparato.
 
 - **Ayuda de manejo:** sí o no.
+- **Trazada:** sí o no. Es la línea pintada en el camino que muestra por dónde pasar y dónde frenar. Mientras no se la toque, acompaña a la ayuda de manejo: con ayuda viene prendida, para que se vea por dónde va a ir el auto.
 - **Distancia de la cámara:** más cerca o más lejos. Mientras se mueve la barra, el panel se corre para ver cómo queda.
 - **Doblar** (celular): inclinando o con flechas en pantalla.
 - **Sensibilidad al inclinar** (celular): cuánto hay que inclinar para llevar el volante a fondo. Se prueba ahí mismo: un punto amarillo muestra el volante.
@@ -118,6 +122,7 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | --- | --- |
 | Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
 | Cuánto ayuda la ayuda de manejo (`AYUDA`) y con qué configuración arranca el juego (`GUSTOS`) | `src/config.js` |
+| La trazada: sus colores, el tamaño de las rayitas y desde qué velocidad avisa (`RITMO`, `FRENADA`, `JUSTO`) | `src/trazada.js` |
 | Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` (y subir `VERSION` ahí mismo: ver abajo) |
 | El recorrido de cada circuito fijo: sus rectas, curvas, puentes, casas y cosas en la calle, y por qué ambiente pasa cada pedazo | `src/circuitos.js` (cada circuito es una lista que se lee de arriba hacia abajo; al cambiar uno hay que subirle su `version`) |
 | Las medidas de los edificios y de las cosas de la calle, y cuáles se caen al chocarlas | `src/edificios.js` |
@@ -151,14 +156,15 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/circuitos.js` | Los circuitos fijos, escritos a mano |
 | `src/terrain.js` | Convierte la pista en terreno: alturas, suelos, agua, puentes, árboles, público, y dónde va cada casa, cada pirca y cada cosa de la calle |
 | `src/edificios.js`, `src/pueblo.js` | Las medidas de los edificios y de las cosas de la calle, y cómo se dibujan |
-| `src/referencia.js` | Calcula la trazada y el tiempo de referencia de cada sector |
+| `src/referencia.js` | Calcula la trazada, el tiempo de referencia de cada sector y dónde hay que frenar |
 | `src/vehicle.js` | La física del auto |
 | `src/reglas.js` | Cuenta regresiva, sectores, recargos, daño y abandono; y las vueltas, en el circuito cerrado |
-| `src/ayuda.js` | La ayuda de manejo: frena sola antes de las curvas |
+| `src/ayuda.js` | La ayuda de manejo: lleva el auto por la trazada y regula los pedales antes de las curvas |
+| `src/trazada.js` | La trazada pintada en el camino, y sus colores |
 | `src/copiloto.js` | Las notas y la voz que las canta |
 | `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus gustos) |
 | `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
-| `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, el público, la lluvia y los faros |
+| `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, las antorchas de las piedras, el público, la lluvia y los faros |
 | `src/sponsors.js`, `src/publicidad.js` | La lista de sponsors, y dónde va y cómo se dibuja su publicidad |
 | `src/autos.js` | Los modelos de los autos y el fantasma |
 | `src/material.js`, `src/pixel.js`, `src/arte.js`, `src/sprites.js` | El estilo: materiales, herramientas para pintar de a píxeles, y los dibujos |
@@ -189,7 +195,7 @@ Con Node instalado, desde la carpeta del repo:
 
 - `node tools/piloto.mjs 1 12`: cinco pilotos de distinto nivel corren las pistas 1 a 12 con cada auto. Dice si llegan, en cuánto, y dónde se salen.
 - `node tools/piloto.mjs 16001 4`: lo mismo en los cuatro circuitos (sus números de pista van del 16001 al 16004). En la vuelta cerrada cada piloto da tres vueltas y cuenta la mejor.
-- `SOLO=novato,ayudado node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo. Sirve para ver cuánto ayuda.
+- `SOLO=novato,ayudado,sinManos node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo; y `sinManos`, que además no toca el volante. Sirve para ver cuánto ayuda. Para probar otros números sin tocar `config.js`: `AYUDA="ritmo=0.74,frena=3.2" SOLO=ayudado node tools/piloto.mjs 1 8`.
 - `node tools/fisica.mjs`: aceleración, frenada, curvas y subidas en cada suelo.
 - `node tools/maniobras.mjs`: qué tan fácil se descontrola cada auto con volantazos.
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="12" class="cargando">
+<html lang="es" data-pagina="13" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -36,7 +36,7 @@
   // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'sponsors', 'publicidad'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'sponsors', 'publicidad', 'trazada'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -115,7 +115,7 @@
   <div class="col">
     <div id="autos" class="autos" role="radiogroup" aria-label="Tu auto"></div>
     <p id="desafio" class="desafio" data-icono="fantasma" data-color="#000000" hidden><span></span></p>
-    <p id="avisoAyuda" class="chico" data-icono="salvavidas" hidden> Con ayuda de manejo: frena solo antes de las curvas.</p>
+    <p id="avisoAyuda" class="chico" data-icono="salvavidas" hidden> Con ayuda de manejo: sigue la trazada y frena solo.</p>
     <div id="miResultado" class="resultado" hidden></div>
   </div>
   </div>
@@ -169,7 +169,12 @@
     <div class="ajuste">
       <span class="que" data-icono="salvavidas">Ayuda de manejo</span>
       <div class="opciones" data-ajuste="ayuda" role="radiogroup" aria-label="Ayuda de manejo"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
-      <p class="chico">Con ayuda, el auto frena solo antes de las curvas y se cruza menos. Es más fácil y más lento. En la tabla, esos tiempos llevan el salvavidas.</p>
+      <p class="chico">Con ayuda, el auto sigue solo la trazada, frena antes de las curvas y se cruza menos: vos acelerás y corregís. Es más fácil y más lento. En la tabla, esos tiempos llevan el salvavidas.</p>
+    </div>
+    <div class="ajuste">
+      <span class="que" data-icono="trazada">Trazada</span>
+      <div class="opciones" data-ajuste="trazada" role="radiogroup" aria-label="Trazada"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
+      <p class="chico">Una línea pintada en el camino que muestra por dónde pasar. <b class="verde">Verde</b>: podés acelerar. <b class="amarillo">Amarilla</b>: venís justo. <b class="rojo">Roja</b>: hay que frenar. Con la ayuda de manejo viene prendida.</p>
     </div>
     <div class="ajuste">
       <label class="que" data-icono="cam-aerea" for="ajLejos">Distancia de la cámara</label>

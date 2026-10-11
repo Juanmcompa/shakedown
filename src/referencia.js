@@ -95,17 +95,24 @@ export function crearReferencia(T, C, o = {}) {
     v[i + 1] = Math.min(tope[i + 1], Math.sqrt(Math.max(1, v[i] * v[i] + 2 * a * DS[i])));
   }
   for (let i = i0; i > 0; i--) v[i - 1] = v[i];
-  for (let i = n - 2; i >= i0; i--) {
-    const vel = Math.max(v[i + 1], 0.5), m = usa * mu[i] * g, deCostado = Math.min(m, vel * vel * Math.abs(curva[i]));
-    const a = Math.min(C.frenos * g, Math.sqrt(m * m - deCostado * deCostado)) + frena(i, vel);
-    v[i] = Math.min(v[i], Math.sqrt(v[i + 1] * v[i + 1] + 2 * Math.max(0.5, a) * DS[i]));
-  }
+  // cuanto se puede frenar en un metro, viniendo a tal velocidad: lo que dan los frenos y el agarre que no se gasta en doblar
+  const frenada = (i, vel) => {
+    const m = usa * mu[i] * g, deCostado = Math.min(m, vel * vel * Math.abs(curva[i]));
+    return Math.max(0.5, Math.min(C.frenos * g, Math.sqrt(m * m - deCostado * deCostado)) + frena(i, vel));
+  };
+  for (let i = n - 2; i >= i0; i--) v[i] = Math.min(v[i], Math.sqrt(v[i + 1] * v[i + 1] + 2 * frenada(i, Math.max(v[i + 1], 0.5)) * DS[i]));
+  // Lo mismo, pero sin contar el motor: lo mas rapido que se podria venir por cada metro y todavia llegar bien a todo lo
+  // que sigue. En las rectas largas es muy alto (ahi lo unico que limita es el motor); baja antes de cada curva.
+  // Lo usan la trazada pintada en el camino y la ayuda de manejo, para saber donde hay que frenar.
+  const techo = new Float32Array(n);
+  techo[n - 1] = tope[n - 1];
+  for (let i = n - 2; i >= 0; i--) techo[i] = Math.min(tope[i], Math.sqrt(techo[i + 1] * techo[i + 1] + 2 * frenada(i, Math.max(techo[i + 1], 0.5)) * DS[i]));
 
   // --- 4. el tiempo: a que segundo pasa por cada metro, y cuanto tarda en cada sector ---
   const t = new Float32Array(n);
   for (let i = i0; i < n - 1; i++) t[i + 1] = t[i] + DS[i] / Math.max(0.5, (v[i] + v[i + 1]) / 2);
   return {
-    auto: C, corre, velocidad: v, curva, tiempo: t,
+    auto: C, corre, velocidad: v, techo, curva, tiempo: t,
     desde: lo, hasta: hi,   // entre que corrimientos se puede pasar en cada metro (por los bordes y por lo que haya en el camino)
     estorbo,                // 1 en los metros donde hay algo metido en el camino
     total: t[T.meta.i] - (T.vuelta ? t[T.vuelta.desde] : 0),   // (en una vuelta cerrada: lo que tarda la vuelta, lanzado)

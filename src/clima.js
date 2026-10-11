@@ -29,7 +29,7 @@ export function crearClima(T, escena, luz) {
   }
 
   // --- resplandores en el piso ---
-  const MAX = 64, donde = [];
+  const MAX = 200, donde = [];
   const pozos = new THREE.InstancedMesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: texturaDeResplandor(), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), MAX);
   pozos.count = 0; pozos.frustumCulled = false; pozos.renderOrder = 2;
   escena.add(pozos);

@@ -5,11 +5,13 @@ import { azar } from './noise.js';
 import { crearLote } from './pixel.js';
 import { estilo } from './material.js';
 import { armarEstacionado } from './autos.js';
+import { crearLoteDeSprites } from './sprites.js';
 
 const COLORES = ['#d8402f', '#f2c200', '#f4f0e6', '#49b3d6', '#3f9150', '#f07f1e'];
 const par = (v) => Math.max(2, Math.round(v / 2) * 2);
 
-export function crearUtileria(T, escena, esc) {
+// clima: para pedirle el resplandor de las antorchas.
+export function crearUtileria(T, escena, esc, clima) {
   const P = T.camino, fijos = crearLote();
   const M = new THREE.Matrix4(), M2 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), V = new THREE.Vector3(), E = new THREE.Vector3();
   const ARRIBA = new THREE.Vector3(0, 1, 0), EJE_X = new THREE.Vector3(1, 0, 0), NORMAL = new THREE.Vector3();
@@ -32,6 +34,20 @@ export function crearUtileria(T, escena, esc) {
     const w2 = par(w * 0.55), d2 = par(d * 0.6), h2 = Math.max(2, Math.round(h * 0.55)), cx = Math.round((r() < 0.5 ? -1 : 1) * w * 0.45), cz = Math.round((r() - 0.5) * d * 0.6);
     fijos.bloque(M2, [cx - w2 / 2, -2, cz - d2 / 2, cx + w2 / 2, h2, cz + d2 / 2], { arriba: esc.piedra(w2, d2), lados: esc.canto(h2 + 2), abajo: null }, r);
   }
+
+  // --- señales de peligro: una antorcha roja sobre cada piedra que quedo al borde del camino ---
+  // (Las piedras son grises sobre un piso gris o marron: de lejos no se ven, y son las que se chocan al cortar una curva.
+  // Es solo una señal: no se choca ni cambia la pista. De un grupo de piedras juntas alcanza con marcar una cada tanto.)
+  const antorchas = crearLoteDeSprites(), marcadas = [];
+  for (const o of T.cosas) {
+    if (o.clase !== 'piedra' || !(T.borde[Math.round(o.z - T.z0) * T.nx + Math.round(o.x - T.x0)] < 2 + o.r)) continue;
+    if (marcadas.some((q) => (q.x - o.x) ** 2 + (q.z - o.z) ** 2 < 49)) continue;
+    marcadas.push(o);
+    const tope = o.y + Math.max(2, Math.round(o.r * o.alto * 4.6)) * 0.25;
+    antorchas.poner('antorcha', o.x, tope - 0.2, o.z, { escala: 1.15, azar: Math.abs(o.x * 7.3 + o.z * 3.1) % 1, mueve: 0.07 });
+    if (clima) clima.resplandor(o.x, o.y, o.z, 2.6, 0xff2a14, 0.3);
+  }
+  if (antorchas.cuantos()) { const m = antorchas.malla(false, true); m.frustumCulled = false; escena.add(m); }
 
   // --- mojones blancos al borde del precipicio ---
   for (const o of T.mojones) {
@@ -204,7 +220,7 @@ export function crearUtileria(T, escena, esc) {
   acomodar();
 
   return {
-    arcos,
+    arcos, antorchas: marcadas.length,
     // las ruedas de los molinos giran
     animar: (t) => { giran.forEach((r, k) => { r.rotation.z = t * (1.1 + k * 0.3); }); },
     // el auto se llevo puesto algo: se lo tira

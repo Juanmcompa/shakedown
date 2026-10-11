@@ -20,6 +20,8 @@ for (const a of (AMBIENTE.AJUSTE || '').split(',').filter(Boolean)) {
   const [clave, valor] = a.split('='), [auto, dato] = clave.split('.');
   for (const id of auto === '*' ? Object.keys(AUTOS) : [auto]) AUTOS[id][dato] = JSON.parse(valor);
 }
+// y para probar la ayuda de manejo:  AYUDA="ritmo=0.72,volante=0" SOLO=ayudado,sinManos node tools/piloto.mjs ...
+for (const a of (AMBIENTE.AYUDA || '').split(',').filter(Boolean)) { const [dato, valor] = a.split('='); AYUDA[dato] = JSON.parse(valor); }
 
 // Un piloto: sigue la trazada mirando unos metros adelante y frena para llegar a cada curva a la velocidad que eligio.
 //   ritmo: que parte de la velocidad de referencia se anima a usar.  reaccion: cada cuantos segundos corrige.
@@ -64,6 +66,7 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
   ent.y = v < quiere - 0.5 ? 1 : v > quiere + 1.2 ? -1 : 0;
   if (!o.teclas && ent.y === 1) ent.y = Math.min(1, 0.35 + (quiere - v) * 0.4);
   if (o.pie) ent.y = 1;                                                  // pie de plomo: no suelta nunca el acelerador
+  if (o.sinManos) ent.x = 0;                                             // sin manos: no toca el volante (lo lleva la ayuda de manejo)
   if (c.enPiso === 0) ent.x = 0;                                         // en el aire no dobla
   if (p.trabado && !(t < m.atras)) { m.atras = t + 1.4; m.trabadas = (m.trabadas || 0) + 1; }   // trabado: un rato de marcha atras
   if (m.trabadas >= 4) { m.trabadas = 0; m.volver = true; }             // y si no sale, pide volver al camino
@@ -131,9 +134,11 @@ export const PILOTOS = {
 // Los que prueban la ayuda de manejo (no corren con los otros; se piden con SOLO=novato,ayudado,...):
 //   novato: el que recien agarra el juego: reacciona tarde, se va de la trazada y no suelta nunca el acelerador.
 //   ayudado: el mismo, con la ayuda de manejo.   mansoAyudado y normalAyudado: esos pilotos, con la ayuda.
+//   sinManos: acelera a fondo y no toca el volante: muestra hasta donde la ayuda lleva el auto sola.
 export const NOVATOS = {
   novato:        { ...PILOTOS.manso, pie: true, susto: 9 },
   ayudado:       { ...PILOTOS.manso, pie: true, susto: 9, ayuda: true },
+  sinManos:      { ...PILOTOS.manso, pie: true, susto: 9, ayuda: true, sinManos: true },
   mansoAyudado:  { ...PILOTOS.manso, ayuda: true },
   normalAyudado: { ...PILOTOS.normal, ayuda: true },
 };

@@ -75,16 +75,26 @@ export const AUTOS = {
 export const REFERENCIA = 'vitarita';
 
 // La ayuda de manejo (se prende en la configuracion): es para el que recien arranca. Mas facil, pero mas lento.
+// El auto trata de seguir la trazada (la linea por donde pasaria un piloto muy bueno) y de llegar bien a cada curva.
 //   auto: lo que cambia del manejo de cualquier auto: se cruza menos y se endereza mas solo.
-//   ritmo: el auto frena solo para llegar a cada curva a esta parte de la velocidad de un piloto muy bueno.
+//   ritmo: el auto regula solo para dar cada curva a esta parte de la velocidad de un piloto muy bueno
+//          (en las rectas no limita: se acelera a fondo hasta que hay que frenar).
 //   frena: con cuanta fuerza cuenta para frenar a tiempo, en m/s2 (menos = empieza a frenar antes y mas suave).
-export const AYUDA = { auto: { firme: 0.8, estable: 1.1, alinea: 0.85 }, ritmo: 0.72, frena: 3.6 };
+//   suave: en cuantos m/s reparte el pedal al acercarse a esa velocidad (mas = afloja antes y de a poco; con poco, el
+//          motor se escucha cortar y volver a cada rato).
+//   suelta: despues de frenar, cuantos m/s por debajo de esa velocidad tiene que quedar para soltar el freno.
+//   volante: cuanto acompaña el volante hacia la trazada (0 = nada; 1 = maneja sola).
+//   cede: cuanto afloja ese acompañamiento cuando el jugador dobla con ganas (0 = nada; 1 = con el volante a fondo, manda el jugador).
+//   mano, mira: como apunta a la trazada: cuanto volante por cada radian de error, y cuantos metros adelante mira por cada m/s.
+export const AYUDA = { auto: { firme: 0.8, estable: 1.1, alinea: 0.85 }, ritmo: 0.7, frena: 3.6, suave: 2.5, suelta: 0.5, volante: 1, cede: 0.6, mano: 2.6, mira: 0.3 };
 
 // La configuracion que puede tocar cada uno (se guarda en su aparato): lo que vale cada cosa si nunca se la toco.
 //   sensible: de 0 a 100, cuanto dobla al inclinar el celular. Con 55 hacen falta 24 grados para llevar el volante a fondo;
 //             con 100, unos 14; con 0, unos 48.
 //   lejos: la distancia de la camara, en partes de la normal (0.7 a 1.5).   pedales: su tamaño, igual.
-export const GUSTOS = { ayuda: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, sonido: true, voz: true };
+//   trazada: la linea en el piso que muestra por donde pasar y donde frenar. Mientras nadie la toque acompaña a la
+//            ayuda de manejo: con ayuda se ve (asi se entiende por donde va a ir el auto) y sin ayuda no.
+export const GUSTOS = { ayuda: false, trazada: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, sonido: true, voz: true };
 export const gradosDeInclinacion = (sensible) => 24 * 2 ** ((55 - sensible) / 55);
 
 // Camaras (tecla C, o el boton de la camara). Lo que va entre corchetes cambia con la velocidad: [despacio, rapido].
