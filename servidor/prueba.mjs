@@ -14,8 +14,10 @@ const ver = (que, si, detalle) => { if (si) bien++; else { mal++; console.log(' 
 
 // un pedido: devuelve { estado, cosa, cabeza }
 async function pedir(metodo, ruta, cuerpo, cabeza = {}) {
-  const datos = { method: metodo, headers: { 'content-type': 'text/plain', ...cabeza }, body: cuerpo === undefined ? undefined : typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo) };
-  const r = BASE ? await fetch(BASE + ruta, datos) : await servidor.fetch(new Request('http://prueba' + ruta, datos), env, { waitUntil: (p) => p.catch(() => {}) });
+  // (al servidor publicado hay que decirle que el pedido viene del juego: si no, no deja escribir)
+  const deDonde = BASE && !/\/\/(localhost|127\.0\.0\.1)[:/]/.test(BASE + '/') ? { origin: 'https://juanmcompa.github.io' } : {};
+  const datos = { method: metodo, headers: { 'content-type': 'text/plain', ...deDonde, ...cabeza }, body: cuerpo === undefined ? undefined : typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo) };
+  const r = BASE ? await fetch(BASE + ruta, datos) : await servidor.fetch(new Request('http://localhost' + ruta, datos), env, { waitUntil: (p) => p.catch(() => {}) });
   let cosa = null;
   try { cosa = await r.json(); } catch (e) { /* sin cuerpo */ }
   return { estado: r.status, cosa, cabeza: r.headers };
@@ -70,12 +72,12 @@ ver('basura no entra', r.estado === 400, r);
 r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(T, { nombre: 'Tramposo', t: 60, dura: 131 }) });
 ver('un tiempo que no coincide con lo grabado no entra', r.estado === 400, r);
 r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(T, { nombre: 'Futuro', pista: N + 5 }) });
-ver('una pista que todavia no se corrio no entra', r.estado === 400, r);
+ver('una pista que todavia no empezo no entra (y avisa que es por ahora)', r.estado === 425, r);
 r = await pedir('POST', '/pasadas', { llave: 'corta', codigo: codA });
 ver('sin llave no entra', r.estado === 400, r);
 
 // --- clubes ---
-r = await pedir('POST', '/clubes', { llave: LA, nombre: '  Los <b>Pibes</b>  del   barro ', apodo: 'Anita' });
+r = await pedir('POST', '/clubes', { llave: LA, nombre: '  Los <b>Pi\u202ebes</b>  del \u200f  barro\u0007 ', apodo: 'Anita' });
 ver('crea un club con el nombre limpio', r.estado === 200 && /^[0-9A-Za-z]{8}$/.test(r.cosa.codigo) && r.cosa.nombre === 'Los bPibes/b del barro' && r.cosa.miembros === 1, r);
 const club = r.cosa && r.cosa.codigo;
 r = await pedir('POST', '/clubes', { llave: LA, nombre: 'x' });
@@ -150,10 +152,38 @@ ver('contesta la consulta previa del navegador', r.estado === 204, r.estado);
 if (!BASE) {
   // una base recien nacida no tiene tablas: el primer pedido las crea y sigue como si nada
   const nueva = { DB: baseLocal() };
-  const primero = await servidor.fetch(new Request('http://prueba/clubes/noexiste1'), nueva, {});
+  const primero = await servidor.fetch(new Request('http://localhost/clubes/noexiste1'), nueva, {});
   ver('con la base vacia, el primer pedido crea las tablas', primero.status === 404 && (await primero.json()).error === 'Ese club no existe.', primero.status);
-  const segundo = await servidor.fetch(new Request('http://prueba/pasadas', { method: 'POST', body: JSON.stringify({ llave: llave('n'), codigo: codA }) }), { DB: baseLocal() }, {});
+  const segundo = await servidor.fetch(new Request('http://localhost/pasadas', { method: 'POST', body: JSON.stringify({ llave: llave('n'), codigo: codA }) }), { DB: baseLocal() }, {});
   ver('tambien si lo primero que llega es una pasada', segundo.status === 200 && /^[0-9A-Za-z]{7}$/.test((await segundo.json()).id), segundo.status);
+  // el servidor publicado solo le deja escribir al juego publicado (leer puede cualquiera)
+  const publicado = async (metodo, ruta, origen, cuerpo, mas = {}) => {
+    const r = await servidor.fetch(new Request('https://shakedown.ejemplo.workers.dev' + ruta, { method: metodo, headers: { ...(origen ? { origin: origen } : {}), ...mas }, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo) }), env, {});
+    return { estado: r.status, permite: r.headers.get('access-control-allow-origin'), cosa: await r.json().catch(() => null) };
+  };
+  const practica = { llave: llave('m'), codigo: await pasada(T, { nombre: 'Publi', t: 150, practica: true }) };
+  let q = await publicado('POST', '/pasadas', 'https://juanmcompa.github.io', practica);
+  ver('publicado: el juego publicado puede subir', q.estado === 200 && q.permite === 'https://juanmcompa.github.io', q);
+  q = await publicado('POST', '/pasadas', 'http://localhost:5173', practica);
+  ver('publicado: una copia local no puede subir', q.estado === 403 && q.permite === 'https://juanmcompa.github.io', q);
+  q = await publicado('POST', '/clubes', 'https://otra-pagina.example', { llave: llave('m'), nombre: 'Colados', apodo: 'X' });
+  ver('publicado: otra pagina no puede crear clubes', q.estado === 403, q);
+  q = await publicado('POST', '/pasadas', '', practica);
+  ver('publicado: sin decir de donde viene, tampoco', q.estado === 403, q);
+  q = await publicado('GET', '/clubes/' + club, 'https://otra-pagina.example');
+  ver('publicado: leer se puede, pero el navegador de otra pagina no lo muestra', q.estado === 200 && q.permite === 'https://juanmcompa.github.io', q);
+  q = await publicado('POST', '/pasadas', 'https://juanmcompa.github.io', undefined, { 'content-length': '999999' });
+  ver('un pedido gigante se rechaza sin leerlo', q.estado === 413, q);
+  // un reloj adelantado: la pista de mañana se acepta solo un rato antes de la medianoche
+  const manana = await pasada(crearTerreno(generarPista(N + 1)), { nombre: 'Apurado', t: 141, pista: N + 1, practica: true });
+  const adelanto = LIMITES.adelanto;
+  LIMITES.adelanto = 0;
+  r = await pedir('POST', '/pasadas', { llave: llave('k'), codigo: manana });
+  ver('la pista de mañana, todavia no', r.estado === 425, r);
+  LIMITES.adelanto = 86400;
+  r = await pedir('POST', '/pasadas', { llave: llave('k'), codigo: manana });
+  ver('pero si falta poco para la medianoche, si', r.estado === 200, r);
+  LIMITES.adelanto = adelanto;
   const topes = { ...LIMITES };
   const sube = async (quien, ip, k) => (await pedir('POST', '/pasadas', { llave: llave(quien) + k, codigo: await pasada(T, { nombre: 'Lluvia', t: 100 + k, practica: true }) }, { 'cf-connecting-ip': ip })).estado;
   const anotado = (ip) => env.DB.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM limites WHERE clave LIKE 'p:%'").first().then((f) => f.n);

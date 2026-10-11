@@ -33,7 +33,15 @@ async function pasar(bytes, Filtro) {   // descomprime con lo que trae el navega
   const flujo = new Blob([bytes]).stream().pipeThrough(new Filtro('deflate-raw'));
   return new Uint8Array(await new Response(flujo).arrayBuffer());
 }
-const limpio = (txt) => String(txt || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14);
+// Un texto que escribe la gente (un nombre, el nombre de un club), limpio: sin letras de control ni las marcas invisibles
+// que dan vuelta lo que tiene al lado (con una de esas, un nombre podria hacer que un tiempo se lea al reves), sin < >,
+// con los espacios de a uno, y con algo que se vea. Lo usan el juego y el servidor.
+const RARAS = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069\ufeff<>]/g;
+export function limpiarTexto(txt, largo) {
+  const s = String(txt || '').replace(RARAS, '').replace(/\s+/g, ' ').trim().slice(0, largo).trim();
+  return /[^\s\u200b-\u200d\u2060\ufe00-\ufe0f]/.test(s) ? s : '';
+}
+export const limpio = (txt) => limpiarTexto(txt, 14);
 
 // Un resultado es: { pista, nombre, t (segundos), s: [segundos de cada sector], c: 'vvarv', auto, ab: '' o por que abandono,
 //                    vueltas, roto, practica, ayuda (corrio con la ayuda de manejo) }
@@ -264,8 +272,11 @@ export function crearGrabacion(T) {
 //            tieneVuelta, muestras: cuantas trae (dos por segundo),
 //            vuelta(P): la pasada, ya ubicada sobre el camino P (o null si no la trae o esta rota) }.
 // Entiende el formato nuevo (empieza con "d") y el anterior ("c" o "p"), que guardaba los lugares del mapa.
+// (Una pasada larguisima no pasa de 9.000 letras: lo que mida mas del tope no es una pasada, y no se intenta leer.)
+const LARGO_MAXIMO = 20000;
 export async function leerCodigo(codigo) {
   try {
+    if (typeof codigo !== 'string' || codigo.length > LARGO_MAXIMO) return null;
     return codigo[0] === 'd' ? leerNuevo(aBytes(codigo.slice(1))) : await leerViejo(codigo);
   } catch (e) { return null; }
 }

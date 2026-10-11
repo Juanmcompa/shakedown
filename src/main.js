@@ -297,7 +297,8 @@ function largar() {
 }
 
 // los resultados de otros que se conocen de esta pista: van en el link, para que la tabla se complete entre todos
-const conocidos = () => (esCircuito(numero) ? club.practicas() : club.tabla()).filter((x) => !x.mio);
+// (Solo lo que llego por link. Lo que se sabe por un club queda en el club: no viaja en los links de sus miembros.)
+const conocidos = () => (esCircuito(numero) ? club.practicas() : club.tabla()).filter((x) => !x.mio && (x.link || !x.j));
 // (vuelta cerrada) el mejor tiempo que hay guardado, o null
 const mejorGuardado = () => { const g = T.vuelta && club.practica(); return g && !g.ab ? g.t : null; };
 
@@ -526,16 +527,25 @@ requestAnimationFrame(cuadro);
 // --- lo del servidor, con el juego ya andando (nada de esto demora la carga) ---
 // Si el link era una invitacion a un club, se entra y se abre su tabla. Si no: se sube lo que haya quedado sin subir
 // y se piden las tablas de mis clubes.
+// (Se espera a que el juego haya dibujado un par de cuadros: el primero es pesado, y con el aparato trabado los pedidos
+// al servidor se cuelgan. Si la pestaña esta escondida no se dibuja nada: ahi se espera un par de segundos y listo.)
+const yaAnda = new Promise((sigue) => { requestAnimationFrame(() => requestAnimationFrame(sigue)); setTimeout(sigue, 2500); });
 if (invitacion) {
   history.replaceState(null, '', direccionDe(numero));
   if (!nube.hay) menu.decir('Ese link es una invitación a un club, pero el servidor del juego no está disponible.');
-  else entrarAlClub(invitacion[1]).then((r) => (r.error ? menu.decir('No pude sumarte al club. ' + r.error) : menu.verClub(r.codigo, 'Ya estás en «' + r.nombre + '».')));
-} else sincronizar().then(() => tablasDeLosClubes(true));
+  else yaAnda.then(async () => {
+    let r = await entrarAlClub(invitacion[1]);
+    // (si no se pudo llegar al servidor, se prueba una vez mas: entrar dos veces no hace daño)
+    if (r.error && !r.estado) { await new Promise((sigue) => setTimeout(sigue, 2500)); r = await entrarAlClub(invitacion[1]); }
+    if (r.error) menu.decir('No pude sumarte al club. ' + r.error); else menu.verClub(r.codigo, 'Ya estás en «' + r.nombre + '».');
+  });
+} else yaAnda.then(sincronizar).then(() => tablasDeLosClubes(true));
 // Al volver al juego (por ejemplo, despues de pasar la invitacion por WhatsApp) se piden de nuevo las tablas.
 document.addEventListener('visibilitychange', () => { if (!document.hidden && pantalla !== 'jugando') tablasDeLosClubes(false); });
 
-// para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino
-window.shakedown = {
+// Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
+// Solo en una copia local del juego: en el publicado seria una trampa de una linea.
+if (enCasa) window.shakedown = {
   T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes,
   auto: () => c,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),

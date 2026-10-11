@@ -8,6 +8,8 @@
 //                    id (el codigo corto con el que esta guardado en el servidor) }
 // Los de los demas llevan ademas: j (su numero de corredor en el servidor), de: [los clubes tuyos en los que figura]
 // y link: true si llego por un link que abriste.
+import { limpio } from './fantasma.js';
+
 const CLAVE = 'shakedown';
 const GUARDA_FANTASMAS = 21;   // dias: de las pistas mas viejas se guardan los tiempos, pero no los fantasmas
 const GUARDA_AMIGOS = 60;      // dias: despues, de cada pista quedan solo los tiempos propios
@@ -63,7 +65,7 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
   return {
     pista,
     nombre: () => datos.nombre,
-    ponerNombre: (n) => { datos.nombre = String(n).replace(/[<>]/g, '').trim().slice(0, 14); if (D.oficial && !D.oficial.corriendo) D.oficial.nombre = datos.nombre; guardar(); },
+    ponerNombre: (n) => { datos.nombre = limpio(n); if (D.oficial && !D.oficial.corriendo) D.oficial.nombre = datos.nombre; guardar(); },
     // gustos sueltos (sonido, voz del copiloto): gusto('voz') lo lee, gusto('voz', false) lo cambia
     gusto: (clave, valor) => { if (valor !== undefined) { (datos.gustos || (datos.gustos = {}))[clave] = valor; guardar(); } return datos.gustos ? datos.gustos[clave] : undefined; },
     auto: () => datos.auto,
@@ -143,6 +145,8 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
     anotarAmigo: (r, numero = pista) => {
       if (!r.nombre || (r.nombre === datos.nombre && !r.practica && numero === pista && D.oficial && Math.abs(D.oficial.t - r.t) < 0.02)) return;   // es mi propio link
       const d = dia(numero), viejo = buscar(d, r);
+      // Lo que se sabe por un club viene del servidor: un tiempo suelto (de los que un link trae de yapa) no lo pisa.
+      if (viejo && !r.j && !r.codigo && viejo.j && viejo.de && viejo.de.length) return;
       let nuevo = { ...r, link: true };
       if (viejo) {
         if (r.practica && viejo.t <= r.t && !r.ab) { if (r.codigo && !viejo.codigo) viejo.codigo = r.codigo; viejo.link = true; guardar(); return; }

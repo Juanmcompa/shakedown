@@ -18,11 +18,17 @@ export function crearNube(base) {
   // Un pedido. Devuelve lo que contesto el servidor; { error, estado } si dijo que no; null si no se pudo llegar.
   async function pedir(metodo, ruta, cuerpo, ms = 8000) {
     if (!base) return null;
-    const corte = new AbortController(), reloj = setTimeout(() => corte.abort(), ms);
+    // Si tarda mas de "ms", se corta. Pero si el aparato estuvo trabado (armando la pista, dibujando el primer cuadro)
+    // el reloj puede sonar con la respuesta ya llegada y esperando su turno: en ese caso se le da un momento mas.
+    const corte = new AbortController(), t0 = performance.now();
+    let reloj = 0, yapa = false;
+    const cortar = () => { if (!yapa && performance.now() - t0 > ms + 1500) { yapa = true; reloj = setTimeout(cortar, 1500); } else corte.abort(); };
+    reloj = setTimeout(cortar, ms);
     try {
       // (el cuerpo va como texto comun: asi el navegador no hace una consulta previa antes de cada pedido)
       const r = await fetch(base + ruta, { method: metodo, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo), headers: cuerpo === undefined ? undefined : { 'content-type': 'text/plain' }, signal: corte.signal, cache: 'no-store' });
       const cosa = await r.json().catch(() => null);
+      if (!cosa && corte.signal.aborted) return null;   // (se corto mientras llegaba la respuesta: es "no se pudo llegar")
       return r.ok && cosa ? cosa : { error: (cosa && cosa.error) || 'El servidor no pudo.', estado: r.status };
     } catch (e) { return null; } finally { clearTimeout(reloj); }
   }
@@ -38,7 +44,8 @@ export function crearNube(base) {
       if (!subidas.has(codigo)) {
         subidas.set(codigo, pedir('POST', '/pasadas', { llave: llave(), codigo }).then((r) => {
           if (r && r.id) return r.id;
-          if (r && r.estado >= 400 && r.estado < 500 && r.estado !== 429) return '';   // no la quiere: no tiene sentido insistir
+          // no la quiere: no tiene sentido insistir (salvo que sea por ahora: muchos pedidos, o un reloj adelantado)
+          if (r && r.estado >= 400 && r.estado < 500 && r.estado !== 429 && r.estado !== 425) return '';
           subidas.delete(codigo);                                                     // no se pudo: se puede volver a probar
           return null;
         }));

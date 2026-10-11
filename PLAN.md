@@ -60,6 +60,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Publicidad en todas las pistas: tres sponsors en chiste en banderas, chapas, cartelones, pórticos y arcos; se cambian desde una lista y pueden traer su imagen; el auto los puede tirar
 - [x] Links cortos y clubes por invitación, con un servidor chico (carpeta `servidor/`), probado en la compu con tres jugadores
 - [x] Marca nueva: logo en la portada y en la carga, íconos para la pestaña y el celular, e imagen nueva para cuando se pega el link
+- [x] Pasada de seguridad: el servidor solo le deja escribir al juego publicado y no guarda direcciones de internet; los nombres se limpian; lo que se sabe por un club no sale en los links de sus miembros; el juego publicado ya no trae los atajos de prueba; y los pedidos al servidor aguantan un aparato trabado
 - [x] Servidor en línea en Cloudflare, conectado al repo: se publica solo con cada Push. Cada pedido hace un solo viaje a la base de datos (queda lejos de Argentina: un tercio de segundo por viaje)
 - [x] Trazada para seguir, con prendido y apagado (en la configuración o con la T): verde, amarilla o roja según la velocidad que se trae
 - [x] Ayuda de manejo que sigue la trazada y regula los pedales de a poco: ya no se escucha cortar el acelerador
@@ -76,6 +77,19 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 6. **Colores y texturas:** seguir acercándolos a las referencias (pisos calmos, bruma cálida, sombras lilas).
 7. **Autos dibujados en la portada**, en vez de emojis.
 8. **Sonido:** golpes, agua, derrape y público.
+
+## Antes de publicar en las tiendas (Google Play, App Store)
+
+Lo que piden las tiendas y lo que conviene tener resuelto antes. Revisado en octubre de 2026; las reglas cambian, hay que volver a mirarlas llegado el momento.
+
+1. **Política de privacidad publicada.** Las dos tiendas la piden aunque se guarde poco, y además hay que completar la declaración de datos de cada una (en Google Play, "Data safety"; en App Store, "App Privacy"). Lo que se guarda está en [`servidor/LEEME.md`](servidor/LEEME.md).
+2. **Que cada uno pueda borrar sus datos** del servidor desde el juego (hoy las pasadas se borran solas a los 120 días, pero los clubes quedan).
+3. **Confirmar antes de entrar a un club.** Hoy el que abre una invitación entra solo; conviene que primero vea a qué club entra y diga que sí.
+4. **Nombres ofensivos.** Cuando la gente ve nombres escritos por otros, las tiendas piden reglas de uso, una forma de denunciar y otra de bloquear.
+5. **Marcas de otros.** Revisar el nombre "Shakedown" (ya hubo juegos con esa palabra) y los sponsors y autos en chiste: las tiendas no hacen excepción con las parodias. Conviene consultarlo con alguien que sepa de marcas.
+6. **Código cerrado.** Pasar el repo a privado y publicar el juego compactado. No impide copiarlo, pero deja de estar servido en bandeja. Un dominio propio también ayuda.
+7. **Prueba cerrada.** En Google Play, una cuenta personal nueva tiene que probar la app con 12 personas durante 14 días antes de poder publicarla.
+8. **Si algún día hay un ranking público o premios:** cuentas de usuario, que el servidor reparta la pista del día y que verifique cada pasada con el motor del juego.
 
 ## Ideas para más adelante
 

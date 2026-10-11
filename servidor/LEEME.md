@@ -57,17 +57,23 @@ Con el servidor de prueba andando, abrir el juego local con `?servidor=http://12
 
 ## Qué guarda
 
-De cada pasada: el apodo, el tiempo, los colores de los sectores, el auto, si usó ayuda de manejo y el recorrido grabado. Es lo mismo que viaja en un link largo. De cada club: su nombre, quiénes están y el apodo de cada uno (el último que usó: si se lo cambia, cambia en la tabla).
+De cada pasada: el apodo, el tiempo, los colores de los sectores, el auto, si usó ayuda de manejo y el recorrido grabado. Es lo mismo que viaja en un link largo (que incluye hasta diez tiempos de otros que a ese jugador le llegaron por link; los de sus clubes, no). De cada club: su nombre, quiénes están y el apodo de cada uno (el último que usó: si se lo cambia, cambia en la tabla).
 
 No hay cuentas, mails ni contraseñas. Cada aparato inventa una llave larga al azar; el servidor guarda solo su huella, que hace de número de corredor. Como nadie más conoce la llave, nadie puede subir tiempos a nombre de otro. La contra: el mismo jugador en dos aparatos son dos corredores.
 
-Las pasadas de más de 120 días se borran solas.
+No guarda direcciones de internet. Para los topes cuenta los pedidos de cada conexión, pero de la conexión anota solo tres letras de una huella, que comparten miles de direcciones distintas, y las borra a los dos días. (Aparte, Cloudflare lleva su propio registro de visitas, como cualquier servicio de internet.)
+
+Las pasadas de más de 120 días se borran solas. Los clubes y quiénes están en cada uno quedan hasta que la gente sale.
 
 ## Qué revisa y qué no
 
-Cada pasada que llega se lee con el mismo programa que usa el juego (`src/fantasma.js`), y lo que figura en la tabla sale de ahí. Se rechaza si no se puede leer, si es de una pista que todavía no se corrió, o si el tiempo no coincide con lo grabado. Cada corredor tiene una sola oficial por pista: la primera que llega.
+Cada pasada que llega se lee con el mismo programa que usa el juego (`src/fantasma.js`), y lo que figura en la tabla sale de ahí. Se rechaza si no se puede leer, si es de una pista que todavía no empezó (se acepta desde 15 minutos antes de la medianoche, por los relojes adelantados), o si el tiempo no coincide con lo grabado. Cada corredor tiene una sola oficial por pista: la primera que llega.
 
-No revisa que la pasada se haya manejado de verdad. Alguien que sepa programar puede fabricar una. Alcanza para clubes de amigos; no para un ranking con premios.
+Escribir (subir pasadas, crear clubes, entrar y salir) solo se puede desde el juego publicado: el navegador avisa desde qué página viene cada pedido, y el servidor rechaza los que vienen de otra. Leer puede cualquiera que tenga el código de una pasada o de un club; por eso esos códigos son largos y al azar.
+
+Los nombres (de la gente y de los clubes) se limpian: sin letras de control ni marcas invisibles, sin `<` ni `>`, y con un largo máximo. No hay filtro de palabras: si aparece un nombre ofensivo, se borra a mano (ver más abajo).
+
+No revisa que la pasada se haya manejado de verdad. Alguien que sepa programar puede fabricar una, o mentir desde qué página viene. Alcanza para clubes de amigos; no para un ranking con premios: para eso haría falta que el servidor repita cada pasada con el mismo motor del juego, y cuentas de usuario.
 
 Los topes están arriba de todo en `worker.js` (`LIMITES`). Por día y desde una misma conexión: 3.000 pasadas, 60 clubes nuevos y 600 ingresos a clubes. Entre todos: 12.000 pasadas por día. Además, 30 clubes por corredor y 100 corredores por club. Los topes por conexión son holgados a propósito: un colegio con el mismo wifi, o mucha gente de la misma compañía de celular, salen a internet con la misma dirección.
 
@@ -104,4 +110,6 @@ Todo va y viene como JSON.
 | `POST /clubes/<codigo>/salir` | `{ llave }` | `{ listo: true }` |
 | `POST /tablas` | `{ llave, pista, version, clubes: [códigos] }` | de cada club: nombre, cuántos son, la tabla y quiénes faltan correr |
 
-Desde un navegador solo lo puede usar el juego publicado (`ORIGENES`, en `wrangler.jsonc`) o una copia local del juego.
+Desde un navegador solo lo puede usar el juego publicado (`ORIGENES`, en `wrangler.jsonc`). Una copia local del juego puede usar el servidor de prueba (`local.mjs`), no el publicado.
+
+Si el juego se muda (a un dominio propio, o adentro de una app para el celular), hay que agregar su dirección nueva en `ORIGENES`, separada por una coma: si no, el servidor no lo deja escribir.

@@ -80,9 +80,10 @@ Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 
 **El servidor.** Los clubes y los links cortos (`…/shakedown/#r=k7Qx2Mp`) necesitan un servidor chico que guarde las pasadas: está en la carpeta `servidor/` y corre gratis en Cloudflare ([cómo publicarlo](servidor/LEEME.md)). El juego no depende de él:
 
-- Sin servidor configurado (`SERVIDOR` vacío en `src/config.js`), o si un día no contesta, el link lleva la pasada completa adentro (por eso es largo: de 500 a 800 letras) y la tabla se arma con los links que se abren. Ese link también lleva los tiempos que ya conocés, así la tabla se va completando entre todos.
+- Sin servidor configurado (`SERVIDOR` vacío en `src/config.js`), o si un día no contesta, el link lleva la pasada completa adentro (por eso es largo: de 500 a 800 letras) y la tabla se arma con los links que se abren. Ese link también lleva los tiempos que te llegaron por otros links, así la tabla se va completando entre todos. (Lo que sabés por un club no viaja en tus links: queda en el club.)
 - Los links largos que ya se compartieron siguen andando siempre.
-- No hay cuentas ni contraseñas: se guarda el nombre que cada uno elige, su tiempo y su pasada. Nada más.
+- No hay cuentas ni contraseñas: se guarda el nombre que cada uno elige, su tiempo y su pasada. Nada más: ni mails, ni direcciones de internet, ni publicidad, ni programas de terceros que sigan a la gente.
+- El servidor solo deja escribir al juego publicado, y revisa lo que puede (ver [`servidor/LEEME.md`](servidor/LEEME.md)). No es a prueba de tramposos: alcanza para clubes de amigos.
 
 ## Cómo se juega
 

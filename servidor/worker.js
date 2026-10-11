@@ -20,7 +20,7 @@
 //
 // El "codigo" de una pasada es el mismo texto que antes iba entero en el link. Aca se lo lee con el mismo programa
 // que usa el juego (src/fantasma.js): lo que figura en la tabla sale de la pasada grabada, no de lo que diga el que la manda.
-import { leerCodigo } from '../src/fantasma.js';
+import { leerCodigo, limpiarTexto } from '../src/fantasma.js';
 import { esCircuito } from '../src/circuitos.js';
 import { hoy } from '../src/dia.js';
 
@@ -39,6 +39,7 @@ export const LIMITES = {
   clubesPorPedido: 30,        // cuantas tablas se pueden pedir de una vez
   guardaDias: 120,            // las pasadas mas viejas se borran solas
   largoDelCodigo: 6000,       // letras, como mucho, de una pasada (una de dos minutos lleva unas 600; la mas larga posible, 4.500)
+  adelanto: 900,              // segundos: cuanto antes de la medianoche se acepta una pasada de la pista que viene (por los relojes adelantados)
 };
 const ORIGENES = 'https://juanmcompa.github.io';   // desde que paginas se puede usar (se cambia con la variable ORIGENES)
 
@@ -90,7 +91,7 @@ async function huella(texto) {
   for (let i = 0; i < 12; i++) s += String.fromCharCode(b[i]);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_');
 }
-const limpiar = (txt, largo) => String(txt || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, largo);
+const limpiar = limpiarTexto;   // (la misma limpieza que hace el juego: sin letras de control ni marcas invisibles)
 const esLlave = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(x);
 const esCodigoCorto = (x) => typeof x === 'string' && /^[0-9A-Za-z]{6,12}$/.test(x);
 const ahora = () => Math.floor(Date.now() / 1000);
@@ -135,7 +136,10 @@ async function guardarPasada(env, pedido, de) {
   const l = await leerCodigo(codigo);
   if (!l || !l.marca) falla(400, 'Esa pasada no se puede leer.');
   const m = l.marca, pista = m.pista, version = l.version;
-  if (!(pista >= 1) || !(pista <= hoy() + 1 || esCircuito(pista))) falla(400, 'Esa pista todavía no se corrió.');
+  if (!(pista >= 1)) falla(400, 'Esa pasada no se puede leer.');
+  // La pista de mañana no se puede haber corrido hoy. (Un reloj adelantado unos minutos no es trampa: se acepta un rato
+  // antes de la medianoche. Y si llega demasiado temprano, el juego la vuelve a mandar mas tarde.)
+  if (!(pista <= hoy(Date.now() + LIMITES.adelanto * 1000) || esCircuito(pista))) falla(425, 'Esa pista todavía no empezó.');
   if (!m.ab) {
     if (!(m.t >= 15 && m.t <= 3600)) falla(400, 'Ese tiempo no puede ser.');
     // el tiempo tiene que coincidir con lo grabado (hay dos muestras por segundo, hasta 1900)
@@ -301,21 +305,27 @@ async function limpiarLoViejo(DB) {
 }
 
 // --- la entrada: lee el pedido, lo reparte y contesta ---
+// Quien puede usarlo. El navegador dice desde que pagina viene cada pedido ("origin"): se atiende al juego publicado.
+// Un servidor de prueba, corriendo en la misma compu, atiende ademas a una copia local del juego y a las pruebas (que no
+// dicen de donde vienen). El publicado, no: asi una copia retocada del juego no puede subirle tiempos desde un navegador.
+// (No es un candado: quien sepa programar puede mentir de donde viene. Es para que no sea facil.)
+const DE_ENTRE_CASA = /^(localhost|127\.0\.0\.1)$/;
 function permiso(env, pedido) {
   const origen = pedido.headers.get('origin') || '', permitidos = String(env.ORIGENES || ORIGENES).split(',').map((x) => x.trim());
-  // (una copia del juego abierta en la misma compu tambien puede: sirve para probar)
-  const si = permitidos.includes(origen) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origen);
-  return { 'access-control-allow-origin': si ? origen : permitidos[0], vary: 'origin', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '86400' };
+  const local = DE_ENTRE_CASA.test(new URL(pedido.url).hostname) && (!origen || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origen));
+  const si = permitidos.includes(origen) || local;
+  return { si, cabeza: { 'access-control-allow-origin': si && origen ? origen : permitidos[0], vary: 'origin', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '86400' } };
 }
 export default {
   async fetch(pedido, env, ctx) {
-    const cabeza = { ...permiso(env, pedido), 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
+    const quien = permiso(env, pedido), cabeza = { ...quien.cabeza, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
     const contestar = (estado, cosa) => new Response(JSON.stringify(cosa), { status: estado, headers: cabeza });
     if (pedido.method === 'OPTIONS') return new Response(null, { status: 204, headers: cabeza });
     try {
       const partes = new URL(pedido.url).pathname.split('/').filter(Boolean), metodo = pedido.method, donde = partes[0] || '';
       if (metodo !== 'GET' && metodo !== 'POST') falla(405, 'Eso no se puede.');
       if (!donde) return contestar(200, { juego: 'Shakedown', hoy: hoy() });
+      if (metodo === 'POST' && !quien.si) falla(403, 'Desde ahí no se puede.');   // (leer puede cualquiera; escribir, solo el juego)
       const DB = env.DB, despues = (promesa) => { if (ctx && ctx.waitUntil) ctx.waitUntil(promesa.catch(() => {})); };
       if (!DB) falla(500, 'El servidor no tiene base de datos.');
       // (la primera vez que el programa se despierta repasa el esquema, sin hacer esperar a nadie: asi, si un dia se le
@@ -323,13 +333,16 @@ export default {
       if (!revisadas.has(DB)) { revisadas.add(DB); despues(crearTablas(DB)); }
       let cuerpo = {};
       if (metodo === 'POST') {
+        const tope = LIMITES.largoDelCodigo + 2000;
+        if (Number(pedido.headers.get('content-length')) > tope) falla(413, 'Demasiado largo.');   // (sin ponerse a leerlo)
         const texto = await pedido.text();
-        if (texto.length > LIMITES.largoDelCodigo + 2000) falla(413, 'Demasiado largo.');
+        if (texto.length > tope) falla(413, 'Demasiado largo.');
         try { cuerpo = JSON.parse(texto || '{}'); } catch (e) { falla(400, 'No se entiende el pedido.'); }
         if (!cuerpo || typeof cuerpo !== 'object') falla(400, 'No se entiende el pedido.');
       }
-      // de que conexion viene (para los limites): se guarda su huella, no la direccion
-      const de = await huella(conexionDe(pedido.headers.get('cf-connecting-ip') || 'local') + '|' + (env.SAL || 'shakedown'));
+      // De que conexion viene (para los limites). No se guarda la direccion, ni siquiera una huella que permita
+      // averiguarla: quedan tres letras de la huella, que comparten miles de direcciones distintas. Para contar alcanza.
+      const de = (await huella(conexionDe(pedido.headers.get('cf-connecting-ip') || 'local') + '|' + (env.SAL || 'shakedown'))).slice(0, 3);
       let hacer;
       if (donde === 'pasadas' && metodo === 'POST' && partes.length === 1) hacer = () => guardarPasada(env, cuerpo, de);
       else if (donde === 'pasadas' && metodo === 'GET' && partes.length === 2) hacer = () => traerPasada(env, partes[1]);

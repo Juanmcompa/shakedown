@@ -39,6 +39,7 @@ export function atender(env) {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('local.mjs')) {
-  const puerto = Number(process.argv[2] || 8787), env = { DB: baseLocal(process.argv[3] || ':memory:') };
+  // (ORIGENES=http://otra.direccion:8000 node servidor/local.mjs  lo deja usar tambien desde esa pagina)
+  const puerto = Number(process.argv[2] || 8787), env = { DB: baseLocal(process.argv[3] || ':memory:'), ...(process.env.ORIGENES ? { ORIGENES: process.env.ORIGENES } : {}) };
   http.createServer(atender(env)).listen(puerto, '127.0.0.1', () => console.log('Servidor de Shakedown de prueba en http://127.0.0.1:' + puerto));
 }
