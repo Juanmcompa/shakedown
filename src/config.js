@@ -88,6 +88,11 @@ export const REFERENCIA = 'vitarita';
 //   mano, mira: como apunta a la trazada: cuanto volante por cada radian de error, y cuantos metros adelante mira por cada m/s.
 export const AYUDA = { auto: { firme: 0.8, estable: 1.1, alinea: 0.85 }, ritmo: 0.7, frena: 3.6, suave: 2.5, suelta: 0.5, volante: 1, cede: 0.6, mano: 2.6, mira: 0.3 };
 
+// El servidor del juego: guarda las pasadas que se comparten (asi el link es corto) y las tablas de los clubes.
+// Es la direccion donde quedo publicado servidor/worker.js (ver servidor/LEEME.md), sin barra al final.
+// Vacio = sin servidor: el juego anda igual, con el link largo, y la tabla se arma con los links que se abren.
+export const SERVIDOR = '';
+
 // La configuracion que puede tocar cada uno (se guarda en su aparato): lo que vale cada cosa si nunca se la toco.
 //   sensible: de 0 a 100, cuanto dobla al inclinar el celular. Con 55 hacen falta 24 grados para llevar el volante a fondo;
 //             con 100, unos 14; con 0, unos 48.

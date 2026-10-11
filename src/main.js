@@ -1,6 +1,6 @@
 // SHAKEDOWN: arma el juego y corre el ciclo principal.
 import * as THREE from '../vendor/three.module.js';
-import { JUEGO, AUTOS, REFERENCIA, AYUDA, GUSTOS, gradosDeInclinacion } from './config.js';
+import { JUEGO, AUTOS, REFERENCIA, AYUDA, GUSTOS, SERVIDOR, gradosDeInclinacion } from './config.js';
 import { hoy } from './dia.js';
 import { generarPista, versionDe } from './generador.js';
 import { esCircuito, circuitoDe } from './circuitos.js';
@@ -12,6 +12,7 @@ import { crearAyuda } from './ayuda.js';
 import { crearCopiloto } from './copiloto.js';
 import { crearGrabacion, leerCodigo, crearFantasma } from './fantasma.js';
 import { crearClub } from './club.js';
+import { crearNube } from './nube.js';
 import { crearMenu } from './menu.js';
 import { crearMundo } from './world.js';
 import { crearPost } from './post.js';
@@ -28,7 +29,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '13' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '14' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
@@ -51,7 +52,20 @@ render.shadowMap.enabled = true;
 
 // --- que pista se corre: la del link de un amigo, un circuito fijo (?c=subida), la pedida con ?p=numero, o la de hoy ---
 const HOY = hoy(), consulta = new URLSearchParams(location.search), pedida = Math.floor(Number(consulta.get('p'))), fijo = circuitoDe(consulta.get('c'));
-const enlace = /[#&]r=([\w-]+)/.exec(location.hash), leido = enlace ? await leerCodigo(enlace[1]) : null;
+// El servidor (ver nube.js) guarda las pasadas que se comparten y las tablas de los clubes. Sin el, todo lo demas anda igual.
+// (Desde una copia del juego abierta en la misma compu se puede probar con otro: ?servidor=http://127.0.0.1:8787)
+const enCasa = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const nube = crearNube(enCasa && consulta.has('servidor') ? consulta.get('servidor') : SERVIDOR);
+// El link de un amigo trae su pasada. Los largos (cientos de letras) la traen entera; los cortos traen el codigo con
+// el que quedo guardada en el servidor, y hay que ir a buscarla. Un link de invitacion termina en #club=...
+const enlace = /[#&]r=([\w-]+)/.exec(location.hash), invitacion = /[#&]club=([0-9A-Za-z]{6,12})/.exec(location.hash);
+let codigoDelLink = enlace ? enlace[1] : '', corredorDelLink = '', linkCaido = false;
+if (enlace && enlace[1].length <= 12) {
+  await respiro('Buscando la pasada de tu amigo…');
+  const p = await nube.pasada(enlace[1]);
+  codigoDelLink = p ? p.codigo : ''; corredorDelLink = p ? p.j : ''; linkCaido = !p;
+}
+const leido = codigoDelLink ? await leerCodigo(codigoDelLink) : null;
 const vale = (n) => n >= 1 && (n <= HOY || esCircuito(n));
 const numero = leido && vale(leido.marca.pista) ? leido.marca.pista : fijo ? fijo.numero : vale(pedida) || (pedida >= 1 && consulta.has('futuro')) ? pedida : HOY;
 // la direccion de una pista: la de hoy no lleva nada; un circuito, su nombre; un dia pasado, su numero
@@ -60,15 +74,20 @@ const direccionDe = (n) => location.pathname + (esCircuito(n) ? '?c=' + circuito
 await respiro('Armando la pista…');
 const etapa = generarPista(numero), T = crearTerreno(etapa), P = T.camino, ref = crearReferencia(T, AUTOS[REFERENCIA]);
 const club = crearClub(numero, HOY, versionDe), copiloto = crearCopiloto(T);
+nube.conLlave(() => club.llave());
+// Como se nombra a alguien de la tabla para elegirlo de rival: por su numero de corredor, si se lo conoce
+// (lo da el servidor); si no, por el nombre. '*' es la pasada propia.
+const claveDe = (r) => (r.mio ? '*' : r.j ? '@' + r.j : r.nombre);
 // lo que trajo el link: el resultado del amigo (con su fantasma) y los otros que el conocia. El queda de rival.
 // (Si el link es de una version anterior de la pista, ya no sirve: ese camino no existe mas.)
 let linkViejo = false;
 if (leido && leido.marca.pista === numero) {
   if (leido.version !== versionDe(numero)) linkViejo = true;
   else {
-    club.anotarAmigo({ ...leido.marca, codigo: enlace[1] });
+    const amigo = { ...leido.marca, codigo: codigoDelLink, ...(corredorDelLink ? { j: corredorDelLink, id: enlace[1] } : {}) };
+    club.anotarAmigo(amigo);
     for (const o of leido.tabla) club.anotarAmigo(o);
-    if (leido.tieneVuelta && leido.marca.nombre !== club.nombre()) club.elegirRival(leido.marca.nombre + (leido.marca.practica ? '|p' : ''));
+    if (leido.tieneVuelta && leido.marca.nombre !== club.nombre()) club.elegirRival(claveDe(amigo) + (leido.marca.practica ? '|p' : ''));
   }
   history.replaceState(null, '', direccionDe(numero));
 }
@@ -110,33 +129,119 @@ const espectros = {};
 const espectroDe = (id) => espectros[id] || (espectros[id] = crearEspectro(escena, T, AUTOS[id] || AUTOS.vitarita));
 
 // --- contra quien se corre ---
-// rival: null o { clave, nombre, t, ab, practica, auto, fantasma }. La clave es el nombre del amigo, o '*' si es una pasada propia.
-let rival = null;
+// rival: null o { clave, nombre, t, ab, practica, auto, fantasma }. La clave es la de "claveDe": '*' si es una pasada propia.
+let rival = null, turnoDeRival = 0;
 function buscarRival() {
   const [clave, deLaPractica] = (club.rival() || '').split('|');
   if (clave === '-') return null;   // eligio correr solo
-  const mia = (lista) => lista.find((x) => x.mio && x.codigo);
-  let r = clave ? (deLaPractica ? club.practicas() : club.tabla()).find((x) => (clave === '*' ? x.mio : !x.mio && x.nombre === clave)) : null;
+  const mia = (lista) => lista.find((x) => x.mio && x.codigo), tiene = (x) => x && (x.codigo || x.id);
+  let r = clave ? (deLaPractica ? club.practicas() : club.tabla()).find((x) => (clave === '*' ? x.mio : !x.mio && (claveDe(x) === clave || x.nombre === clave))) : null;
   // sin rival elegido: despues de la oficial, se practica contra la mejor pasada propia
-  if (!(r && r.codigo) && !club.sePuedeOficial()) { const a = mia(club.tabla()), b = mia(club.practicas()); r = a && b ? (b.t < a.t || a.ab ? b : a) : a || b; }
-  return r && r.codigo ? r : null;
+  if (!tiene(r) && !club.sePuedeOficial()) { const a = mia(club.tabla()), b = mia(club.practicas()); r = a && b ? (b.t < a.t || a.ab ? b : a) : a || b; }
+  return tiene(r) ? r : null;
 }
+// Devuelve false si el rival elegido tiene el fantasma en el servidor y no se lo pudo traer.
 async function cargarRival() {
-  const r = buscarRival(), l = r ? await leerCodigo(r.codigo) : null;
+  const r = buscarRival(), turno = ++turnoDeRival;
+  let falto = false;
+  // el fantasma de alguien de un club no viene con la tabla: se lo va a buscar recien cuando se lo elige
+  if (r && !r.codigo) {
+    const p = await nube.pasada(r.id);
+    if (p) { r.codigo = p.codigo; club.ponerCodigoDe(r, p.codigo); } else falto = true;
+  }
+  const l = r && r.codigo ? await leerCodigo(r.codigo) : null;
+  if (turno !== turnoDeRival) return true;   // mientras tanto se eligio otro: manda ese
   const vuelta = l && l.version === versionDe(numero) && l.marca.pista === numero ? l.vuelta(P) : null;
-  rival = vuelta ? { clave: r.mio ? '*' : r.nombre, nombre: r.mio ? 'Vos' : r.nombre, t: r.t, ab: r.ab, practica: !!r.practica, auto: r.auto, fantasma: crearFantasma(vuelta, T) } : null;
+  rival = vuelta ? { clave: claveDe(r), nombre: r.mio ? 'Vos' : r.nombre, t: r.t, ab: r.ab, practica: !!r.practica, auto: r.auto, fantasma: crearFantasma(vuelta, T) } : null;
   for (const id in espectros) espectros[id].ocultar();
   if (rival) espectroDe(rival.auto).nombre(rival.nombre);
   menu.pintar();
+  return !falto;
+}
+
+// --- el servidor: links cortos y clubes (ver nube.js). Si no hay servidor o no contesta, nada de esto molesta ---
+// Sube una pasada propia y anota con que codigo corto quedo guardada.
+const subir = (r, codigo, n = numero) => nube.subir(codigo).then((id) => { if (id !== null) club.ponerId(r, id, n); return id; });
+// Lo que va despues de "#r=" al compartir: el codigo corto si la pasada esta en el servidor; si no, la pasada entera.
+// (Casi siempre ya se subio al terminar de correr. Si justo esta en eso, se la espera un momento y nada mas: en el
+// celular, el menu de compartir solo se abre si no pasa mucho desde que se toco el boton.)
+async function acortar(r, codigo) {
+  if (!codigo || !nube.hay) return codigo || '';
+  if (r.id && r.codigo === codigo) return r.id;   // ya esta guardada tal cual
+  const id = await nube.subir(codigo, 900);
+  if (id !== null) club.ponerId(r, id);
+  return id || r.id || codigo;
+}
+// Lo que se corrio sin conexion (o antes de entrar a un club) se sube cuando se puede: asi figura en las tablas.
+async function sincronizar() {
+  if (!nube.hay || !club.clubes().length) return;
+  for (const { numero: n, r } of club.sinSubir().slice(0, 8)) await subir(r, r.codigo, n);
+}
+// Las tablas de mis clubes en esta pista. Lo ultimo que dijo el servidor de cada club queda en "deLosClubes"
+// ({ codigo: { miembros, faltan: [apodos de los que todavia no corrieron] } }); los tiempos, en el club (club.js).
+const deLosClubes = {};
+let ultimaTabla = -1e9;
+async function tablasDeLosClubes(ya) {
+  const mios = club.clubes();
+  if (!nube.hay || !mios.length || (!ya && performance.now() - ultimaTabla < 15000)) return;
+  ultimaTabla = performance.now();
+  const t = await nube.tablas(numero, versionDe(numero), mios.map((x) => x.codigo));
+  if (!t) return;
+  for (const { codigo } of mios) {
+    const x = t[codigo];
+    if (x === null) { club.sacarClub(codigo); delete deLosClubes[codigo]; continue; }   // ese club ya no existe
+    if (!x) continue;
+    if (!x.soy) nube.entrar(codigo, club.nombre());   // (la vez que me sume no habia llegado al servidor)
+    club.ponerClub({ codigo, nombre: x.nombre });
+    club.anotarDelClub(codigo, x.tabla);
+    deLosClubes[codigo] = { miembros: x.miembros + (x.soy ? 0 : 1), faltan: x.faltan || [] };
+  }
+  menu.pintar();
+}
+// Crear un club, entrar a uno con el codigo de una invitacion, y salir. Devuelven { codigo, nombre } o { error }.
+const sinRed = { error: 'No hay conexión con el servidor del juego. Probá más tarde.' };
+async function fundarClub(nombre) {
+  const r = await nube.crearClub(nombre, club.nombre());
+  if (!r || r.error) return r || sinRed;
+  club.ponerClub(r);
+  deLosClubes[r.codigo] = { miembros: 1, faltan: [] };
+  sincronizar().then(() => tablasDeLosClubes(true));
+  return r;
+}
+async function entrarAlClub(codigo) {
+  const r = await nube.entrar(codigo, club.nombre());
+  if (!r || r.error) return r || sinRed;
+  club.ponerClub(r);
+  await sincronizar();
+  await tablasDeLosClubes(true);
+  return r;
+}
+async function dejarClub(codigo) {
+  const r = await nube.salir(codigo);
+  if (!r || r.error) return r || sinRed;
+  club.sacarClub(codigo);
+  delete deLosClubes[codigo];
+  cargarRival();
+  return r;
 }
 
 const menu = crearMenu({
   T, club, hoy: HOY, ref, copiloto,
   ajustes: { leer: gusto, poner: (clave, valor) => ajustar(clave, valor), probar: () => teclas.probarSensor() },
-  aviso: linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.' : '',
+  aviso: linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.'
+    : linkCaido ? 'No pude traer la pasada de tu amigo. Revisá la conexión y abrí el link de nuevo.' : '',
   rival: () => rival,
+  claveDe,
   elegirAuto: (id) => { if (pantalla !== 'jugando') ponerAuto(id); },
-  elegirRival: (clave, deLaPractica) => { club.elegirRival(clave ? clave + (deLaPractica ? '|p' : '') : '-'); cargarRival(); },
+  // (devuelve una promesa de false si no se pudo traer el fantasma del servidor)
+  elegirRival: (clave, deLaPractica) => { club.elegirRival(clave ? clave + (deLaPractica ? '|p' : '') : '-'); return cargarRival(); },
+  acortar,
+  // los clubes (solo si hay servidor): crear, salir, y lo ultimo que se sabe de cada uno
+  // (renombrar: con el nombre nuevo se figura en los clubes aunque todavia no se haya corrido)
+  clubes: nube.hay ? {
+    fundar: fundarClub, dejar: dejarClub, de: (codigo) => deLosClubes[codigo] || null, refrescar: () => tablasDeLosClubes(false),
+    renombrar: () => { for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); },
+  } : null,
 });
 
 let pantalla = 'portada';   // portada, jugando o fin
@@ -205,8 +310,8 @@ function cerrarRonda(v) {
     mejorRonda = { r, g };
     if (club.anotarPractica(r)) {
       mejoroAlgo = true;
-      // la mejor vuelta pasa a ser el fantasma contra el que se corre (si no se eligio otro)
-      g.codigo({ ...r, nombre: club.nombre() }, conocidos()).then((codigo) => { club.ponerCodigo(r, codigo); cargarRival(); });
+      // la mejor vuelta pasa a ser el fantasma contra el que se corre (si no se eligio otro), y se sube al servidor
+      g.codigo({ ...r, nombre: club.nombre() }, conocidos()).then((codigo) => { club.ponerCodigo(r, codigo); cargarRival(); subir(r, codigo); });
     }
   }
   const dif = marca === null ? null : v.tiempo - marca;
@@ -230,11 +335,15 @@ function terminar() {
   if (T.vuelta && mejorRonda) { r = { ...mejorRonda.r, nombre: club.nombre(), rondas, seRompio: partida.estado === 'abandono' }; g = mejorRonda.g; mejoro = mejoroAlgo; }
   else if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
   // el link se arma con el nombre que haya en ese momento (si lo cambia, se arma de nuevo)
+  // Lo que cuenta (la oficial, o un mejor tiempo) se sube enseguida al servidor: asi el link sale corto y el tiempo
+  // aparece en las tablas de los clubes. Una practica cualquiera se sube recien si se la comparte.
+  const cuenta = !r.practica || mejoro;
   let hecho = { nombre: null, codigo: null };
   const armarLink = async () => {
     if (hecho.nombre !== club.nombre()) {
       hecho = { nombre: club.nombre(), codigo: await g.codigo({ ...r, nombre: club.nombre() }, conocidos()) };
       club.ponerCodigo(r, hecho.codigo);
+      if (cuenta) subir(r, hecho.codigo).then(() => tablasDeLosClubes(true));
     }
     return hecho.codigo;
   };
@@ -414,9 +523,20 @@ try {
 $('largar').disabled = false;
 requestAnimationFrame(cuadro);
 
+// --- lo del servidor, con el juego ya andando (nada de esto demora la carga) ---
+// Si el link era una invitacion a un club, se entra y se abre su tabla. Si no: se sube lo que haya quedado sin subir
+// y se piden las tablas de mis clubes.
+if (invitacion) {
+  history.replaceState(null, '', direccionDe(numero));
+  if (!nube.hay) menu.decir('Ese link es una invitación a un club, pero el servidor del juego no está disponible.');
+  else entrarAlClub(invitacion[1]).then((r) => (r.error ? menu.decir('No pude sumarte al club. ' + r.error) : menu.verClub(r.codigo, 'Ya estás en «' + r.nombre + '».')));
+} else sincronizar().then(() => tablasDeLosClubes(true));
+// Al volver al juego (por ejemplo, despues de pasar la invitacion por WhatsApp) se piden de nuevo las tablas.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && pantalla !== 'jugando') tablasDeLosClubes(false); });
+
 // para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino
 window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes,
   auto: () => c,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,

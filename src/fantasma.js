@@ -261,7 +261,8 @@ export function crearGrabacion(T) {
 
 // --- lectura de un codigo ---
 // Devuelve { marca: el resultado, tabla: los otros resultados que traia, version: con que version del generador se corrio,
-//            tieneVuelta, vuelta(P): la pasada, ya ubicada sobre el camino P (o null si no la trae o esta rota) }.
+//            tieneVuelta, muestras: cuantas trae (dos por segundo),
+//            vuelta(P): la pasada, ya ubicada sobre el camino P (o null si no la trae o esta rota) }.
 // Entiende el formato nuevo (empieza con "d") y el anterior ("c" o "p"), que guardaba los lugares del mapa.
 export async function leerCodigo(codigo) {
   try {
@@ -277,7 +278,7 @@ function leerNuevo(b) {
   if (!(pista > 0) || r.seAcabo()) return null;
   let hecha;
   return {
-    marca, tabla, version, tieneVuelta: n > 1,
+    marca, tabla, version, tieneVuelta: n > 1, muestras: n,
     vuelta: (P) => {
       if (hecha !== undefined || n < 2) return hecha || null;
       hecha = null;
@@ -318,7 +319,7 @@ async function leerViejo(codigo) {
   }
   if (!(pista > 0) || !(marca.t >= 0 && marca.t < 3600) || i > b.length) return null;
   const vuelta = n > 1 ? { n, xs, zs, hs, ys } : null;
-  return { marca, tabla, version: 1, tieneVuelta: !!vuelta, vuelta: () => vuelta };   // (el formato viejo es de la version 1 de las pistas)
+  return { marca, tabla, version: 1, tieneVuelta: !!vuelta, muestras: n, vuelta: () => vuelta };   // (el formato viejo es de la version 1 de las pistas)
 }
 
 // --- reproduccion: donde estaba el fantasma en cada momento ---

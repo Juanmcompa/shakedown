@@ -17,7 +17,10 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Una pasada oficial por día.** Después, práctica libre. Las pistas pasadas se pueden practicar.
 - **Rally puro.** Sin nafta ni rescates. Salirse o volcar: volver al camino con 8 segundos. Romper el auto: abandono.
 - **Cinco sectores, cinco cuadraditos.** El color sale de comparar el sector con un tiempo de referencia (verde hasta 1,3 veces, amarillo hasta 1,6). Volver al camino pone el sector en rojo.
-- **Tabla del club sin servidor.** Se arma con los links de WhatsApp que se abren. Con un link, la oficial se corre contra el fantasma de quien lo mandó.
+- **Con un link, la oficial se corre contra el fantasma de quien lo mandó.** Y quien lo mandó queda en la tabla.
+- **Clubes por invitación.** Un club es un grupo con tabla propia ("torneo" es lo mismo). Se arma con un nombre y se invita con un link, una sola vez. Un jugador puede estar en todos los que quiera, y su pasada oficial del día es una sola y vale para todos, también para los clubes a los que entra después. En la tabla se ve el nombre de cada uno con su tiempo, y quiénes faltan correr.
+- **El servidor es un extra, nunca un requisito.** Guarda las pasadas (para que el link sea corto) y los clubes. Corre gratis en Cloudflare, se publica solo con cada Push y no pide cuentas a nadie: cada aparato tiene una llave al azar. Si no está o no contesta, el juego sigue con el link largo y la tabla armada con los links que se abren. Los links largos ya compartidos no se rompen nunca.
+- **El link corto no pierde fidelidad.** El servidor guarda la pasada entera, la misma que antes viajaba en el link; lo único que se acorta es el link.
 - **El fantasma es fiel.** El link lleva la pasada completa, con los saltos y las salidas de pista. Para que no sea eterno, la pasada se guarda respecto del camino (cuánto avanzó y cuánto se corrió del medio) y comprimida: unas 800 letras, la mitad que al principio, con la misma precisión (10 cm).
 - **Dos autos noventosos:** La Vitarita (4x4, alta) y El Kacito (tracción delantera, bajo). Parejos en tiempo, distintos de manejar.
 - **En piso suelto el auto derrapa.** Manejando tranquilo va por donde se lo apunta; exigido, hay que llevarlo cruzado. Las ruedas de adelante se acomodan solas hacia donde va el auto, así se lo puede llevar de costado sin que se vaya en trompo. La cámara mira hacia donde va el auto, no hacia donde apunta.
@@ -55,6 +58,8 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Vuelta del Club: circuito cerrado de práctica por campo, bosque y montaña, con vueltas, mejor vuelta y fantasma de la mejor
 - [x] Piezas nuevas para armar pistas: puentes de madera con barandas, pircas, lajas, casas y edificios, veredas, calles cortadas con vallas y vecinos, faroles con cables, autos estacionados, colectivos, volquetes, conos, lomos de burro y calles pintadas
 - [x] Publicidad en todas las pistas: tres sponsors en chiste en banderas, chapas, cartelones, pórticos y arcos; se cambian desde una lista y pueden traer su imagen; el auto los puede tirar
+- [x] Links cortos y clubes por invitación, con un servidor chico (carpeta `servidor/`), probado en la compu con tres jugadores
+- [x] Marca nueva: logo en la portada y en la carga, íconos para la pestaña y el celular, e imagen nueva para cuando se pega el link
 - [x] Trazada para seguir, con prendido y apagado (en la configuración o con la T): verde, amarilla o roja según la velocidad que se trae
 - [x] Ayuda de manejo que sigue la trazada y regula los pedales de a poco: ya no se escucha cortar el acelerador
 - [x] Antorchas rojas en las piedras pegadas al camino
@@ -62,6 +67,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 
 ## Lo que sigue
 
+0. **Poner el servidor en línea:** conectar el repo en Cloudflare (ver [`servidor/LEEME.md`](servidor/LEEME.md)) y poner su dirección en `SERVIDOR`, en `src/config.js`. Hasta entonces el juego anda como antes, con el link largo y sin clubes.
 1. **Más variedad en la pista del día:** anchos que cambian (ruta ancha, camino vecinal, huella angosta), pedazos de asfalto entre casas, puentes; y cornisas más cortas y con pirca en las curvas.
 2. **Tres autos argentinos más** (El Fitito, El Doce y El 504). Cada día se ofrecen tres, que van rotando según el día y la pista.
 3. **Probarlo en celulares y compus de verdad.** Todo está probado en un navegador sin placa de video: falta ver cómo rinde y cómo se siente con el teléfono en la mano.
@@ -76,7 +82,8 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - Racha de días corridos y estadísticas propias, como en el Wordle
 - Autos desbloqueables
 - Más circuitos fijos, y tabla de cada uno
-- Tabla común para todos (necesita un servicio aparte donde guardar los tiempos)
+- Tabla común para todos (el servidor ya guarda los tiempos; faltaría revisar que cada pasada se haya manejado de verdad)
+- Que un mismo jugador pueda usar dos aparatos como uno solo (hoy no hay cuentas: cada aparato es un corredor)
 - Soporte de joystick
 - Sponsors de verdad, y un "sponsor del día" que se lleve los mejores lugares
 
@@ -85,7 +92,9 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Rendimiento en celulares.** Hay más cosas en pantalla que antes (dibujos planos, revelado, lluvia). El juego baja solo la calidad si anda a menos de 30 cuadros por segundo, pero falta medirlo en aparatos reales.
 - **Que una pista generada salga injusta.** El generador se prueba con pilotos automáticos, pero cada día es una pista nueva.
 - **Tocar el generador cambia todas las pistas**, también la de hoy y las pasadas: los fantasmas ya guardados dejan de coincidir con el camino. Por eso las pistas llevan un número de versión (`VERSION`, en `src/generador.js`): al subirlo, cada aparato descarta lo guardado de la versión anterior, los links viejos avisan que ya no valen y la oficial del día se puede correr de nuevo. Cuando haya mucha gente jugando, conviene que esos cambios entren a la medianoche.
-- **Que el link sea demasiado largo para algún mensajero.** WhatsApp lo acepta; falta probar otros.
+- **Que el link sea demasiado largo para algún mensajero.** WhatsApp lo acepta; falta probar otros. Con el servidor en línea el link es corto y esto deja de importar.
+- **El servidor es gratis hasta un tope** (unas 12.000 pasadas por día). Si un día se pasa, o si se cae, el juego sigue con el link largo; los tiempos nuevos tardan en llegar a las tablas de los clubes.
+- **Sin cuentas, las pasadas no se pueden verificar del todo.** El servidor revisa que la pasada se pueda leer y que el tiempo coincida con lo grabado, pero alguien que sepa programar puede fabricar una. Alcanza para clubes de amigos; no para un ranking con premios.
 
 ## Cómo seguir trabajando
 

@@ -1,0 +1,12 @@
+// Como se publica en Cloudflare el servidor del juego (el programa esta en servidor/worker.js).
+// No hay que tocar nada aca para publicarlo: ver servidor/LEEME.md.
+{
+  "name": "shakedown",
+  "main": "servidor/worker.js",
+  "compatibility_date": "2026-10-01",
+  // la base de datos. No lleva numero: Cloudflare la crea sola la primera vez que se publica.
+  "d1_databases": [{ "binding": "DB", "database_name": "shakedown" }],
+  // desde que paginas se puede usar el servidor (separadas por comas)
+  "vars": { "ORIGENES": "https://juanmcompa.github.io" },
+  "observability": { "enabled": true }
+}

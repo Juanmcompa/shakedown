@@ -1,0 +1,190 @@
+// Pruebas del servidor: arma pasadas de verdad (con el grabador del juego), las sube y revisa lo que contesta.
+//   node servidor/prueba.mjs                         prueba el programa directo, con una base en la memoria
+//   node servidor/prueba.mjs http://127.0.0.1:8787   prueba un servidor que ya esta andando (el de prueba o el de Cloudflare)
+import servidor, { LIMITES } from './worker.js';
+import { baseLocal } from './local.mjs';
+import { crearTerreno } from '../src/terrain.js';
+import { generarPista } from '../src/generador.js';
+import { crearGrabacion } from '../src/fantasma.js';
+import { hoy } from '../src/dia.js';
+
+const BASE = process.argv[2] || '', env = { DB: BASE ? null : baseLocal() };
+let bien = 0, mal = 0;
+const ver = (que, si, detalle) => { if (si) bien++; else { mal++; console.log('  MAL:', que, detalle === undefined ? '' : JSON.stringify(detalle)); } };
+
+// un pedido: devuelve { estado, cosa, cabeza }
+async function pedir(metodo, ruta, cuerpo, cabeza = {}) {
+  const datos = { method: metodo, headers: { 'content-type': 'text/plain', ...cabeza }, body: cuerpo === undefined ? undefined : typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo) };
+  const r = BASE ? await fetch(BASE + ruta, datos) : await servidor.fetch(new Request('http://prueba' + ruta, datos), env, { waitUntil: (p) => p.catch(() => {}) });
+  let cosa = null;
+  try { cosa = await r.json(); } catch (e) { /* sin cuerpo */ }
+  return { estado: r.status, cosa, cabeza: r.headers };
+}
+
+// una pasada de mentira pero bien formada: el auto va por el medio del camino a 50 km/h
+async function pasada(T, m = {}) {
+  const r = { pista: T.etapa.numero, nombre: 'Juanma', t: 120, s: [24, 24, 24, 24, 24], c: 'vvavv', auto: 'vitarita', ab: '', vueltas: 0, roto: 0, practica: false, ayuda: false, ...m };
+  const g = crearGrabacion(T), P = T.camino, n = Math.floor((m.dura === undefined ? r.t : m.dura) / 0.5) + 1, i0 = T.vuelta ? T.vuelta.desde : T.largada.i;
+  for (let k = 0; k < n; k++) {
+    const i = Math.min(P.n - 2, i0 + Math.round(k * 7));
+    g.muestra(k * 0.5, { pos: [P.X[i], T.altura(P.X[i], P.Z[i]), P.Z[i]], adelante: [P.HX[i], 0, P.HZ[i]] });
+  }
+  return g.codigo(r, m.tabla || []);
+}
+const llave = (letra) => letra.repeat(24);
+
+const N = hoy(), T = crearTerreno(generarPista(N));
+console.log('Pista de hoy: #' + N + (BASE ? ' · servidor ' + BASE : ' · programa directo'));
+const A = llave('a'), B = llave('b'), C = llave('c'), sufijo = Math.random().toString(36).slice(2, 8);   // (para que cada corrida use corredores nuevos en un servidor que ya tiene datos)
+const [LA, LB, LC] = [A, B, C].map((x) => x + sufijo);
+
+// --- lo basico ---
+let r = await pedir('GET', '/');
+ver('la portada contesta', r.estado === 200 && r.cosa.juego === 'Shakedown' && r.cosa.hoy === N, r);
+r = await pedir('GET', '/cualquiera');
+ver('lo que no existe da 404', r.estado === 404, r);
+r = await pedir('POST', '/pasadas', 'esto no es json');
+ver('un pedido roto da 400', r.estado === 400, r);
+
+// --- subir una pasada y volver a traerla ---
+const codA = await pasada(T, { nombre: 'Ana', t: 131.42 });
+r = await pedir('POST', '/pasadas', { llave: LA, codigo: codA });
+ver('guarda una pasada y da un codigo corto', r.estado === 200 && /^[0-9A-Za-z]{7}$/.test(r.cosa.id), r);
+const idA = r.cosa && r.cosa.id;
+console.log('  el link pasa de', codA.length, 'letras a', String(idA).length);
+r = await pedir('GET', '/pasadas/' + idA);
+ver('devuelve la misma pasada, con el numero de corredor', r.estado === 200 && r.cosa.codigo === codA && /^[\w-]{16}$/.test(r.cosa.j), r.estado);
+const jA = r.cosa && r.cosa.j;
+r = await pedir('POST', '/pasadas', { llave: LA, codigo: codA });
+ver('subirla de nuevo da el mismo codigo', r.estado === 200 && r.cosa.id === idA, r);
+r = await pedir('POST', '/pasadas', { llave: LA, codigo: await pasada(T, { nombre: 'Anita', t: 131.42 }) });
+ver('con otro apodo sigue siendo la misma pasada', r.estado === 200 && r.cosa.id === idA, r);
+r = await pedir('POST', '/pasadas', { llave: LA, codigo: await pasada(T, { nombre: 'Ana', t: 99.5 }) });
+ver('no acepta una segunda oficial distinta', r.estado === 409, r);
+r = await pedir('GET', '/pasadas/zzzzzzz');
+ver('una pasada que no existe da 404', r.estado === 404, r);
+
+// --- lo que no se acepta ---
+r = await pedir('POST', '/pasadas', { llave: LB, codigo: 'dAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' });
+ver('basura no entra', r.estado === 400, r);
+r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(T, { nombre: 'Tramposo', t: 60, dura: 131 }) });
+ver('un tiempo que no coincide con lo grabado no entra', r.estado === 400, r);
+r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(T, { nombre: 'Futuro', pista: N + 5 }) });
+ver('una pista que todavia no se corrio no entra', r.estado === 400, r);
+r = await pedir('POST', '/pasadas', { llave: 'corta', codigo: codA });
+ver('sin llave no entra', r.estado === 400, r);
+
+// --- clubes ---
+r = await pedir('POST', '/clubes', { llave: LA, nombre: '  Los <b>Pibes</b>  del   barro ', apodo: 'Anita' });
+ver('crea un club con el nombre limpio', r.estado === 200 && /^[0-9A-Za-z]{8}$/.test(r.cosa.codigo) && r.cosa.nombre === 'Los bPibes/b del barro' && r.cosa.miembros === 1, r);
+const club = r.cosa && r.cosa.codigo;
+r = await pedir('POST', '/clubes', { llave: LA, nombre: 'x' });
+ver('un club sin nombre no se crea', r.estado === 400, r);
+r = await pedir('GET', '/clubes/' + club);
+ver('la invitacion muestra el club', r.estado === 200 && r.cosa.miembros === 1 && r.cosa.nombre.startsWith('Los'), r);
+r = await pedir('GET', '/clubes/noexiste1');
+ver('un club que no existe da 404', r.estado === 404, r);
+r = await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Beto' });
+ver('B se suma', r.estado === 200 && r.cosa.miembros === 2, r);
+r = await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Beto' });
+ver('sumarse dos veces no duplica', r.estado === 200 && r.cosa.miembros === 2, r);
+r = await pedir('POST', '/clubes/' + club + '/entrar', { llave: LC, apodo: 'Caro' });
+ver('C se suma', r.estado === 200 && r.cosa.miembros === 3, r);
+
+// B corre la oficial y dos practicas; C todavia no corrio
+const codB = await pasada(T, { nombre: 'Beto', t: 125.03, auto: 'kacito', ayuda: true });
+r = await pedir('POST', '/pasadas', { llave: LB, codigo: codB });
+const idB = r.cosa && r.cosa.id;
+ver('B sube su oficial', r.estado === 200 && idB && idB !== idA, r);
+r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(T, { nombre: 'Beto', t: 119.2, practica: true }) });
+const idP1 = r.cosa && r.cosa.id;
+r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(T, { nombre: 'Beto', t: 117.8, practica: true }) });
+const idP2 = r.cosa && r.cosa.id;
+ver('las practicas son pasadas aparte', idP1 && idP2 && idP1 !== idP2 && idP1 !== idB, [idB, idP1, idP2]);
+
+r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: 1, clubes: [club, 'noexiste1'] });
+const t = r.cosa && r.cosa.clubes && r.cosa.clubes[club];
+ver('la tabla del club contesta', r.estado === 200 && t && t.miembros === 3 && t.soy === true, r.cosa);
+if (t) {
+  const of = t.tabla.filter((x) => !x.practica), pr = t.tabla.filter((x) => x.practica);
+  ver('estan las dos oficiales', of.length === 2 && of.some((x) => x.nombre === 'Anita' && x.mio && x.t === 131.42 && x.id === idA && x.j === jA) && of.some((x) => x.nombre === 'Beto' && !x.mio && x.auto === 'kacito' && x.ayuda === true && x.c === 'vvavv'), of);
+  ver('de las practicas, solo la mejor de cada uno', pr.length === 1 && pr[0].t === 117.8 && pr[0].id === idP2, pr);
+  ver('dice quien falta correr', JSON.stringify(t.faltan) === JSON.stringify(['Caro']), t.faltan);
+}
+ver('un club que no existe vuelve vacio', r.cosa && r.cosa.clubes.noexiste1 === null, r.cosa && r.cosa.clubes);
+// el apodo que vale es el de ahora: si alguien se lo cambia (sin volver a correr), cambia en la tabla
+await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Betito' });
+r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: 1, clubes: [club] });
+ver('la tabla muestra el apodo de ahora', r.estado === 200 && r.cosa.clubes[club].miembros === 3 && r.cosa.clubes[club].tabla.filter((x) => !x.mio).length === 2 && r.cosa.clubes[club].tabla.filter((x) => !x.mio).every((x) => x.nombre === 'Betito'), r.cosa);
+await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Beto' });
+r = await pedir('POST', '/tablas', { llave: LC, pista: N + 1, version: 1, clubes: [club] });
+ver('otra pista: tabla vacia y faltan los otros dos', r.estado === 200 && r.cosa.clubes[club].tabla.length === 0 && r.cosa.clubes[club].faltan.length === 2, r.cosa);
+
+// el tiempo de un corredor vale para todos sus clubes, tambien los que arma despues
+r = await pedir('POST', '/clubes', { llave: LB, nombre: 'Diseño 3', apodo: 'Beto' });
+const otro = r.cosa && r.cosa.codigo;
+r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: 1, clubes: [club, otro] });
+ver('la oficial de B figura en sus dos clubes', r.estado === 200 && r.cosa.clubes[otro].tabla.some((x) => x.id === idB && x.mio) && r.cosa.clubes[club].tabla.some((x) => x.id === idB && x.mio), r.cosa);
+ver('cada club tiene su gente', r.cosa.clubes[otro].miembros === 1 && r.cosa.clubes[club].miembros === 3, r.cosa);
+
+// salir
+r = await pedir('POST', '/clubes/' + club + '/salir', { llave: LC });
+ver('C sale del club', r.estado === 200, r);
+r = await pedir('GET', '/clubes/' + club);
+ver('quedan dos', r.cosa && r.cosa.miembros === 2, r);
+r = await pedir('POST', '/clubes/' + otro + '/salir', { llave: LB });
+r = await pedir('GET', '/clubes/' + otro);
+ver('un club sin nadie se borra', r.estado === 404, r);
+
+// --- quien puede usarlo desde un navegador ---
+r = await pedir('GET', '/', undefined, { origin: 'https://juanmcompa.github.io' });
+ver('el juego publicado puede', r.cabeza.get('access-control-allow-origin') === 'https://juanmcompa.github.io', r.cabeza.get('access-control-allow-origin'));
+r = await pedir('GET', '/', undefined, { origin: 'http://127.0.0.1:5173' });
+ver('una copia local puede', r.cabeza.get('access-control-allow-origin') === 'http://127.0.0.1:5173', r.cabeza.get('access-control-allow-origin'));
+r = await pedir('GET', '/', undefined, { origin: 'https://otra-pagina.example' });
+ver('otra pagina no', r.cabeza.get('access-control-allow-origin') === 'https://juanmcompa.github.io', r.cabeza.get('access-control-allow-origin'));
+r = await pedir('OPTIONS', '/pasadas', undefined, { origin: 'https://juanmcompa.github.io' });
+ver('contesta la consulta previa del navegador', r.estado === 204, r.estado);
+
+// --- los limites (solo con el programa directo: en un servidor de verdad no se puede cambiar el tope) ---
+if (!BASE) {
+  const topes = { ...LIMITES };
+  const sube = async (quien, ip, k) => (await pedir('POST', '/pasadas', { llave: llave(quien) + k, codigo: await pasada(T, { nombre: 'Lluvia', t: 100 + k, practica: true }) }, { 'cf-connecting-ip': ip })).estado;
+  const anotado = (ip) => env.DB.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM limites WHERE clave LIKE 'p:%'").first().then((f) => f.n);
+  LIMITES.pasadasPorConexion = 3;
+  const antes = await anotado();
+  const estados = [];
+  for (let k = 0; k < 7; k++) estados.push(await sube('z', '9.9.9.9', k));
+  ver('frena a la conexion que sube demasiadas', estados.join() === '200,200,200,429,429,429,429', estados);
+  ver('y deja de anotar los pedidos de mas', (await anotado()) - antes === 4, (await anotado()) - antes);
+  ver('pero no frena a otra conexion', (await sube('y', '8.8.8.8', 0)) === 200);
+  // de una direccion IPv6 cuenta la primera mitad: cambiar la segunda no sirve para esquivar el tope
+  const v6 = [];
+  for (const [k, ip] of ['2800:810:5e8:1a2b::1', '2800:810:5e8:1a2b:ffff::2', '2800:0810:05e8:1A2B:1:2:3:4', '2800:810:5e8:1a2b:9:9:9:9', '2800:810:5e8:1a2c::1'].entries()) v6.push(await sube('w', ip, k));
+  ver('las direcciones IPv6 de una misma casa cuentan como una', v6.join() === '200,200,200,429,200', v6);
+  LIMITES.pasadasPorConexion = topes.pasadasPorConexion;
+  LIMITES.pasadasPorDia = 0;
+  ver('con el cupo del dia agotado no recibe mas pasadas', (await sube('v', '7.7.7.7', 0)) === 429);
+  LIMITES.pasadasPorDia = topes.pasadasPorDia;
+  // clubes: crear y sumarse tambien tienen tope
+  const crea = async (k) => pedir('POST', '/clubes', { llave: llave('u') + k, nombre: 'Club ' + k, apodo: 'U' + k }, { 'cf-connecting-ip': '6.6.6.6' });
+  LIMITES.clubesPorConexion = 2;
+  const c1 = await crea(1), c2 = await crea(2), c3 = await crea(3);
+  ver('frena a la conexion que crea demasiados clubes', c1.estado === 200 && c2.estado === 200 && c3.estado === 429, [c1.estado, c2.estado, c3.estado]);
+  LIMITES.clubesPorConexion = topes.clubesPorConexion;
+  LIMITES.entradasPorConexion = 2;
+  const entra = async (k) => (await pedir('POST', '/clubes/' + c1.cosa.codigo + '/entrar', { llave: llave('t') + k, apodo: 'T' + k }, { 'cf-connecting-ip': '5.5.5.5' })).estado;
+  const e = [await entra(1), await entra(2), await entra(1), await entra(3)];
+  ver('y a la que suma demasiada gente (volver a entrar no cuenta)', e.join() === '200,200,200,429', e);
+  LIMITES.entradasPorConexion = topes.entradasPorConexion;
+  LIMITES.miembrosPorClub = 3;
+  ver('un club completo no recibe mas gente', (await entra(4)) === 400);
+  LIMITES.miembrosPorClub = topes.miembrosPorClub;
+  LIMITES.clubesPorJugador = 1;
+  r = await pedir('POST', '/clubes/' + c2.cosa.codigo + '/entrar', { llave: llave('t') + 1, apodo: 'T1' });
+  ver('un corredor no puede estar en demasiados clubes', r.estado === 400, r);
+  LIMITES.clubesPorJugador = topes.clubesPorJugador;
+}
+
+console.log(mal ? 'FALLARON ' + mal + ' de ' + (bien + mal) : 'Todo bien: ' + bien + ' pruebas');
+process.exit(mal ? 1 : 0);

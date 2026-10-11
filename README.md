@@ -1,3 +1,5 @@
+<p align="center"><img src="marca/logo.webp" width="560" alt="Shakedown"></p>
+
 # Shakedown
 
 Rally diario. Cada medianoche hay una pista nueva, la misma para todos, y una sola pasada oficial. Como el Wordle, pero con autos de rally.
@@ -27,6 +29,7 @@ Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el t
 - **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
 - **Circuitos fijos.** Además de la pista del día hay cuatro recorridos que no cambian nunca, para correr las veces que se quiera. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día. Uno es una vuelta cerrada para practicar: no tiene llegada, se dan las vueltas que se quiera.
+- **Clubes de amigos.** Con un link de invitación se arma un grupo con tabla propia: la pasada oficial de cada uno aparece sola, con su nombre y su tiempo (ver "Correr contra amigos").
 - **Trazada para seguir.** Optativa: una línea pintada en el camino muestra por dónde pasar, como en los juegos de carreras. Está verde donde se puede acelerar, amarilla donde venís justo y roja donde venís pasado: cuando el rojo llega al auto, hay que frenar. Se prende en la configuración o con la `T`. Es solo un dibujo: no cambia el manejo ni marca el tiempo.
 - **Ayuda de manejo, para arrancar.** Se prende en la configuración: el auto sigue solo la trazada, frena antes de las curvas y se cruza menos; vos acelerás y corregís con el volante. Es más fácil y más lento. En la tabla, esos tiempos llevan un salvavidas. Después de una pasada complicada, el juego la ofrece.
 - **Antorchas rojas.** Las piedras que quedaron pegadas al camino llevan una antorcha roja, para verlas venir.
@@ -66,15 +69,20 @@ Las marcas son un chiste: **FPY**, **CAC** y **Mercado Ladri**. El parecido con 
 
 Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 
-## El club: correr contra amigos
-
-No hay servidor. La tabla se arma en cada aparato con los links que se abren.
+## Correr contra amigos: links y clubes
 
 - Al terminar, poné tu nombre y compartí. En la compu se copia el mensaje con el link; en el celular se abre el menú de compartir.
-- El link lleva tu pasada completa (por eso es largo: unas 800 letras). Quien lo abre te ve en su tabla y **corre su pasada oficial contra tu fantasma**.
+- Quien abre tu link te ve en su tabla y **corre su pasada oficial contra tu fantasma**, que hace exactamente lo que hiciste vos.
 - Sin link de nadie, la oficial se corre solo. En las prácticas, el fantasma es tu mejor pasada.
 - En la tabla, el botón del fantasma elige contra quién corrés.
-- El link también lleva los tiempos que ya conocés, así la tabla se va completando entre todos.
+
+**Clubes.** En la tabla, el `+` arma un club: le ponés un nombre y lo invitás con un link, una sola vez, en el grupo. El que abre la invitación queda adentro. Desde ahí, la pasada oficial de cada uno aparece sola en la tabla del club, con su nombre, su tiempo y su fantasma, y abajo dice quiénes todavía no corrieron. Se puede estar en todos los clubes que se quiera: la oficial del día es una sola y vale para todos, también para un club al que te sumes después de correr. Si entrás a un club sin haber puesto tu nombre, la tabla te lo pide: así los demás te reconocen.
+
+**El servidor.** Los clubes y los links cortos (`…/shakedown/#r=k7Qx2Mp`) necesitan un servidor chico que guarde las pasadas: está en la carpeta `servidor/` y corre gratis en Cloudflare ([cómo publicarlo](servidor/LEEME.md)). El juego no depende de él:
+
+- Sin servidor configurado (`SERVIDOR` vacío en `src/config.js`), o si un día no contesta, el link lleva la pasada completa adentro (por eso es largo: de 500 a 800 letras) y la tabla se arma con los links que se abren. Ese link también lleva los tiempos que ya conocés, así la tabla se va completando entre todos.
+- Los links largos que ya se compartieron siguen andando siempre.
+- No hay cuentas ni contraseñas: se guarda el nombre que cada uno elige, su tiempo y su pasada. Nada más.
 
 ## Cómo se juega
 
@@ -128,6 +136,8 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Las medidas de los edificios y de las cosas de la calle, y cuáles se caen al chocarlas | `src/edificios.js` |
 | Los dibujos de las casas, los colectivos, los faroles, las barandas y las pircas | `src/pueblo.js` |
 | Los sponsors: nombres, colores, dibujos y cuánto aparece cada uno | `src/sponsors.js` |
+| La dirección del servidor de los clubes (`SERVIDOR`) | `src/config.js` |
+| Los topes del servidor: pasadas por día, tamaño de los clubes, cuánto se guarda (`LIMITES`) | `servidor/worker.js` |
 | Dónde va la publicidad, cuánta hay y qué tan vivos son sus colores (`VIVO`) | `src/publicidad.js` |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
@@ -150,6 +160,8 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | --- | --- |
 | `index.html`, `style.css` | La página: portada, tablero, botones y paneles |
 | `vista-previa.jpg` | La imagen que muestra WhatsApp cuando se pega el link |
+| `marca/`, `manifest.webmanifest` | El logo, los íconos (pestaña, celular) y los datos para agregar el juego a la pantalla de inicio |
+| `servidor/`, `wrangler.jsonc` | El servidor de los links cortos y los clubes, y cómo se publica en Cloudflare |
 | `src/main.js` | Arma todo y corre el ciclo del juego |
 | `src/config.js` | Los números para ajustar |
 | `src/dia.js`, `src/generador.js` | El calendario y el generador: de un número de día sale una pista |
@@ -162,7 +174,8 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/ayuda.js` | La ayuda de manejo: lleva el auto por la trazada y regula los pedales antes de las curvas |
 | `src/trazada.js` | La trazada pintada en el camino, y sus colores |
 | `src/copiloto.js` | Las notas y la voz que las canta |
-| `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus gustos) |
+| `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus clubes, tus gustos) |
+| `src/nube.js` | Lo que el juego le pide al servidor: guardar y traer pasadas, y los clubes |
 | `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
 | `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, las antorchas de las piedras, el público, la lluvia y los faros |
 | `src/sponsors.js`, `src/publicidad.js` | La lista de sponsors, y dónde va y cómo se dibuja su publicidad |
@@ -197,6 +210,7 @@ Con Node instalado, desde la carpeta del repo:
 - `node tools/piloto.mjs 16001 4`: lo mismo en los cuatro circuitos (sus números de pista van del 16001 al 16004). En la vuelta cerrada cada piloto da tres vueltas y cuenta la mejor.
 - `SOLO=novato,ayudado,sinManos node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo; y `sinManos`, que además no toca el volante. Sirve para ver cuánto ayuda. Para probar otros números sin tocar `config.js`: `AYUDA="ritmo=0.74,frena=3.2" SOLO=ayudado node tools/piloto.mjs 1 8`.
 - `node tools/fisica.mjs`: aceleración, frenada, curvas y subidas en cada suelo.
+- `node servidor/prueba.mjs`: prueba el servidor de los clubes sin publicar nada (pide Node 22 o más nuevo).
 - `node tools/maniobras.mjs`: qué tan fácil se descontrola cada auto con volantazos.
 
 Sirven para revisar que las pistas se puedan terminar después de tocar `config.js`, `generador.js` o `circuitos.js`.

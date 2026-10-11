@@ -26,7 +26,11 @@ function cuadritos(colores) {
   return caja;
 }
 
-// o: { T, club, hoy, ref, copiloto, elegirAuto(id), elegirRival(clave), rival(),
+// o: { T, club, hoy, ref, copiloto, elegirAuto(id), rival(),
+//      claveDe(r)                    como se nombra a alguien de la tabla para elegirlo de rival
+//      elegirRival(clave, practica)  promesa de false si no se pudo traer su fantasma del servidor
+//      acortar(r, codigo)            promesa de lo que va en el link: el codigo corto del servidor, o la pasada entera
+//      clubes: null si el juego no tiene servidor; si no { fundar(nombre), dejar(codigo), de(codigo), refrescar() }
 //      ajustes: { leer(clave), poner(clave, valor), probar() }   la configuracion (ver GUSTOS en config.js) }
 export function crearMenu(o) {
   const { T, club, hoy, ref, copiloto, ajustes } = o, etapa = T.etapa, numero = etapa.numero, esHoy = numero === hoy;
@@ -34,6 +38,9 @@ export function crearMenu(o) {
   // el salvavidas que marca un tiempo hecho con la ayuda de manejo
   const conAyuda = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('salvavidas'); img.alt = 'con ayuda de manejo'; img.title = 'Con ayuda de manejo'; return img; };
   let ultimo = null, linkDe = null;   // el ultimo resultado mostrado, y la funcion que arma su link
+  // la tabla: de quien se ven los tiempos ('' = todos los que se conocen; si no, el codigo de un club), si esta abierto
+  // el formulario para armar un club, y lo ultimo que hay para avisar ahi
+  let vista = '', armando = false, aviso = '', saliendo = 0;
 
   // --- la portada ---
   $('inicio').href = location.pathname;
@@ -93,14 +100,81 @@ export function crearMenu(o) {
     $('compartirPortada').hidden = !(oficial && !oficial.corriendo && oficial.codigo);
     $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (T.vuelta ? 'Vuelta cerrada: das las que quieras y queda la mejor. Para terminar, salí con la X' + (window.matchMedia('(pointer: coarse)').matches ? '.' : ' o con Esc.') : fijo ? 'Circuito fijo: se corre las veces que quieras. Queda tu mejor tiempo.' : puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
     // la tabla: en un circuito, los mejores tiempos de cada uno; en una pista del dia, las oficiales y, aparte, las practicas
-    pintarTabla($('tabla'), fijo ? club.practicas() : club.tabla());
-    pintarTabla($('practicas'), fijo ? [] : club.practicas());
-    $('tablaVacia').hidden = (fijo ? club.practicas() : club.tabla()).length > 0;
-    $('practicasTitulo').hidden = !!fijo || club.practicas().length === 0;
+    pintarClubes();
+    const principal = fijo ? club.practicas(vista) : club.tabla(vista), practicas = fijo ? [] : club.practicas(vista);
+    pintarTabla($('tabla'), principal);
+    pintarTabla($('practicas'), practicas);
+    $('tablaVacia').hidden = principal.length > 0 || armando;
+    $('tablaVacia').textContent = vista ? 'Todavía no corrió nadie de este club.'
+      : 'Todavía no hay tiempos. Corré tu pasada y compartila: los de tus amigos aparecen acá cuando abrís sus links' + (o.clubes ? ', o solos si arman un club.' : '.');
+    $('practicasTitulo').hidden = !!fijo || practicas.length === 0;
     $('tablaPista').textContent = fijo ? '· ' + fijo.corto : '#' + numero;
+    // (si se esta mostrando un resultado, su tabla tambien se pone al dia: pueden haber llegado tiempos de los clubes)
+    if (ultimo) { const todos = fijo ? club.practicas() : club.tabla(); $('finRanking').hidden = todos.length < 2; pintarTabla($('finTabla'), todos); }
     ponerIconos();
     hayMas();
   }
+
+  // --- los clubes: arriba de la tabla, un boton por club (y "Todos"); el + arma uno nuevo ---
+  const lista = (nombres) => (nombres.length < 2 ? nombres.join('') : nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1]);
+  function pintarClubes() {
+    const caja = $('clubes'), mios = o.clubes ? club.clubes() : [];
+    if (vista && !mios.some((c) => c.codigo === vista)) vista = '';
+    caja.hidden = !o.clubes;
+    caja.textContent = '';
+    if (o.clubes) {
+      const ficha = (texto, valor) => {
+        const b = crear('button', vista === valor && !armando ? 'elegido' : '', texto), si = vista === valor && !armando;
+        b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', si);
+        b.addEventListener('click', () => { vista = valor; armando = false; aviso = ''; saliendo = 0; pintar(); });
+        caja.append(b);
+      };
+      if (mios.length) { ficha('Todos', ''); for (const c of mios) ficha(c.nombre, c.codigo); }
+      // sin clubes, el boton lo dice con todas las letras; con clubes alcanza con el +
+      const mas = crear('button', 'mas' + (armando ? ' elegido' : ''), mios.length ? undefined : ' Armar un club');
+      mas.type = 'button'; mas.dataset.icono = 'mas'; mas.title = 'Armar un club'; mas.setAttribute('aria-label', 'Armar un club'); mas.setAttribute('aria-pressed', armando);
+      mas.addEventListener('click', () => { armando = !armando; aviso = ''; saliendo = 0; pintar(); if (armando) $('clubNombre').focus(); });
+      caja.append(mas);
+    }
+    const info = vista && o.clubes ? o.clubes.de(vista) : null, enClub = !!vista && !armando;
+    $('clubNuevo').hidden = !armando;
+    $('clubApodo').hidden = !(mios.length && !club.nombre() && !armando);   // (sin nombre, en la tabla de los demas se figura como "?")
+    $('clubCabeza').hidden = !enClub;
+    $('clubPie').hidden = !enClub;
+    if (enClub) {
+      $('clubDatos').textContent = info ? (info.miembros === 1 ? 'Por ahora estás vos solo: invitá a alguien.' : info.miembros + ' corredores') : '';
+      $('clubSalir').textContent = saliendo ? '¿Seguro? Tocá de nuevo' : 'Salir del club';
+    }
+    const faltan = enClub && info ? info.faltan : [];
+    $('clubFaltan').hidden = !faltan.length;
+    if (faltan.length) $('clubFaltan').textContent = (faltan.length === 1 ? 'Todavía no corrió ' : 'Todavía no corrieron ') + lista(faltan) + '.';
+    $('clubAviso').hidden = !aviso;
+    $('clubAviso').textContent = aviso;
+  }
+  const avisar = (texto) => { aviso = texto; pintar(); };
+  $('clubNuevo').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nombre = $('clubNombre').value.trim(), boton = $('clubNuevo').querySelector('button');
+    if (nombre.length < 2) { avisar('Ponele un nombre al club.'); return; }
+    boton.disabled = true;
+    const r = await o.clubes.fundar(nombre);
+    boton.disabled = false;
+    if (r.error) { avisar(r.error); return; }
+    $('clubNombre').value = '';
+    vista = r.codigo; armando = false;
+    avisar('Listo: ya existe «' + r.nombre + '». Invitá a tus amigos con el botón.');
+  });
+  $('clubInvitar').addEventListener('click', () => {
+    const c = club.clubes().find((x) => x.codigo === vista);
+    if (c) pasar('Sumate a mi club de Shakedown «' + c.nombre + '»: una pista nueva por día, y vemos quién la hace más rápido.\n' + location.origin + location.pathname + '#club=' + c.codigo, avisar, 'Copiado. Pegalo en el grupo: el que lo abre queda en el club.');
+  });
+  // salir pide confirmacion: hay que tocar dos veces
+  $('clubSalir').addEventListener('click', async () => {
+    if (!saliendo || performance.now() - saliendo > 8000) { saliendo = performance.now(); pintar(); return; }
+    saliendo = 0;
+    const r = await o.clubes.dejar(vista);
+    if (r.error) avisar(r.error); else { vista = ''; avisar('Saliste del club.'); }
+  });
 
   // --- la tabla ---
   function pintarTabla(ol, lista) {
@@ -111,14 +185,20 @@ export function crearMenu(o) {
       const quien = crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?'));
       if (r.ayuda) quien.append(conAyuda());
       li.append(crear('span', 'emoji', (AUTOS[r.auto] || AUTOS.vitarita).emoji), quien, crear('span', 'tiempoMarca', r.ab ? 'abandono' : tiempoFinal(r.t)), cuadritos(r.c));
-      if (r.codigo) {
-        const clave = r.mio ? '*' : r.nombre, es = rival && rival.clave === clave && !!rival.practica === !!r.practica;
+      if (r.codigo || r.id) {
+        const clave = o.claveDe(r), es = rival && rival.clave === clave && !!rival.practica === !!r.practica;
         // el fantasma: amarillo si es contra quien se corre
         const b = crear('button', 'chiquito' + (es ? ' elegido' : ''));
         b.dataset.icono = 'fantasma';
         b.title = es ? 'Es tu rival. Tocá para correr sin fantasma.' : 'Correr contra su fantasma';
         b.setAttribute('aria-label', b.title); b.setAttribute('aria-pressed', es);
-        b.addEventListener('click', () => { o.elegirRival(es ? '' : clave, !!r.practica); pintar(); if (ultimo) pintarTabla($('finTabla'), fijo ? club.practicas() : club.tabla()); });
+        b.addEventListener('click', async () => {
+          // (el fantasma de alguien de un club se baja del servidor en este momento)
+          const llego = await o.elegirRival(es ? '' : clave, !!r.practica);
+          aviso = llego === false ? 'No pude traer el fantasma de ' + r.nombre + ': no hay conexión con el servidor.' : '';
+          pintar();
+          if (ultimo) pintarTabla($('finTabla'), fijo ? club.practicas() : club.tabla());
+        });
         li.append(b);
       } else li.append(crear('span'));
       ol.append(li);
@@ -190,9 +270,12 @@ export function crearMenu(o) {
     <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina.</p>
     <p>Los golpes rompen el auto. Si se rompe del todo, es abandono. Las piedras que están pegadas al camino llevan una antorcha roja.</p>
     <p>${dib('fantasma')} En la tabla, el fantasma elige contra quién corrés. Si te mandan un link, corrés contra quien te lo mandó.</p>
+    <p class="con-servidor">${dib('podio')} En la tabla también se arman clubes: le ponés un nombre, invitás con un link, y el que lo abre queda adentro. La pasada oficial de cada uno aparece sola en la tabla de todos sus clubes. Para eso, tu tiempo se guarda en el servidor del juego con el nombre que elijas; no se pide ningún otro dato.</p>
     <p>${dib('ajustes')} En la configuración se cambian la distancia de la cámara y, en el celular, la sensibilidad al inclinar y el tamaño de los pedales.</p>
     <p>${dib('trazada')} Ahí también se prende la trazada: una línea pintada en el camino que muestra por dónde pasar. Está <b class="verde">verde</b> donde podés acelerar, <b class="amarillo">amarilla</b> donde venís justo y <b class="rojo">roja</b> donde venís pasado: cuando el rojo llega al auto, hay que frenar.</p>
     <p>${dib('salvavidas')} Si recién arrancás, prendé la ayuda de manejo: el auto sigue solo la trazada, frena antes de las curvas y se cruza menos. Vos acelerás y corregís con el volante. Es más lento, pero llegás.</p>`;
+
+  for (const el of document.querySelectorAll('.con-servidor')) el.hidden = !o.clubes;   // (lo de los clubes, solo si hay servidor)
 
   // --- la configuracion ---
   // Cada grupo de botones y cada barra dice que gusto cambia (data-ajuste). "si" y "no" valen verdadero y falso;
@@ -233,6 +316,8 @@ export function crearMenu(o) {
     if (cual === 'circuitos') pintarCircuitos();
     // en el celular, al abrir la configuracion se prende el sensor (si lo hay) para poder probar la sensibilidad
     if (cual === 'ajustes') { pintarAjustes(); if (window.matchMedia('(pointer: coarse)').matches) ajustes.probar(); }
+    // al abrir la tabla se le piden al servidor los tiempos de los clubes (si paso un rato desde la ultima vez)
+    if (cual === 'tabla') { if (o.clubes) o.clubes.refrescar(); } else { armando = false; saliendo = 0; aviso = ''; }
     $('panel').hidden = !cual;
     if (cual) $('cerrarPanel').focus();
   }
@@ -242,23 +327,37 @@ export function crearMenu(o) {
   $('irCircuitos').addEventListener('click', () => { $('salir').click(); abrir('circuitos'); });
 
   // --- compartir ---
+  // Pasa un texto: en el celular abre el menu de compartir; en la compu lo copia. decir(texto): donde se avisa como salio.
+  async function pasar(texto, decir, listo) {
+    try {
+      if (navigator.share && window.matchMedia('(pointer: coarse)').matches) { await navigator.share({ text: texto }); return; }
+      await navigator.clipboard.writeText(texto);
+      decir(listo);
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      decir('No pude copiarlo. Copialo de acá: ' + texto.replace('\n', ' '));
+    }
+  }
   async function compartir(r, salida) {
     if (!club.nombre()) { $('nombre').focus(); if (salida) salida.textContent = 'Poné tu nombre para compartir.'; return; }
     const codigo = r.codigo || (linkDe && await linkDe());
-    const url = location.origin + location.pathname + (codigo ? '#r=' + codigo : ''), texto = mensaje(etapa, r);
-    // en el celular abre el menu de compartir; en la compu copia el mensaje con el link
-    try {
-      if (navigator.share && window.matchMedia('(pointer: coarse)').matches) { await navigator.share({ text: texto + '\n' + url }); return; }
-      await navigator.clipboard.writeText(texto + '\n' + url);
-      if (salida) salida.textContent = 'Copiado. Pegalo en el grupo.';
-    } catch (e) {
-      if (e && e.name === 'AbortError') return;
-      if (salida) salida.textContent = 'No pude copiarlo. Copialo de acá: ' + texto + ' ' + url;
-    }
+    // el link lleva el codigo corto con el que la pasada quedo en el servidor; si no hay servidor, la pasada entera
+    const final = codigo ? await o.acortar(r, codigo) : '';
+    await pasar(mensaje(etapa, r) + '\n' + location.origin + location.pathname + (final ? '#r=' + final : ''), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
   }
   $('compartir').addEventListener('click', () => ultimo && compartir(ultimo, $('compartido')));
   $('compartirPortada').addEventListener('click', () => { const r = fijo ? club.practica() : club.oficial(); if (r) compartir({ ...r, nombre: club.nombre() }, $('queEs')); });
-  $('nombre').addEventListener('change', () => { club.ponerNombre($('nombre').value); $('compartido').textContent = ''; pintar(); });
+  // El nombre se pone al terminar una pasada o, si se esta en un club, en la tabla. Al cambiarlo se arma de nuevo el
+  // link de la pasada que se esta mostrando (asi sube al servidor con el nombre nuevo) y se avisa a los clubes.
+  const ponerNombre = (valor) => {
+    club.ponerNombre(valor);
+    $('nombre').value = club.nombre(); $('compartido').textContent = '';
+    if (ultimo && linkDe) linkDe();
+    if (o.clubes) o.clubes.renombrar();
+    pintar();
+  };
+  $('nombre').addEventListener('change', () => ponerNombre($('nombre').value));
+  $('clubApodo').addEventListener('submit', (e) => { e.preventDefault(); ponerNombre($('clubMiNombre').value); if (!club.nombre()) $('clubMiNombre').focus(); });
   $('nombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('nombre').blur(); });
 
   return {
@@ -298,6 +397,10 @@ export function crearMenu(o) {
       ponerIconos();
     },
     cerrarFin: () => { $('fin').hidden = true; ultimo = null; },
+    // dice algo en la portada, abajo del boton de largar (queda hasta que se cierre el juego)
+    decir: (texto) => { o.aviso = texto; pintar(); },
+    // abre la tabla en un club, con un aviso (por ejemplo, al entrar por una invitacion)
+    verClub: (codigo, texto) => { vista = codigo; armando = false; aviso = texto || ''; if ($('fin').hidden && !$('portada').hidden) abrir('tabla'); pintar(); },
     // (en la configuracion) muestra el volante en vivo: v es la inclinacion, de -1 a 1, o null si no hay sensor
     prueba: (v) => { if (!$('panelAjustes').hidden && v !== null) $('pruebaVolante').style.left = (50 + v * 50).toFixed(1) + '%'; },
   };

@@ -1,0 +1,31 @@
+{
+  "name": "Shakedown",
+  "short_name": "Shakedown",
+  "description": "Rally diario: cada medianoche, una pista nueva y una sola pasada oficial.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#16181b",
+  "theme_color": "#16181b",
+  "icons": [
+    {
+      "src": "marca/icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "marca/icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "marca/icono-app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
