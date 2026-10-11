@@ -17,6 +17,10 @@ export const SUELOS = {
   pantano: { id: 6, nombre: 'Pantano', agarre: 0.36, suelto: 3.4, freno: 0.1,   pasta: 60, rugoso: [0.05, 4],   blando: 1,   polvo: 0,    color: 0x4a2414 },
   lecho:   { id: 7, nombre: 'Agua',    agarre: 0.62, suelto: 2.8, freno: 0.06,  pasta: 25, rugoso: [0.08, 2.6], blando: 0.2, polvo: 0,    color: 0x8d8a76 },
   charco:  { id: 8, nombre: 'Charco',  agarre: 0.5,  suelto: 3.0, freno: 0.06,  pasta: 45, rugoso: [0.03, 4],   blando: 0.9, polvo: 0,    color: 0x7c8f94 },
+  // los de pueblo: la vereda, la calle de adoquines (firme pero con pozos chicos, y resbala un poco) y los tablones de los puentes
+  vereda:  { id: 9,  nombre: 'Vereda',  agarre: 0.9,  suelto: 1.0, freno: 0.02,  pasta: 0,  rugoso: [0.0, 3],     blando: 0,   polvo: 0.03, color: 0xb9b4a8 },
+  adoquin: { id: 10, nombre: 'Adoquín', agarre: 0.84, suelto: 1.2, freno: 0.03,  pasta: 0,  rugoso: [0.022, 1.3], blando: 0,   polvo: 0.04, color: 0x77726a },
+  madera:  { id: 11, nombre: 'Madera',  agarre: 0.8,  suelto: 1.2, freno: 0.03,  pasta: 0,  rugoso: [0.012, 1.1], blando: 0,   polvo: 0.02, color: 0x8a6f52 },
 };
 export const SUELO = Object.values(SUELOS); // lista ordenada por id
 
@@ -42,10 +46,12 @@ export const SUELO = Object.values(SUELOS); // lista ordenada por id
 //   alturaLateral: 0 = vuelca facil, 1 = no vuelca nunca.
 //   caja: [medio ancho, medio largo, panza, techo] para los golpes del chasis contra el piso.
 //   choque: [radio, separacion] de los tres circulos con los que choca contra arboles y piedras.
+//   roce: cuanto frena pasar raspando una pared, una pirca o una piedra (0 = resbala sin frenar).
 const COMUN = {
   frenos: 0.95, frenoAdelante: 0.7, reversa: 0.5, aceleraEn: 0.3, giroVel: 3.2, patinaje: 0.7,
   deriva: 0.11, firme: 0.5, colaFirme: 1.03, alinea: 0.6, giroFino: 0.26, estable: 0.3,
   chasis: [150000, 9000, 0.5],  // golpes del chasis contra el piso: dureza, amortiguacion, roce
+  roce: 0.35,
 };
 export const AUTOS = {
   vitarita: Object.assign({}, COMUN, {

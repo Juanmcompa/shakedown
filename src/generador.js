@@ -9,23 +9,37 @@
 //   suelo      asfalto, ripio, tierra, roca, pasto, barro, pantano, lecho
 //   peralte    grados de inclinacion de costado (positivo = lado derecho mas alto)
 //   izq / der  ladera a cada lado: [metros que sube o baja, a que distancia]
-//   hombro     metros de banquina antes de la ladera
-//   pozos      lista de [metros desde el inicio del tramo, metros hacia la derecha, radio, hondo, suelo]
+//   hombro     metros en los que el borde del camino se junta con la ladera (menos = mas a pique)
+//   plano      metros de terreno parejo a cada lado, antes de la ladera: un numero, o [izquierda, derecha]
+//   pozos      lista de [metros desde el inicio del tramo, metros hacia la derecha, radio, hondo, suelo]   (hondo negativo = lomo)
+//   lomos      lomos de burro, de lado a lado: lista de [metros desde el inicio, alto, largo]
 //   agua       un arroyo cruza el tramo: { hondo, largo }
+//   puente     el tramo cruza una zanja por un puente de madera: { luz: metros de largo, alto: metros de zanja, agua: true si corre un arroyo }
+//   pirca      murito de piedra al borde: 'izq', 'der' o 'los dos', o una lista de [lado, desde, hasta] en metros del tramo
 //   piedras    piedras al borde: lista de [metros desde el inicio, metros hacia la derecha, radio]
 //   fardos     fardos de pasto: lista de [metros desde el inicio, metros hacia la derecha]
 //   publico    gente mirando: lista de [metros desde el inicio, metros hacia la derecha, cuantos]
 //   carteles   lista de [metros desde el inicio, metros hacia la derecha, tipo]   (tipo: 'izq', 'der' o 'ojo')
-//   autos      autos tirados: lista de [metros desde el inicio, metros hacia la derecha, giro en grados, estado]
 //   control    true = fin de sector al final del tramo
-//   nota       lo que canta el copiloto al llegar: { tipo: 'curva', lado, grado } o { tipo: 'salto' | 'vado' | 'barro' | 'angosto' | 'cornisa' }
+//   nota       lo que canta el copiloto al llegar: { tipo: 'curva', lado, grado } o { tipo: 'salto' | 'vado' | 'barro' | 'angosto' | 'cornisa' | 'puente' | 'lajas' | 'lomo' | 'adoquin' | 'cuidado' }
+//   tope       velocidad maxima con la que se calcula el tiempo de referencia en ese tramo, en m/s (para pasos lentos)
+// Y para los pueblos:
+//   vereda     metros de vereda a cada lado          lineas   'ruta' o 'calle': como va pintado el asfalto
+//   bocas      calles que salen del tramo y van cortadas con vallas: lista de [metros desde el inicio, angulo, largo, ancho]
+//   casas      lista de [metros desde el inicio, metros hacia la derecha, tipo, giro en grados, variante]   (tipos: ver edificios.js)
+//   objetos    cosas en la calle: lista de [metros desde el inicio, metros hacia la derecha, tipo, giro en grados]   (idem)
+//   arboles    arboles plantados: lista de [metros desde el inicio, metros hacia la derecha, tipo, tamaño]
+//   autos      autos estacionados: lista de [metros desde el inicio, metros hacia la derecha, giro en grados, cual]
 import { azar } from './noise.js';
+import { esCircuito, circuitoDe, armarCircuito } from './circuitos.js';
 
 const RAD = Math.PI / 180;
 // La version de las pistas. Hay que subirla cada vez que un cambio hace que el mismo dia de OTRA pista
 // (tocar este archivo o como se arma el terreno). Con eso, los resultados y los fantasmas guardados de la version
 // anterior se descartan solos (ya no coinciden con el camino) y se puede volver a correr la oficial.
 export const VERSION = 1;
+// Los circuitos fijos llevan cada uno su version (en circuitos.js): cambiar uno no borra lo guardado de los demas ni de los dias.
+export const versionDe = (numero) => (esCircuito(numero) ? circuitoDe(numero).version || 1 : VERSION);
 
 // --- biomas: como es el lugar ---
 // suelos: [suelo, peso]. pendiente: [cuanto cambia de un tramo a otro, maxima], en grados. relieve: alto de las lomas lejos del camino.
@@ -360,6 +374,7 @@ function intentar(numero, vuelta) {
 const hechas = new Map();
 export function generarPista(numero) {
   if (hechas.has(numero)) return hechas.get(numero);
+  if (esCircuito(numero)) { const p = armarCircuito(numero); hechas.set(numero, p); return p; }   // (los circuitos fijos estan escritos a mano, en circuitos.js)
   for (let vuelta = 0; vuelta < 60; vuelta++) {
     const p = intentar(numero, vuelta);
     if (p && p.tramos.filter((t) => t.control).length === 4) { p.intentos = vuelta + 1; hechas.set(numero, p); return p; }

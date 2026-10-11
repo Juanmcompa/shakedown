@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { JUEGO, AUTOS, REFERENCIA, AYUDA, GUSTOS, gradosDeInclinacion } from './config.js';
 import { hoy } from './dia.js';
-import { generarPista, VERSION } from './generador.js';
+import { generarPista, versionDe } from './generador.js';
+import { esCircuito, circuitoDe } from './circuitos.js';
 import { crearTerreno } from './terrain.js';
 import { crearReferencia } from './referencia.js';
 import { crearAuto } from './vehicle.js';
@@ -26,7 +27,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '8' && !location.search.includes('fresca')) location.replace(location.pathname + '?fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '9' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
@@ -38,28 +39,32 @@ let nitidez = Math.min(window.devicePixelRatio, liviano ? 1.5 : 2), cuadros = 0,
 render.setPixelRatio(nitidez);
 render.shadowMap.enabled = true;
 
-// --- que pista se corre: la del link de un amigo, la pedida con ?p=numero, o la de hoy ---
-const HOY = hoy(), consulta = new URLSearchParams(location.search), pedida = Math.floor(Number(consulta.get('p')));
+// --- que pista se corre: la del link de un amigo, un circuito fijo (?c=subida), la pedida con ?p=numero, o la de hoy ---
+const HOY = hoy(), consulta = new URLSearchParams(location.search), pedida = Math.floor(Number(consulta.get('p'))), fijo = circuitoDe(consulta.get('c'));
 const enlace = /[#&]r=([\w-]+)/.exec(location.hash), leido = enlace ? await leerCodigo(enlace[1]) : null;
-const numero = leido && leido.marca.pista <= HOY ? leido.marca.pista : pedida >= 1 && (pedida <= HOY || consulta.has('futuro')) ? pedida : HOY;
+const vale = (n) => n >= 1 && (n <= HOY || esCircuito(n));
+const numero = leido && vale(leido.marca.pista) ? leido.marca.pista : fijo ? fijo.numero : vale(pedida) || (pedida >= 1 && consulta.has('futuro')) ? pedida : HOY;
+// la direccion de una pista: la de hoy no lleva nada; un circuito, su nombre; un dia pasado, su numero
+const direccionDe = (n) => location.pathname + (esCircuito(n) ? '?c=' + circuitoDe(n).id : n !== HOY ? '?p=' + n : '');
 
 const etapa = generarPista(numero), T = crearTerreno(etapa), P = T.camino, ref = crearReferencia(T, AUTOS[REFERENCIA]);
-const club = crearClub(numero, HOY, VERSION), copiloto = crearCopiloto(T);
+const club = crearClub(numero, HOY, versionDe), copiloto = crearCopiloto(T);
 // lo que trajo el link: el resultado del amigo (con su fantasma) y los otros que el conocia. El queda de rival.
 // (Si el link es de una version anterior de la pista, ya no sirve: ese camino no existe mas.)
 let linkViejo = false;
 if (leido && leido.marca.pista === numero) {
-  if (leido.version !== VERSION) linkViejo = true;
+  if (leido.version !== versionDe(numero)) linkViejo = true;
   else {
     club.anotarAmigo({ ...leido.marca, codigo: enlace[1] });
     for (const o of leido.tabla) club.anotarAmigo(o);
     if (leido.tieneVuelta && leido.marca.nombre !== club.nombre()) club.elegirRival(leido.marca.nombre + (leido.marca.practica ? '|p' : ''));
   }
-  history.replaceState(null, '', location.pathname + (numero !== HOY ? '?p=' + numero : ''));
+  history.replaceState(null, '', direccionDe(numero));
 }
 
 const escena = new THREE.Scene();
 const huellas = crearHuellas(T, render), mundo = crearMundo(T, escena, liviano, huellas), partida = crearPartida(T, ref.sectores);
+huellas.pintar();   // la raya de largada, la meta y las lineas del asfalto
 // el polvo: no hay si llueve, y se lo lleva un viento suave que cambia con la pista
 const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
 const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento]), sonido = crearSonido(), hud = crearHud();
@@ -99,7 +104,7 @@ function buscarRival() {
 }
 async function cargarRival() {
   const r = buscarRival(), l = r ? await leerCodigo(r.codigo) : null;
-  const vuelta = l && l.version === VERSION && l.marca.pista === numero ? l.vuelta(P) : null;
+  const vuelta = l && l.version === versionDe(numero) && l.marca.pista === numero ? l.vuelta(P) : null;
   rival = vuelta ? { clave: r.mio ? '*' : r.nombre, nombre: r.mio ? 'Vos' : r.nombre, t: r.t, ab: r.ab, practica: !!r.practica, auto: r.auto, fantasma: crearFantasma(vuelta, T) } : null;
   for (const id in espectros) espectros[id].ocultar();
   if (rival) espectroDe(rival.auto).nombre(rival.nombre);
@@ -168,7 +173,8 @@ function terminar() {
   const llego = partida.estado === 'llegada';
   const r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: club.auto(),
     ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada };
-  if (modo === 'oficial') club.cerrarOficial(r); else club.anotarPractica(r);
+  let mejoro = false;   // (en las practicas y en los circuitos queda guardada solo la mejor)
+  if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
   // el link se arma con el nombre que haya en ese momento (si lo cambia, se arma de nuevo)
   const g = grabacion;
   let hecho = { nombre: null, codigo: null };
@@ -183,7 +189,7 @@ function terminar() {
   for (const id in espectros) espectros[id].ocultar();
   hud.aviso(''); hud.grande(''); hud.frenaSola(false);
   hud.mostrar(false);
-  menu.fin(r, armarLink);
+  menu.fin(r, armarLink, mejoro);
 }
 
 function aLaPortada() {

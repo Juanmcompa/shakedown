@@ -10,6 +10,7 @@ import { ambiente, estilo } from './material.js';
 import { crearFlora } from './flora.js';
 import { crearUtileria } from './utileria.js';
 import { crearPublico } from './publico.js';
+import { crearPueblo } from './pueblo.js';
 import { crearClima } from './clima.js';
 
 // --- la luz de cada clima ---
@@ -55,7 +56,9 @@ const PISO = {
     if (espejo && azar12(pix + floor(uTiempo * 3.0) * 7.0) > 0.975) piso = mix(piso, vec3(0.92, 0.94, 0.9), 0.75);
     // huellas: el pixel se oscurece, mas si la rueda patino o el suelo es blando
     float marca = plano != 0 ? 0.0 : texelFetch(uHuellas, clamp(ivec2(pix) - ivec2(uCampo.xy) * 4, ivec2(0), ivec2(uCampo.zw) * 4 - 1), 0).r;
-    if (marca > 0.1) piso *= marca > 0.55 ? vec3(0.48, 0.43, 0.41) : marca > 0.3 ? vec3(0.6, 0.56, 0.54) : vec3(0.72, 0.69, 0.67);
+    // (los dos valores mas altos no son huellas sino pintura: blanca o amarilla, un poco gastada)
+    if (marca > 0.994) { if (dado.x > 0.1) piso = mix(piso, marca > 0.998 ? vec3(0.66, 0.65, 0.6) : vec3(0.64, 0.42, 0.06), 0.85); }
+    else if (marca > 0.1) piso *= marca > 0.55 ? vec3(0.48, 0.43, 0.41) : marca > 0.3 ? vec3(0.6, 0.56, 0.54) : vec3(0.72, 0.69, 0.67);
     // curvas de nivel cada 2 metros (mas marcadas cada 10), de un pixel de ancho, solo donde el terreno es empinado
     float hx = dFdx(vMundo.y), hy = dFdy(vMundo.y);
     float salto = abs(det) > 1e-10 ? length(vec2(dyz.y * hx - dxz.y * hy, dxz.x * hy - dyz.x * hx) / det) * 0.25 : 0.0;
@@ -101,7 +104,7 @@ export function crearMundo(T, escena, liviano, huellas) {
   // --- lo que hay sobre el terreno ---
   const esc = crearEscenografia();
   const clima = crearClima(T, escena, luz);
-  const flora = crearFlora(T, escena, esc, liviano), utileria = crearUtileria(T, escena, esc), publico = crearPublico(T, escena, clima, luz);
+  const flora = crearFlora(T, escena, esc, liviano), utileria = crearUtileria(T, escena, esc), publico = crearPublico(T, escena, clima, luz), pueblo = crearPueblo(T, escena, clima, luz);
 
   // --- terreno, en pedazos de 64 x 64 metros para dibujar solo lo que se ve ---
   // el mapa que lee el shader: por celda, que suelo es, un tono (para que no quede todo parejo) y donde van los manchones
@@ -208,9 +211,9 @@ export function crearMundo(T, escena, liviano, huellas) {
       ambiente.tiempo.value = t;
       publico.animar(c, indice, dt, t);
       clima.animar(dt, t, c);
-      if (c.rompio.length) { c.rompio.length = 0; utileria.tirar(); }
+      if (c.rompio.length) { c.rompio.length = 0; utileria.tirar(); pueblo.tirar(); }
       utileria.animar(t);
     },
-    reiniciar: () => utileria.reiniciar(),
+    reiniciar: () => { utileria.reiniciar(); pueblo.reiniciar(); },
   };
 }

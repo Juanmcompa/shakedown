@@ -1,6 +1,10 @@
 // Huellas: un mapa de todo el terreno, a 4 pixeles por metro, donde las ruedas van dejando su marca.
 // El piso lo lee al dibujarse, asi cada huella es un pixel entero del mundo y queda hasta que termina la vuelta.
+// En el mismo mapa va la pintura del piso (las lineas de la ruta, las sendas, la raya de largada y la de meta):
+// son dos valores que las huellas no usan nunca, y por eso una huella no las tapa.
 import * as THREE from 'three';
+
+export const PINTURA = { blanca: 255, amarilla: 254 }, HUELLA_MAXIMA = 250;
 
 export function crearHuellas(T, render) {
   const W = T.nx * 4, H = T.nz * 4, X0 = T.x0 * 4, Z0 = T.z0 * 4, datos = new Uint8Array(W * H);
@@ -12,6 +16,36 @@ export function crearHuellas(T, render) {
   const caja = new THREE.Box2(), donde = new THREE.Vector2();
   let x0 = W, y0 = H, x1 = -1, y1 = -1;                 // rectangulo que cambio desde la ultima subida
   const ultimo = [null, null, null, null];              // ultimo pixel marcado por cada rueda
+  const pintado = [];                                   // la pintura: [lugar en el mapa, valor], para reponerla al borrar las huellas
+  const pinta = (x, z, v) => { const px = Math.floor(x * 4) - X0, py = Math.floor(z * 4) - Z0; if (px >= 0 && py >= 0 && px < W && py < H) { datos[py * W + px] = v; pintado.push(py * W + px, v); } };
+  // Pinta el piso de la pista: la raya de largada, los cuadros de la meta, los lomos de burro y, en los tramos de asfalto
+  // que lo piden (t.lineas: 'ruta' o 'calle'), la linea del medio, las de los bordes y las sendas de las esquinas.
+  function pintar() {
+    const P = T.camino;
+    // de = cuantos metros a la derecha del medio; va = cuantos metros mas adelante que el metro i
+    const en = (i, va, de, v) => pinta(P.X[i] + P.HX[i] * va - P.HZ[i] * de, P.Z[i] + P.HZ[i] * va + P.HX[i] * de, v);
+    const s = T.salida.i, m = T.meta.i;
+    for (let de = -P.W[s] / 2 + 0.3; de < P.W[s] / 2 - 0.3; de += 0.2) for (const va of [0, 0.25]) en(s, va, de, PINTURA.blanca);
+    for (let de = -P.W[m] / 2 + 0.2; de < P.W[m] / 2 - 0.2; de += 0.2) for (let f = 0; f < 4; f++) if ((Math.floor(de * 2 + 100) + (f >> 1)) % 2) en(m, f * 0.25, de, PINTURA.blanca);
+    for (const t of T.etapa.tramos) {
+      // los lomos de burro, a rayas amarillas cruzadas
+      for (const l of t.lomos || []) for (let va = -l[2] / 2 + 0.25; va < l[2] / 2 - 0.25; va += 0.25) {
+        const i = Math.min(P.n - 1, t.desde + Math.round(l[0]));
+        for (let de = -P.W[i] / 2 + 0.3; de < P.W[i] / 2 - 0.3; de += 0.2) if (Math.floor((de + va) * 1.25 + 100) % 2 === 0) en(i, va, de, PINTURA.amarilla);
+      }
+      if (!t.lineas) continue;
+      for (let i = t.desde; i < t.hasta; i++) for (let f = 0; f < 4; f++) {
+        if (t.lineas === 'ruta') {
+          if (i % 9 < 4) en(i, f * 0.25, 0, PINTURA.amarilla);
+          en(i, f * 0.25, P.W[i] / 2 - 0.45, PINTURA.blanca); en(i, f * 0.25, -P.W[i] / 2 + 0.45, PINTURA.blanca);
+        }
+        // las sendas: cerca de las dos puntas de cada cuadra
+        const u = i - t.desde, senda = t.largo > 30 && ((u >= 3 && u < 6) || (u >= t.largo - 6 && u < t.largo - 3));
+        if (senda) for (let de = -P.W[i] / 2 + 0.6; de < P.W[i] / 2 - 0.6; de += 0.2) if (Math.floor(de + 100) % 2 === 0) en(i, f * 0.25, de, PINTURA.blanca);
+      }
+    }
+    textura.needsUpdate = true;
+  }
 
   function punto(x, y, v) {
     if (x < 0 || y < 0 || x >= W || y >= H) return;
@@ -22,10 +56,10 @@ export function crearHuellas(T, render) {
   }
 
   return {
-    textura,
+    textura, pintar,
     // marca el paso de la rueda i por el punto (x, z) del mundo. fuerza: de 0 a 1.
     marcar: (i, x, z, fuerza) => {
-      const px = Math.floor(x * 4) - X0, py = Math.floor(z * 4) - Z0, v = Math.round(fuerza * 255), u = ultimo[i];
+      const px = Math.floor(x * 4) - X0, py = Math.floor(z * 4) - Z0, v = Math.min(HUELLA_MAXIMA, Math.round(fuerza * 255)), u = ultimo[i];
       if (!u) { ultimo[i] = [px, py]; if (v > 0) punto(px, py, v); return; }
       if (u[0] === px && u[1] === py) { if (v > 0) punto(px, py, v); return; }
       if (v > 0) {
@@ -46,7 +80,7 @@ export function crearHuellas(T, render) {
     soltar: (i) => { ultimo[i] = null; },
     cortar: () => { ultimo.fill(null); },
     // borra todo (al largar de nuevo)
-    limpiar: () => { datos.fill(0); ultimo.fill(null); x0 = W; y0 = H; x1 = y1 = -1; textura.needsUpdate = true; },
+    limpiar: () => { datos.fill(0); for (let k = 0; k < pintado.length; k += 2) datos[pintado[k]] = pintado[k + 1]; ultimo.fill(null); x0 = W; y0 = H; x1 = y1 = -1; textura.needsUpdate = true; },
     // sube a la placa de video lo que cambio. Se llama una vez por cuadro.
     subir: () => {
       if (x1 < 0) return;

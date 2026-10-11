@@ -108,7 +108,8 @@ html:not(.practica) .mando.salir { display: none; }
 /* --- portada --- */
 #portada { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: safe center; align-items: flex-start; gap: 12px; padding: clamp(16px, 4vw, 48px); padding-left: max(clamp(16px, 4vw, 48px), env(safe-area-inset-left)); background: linear-gradient(90deg, rgba(8, 9, 10, .9), rgba(8, 9, 10, .72) 34rem, rgba(8, 9, 10, 0) 52rem); }
 #portada > .col { max-width: 30rem; width: 100%; flex: none; display: flex; flex-direction: column; gap: 12px; }
-.marca { width: min(30rem, 100%); height: auto; }
+.marca { display: block; width: min(30rem, 100%); }
+.marca svg { display: block; width: 100%; height: auto; }
 .aviso-del-club { background: var(--placa); border-left: 4px solid var(--amarillo); padding: 12px 14px; display: grid; gap: 6px; }
 .fecha { font-size: 14px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .fecha b { font: 800 22px/1 var(--titulos); color: var(--amarillo); }
@@ -166,7 +167,14 @@ button.chiquito.elegido .icono { filter: brightness(0); opacity: 1; }
 .tabla li.mio { box-shadow: inset 3px 0 0 var(--amarillo); }
 .quien { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pasadas a { display: grid; grid-template-columns: 3em auto 1fr auto auto auto; gap: 10px; align-items: center; padding: 8px 10px; background: rgba(255, 255, 255, .07); color: #fff; text-decoration: none; }
-.pasadas a.aca { box-shadow: inset 3px 0 0 var(--amarillo); }
+.pasadas a.aca, .circuitos a.aca { box-shadow: inset 3px 0 0 var(--amarillo); }
+.circuitos { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.circuitos a { display: grid; grid-template-columns: 2.2em minmax(0, 1fr) auto auto; gap: 2px 10px; align-items: center; padding: 9px 10px; background: rgba(255, 255, 255, .07); color: #fff; text-decoration: none; }
+.circuitos .emoji { grid-row: 1 / 3; font-size: 24px; text-align: center; }
+.circuitos b { font: 800 21px/1.1 var(--titulos); }
+.circuitos small { grid-column: 2 / -1; opacity: .8; font-size: 13px; }
+.circuitos .tiempoMarca { grid-row: 1; grid-column: 3; }
+.circuitos .cuadros { grid-row: 1; grid-column: 4; }
 .pasadas b { font: 800 18px/1 var(--titulos); color: var(--amarillo); }
 /* --- la configuracion --- */
 .ajuste { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; padding: 10px 12px; background: rgba(255, 255, 255, .07); }

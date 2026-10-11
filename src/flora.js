@@ -103,7 +103,7 @@ export function crearFlora(T, escena, esc, liviano) {
   for (let z = z0 + 2; z < T.z1 - 2; z += paso) for (let x = x0 + 2; x < T.x1 - 2; x += paso) {
     const px = x + (r() - 0.5) * paso, pz = z + (r() - 0.5) * paso, a = r(), k = Math.round(pz - z0) * nx + Math.round(px - x0);
     const b = T.borde[k];
-    if (!(b > 0.7 && b < 34) || S[k] !== pasto) continue;
+    if (!(b > 0.7 && b < 34) || S[k] !== pasto || T.pelado[k]) continue;
     if (T.cultivo[k]) {   // en lo sembrado crece lo sembrado
       const que = T.cultivo[k], dibujo = que === 3 ? 'girasol' : que === 1 ? 'trigo' : que === 4 ? 'mataOscura' : '';
       if (dibujo && a < (que === 3 ? 0.5 : que === 1 ? 0.3 : 0.12)) zona(px, pz).yuyos.poner(dibujo, px, T.altura(px, pz) - 0.04, pz, { escala: 0.9 + r() * 0.3, azar: r(), mueve: 0.05 });

@@ -2,6 +2,7 @@
 // La escenografia va a 4 pixeles por metro (un pixel = 25 cm); los objetos chicos, a 8.
 import * as THREE from 'three';
 import { crearAtlas, lienzoPintado, textura } from './pixel.js';
+import { SUELOS } from './config.js';
 
 export const lienzos = {};   // los dibujos sueltos, para mirarlos mientras se ajustan (el juego no los usa)
 
@@ -96,6 +97,36 @@ const PISOS = {
     p.fondo('#84806c');
     veces(170, () => canto(p, ['#6f6b5a', '#8f8b77', '#a6a28d', '#bcb8a3'], '#5c594b'));
     p.motas('#5c594b', 40);
+  },
+  vereda: (p) => {   // vereda: baldosas de cemento, de a 50 cm, con alguna rota
+    p.fondo('#b3aea2');
+    for (let y = 0; y < p.h; y += 2) p.rect(0, y, p.w, 1, '#aaa598');
+    for (let x = 0; x < p.w; x += 2) p.rect(x, 0, 1, p.h, '#a8a396');
+    veces(22, () => mancha(p, '#bdb8ac', entero(p, 3, 5)));
+    veces(14, () => mancha(p, '#9f9a8e', entero(p, 3, 4)));
+    p.motas('#8d887c', 30); p.motas('#c9c4b8', 30); veces(5, () => grieta(p, '#6e6a60', entero(p, 4, 9)));
+    p.motas('#7f8f52', 8, 2, 1);   // yuyitos en las juntas
+  },
+  adoquin: (p) => {   // adoquines: piedras de 25 x 50 cm trabadas, cada una con su tono
+    p.fondo('#5f5b55');
+    const tonos = ['#77726a', '#807b72', '#6e6962', '#8a857b', '#726d66'];
+    for (let y = 0; y < p.h; y++) for (let x = (y % 2) - 1; x < p.w; x += 2) {
+      const t = tonos[entero(p, 0, tonos.length - 1)];
+      p.rect(x, y, 2, 1, t);
+      if (p.azar() < 0.3) p.punto(x, y, '#989388');
+    }
+    for (let y = 0; y < p.h; y += 1) if (p.azar() < 0.2) p.rect(entero(p, 0, p.w - 6), y, entero(p, 3, 6), 1, '#5a5650');
+    p.motas('#4d4a45', 40); p.motas('#a39e92', 14);
+  },
+  madera: (p) => {   // tablones de puente, atravesados, con clavos y alguno mas nuevo
+    const tonos = ['#8a6f52', '#7d6449', '#96795a', '#735b42'];
+    for (let y = 0; y < p.h; y += 2) {
+      const t = tonos[entero(p, 0, tonos.length - 1)];
+      p.rect(0, y, p.w, 2, t); p.rect(0, y + 1, p.w, 1, '#5e4a36');
+      veces(5, () => p.punto(entero(p, 0, p.w - 1), y, '#a88c6a'));
+      veces(2, () => p.punto(entero(p, 0, p.w - 1), y, '#3f3226'));
+    }
+    p.motas('#5e4a36', 30, 3, 1);
   },
   monteCampo: (p) => {   // monte: el piso sombreado debajo de los arboles, con hojas secas
     p.fondo('#3f6f33');
@@ -226,12 +257,13 @@ const NATURAL = {
 };
 // En que capa de la textura queda cada cosa: primero los suelos, en el orden de config.js, y despues estas.
 // Los sembrados van en SEMBRADO + 1 (trigo), + 2 (tierra arada), + 3 (girasol) y + 4 (soja).
-export const MONTE = 9, PARED = 10, MANCHON = 11, BANQUINA = 12, SEMBRADO = 12;
+const NOMBRES_DE_SUELO = Object.keys(SUELOS), CUANTOS = NOMBRES_DE_SUELO.length;
+export const MONTE = CUANTOS, PARED = CUANTOS + 1, MANCHON = CUANTOS + 2, BANQUINA = CUANTOS + 3, SEMBRADO = CUANTOS + 3;
 
 // Todos los pisos en una sola textura de varias capas. "piso" es el pasto del bioma: pinocha, pasto o pastoSeco.
 export function texturaDePisos(piso) {
   const [pasto, manchon, monte, banquina] = NATURAL[piso] || NATURAL.pasto;
-  const capas = ['asfalto', 'ripio', 'tierra', 'roca', pasto, 'barro', 'pantano', 'lecho', 'charco', monte, 'pared', manchon, banquina, 'trigo', 'arado', 'girasol', 'soja'];
+  const capas = [...NOMBRES_DE_SUELO.map((n) => (n === 'pasto' ? pasto : n)), monte, 'pared', manchon, banquina, 'trigo', 'arado', 'girasol', 'soja'];
   const M = 64, datos = new Uint8Array(M * M * 4 * capas.length);
   capas.forEach((nombre, i) => {
     const l = lienzoPintado(M, M, PISOS[nombre], 100 + i);
@@ -338,6 +370,8 @@ const LETRAS = {
   A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', G: '011100101101011', H: '101101111101101',
   I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '101111111111101', O: '010101101101010', R: '110101110101101',
   S: '011100010001110', T: '111010010010010', W: '101101111111101', ' ': '000000000000000',
+  F: '111100110100100', J: '001001001101010', P: '110101110100100', Q: '010101101110011', U: '101101101101111', V: '101101101101010', X: '101101010101101', Y: '101101010010010', Z: '111001010100111',
+  6: '011100110101010', 7: '111001010010010', 8: '010101010101010', 9: '010101011001110',
   0: '111101101101111', 1: '010110010010111', 2: '110001010100111', 3: '110001010001110', 4: '101101111001001', 5: '111100110001110', '#': '101111101111101', '!': '010010010000010',
 };
 export function escribir(p, texto, x, y, color) {

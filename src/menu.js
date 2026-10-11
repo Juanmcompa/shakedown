@@ -1,7 +1,8 @@
-// Las pantallas que no son manejar: la portada con la pista del dia, la tabla del club,
-// las pistas pasadas, la ayuda y el resultado de cada pasada con su boton de compartir.
+// Las pantallas que no son manejar: la portada con la pista del dia (o con un circuito fijo), la tabla del club,
+// los circuitos, las pistas pasadas, la ayuda, la configuracion y el resultado de cada pasada con su boton de compartir.
 import { AUTOS } from './config.js';
 import { BIOMAS, CLIMAS, CARACTER, datosDelDia } from './generador.js';
+import { CIRCUITOS, circuitoDe } from './circuitos.js';
 import { fechaDe } from './dia.js';
 import { tiempoFinal, CLASE_DE_COLOR } from './hud.js';
 import { iconoDeNota, textoDeNota, ponerIconos, rotular, icono } from './iconos.js';
@@ -12,9 +13,10 @@ const ABANDONO = { roto: 'Rompiste el auto', tiempo: 'Se acabó el tiempo', cerr
 const crear = (etiqueta, clase, texto) => { const el = document.createElement(etiqueta); if (clase) el.className = clase; if (texto !== undefined) el.textContent = texto; return el; };
 
 // El mensaje para compartir: Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
+// (el de un circuito fijo lleva su nombre en vez del numero: Shakedown · Subida ⛰️ ⏱️ 01:42:85 ...)
 export function mensaje(etapa, r) {
-  const cuadros = [...(r.c || 'nnnnn')].map((x) => CUADRO[x]).join(' ');
-  return 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : '')
+  const cuadros = [...(r.c || 'nnnnn')].map((x) => CUADRO[x]).join(' '), fijo = circuitoDe(etapa.numero);
+  return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
     + (r.ab ? ' 💥 abandono ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
 }
 // los cuadraditos de un resultado, como elementos de la pagina
@@ -28,15 +30,18 @@ function cuadritos(colores) {
 //      ajustes: { leer(clave), poner(clave, valor), probar() }   la configuracion (ver GUSTOS en config.js) }
 export function crearMenu(o) {
   const { T, club, hoy, ref, copiloto, ajustes } = o, etapa = T.etapa, numero = etapa.numero, esHoy = numero === hoy;
+  const fijo = circuitoDe(numero);   // si lo que se corre es un circuito fijo, cual
   // el salvavidas que marca un tiempo hecho con la ayuda de manejo
   const conAyuda = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('salvavidas'); img.alt = 'con ayuda de manejo'; img.title = 'Con ayuda de manejo'; return img; };
   let ultimo = null, linkDe = null;   // el ultimo resultado mostrado, y la funcion que arma su link
 
   // --- la portada ---
-  $('pistaNumero').textContent = '#' + numero;
-  $('pistaFecha').textContent = fechaDe(numero);
+  $('inicio').href = location.pathname;
+  $('pistaNumero').textContent = fijo ? fijo.emoji : '#' + numero;
+  $('pistaFecha').textContent = fijo ? 'Circuito' : fechaDe(numero);
   $('pistaLugar').textContent = etapa.lugar;
   $('pistaNombre').textContent = etapa.nombre;
+  if (fijo) { $('pistaDetalle').textContent = fijo.detalle; $('pistaDetalle').hidden = false; }
   const datos = $('pistaDatos');
   for (const txt of [BIOMAS[etapa.bioma].emoji + ' ' + BIOMAS[etapa.bioma].nombre, CLIMAS[etapa.clima].emoji + ' ' + CLIMAS[etapa.clima].nombre, (etapa.largo / 1000).toFixed(1).replace('.', ',') + ' km', CARACTER[etapa.caracter].nombre]) datos.append(crear('span', 'dato', txt));
   // las notas del copiloto, todas en fila
@@ -56,7 +61,8 @@ export function crearMenu(o) {
   }
 
   function pintar() {
-    const oficial = club.oficial(), puede = club.sePuedeOficial(), rival = o.rival();
+    // en un circuito no hay pasada oficial: lo que cuenta es el mejor tiempo
+    const oficial = fijo ? club.practica() : club.oficial(), puede = club.sePuedeOficial(), rival = o.rival();
     for (const b of $('autos').children) { const si = b.dataset.auto === club.auto(); b.classList.toggle('elegido', si); b.setAttribute('aria-checked', si); }
     // contra quien
     $('desafio').hidden = !rival;
@@ -66,20 +72,21 @@ export function crearMenu(o) {
     mio.hidden = !oficial || !!oficial.corriendo;
     if (!mio.hidden) {
       mio.textContent = '';
-      mio.append(crear('span', 'chico', 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
+      mio.append(crear('span', 'chico', fijo ? 'Tu mejor tiempo' : 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
     }
     $('avisoAyuda').hidden = !ajustes.leer('ayuda');
     pintarAjustes();
     // la bandera a cuadros larga la pasada oficial; el cono, una practica
-    rotular($('largar'), puede ? 'Largar' : 'Practicar');
-    $('largar').dataset.icono = puede ? 'bandera' : 'cono';
+    rotular($('largar'), puede || fijo ? 'Largar' : 'Practicar');
+    $('largar').dataset.icono = puede || fijo ? 'bandera' : 'cono';
     $('compartirPortada').hidden = !(oficial && !oficial.corriendo && oficial.codigo);
-    $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
-    pintarTabla($('tabla'), club.tabla());
-    pintarTabla($('practicas'), club.practicas());
-    $('tablaVacia').hidden = club.tabla().length > 0;
-    $('practicasTitulo').hidden = club.practicas().length === 0;
-    $('tablaPista').textContent = '#' + numero;
+    $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (fijo ? 'Circuito fijo: se corre las veces que quieras. Queda tu mejor tiempo.' : puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
+    // la tabla: en un circuito, los mejores tiempos de cada uno; en una pista del dia, las oficiales y, aparte, las practicas
+    pintarTabla($('tabla'), fijo ? club.practicas() : club.tabla());
+    pintarTabla($('practicas'), fijo ? [] : club.practicas());
+    $('tablaVacia').hidden = (fijo ? club.practicas() : club.tabla()).length > 0;
+    $('practicasTitulo').hidden = !!fijo || club.practicas().length === 0;
+    $('tablaPista').textContent = fijo ? '· ' + fijo.corto : '#' + numero;
     ponerIconos();
   }
 
@@ -99,12 +106,30 @@ export function crearMenu(o) {
         b.dataset.icono = 'fantasma';
         b.title = es ? 'Es tu rival. Tocá para correr sin fantasma.' : 'Correr contra su fantasma';
         b.setAttribute('aria-label', b.title); b.setAttribute('aria-pressed', es);
-        b.addEventListener('click', () => { o.elegirRival(es ? '' : clave, !!r.practica); pintar(); if (ultimo) pintarTabla($('finTabla'), club.tabla()); });
+        b.addEventListener('click', () => { o.elegirRival(es ? '' : clave, !!r.practica); pintar(); if (ultimo) pintarTabla($('finTabla'), fijo ? club.practicas() : club.tabla()); });
         li.append(b);
       } else li.append(crear('span'));
       ol.append(li);
     });
     ponerIconos(ol);
+  }
+
+  // --- los circuitos fijos: cada uno con tu mejor tiempo; arriba de todo, la vuelta a la pista de hoy ---
+  function pintarCircuitos() {
+    const ol = $('circuitos');
+    if (ol.children.length) return;
+    const fila = (direccion, aca, emoji, nombre, detalle, res) => {
+      const a = crear('a', aca ? 'aca' : '');
+      a.href = direccion;
+      a.append(crear('span', 'emoji', emoji), crear('b', '', nombre), crear('small', '', detalle));
+      if (res) a.append(crear('span', 'tiempoMarca', res.ab ? 'abandono' : tiempoFinal(res.t)), cuadritos(res.c));
+      const li = crear('li');
+      li.append(a);
+      ol.append(li);
+    };
+    const d = datosDelDia(hoy), deHoy = club.resumen(hoy);
+    fila(location.pathname, esHoy, '🏁', 'La pista de hoy · #' + hoy, CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji + ' ' + d.nombre + '. Una sola pasada oficial.', deHoy.oficial);
+    for (const c of CIRCUITOS) fila(location.pathname + '?c=' + c.id, c.numero === numero, c.emoji, c.nombre, c.detalle, club.resumen(c.numero).practica);
   }
 
   // --- pistas pasadas ---
@@ -147,8 +172,9 @@ export function crearMenu(o) {
       <div><dt>${dib('sonido')}${dib('voz')}</dt><dd>sonido y voz del copiloto</dd></div>
     </dl>
     <p>${dib('bandera')} larga la pasada oficial: una sola por día. ${dib('cono')} es práctica: no cuenta para la tabla.</p>
+    <p>${dib('circuito')} Además de la pista del día hay circuitos fijos, para correr las veces que quieras: una subida y una bajada de montaña y un callejero por el pueblo. Queda guardado tu mejor tiempo.</p>
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
-    <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla.</p>
+    <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina.</p>
     <p>Los golpes rompen el auto. Si se rompe del todo, es abandono.</p>
     <p>${dib('fantasma')} En la tabla, el fantasma elige contra quién corrés. Si te mandan un link, corrés contra quien te lo mandó.</p>
     <p>${dib('ajustes')} En la configuración se cambian la distancia de la cámara y, en el celular, la sensibilidad al inclinar y el tamaño de los pedales.</p>
@@ -188,8 +214,9 @@ export function crearMenu(o) {
 
   // --- paneles ---
   function abrir(cual) {
-    for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes']]) $(id).hidden = nombre !== cual;
+    for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelCircuitos', 'circuitos'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes']]) $(id).hidden = nombre !== cual;
     if (cual === 'pasadas') pintarPasadas();
+    if (cual === 'circuitos') pintarCircuitos();
     // en el celular, al abrir la configuracion se prende el sensor (si lo hay) para poder probar la sensibilidad
     if (cual === 'ajustes') { pintarAjustes(); if (window.matchMedia('(pointer: coarse)').matches) ajustes.probar(); }
     $('panel').hidden = !cual;
@@ -197,6 +224,8 @@ export function crearMenu(o) {
   }
   for (const b of document.querySelectorAll('[data-panel]')) b.addEventListener('click', () => abrir(b.dataset.panel));
   $('cerrarPanel').addEventListener('click', () => abrir(''));
+  // desde el resultado: vuelve a la portada y abre los circuitos
+  $('irCircuitos').addEventListener('click', () => { $('salir').click(); abrir('circuitos'); });
 
   // --- compartir ---
   async function compartir(r, salida) {
@@ -214,7 +243,7 @@ export function crearMenu(o) {
     }
   }
   $('compartir').addEventListener('click', () => ultimo && compartir(ultimo, $('compartido')));
-  $('compartirPortada').addEventListener('click', () => club.oficial() && compartir({ ...club.oficial(), nombre: club.nombre() }, $('queEs')));
+  $('compartirPortada').addEventListener('click', () => { const r = fijo ? club.practica() : club.oficial(); if (r) compartir({ ...r, nombre: club.nombre() }, $('queEs')); });
   $('nombre').addEventListener('change', () => { club.ponerNombre($('nombre').value); $('compartido').textContent = ''; pintar(); });
   $('nombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('nombre').blur(); });
 
@@ -222,9 +251,10 @@ export function crearMenu(o) {
     pintar,
     portada: (si) => { $('portada').hidden = !si; if (!si) abrir(''); else pintar(); },
     // Muestra el resultado de una pasada. r: el resultado. armarLink: funcion que devuelve el codigo del link (con el fantasma).
-    fin: (r, armarLink) => {
+    // mejoro: true si es tu mejor tiempo en esa pista (para las practicas y los circuitos).
+    fin: (r, armarLink, mejoro) => {
       ultimo = r; linkDe = armarLink;
-      $('finTipo').textContent = (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ' + etapa.nombre;
+      $('finTipo').textContent = (fijo ? 'Circuito · ' : (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ') + etapa.nombre + (mejoro ? ' · ¡tu mejor tiempo!' : '');
       $('finTitulo').textContent = r.ab ? ABANDONO[r.ab] || 'Abandono' : '';
       $('finTitulo').hidden = !r.ab;
       $('finGrande').textContent = r.ab ? 'Abandono' : tiempoFinal(r.t);
@@ -244,9 +274,11 @@ export function crearMenu(o) {
       $('probarAyuda').hidden = false;
       $('nombre').value = club.nombre();
       $('compartido').textContent = '';
-      $('finRanking').hidden = club.tabla().length < 2;
-      pintarTabla($('finTabla'), club.tabla());
-      rotular($('otra'), 'Practicar');
+      const tabla = fijo ? club.practicas() : club.tabla();
+      $('finRanking').hidden = tabla.length < 2;
+      pintarTabla($('finTabla'), tabla);
+      rotular($('otra'), fijo ? 'Otra vez' : 'Practicar');
+      $('otra').dataset.icono = fijo ? 'bandera' : 'cono';
       $('fin').hidden = false;
       ponerIconos();
     },

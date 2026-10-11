@@ -190,22 +190,42 @@ export function crearAuto(terreno, C) {
       if (Fn > golpe) golpe = Fn;
     }
 
-    // --- choques contra arboles, piedras, postes y fardos ---
+    // --- choques contra arboles, piedras, postes, fardos y edificios ---
+    // El auto choca con tres circulos (trompa, medio y cola). Lo chocado es un circulo o una caja.
     for (let k = -1; k <= 1; k++) {
       const lejos = k * sepChoque + C.centro, ox = bx * lejos, oy = by * lejos, oz = bz * lejos, px = p[0] + ox, pz = p[2] + oz;
       const lista = terreno.cosasCerca(px, pz);
       if (!lista) continue;
       for (const o of lista) {
-        const dx = px - o.x, dz = pz - o.z, d = Math.hypot(dx, dz) + 1e-6, mete = radioChoque + o.r - d;
-        if (mete <= 0 || p[1] + oy > o.y + 6 || o.roto) continue;
-        const vn = ((v[0] + w[1] * oz - w[2] * oy) * dx + (v[2] + w[0] * oy - w[1] * ox) * dz) / d;
+        if (o.roto || p[1] + oy > o.y + 6) continue;
+        // hacia donde empuja (dx, dz, de largo 1) y cuanto se metio el circulo adentro
+        let dx = px - o.x, dz = pz - o.z, mete;
+        if (o.hx) {
+          // una caja: se busca el punto de su borde mas cercano, en las medidas de la caja (a lo ancho y a lo largo)
+          const ex = dx * o.ux + dz * o.uz, ez = dz * o.ux - dx * o.uz;
+          let qx = lim(ex, -o.hx, o.hx), qz = lim(ez, -o.hz, o.hz);
+          if (qx === ex && qz === ez) { if (o.hx - Math.abs(ex) < o.hz - Math.abs(ez)) qx = ex < 0 ? -o.hx : o.hx; else qz = ez < 0 ? -o.hz : o.hz; mete = radioChoque + Math.hypot(ex - qx, ez - qz); qx = 2 * ex - qx; qz = 2 * ez - qz; }   // (quedo adentro: sale por la pared mas cercana)
+          else mete = radioChoque - Math.hypot(ex - qx, ez - qz);
+          if (mete <= 0) continue;
+          const lx = ex - qx, lz = ez - qz, l = Math.hypot(lx, lz) + 1e-6;
+          dx = (lx * o.ux - lz * o.uz) / l; dz = (lx * o.uz + lz * o.ux) / l;
+        } else {
+          const d = Math.hypot(dx, dz) + 1e-6;
+          mete = radioChoque + o.r - d;
+          if (mete <= 0) continue;
+          dx /= d; dz /= d;
+        }
+        const vcx = v[0] + w[1] * oz - w[2] * oy, vcz = v[2] + w[0] * oy - w[1] * ox, vn = vcx * dx + vcz * dz;
         // lo que cede (un poste, un fardo, un arbusto) frena menos, golpea menos y queda tirado
-        const Fn = Math.max(0, 140000 * mete - 9000 * vn) * o.duro / d, Ax = dx * Fn, Az = dz * Fn;
+        const Fn = Math.max(0, 140000 * mete - 9000 * vn) * o.duro;
+        // el roce: pasar raspando una pared, una pirca o una piedra tambien frena (si no, apoyarse en un paredon saldria gratis)
+        const vt = vcz * dx - vcx * dz, Ft = -Math.sign(vt) * Math.min(C.roce * Fn, m / dt * 0.25 * Math.abs(vt));
+        const Ax = dx * Fn - dz * Ft, Az = dz * Fn + dx * Ft;
         if (-vn * o.duro > c.impacto) c.impacto = -vn * o.duro;
         if (o.cede && -vn > 3) { o.roto = true; c.rompio.push(o); }
         Fx += Ax; Fz += Az;
         Tx += oy * Az; Ty += oz * Ax - ox * Az; Tz -= oy * Ax;
-        if (Fn * d > golpe) golpe = Fn * d;
+        if (Fn > golpe) golpe = Fn;
       }
     }
 

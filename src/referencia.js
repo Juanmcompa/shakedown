@@ -14,7 +14,7 @@ export function crearReferencia(T, C, o = {}) {
   // --- 1. la trazada: cuanto se corre del medio en cada metro (positivo = a la derecha) ---
   // Se parte del medio del camino y se "tensa" la linea como una banda elastica, sin dejarla salir del camino:
   // asi abre las curvas por afuera y las corta por adentro, como hace un piloto.
-  const lo = new Float32Array(n), hi = new Float32Array(n), corre = new Float32Array(n);
+  const lo = new Float32Array(n), hi = new Float32Array(n), corre = new Float32Array(n), estorbo = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
     const t = tramos[P.T[i]], libre = Math.max(0, P.W[i] / 2 - margen);
     lo[i] = -libre; hi[i] = libre;
@@ -24,6 +24,15 @@ export function crearReferencia(T, C, o = {}) {
     // la largada y la llegada, por el medio
     const punta = Math.min(1, Math.max(0, (i - T.largada.i) / 30), (n - 1 - i) / 20);
     lo[i] *= punta; hi[i] *= punta;
+  }
+  // lo que esta metido en el camino (un auto estacionado, un volquete): la trazada pasa por el lado que deja mas lugar
+  for (const e of T.estorbos || []) {
+    const largo = Math.ceil(e.largo + 7), pasa = 1.2;   // (pasa: medio auto y un poco mas)
+    for (let k = Math.max(0, e.i - largo); k <= Math.min(n - 1, e.i + largo); k++) {
+      if (e.lado >= 0) hi[k] = Math.min(hi[k], e.lado - e.medio - pasa); else lo[k] = Math.max(lo[k], e.lado + e.medio + pasa);
+      if (hi[k] < lo[k]) hi[k] = lo[k] = (hi[k] + lo[k]) / 2;
+      estorbo[k] = 1;
+    }
   }
   const nx = (i) => -P.HZ[i], nz = (i) => P.HX[i];
   for (const paso of [32, 16, 8, 4, 2, 1]) {
@@ -67,7 +76,8 @@ export function crearReferencia(T, C, o = {}) {
   const largo = 2 * C.ejes, alto = 0.62;                       // distancia entre ejes y altura del centro de masa
   const [adelante, atras] = C.traccion, pesoAdelante = 0.5 + C.centro / largo;   // parte del peso que carga el eje de adelante
   const v = new Float32Array(n), tope = new Float32Array(n);
-  for (let i = 0; i < n; i++) tope[i] = Math.min(60, Math.sqrt(usa * mu[i] * g / Math.max(Math.abs(curva[i]), 1e-4)));
+  // (un tramo puede traer su propio tope de velocidad, en m/s: las lajas, un paso entre obstaculos)
+  for (let i = 0; i < n; i++) tope[i] = Math.min(60, tramos[P.T[i]].tope || 60, Math.sqrt(usa * mu[i] * g / Math.max(Math.abs(curva[i]), 1e-4)));
   // lo que frena solo: el piso, el barro, el aire y la subida (en m/s2, positivo = frena)
   const frena = (i, vel) => roce[i] * g + 4 * pasta[i] * vel / C.masa + C.aire * vel * vel / C.masa + g * P.G[i] / Math.hypot(1, P.G[i]);
   const i0 = T.largada.i;
@@ -95,6 +105,8 @@ export function crearReferencia(T, C, o = {}) {
   for (let i = i0; i < n - 1; i++) t[i + 1] = t[i] + DS[i] / Math.max(0.5, (v[i] + v[i + 1]) / 2);
   return {
     auto: C, corre, velocidad: v, curva, tiempo: t,
+    desde: lo, hasta: hi,   // entre que corrimientos se puede pasar en cada metro (por los bordes y por lo que haya en el camino)
+    estorbo,                // 1 en los metros donde hay algo metido en el camino
     total: t[T.meta.i],
     sectores: T.sectores.map((x) => t[x.hasta] - t[x.desde]),
   };

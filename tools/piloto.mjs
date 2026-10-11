@@ -30,14 +30,28 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
   const P = T.camino, i = p.indice, v = c.velocidad;
   if (!(t < m.tDesvio)) { m.tDesvio = t + 1 + rnd() * 2; m.objetivo = (rnd() * 2 - 1) * o.desvio; }
   m.desvio = (m.desvio || 0) + (m.objetivo - (m.desvio || 0)) * 0.3;
-  // a donde apunta: un punto de la trazada, mas lejos cuanto mas rapido va
+  // a donde apunta: un punto de la trazada, mas lejos cuanto mas rapido va. Se aparta de la trazada lo que le sale...
   const a = Math.min(P.n - 1, i + Math.round(4 + o.mira * Math.abs(v))), libre = Math.max(0, P.W[a] / 2 - 1.5);
-  const lado = Math.max(-libre, Math.min(libre, ref.corre[a] + m.desvio));
+  let desde = Math.max(-libre, ref.desde[a]), hasta = Math.min(libre, ref.hasta[a]);
+  // ...pero lo que esta metido en el camino (un auto estacionado, un volquete) lo ve de lejos, unos dos segundos antes:
+  // elige por donde pasar y se va corriendo con tiempo. Y si por donde viene se lo lleva puesto, corrige con decision
+  // (ahi no deja pasar errores chicos de volante como en el resto del camino).
+  const ahora = (c.pos[2] - P.Z[i]) * P.HX[i] - (c.pos[0] - P.X[i]) * P.HZ[i];
+  let atento = false;
+  for (let k = 0; k <= 10 + 2 * Math.abs(v); k += 2) {
+    const j = Math.min(P.n - 1, i + k);
+    if (!ref.estorbo[j]) continue;
+    desde = Math.max(desde, ref.desde[j]); hasta = Math.min(hasta, ref.hasta[j]);
+    if (ahora > ref.hasta[j] + 0.2 || ahora < ref.desde[j] - 0.2) atento = true;
+  }
+  if (hasta < desde) desde = hasta = (desde + hasta) / 2;
+  const lado = Math.max(desde, Math.min(hasta, ref.corre[a] + m.desvio));
   const dx = P.X[a] - P.HZ[a] * lado - c.pos[0], dz = P.Z[a] + P.HX[a] * lado - c.pos[2], f = c.adelante;
   const e = Math.atan2(f[0] * dz - f[2] * dx, f[0] * dx + f[2] * dz);
+  const umbral = atento ? Math.min(o.umbral, 0.03) : o.umbral;
   // el volante: con teclas no hay "un poco": se aprieta un ratito mas largo o mas corto segun cuanto haya que corregir
   const pide = Math.max(-1, Math.min(1, e * o.mano));
-  if (o.teclas) { m.tecla = Math.abs(pide) < o.umbral ? 0 : Math.sign(pide); m.hasta = t + Math.abs(pide) * o.reaccion * 1.3; ent.x = m.tecla; }
+  if (o.teclas) { m.tecla = Math.abs(pide) < umbral ? 0 : Math.sign(pide); m.hasta = t + Math.max(atento ? (o.esquiva || 0) * o.reaccion : 0, Math.abs(pide) * o.reaccion * 1.3); ent.x = m.tecla; }
   else ent.x = pide;
   // a que velocidad quiere ir: la de referencia de aca a unos metros, segun lo que tarda en frenar
   let quiere = 99;
@@ -51,7 +65,8 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
   if (!o.teclas && ent.y === 1) ent.y = Math.min(1, 0.35 + (quiere - v) * 0.4);
   if (o.pie) ent.y = 1;                                                  // pie de plomo: no suelta nunca el acelerador
   if (c.enPiso === 0) ent.x = 0;                                         // en el aire no dobla
-  if (p.trabado && !(t < m.atras)) m.atras = t + 1.4;                    // trabado: un rato de marcha atras
+  if (p.trabado && !(t < m.atras)) { m.atras = t + 1.4; m.trabadas = (m.trabadas || 0) + 1; }   // trabado: un rato de marcha atras
+  if (m.trabadas >= 4) { m.trabadas = 0; m.volver = true; }             // y si no sale, pide volver al camino
   if (t < m.atras) { ent.y = -1; ent.x = -ent.x; }
   m.quiere = quiere;
 }
@@ -71,6 +86,7 @@ export function correr(T, par, auto, o) {
   while (t < 700 && p.estado !== 'llegada' && p.estado !== 'abandono') {
     if (p.estado === 'corriendo' && t >= prox) { prox = t + o.reaccion * (0.7 + 0.6 * rnd()); decidir(T, ref, c, p, o, m, rnd, t, pide); }
     if (o.teclas && t > m.hasta && !(t < m.atras)) pide.x = 0;   // solto la tecla
+    if (m.volver) { m.volver = false; p.volver(c, 'pedido'); }
     ent.x = pide.x; ent.y = pide.y;
     if (ayuda && p.estado === 'corriendo') ayuda.aplicar(c, p.indice, p.lejos, ent);
     c.paso(p.estado === 'corriendo' ? ent : { x: 0, y: 0, mano: true }, DT); t += DT;
@@ -95,9 +111,10 @@ export function correr(T, par, auto, o) {
 export const PILOTOS = {
   // mano: cuanto volante pone por cada radian que tiene que corregir.  umbral: debajo de esto no toca el volante.
   // mira: cuantos metros adelante apunta por cada m/s que lleva.  susto: con cuantos radianes de cruzado levanta el pie.
+  // esquiva: con cuanta decision se corre cuando ve que se lleva puesto algo (0 = corrige como siempre).
   as:     { ritmo: 0.97, reaccion: 0.05, umbral: 0.02, desvio: 0.2, frena: 5.2, mano: 2.6, mira: 0.5, susto: 0.7, teclas: false },
-  bueno:  { ritmo: 0.88, reaccion: 0.12, umbral: 0.1,  desvio: 0.5, frena: 4.6, mano: 2.6, mira: 0.5, susto: 0.65, teclas: true },
-  normal: { ritmo: 0.78, reaccion: 0.16, umbral: 0.12, desvio: 0.9, frena: 4.0, mano: 2.6, mira: 0.5, susto: 0.6, teclas: true },
+  bueno:  { ritmo: 0.88, reaccion: 0.12, umbral: 0.1,  desvio: 0.5, frena: 4.6, mano: 2.6, mira: 0.5, susto: 0.65, teclas: true, esquiva: 0.5 },
+  normal: { ritmo: 0.78, reaccion: 0.16, umbral: 0.12, desvio: 0.9, frena: 4.0, mano: 2.6, mira: 0.5, susto: 0.6, teclas: true, esquiva: 0.3 },
   manso:  { ritmo: 0.64, reaccion: 0.22, umbral: 0.14, desvio: 1.2, frena: 3.4, mano: 2.6, mira: 0.5, susto: 0.55, teclas: true },
   bruto:  { ritmo: 1.08, reaccion: 0.2,  umbral: 0.14, desvio: 1.3, frena: 4.6, mano: 3.4, mira: 0.5, susto: 0.6, teclas: true },
 };

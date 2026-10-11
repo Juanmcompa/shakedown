@@ -8,7 +8,7 @@
 // asi que se guarda solo lo que cambia respecto de lo esperado, con un compresor que sabe que cambios son los comunes.
 // Es la misma informacion, con la misma precision que antes (10 cm y 1,4 grados), en mas o menos la mitad de lugar.
 // No dibuja nada.
-import { VERSION } from './generador.js';
+import { versionDe } from './generador.js';
 
 const PASO = 0.5;          // segundos entre muestras
 const ESCALA = 10;         // las posiciones se guardan cada 10 cm
@@ -247,7 +247,7 @@ export function crearGrabacion(T) {
     // (espia: para las herramientas de prueba; recibe cada decision del compresor)
     codigo: async (m, tabla, espia) => {
       const w = crearEscritor(espia), enc = new TextEncoder(), dec = new TextDecoder();
-      w.crudo(VERSION & 63, 6); w.crudo(m.pista & 16383, 14);
+      w.crudo(versionDe(m.pista) & 63, 6); w.crudo(m.pista & 16383, 14);
       pasarResultado(w, m, enc, dec, m.pista, true);
       const otros = tabla.slice(0, 10);
       w.crudo(otros.length, 4);

@@ -1,15 +1,16 @@
 // El copiloto: las notas de la pista (que curva viene, que tan cerrada, si hay un salto o un vado)
 // y la voz que las canta un rato antes de llegar. Las notas salen del generador (el campo "nota" de cada tramo).
-// Los grados van del 1 (la mas cerrada) al 6 (casi recta); "h" es una horquilla.
+// Los grados van del 1 (la mas cerrada) al 6 (casi recta); "h" es una horquilla y "e", una esquina de 90 grados.
 
 const GRADOS = { 1: 'uno', 2: 'dos', 3: 'tres', 4: 'cuatro', 5: 'cinco', 6: 'seis' };
-const DICHO = { salto: 'salto', vado: 'vado, agua', barro: 'barro', angosto: 'angosto', cornisa: 'cornisa, cuidado', meta: 'meta' };
+const DICHO = { salto: 'salto', vado: 'vado, agua', barro: 'barro', angosto: 'angosto', cornisa: 'cornisa, cuidado', meta: 'meta',
+  puente: 'puente, angosto', cuidado: 'cuidado', adoquin: 'adoquines', asfalto: 'asfalto', ripio: 'ripio', lomo: 'lomo', lajas: 'lajas, despacio' };
 
 // lo que diria el copiloto por una nota
 export function decir(n) {
   if (n.tipo !== 'curva') return DICHO[n.tipo] || '';
   const lado = n.lado === 'izq' ? 'izquierda' : 'derecha';
-  return n.grado === 'h' ? 'horquilla ' + lado : lado + ' ' + GRADOS[n.grado] + (n.larga ? ', larga' : '');
+  return n.grado === 'h' ? 'horquilla ' + lado : n.grado === 'e' ? lado + ' noventa' : lado + ' ' + GRADOS[n.grado] + (n.larga ? ', larga' : '');
 }
 
 export function crearCopiloto(T) {

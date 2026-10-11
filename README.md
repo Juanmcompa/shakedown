@@ -26,7 +26,24 @@ Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el t
 - **Rally puro.** No hay nafta ni rescates. Si te salís o volcás, volvés al camino con 8 segundos de recargo. Si rompés el auto, es abandono.
 - **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
+- **Circuitos fijos.** Además de la pista del día hay tres recorridos que no cambian nunca, para correr las veces que se quiera. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día.
 - **Ayuda de manejo, para arrancar.** Se prende en la configuración: el auto frena solo antes de las curvas y se cruza menos. Es más fácil y más lento. En la tabla, esos tiempos llevan un salvavidas. Después de una pasada complicada, el juego la ofrece.
+
+## Los circuitos
+
+Se abren con el botón de circuitos de la portada.
+
+| Circuito | Cómo es |
+| --- | --- |
+| ⛰️ **Subida a Mina Vieja** | 1,2 km de montaña, siempre para arriba. Angosta, con siete horquillas, tres puentes de madera y tramos de lajas que hay que pasar despacio. No hay velocidad: es técnica. Donde el camino se asoma al vacío hay una pirca que frena al auto en vez de dejarlo caer. |
+| 🦅 **Bajada del Portezuelo** | 2,5 km de ripio suelto, ancha y siempre para abajo: 325 metros de desnivel. Es la más rápida del juego: rectas largas donde se pasan los 100 km/h, eses para llevar el auto cruzado, un salto y cuatro curvas cerradas a las que hay que llegar frenado (en bajada cuesta más). |
+| 🏘️ **Callejero de Villa Cañada** | 1,1 km entre las casas de un pueblo: esquinas de 90 grados, calles de adoquines, la vuelta a la plaza, un pasaje angosto y una avenida con autos estacionados, un colectivo, volquetes, conos y un lomo de burro. |
+
+Cada circuito tiene su tiempo de referencia y sus cinco cuadraditos, como la pista del día. El mensaje para compartir sale así:
+
+```
+Shakedown · Urbano 🏘️ ⏱️ 01:30:42 🟩 🟩 🟩 🟩 🟩 🏁
+```
 
 ## El club: correr contra amigos
 
@@ -59,7 +76,7 @@ En el celular los botones son íconos y muestran su estado:
 - **Sonido y voz del copiloto:** apagados se ven tenues y tachados.
 - **Volver al camino:** lleva el "+8" de lo que cuesta. Titila en amarillo cuando el auto quedó trabado.
 
-Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla.
+Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina. También avisa los puentes, las lajas, los adoquines y los lomos de burro.
 
 ## Configuración
 
@@ -80,6 +97,9 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
 | Cuánto ayuda la ayuda de manejo (`AYUDA`) y con qué configuración arranca el juego (`GUSTOS`) | `src/config.js` |
 | Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` (y subir `VERSION` ahí mismo: ver abajo) |
+| El recorrido de cada circuito fijo: sus rectas, curvas, puentes, casas y cosas en la calle | `src/circuitos.js` (cada circuito es una lista que se lee de arriba hacia abajo) |
+| Las medidas de los edificios y de las cosas de la calle, y cuáles se caen al chocarlas | `src/edificios.js` |
+| Los dibujos de las casas, los colectivos, los faroles, las barandas y las pircas | `src/pueblo.js` |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
 | La luz y la bruma de cada clima | `LUCES` en `src/world.js` y `REVELADOS` en `src/post.js` |
@@ -104,7 +124,9 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/main.js` | Arma todo y corre el ciclo del juego |
 | `src/config.js` | Los números para ajustar |
 | `src/dia.js`, `src/generador.js` | El calendario y el generador: de un número de día sale una pista |
-| `src/terrain.js` | Convierte la pista en terreno: alturas, suelos, agua, árboles, público |
+| `src/circuitos.js` | Los circuitos fijos, escritos a mano |
+| `src/terrain.js` | Convierte la pista en terreno: alturas, suelos, agua, puentes, árboles, público, y dónde va cada casa, cada pirca y cada cosa de la calle |
+| `src/edificios.js`, `src/pueblo.js` | Las medidas de los edificios y de las cosas de la calle, y cómo se dibujan |
 | `src/referencia.js` | Calcula la trazada y el tiempo de referencia de cada sector |
 | `src/vehicle.js` | La física del auto |
 | `src/reglas.js` | Cuenta regresiva, sectores, recargos, daño y abandono |
@@ -116,7 +138,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/autos.js` | Los modelos de los autos y el fantasma |
 | `src/material.js`, `src/pixel.js`, `src/arte.js`, `src/sprites.js` | El estilo: materiales, herramientas para pintar de a píxeles, y los dibujos |
 | `src/post.js` | El "revelado": desenfoque de maqueta, brillos y ajuste de color. Se apaga solo si el aparato no da |
-| `src/huellas.js`, `src/fx.js` | Las huellas en el piso, el polvo que queda flotando y el barro y el agua que saltan de las ruedas |
+| `src/huellas.js`, `src/fx.js` | Las huellas en el piso y la pintura de las calles; el polvo que queda flotando y el barro y el agua que saltan de las ruedas |
 | `src/camera.js`, `src/audio.js`, `src/input.js`, `src/noise.js` | Cámaras, sonido del motor, mandos y ruido para el relieve |
 | `vendor/` | Three.js (la biblioteca 3D) y las tipografías |
 | `tools/` | Pruebas sin gráficos (opcionales) |
@@ -131,6 +153,7 @@ Abrir `index.html` con doble clic no funciona: el navegador no carga los módulo
 Direcciones útiles para probar:
 
 - `?p=3` abre la pista #3, si ya pasó. Con `?p=6&futuro` se abre cualquiera, aunque todavía no haya llegado su día (como práctica).
+- `?c=subida`, `?c=bajada` y `?c=urbano` abren los circuitos.
 - `?simple` saca el desenfoque y los brillos.
 
 ## Pruebas (opcional)
@@ -138,13 +161,14 @@ Direcciones útiles para probar:
 Con Node instalado, desde la carpeta del repo:
 
 - `node tools/piloto.mjs 1 12`: cinco pilotos de distinto nivel corren las pistas 1 a 12 con cada auto. Dice si llegan, en cuánto, y dónde se salen.
+- `node tools/piloto.mjs 16001 3`: lo mismo en los tres circuitos (sus números de pista son 16001, 16002 y 16003).
 - `SOLO=novato,ayudado node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo. Sirve para ver cuánto ayuda.
 - `node tools/fisica.mjs`: aceleración, frenada, curvas y subidas en cada suelo.
 - `node tools/maniobras.mjs`: qué tan fácil se descontrola cada auto con volantazos.
 
-Sirven para revisar que las pistas se puedan terminar después de tocar `config.js` o `generador.js`.
+Sirven para revisar que las pistas se puedan terminar después de tocar `config.js`, `generador.js` o `circuitos.js`.
 
-**Si un cambio hace que la pista de un día sea otra** (tocar el generador o cómo se arma el terreno), hay que subir el número `VERSION` de `src/generador.js`. Con eso, lo que cada uno tenía guardado de la versión anterior se descarta solo (esos tiempos y fantasmas eran de otro camino) y la oficial del día se puede correr de nuevo.
+**Si un cambio hace que la pista de un día sea otra** (tocar el generador o cómo se arma el terreno), hay que subir el número `VERSION` de `src/generador.js`. Con eso, lo que cada uno tenía guardado de la versión anterior se descarta solo (esos tiempos y fantasmas eran de otro camino) y la oficial del día se puede correr de nuevo. Lo mismo vale al cambiar el recorrido de un circuito.
 
 ## Plan
 
