@@ -28,6 +28,7 @@ Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el t
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
 - **Circuitos fijos.** Además de la pista del día hay cuatro recorridos que no cambian nunca, para correr las veces que se quiera. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día. Uno es una vuelta cerrada para practicar: no tiene llegada, se dan las vueltas que se quiera.
 - **Ayuda de manejo, para arrancar.** Se prende en la configuración: el auto frena solo antes de las curvas y se cruza menos. Es más fácil y más lento. En la tabla, esos tiempos llevan un salvavidas. Después de una pasada complicada, el juego la ofrece.
+- **Sponsors de mentira.** Las pistas llevan publicidad, como un rally de verdad: FPY, CAC y Mercado Ladri. Son solo de adorno y se cambian tocando una lista (ver "Los sponsors").
 
 ## Los circuitos
 
@@ -47,6 +48,21 @@ Shakedown · Urbano 🏘️ ⏱️ 01:30:42 🟩 🟩 🟩 🟩 🟩 🏁
 ```
 
 **La Vuelta del Club no tiene llegada.** Se larga unos metros antes de la raya y el reloj arranca al cruzarla. Cada vez que se la vuelve a cruzar se cierra una vuelta: aparece su tiempo, el reloj y los cuadraditos empiezan de nuevo y el auto queda arreglado. La mejor vuelta queda guardada y pasa a ser el fantasma contra el que se corre. Para terminar se sale con `Esc` (o con la X en el celular) y se ve el resultado de la mejor vuelta, que es la que se comparte.
+
+## Los sponsors
+
+Las pistas llevan publicidad en cinco lugares: banderas a los costados de la largada y de la llegada, chapas apoyadas en la cinta del público, cartelones al costado del camino, pórticos en las calles del pueblo y una tira de marcas arriba de cada arco.
+
+Las marcas son un chiste: **FPY**, **CAC** y **Mercado Ladri**. El parecido con marcas de verdad es a propósito, y los nombres están cambiados también a propósito.
+
+- **Es solo dibujo.** Nada de esto se choca ni cambia la pista. Se puede sumar, sacar o cambiar un sponsor sin tocar los tiempos de nadie y sin subir la `VERSION`. Si el auto se lleva puesta una chapa o un cartelón, queda tirado en el piso; al auto no le pasa nada.
+- **Se reparten solos.** Cada pista sortea dónde van, igual para todos. Los cartelones aparecen solo donde hay lugar: lejos de los árboles, del público y del agua. Por eso en el bosque hay menos que en el campo.
+- **La lista** está en `src/sponsors.js`. Cada sponsor lleva un nombre, dos colores y hasta tres dibujos de pocos píxeles: el cartel grande, la chapa y la bandera. Los dibujos se escriben renglón por renglón, con un punto para el fondo y un numeral para la tinta.
+- **`peso`** dice cuánto aparece cada uno: con peso 2 sale el doble que los demás.
+- **Con una imagen.** En vez de escribir los renglones se puede dibujar un PNG chiquito, guardarlo en una carpeta del juego (por ejemplo `sponsors/`) y nombrarlo en `imagen`. Medidas: cartel 52 × 16 píxeles, chapa 21 × 7 y bandera 7 × 25. Lo transparente deja ver el color de fondo. Si la imagen es más grande, se achica.
+- **Sin dibujo.** Al soporte que le falte el dibujo se le escribe el nombre con las letras del juego. Para probar un sponsor nuevo alcanza con el nombre y los dos colores. En la chapa entran cinco letras y en la bandera tres: si el nombre es más largo, conviene darle un `corto`.
+
+Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 
 ## El club: correr contra amigos
 
@@ -103,6 +119,8 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | El recorrido de cada circuito fijo: sus rectas, curvas, puentes, casas y cosas en la calle, y por qué ambiente pasa cada pedazo | `src/circuitos.js` (cada circuito es una lista que se lee de arriba hacia abajo; al cambiar uno hay que subirle su `version`) |
 | Las medidas de los edificios y de las cosas de la calle, y cuáles se caen al chocarlas | `src/edificios.js` |
 | Los dibujos de las casas, los colectivos, los faroles, las barandas y las pircas | `src/pueblo.js` |
+| Los sponsors: nombres, colores, dibujos y cuánto aparece cada uno | `src/sponsors.js` |
+| Dónde va la publicidad, cuánta hay y qué tan vivos son sus colores (`VIVO`) | `src/publicidad.js` |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
 | La luz y la bruma de cada clima | `LUCES` en `src/world.js` y `REVELADOS` en `src/post.js` |
@@ -112,7 +130,7 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Los íconos de los botones y de las notas | `src/iconos.js` |
 | Los textos de la portada y la ayuda | `src/menu.js` |
 
-El juego no usa archivos de imagen: todo se pinta con código, de a píxeles, cuando arranca. Un píxel del mundo mide 25 cm.
+El juego no usa archivos de imagen: todo se pinta con código, de a píxeles, cuando arranca. Un píxel del mundo mide 25 cm. La única excepción posible son los sponsors, que pueden traer su PNG.
 
 ## Cómo está armado
 
@@ -138,6 +156,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus gustos) |
 | `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
 | `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, el público, la lluvia y los faros |
+| `src/sponsors.js`, `src/publicidad.js` | La lista de sponsors, y dónde va y cómo se dibuja su publicidad |
 | `src/autos.js` | Los modelos de los autos y el fantasma |
 | `src/material.js`, `src/pixel.js`, `src/arte.js`, `src/sprites.js` | El estilo: materiales, herramientas para pintar de a píxeles, y los dibujos |
 | `src/post.js` | El "revelado": desenfoque de maqueta, brillos y ajuste de color. Se apaga solo si el aparato no da |

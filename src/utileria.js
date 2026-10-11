@@ -65,8 +65,10 @@ export function crearUtileria(T, escena, esc) {
   }
 
   // --- arcos: dos palos y una tela con algo escrito. Devuelve donde quedo la tela, para cambiarla despues ---
+  const arcos = [];   // donde quedo cada uno: { p, alto, medio } (alto y medio ancho, en pixeles)
   function arco(p, alto, tela, color) {
     const medio = Math.round((p.ancho / 2 + 0.9) * 8), palo = { lados: esc.liso(color), arriba: esc.liso(color), abajo: null };
+    arcos.push({ p, alto, medio });
     parado(p.x, p.z, p.rumbo);
     for (const s of [-1, 1]) fijos.bloque(M, [s * medio - 1, -8, -1, s * medio + 1, alto + 10, 1], palo);
     fijos.caja(M, [-medio, alto, -0.5, medio, alto + 9, 0.5], (cara, e) => {
@@ -202,6 +204,7 @@ export function crearUtileria(T, escena, esc) {
   acomodar();
 
   return {
+    arcos,
     // las ruedas de los molinos giran
     animar: (t) => { giran.forEach((r, k) => { r.rotation.z = t * (1.1 + k * 0.3); }); },
     // el auto se llevo puesto algo: se lo tira

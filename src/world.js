@@ -1,5 +1,5 @@
 // Dibuja el mundo: el terreno, el agua, la luz de cada clima, y llama a los que ponen
-// la vegetacion (flora.js), la utileria del rally (utileria.js) y el publico (publico.js).
+// la vegetacion (flora.js), la utileria del rally (utileria.js), el publico (publico.js), el pueblo (pueblo.js) y la publicidad (publicidad.js).
 // Todo esta hecho de bloques y de dibujos de pocos pixeles (las herramientas estan en pixel.js y los dibujos en arte.js).
 import * as THREE from 'three';
 import { SUELOS } from './config.js';
@@ -12,6 +12,7 @@ import { crearFlora } from './flora.js';
 import { crearUtileria } from './utileria.js';
 import { crearPublico } from './publico.js';
 import { crearPueblo } from './pueblo.js';
+import { crearPublicidad } from './publicidad.js';
 import { crearClima } from './clima.js';
 
 // --- la luz de cada clima ---
@@ -108,6 +109,7 @@ export function crearMundo(T, escena, liviano, huellas) {
   const esc = crearEscenografia();
   const clima = crearClima(T, escena, luz);
   const flora = crearFlora(T, escena, esc, liviano), utileria = crearUtileria(T, escena, esc), publico = crearPublico(T, escena, clima, luz), pueblo = crearPueblo(T, escena, clima, luz);
+  const publicidad = crearPublicidad(T, escena, utileria.arcos);
 
   // --- terreno, en pedazos de 64 x 64 metros para dibujar solo lo que se ve ---
   // el mapa que lee el shader: por celda, que suelo es, un tono (para que no quede todo parejo) y donde van los manchones
@@ -184,7 +186,7 @@ export function crearMundo(T, escena, liviano, huellas) {
   const paso = 2 * R / lado, D = new THREE.Vector3();
 
   return {
-    luz, flora, publico,
+    luz, flora, publico, publicidad,
     // Una vez por cuadro: acomoda lo que depende de donde esta la camara y de donde esta el auto.
     //   las sombras siguen a la camara; lo que queda abajo del auto se oscurece; las copas se calan sobre el auto;
     //   y los sprites se dan vuelta para mirar a la camara.
@@ -217,7 +219,8 @@ export function crearMundo(T, escena, liviano, huellas) {
       clima.animar(dt, t, c);
       if (c.rompio.length) { c.rompio.length = 0; utileria.tirar(); pueblo.tirar(); }
       utileria.animar(t);
+      publicidad.animar(c, dt);
     },
-    reiniciar: () => { utileria.reiniciar(); pueblo.reiniciar(); },
+    reiniciar: () => { utileria.reiniciar(); pueblo.reiniciar(); publicidad.reiniciar(); },
   };
 }

@@ -25,6 +25,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Menos palabras, más íconos.** En el celular todos los botones son íconos y muestran su estado.
 - **Rally puro, pero con una mano para el que arranca.** La ayuda de manejo es optativa y está apagada de fábrica: frena sola antes de las curvas y hace que el auto se cruce menos. Es más lenta que manejar bien, así que no da ventaja; igual, esos tiempos van marcados en la tabla. Un piloto de prueba que no suelta nunca el acelerador rompe el auto en 7 de 8 pistas; con la ayuda llega en las 8.
 - **Lenguaje visual:** bloques con dibujos de pocos píxeles (un píxel = 25 cm), público y plantas como dibujos planos que miran a la cámara, colores apagados y polvorientos, y un "revelado" de maqueta (desenfoque, brillos, bruma cálida). Los instrumentos son carteles viales, amarillos y negros.
+- **Publicidad en chiste, y solo de adorno.** Los sponsors son parodias de marcas conocidas, con el nombre cambiado (FPY, CAC, Mercado Ladri). Van en banderas, chapas contra la cinta del público, cartelones, pórticos y arcos. No se chocan ni cambian la pista: se reparten con un sorteo aparte, así se pueden cambiar sin tocar los tiempos de nadie ni subir la versión. Los soportes están pensados para que el día de mañana lleven sponsors de verdad: alcanza con cambiar la lista.
 - **Sin instalación ni compilado.** HTML y JavaScript, publicado con GitHub Pages en `/shakedown`.
 
 ## Hecho
@@ -48,18 +49,18 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Tres circuitos fijos: Subida a Mina Vieja, Bajada del Portezuelo y Callejero de Villa Cañada
 - [x] Vuelta del Club: circuito cerrado de práctica por campo, bosque y montaña, con vueltas, mejor vuelta y fantasma de la mejor
 - [x] Piezas nuevas para armar pistas: puentes de madera con barandas, pircas, lajas, casas y edificios, veredas, calles cortadas con vallas y vecinos, faroles con cables, autos estacionados, colectivos, volquetes, conos, lomos de burro y calles pintadas
+- [x] Publicidad en todas las pistas: tres sponsors en chiste en banderas, chapas, cartelones, pórticos y arcos; se cambian desde una lista y pueden traer su imagen; el auto los puede tirar
 
 ## Lo que sigue
 
 1. **Más variedad en la pista del día:** anchos que cambian (ruta ancha, camino vecinal, huella angosta), pedazos de asfalto entre casas, puentes; y cornisas más cortas y con pirca en las curvas.
 2. **Tres autos argentinos más** (El Fitito, El Doce y El 504). Cada día se ofrecen tres, que van rotando según el día y la pista.
-3. **Publicidad en la pista:** carteles, banderas y vallas de sponsors, fáciles de cambiar.
-4. **Probarlo en celulares y compus de verdad.** Todo está probado en un navegador sin placa de video: falta ver cómo rinde y cómo se siente con el teléfono en la mano.
-5. **Ajustar el manejo jugando.** Está calibrado con pilotos automáticos, no con las manos.
-6. **Pulir campo y montaña** al nivel del bosque. Revisar la niebla y el reflejo del agua.
-7. **Colores y texturas:** seguir acercándolos a las referencias (pisos calmos, bruma cálida, sombras lilas).
-8. **Autos dibujados en la portada**, en vez de emojis.
-9. **Sonido:** golpes, agua, derrape y público.
+3. **Probarlo en celulares y compus de verdad.** Todo está probado en un navegador sin placa de video: falta ver cómo rinde y cómo se siente con el teléfono en la mano.
+4. **Ajustar el manejo jugando.** Está calibrado con pilotos automáticos, no con las manos.
+5. **Pulir campo y montaña** al nivel del bosque. Revisar la niebla y el reflejo del agua.
+6. **Colores y texturas:** seguir acercándolos a las referencias (pisos calmos, bruma cálida, sombras lilas).
+7. **Autos dibujados en la portada**, en vez de emojis.
+8. **Sonido:** golpes, agua, derrape y público.
 
 ## Ideas para más adelante
 
@@ -68,6 +69,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - Más circuitos fijos, y tabla de cada uno
 - Tabla común para todos (necesita un servicio aparte donde guardar los tiempos)
 - Soporte de joystick
+- Sponsors de verdad, y un "sponsor del día" que se lleve los mejores lugares
 
 ## Riesgos
 

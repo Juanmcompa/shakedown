@@ -183,8 +183,9 @@ export function crearDibujos() {
 //   poner(nombre, x, y, z, { escala, azar, mueve, version })    una planta o una cosa
 //   persona(n, x, y, z, rumbo, azar)                            alguien del publico; devuelve su numero en el lote
 // malla(sombra, brillante) devuelve lo que hay que agregar a la escena. brillante: tiene luz propia (fuego, bengalas).
-export function crearLoteDeSprites() {
-  const { atlas, zonas, textura } = crearDibujos();
+// dibujos: de donde salen los dibujos, { atlas, zonas: { nombre: [zona, ...] }, textura }. Si no se dice, son los de este archivo.
+export function crearLoteDeSprites(dibujos) {
+  const { atlas, zonas, textura } = dibujos || crearDibujos();
   const base = [], tam = [], uv = [], dato = [];
   function agregar(z, cuadros, x, y, zz, escala, azar, mueve, esGente, rumbo) {
     const w = z.w / cuadros;

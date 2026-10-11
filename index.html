@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="10">
+<html lang="es" data-pagina="11">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -19,7 +19,7 @@
   // Mientras el juego esta en desarrollo, sus archivos se piden de nuevo en cada visita (el numero V
   // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'sponsors', 'publicidad'];
   const mapa = { three: './vendor/three.module.js' };
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');

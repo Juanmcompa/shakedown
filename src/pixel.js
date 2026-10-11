@@ -158,13 +158,13 @@ export function crearLote() {
   // Caja de escenografia: medidas en pixeles enteros y una zona por tipo de cara.
   // zonas: { arriba, abajo, lados }. Sin "abajo" se usa la de arriba; con abajo: null, esa cara no se dibuja.
   // Una cara de costado puede llevar su propia zona: px (derecha), nx (izquierda), nz (frente) o pz (atras).
-  // Si la zona es mas grande que la cara, se toma un pedazo al azar (rnd).
+  // Si la zona es mas grande que la cara, se toma un pedazo al azar (rnd). Si es mas chica (un color liso, por ejemplo), se estira.
   function bloque(m, d, zonas, rnd, cuña = 0, cuñaAtras = 0) {
     const corr = {};
     caja(m, d, (nombre, e) => {
       const z = nombre === 'py' ? zonas.arriba : nombre === 'ny' ? (zonas.abajo === undefined ? zonas.arriba : zonas.abajo) : nombre in zonas ? zonas[nombre] : zonas.lados;
       if (!z) return null;
-      const lado = nombre[1] === 'x' ? d[5] - d[2] : d[3] - d[0], alto = nombre[1] === 'y' ? d[5] - d[2] : d[4] - d[1];
+      const lado = Math.min(z.w, nombre[1] === 'x' ? d[5] - d[2] : d[3] - d[0]), alto = Math.min(z.h, nombre[1] === 'y' ? d[5] - d[2] : d[4] - d[1]);
       if (!corr[nombre]) corr[nombre] = [Math.floor((rnd ? rnd() : 0) * (z.w - lado + 1)), Math.floor((rnd ? rnd() : 0) * (z.h - alto + 1))];
       // a que esquina del dibujo va esta esquina de la caja
       const i = CARAS[nombre].findIndex((k) => E[k] === e);
