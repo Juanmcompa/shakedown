@@ -7,6 +7,8 @@ El juego se juega entero sin servidor. Con servidor suma dos cosas:
 
 Si el servidor no contesta, el juego sigue andando con el link largo de siempre.
 
+Está publicado en `https://shakedown.juanmcomparini.workers.dev` (esa dirección es la que figura en `SERVIDOR`, en `src/config.js`). Abrirla tiene que mostrar `{"juego":"Shakedown", …}`.
+
 ## Qué hay en esta carpeta
 
 | Archivo | Qué es |
@@ -19,12 +21,12 @@ En la raíz del repo, `wrangler.jsonc` le dice a Cloudflare cómo publicarlo.
 
 ## Publicarlo en Cloudflare (una sola vez)
 
-Hace falta una cuenta de Cloudflare. El plan gratis alcanza.
+Ya está hecho. Queda anotado por si hay que repetirlo en otra cuenta. Hace falta una cuenta de Cloudflare; el plan gratis alcanza.
 
 1. Entrar a [dash.cloudflare.com](https://dash.cloudflare.com) y abrir **Workers & Pages**.
 2. **Create application** y, al lado de **Import a repository**, **Get started**.
 3. Elegir la cuenta de GitHub (la primera vez pide permiso para ver los repos: alcanza con darle acceso a `shakedown`) y elegir el repo `shakedown`.
-4. En la configuración, dejar el nombre del proyecto en `shakedown` (tiene que ser igual al `name` de `wrangler.jsonc`) y lo demás como viene. **Save and Deploy**.
+4. En la configuración, dejar el nombre del proyecto en `shakedown` (tiene que ser igual al `name` de `wrangler.jsonc`) y lo demás como viene: sin comando de armado, `npx wrangler deploy` para publicar y **Protect with Cloudflare Access** apagado (si se prende, el juego no puede hablar con el servidor). **Deploy**.
 5. Al terminar muestra la dirección del servidor, algo como `https://shakedown.TU-NOMBRE.workers.dev`. Abrirla tiene que mostrar `{"juego":"Shakedown", …}`.
 6. Copiar esa dirección en `SERVIDOR`, en `src/config.js`, sin barra al final. Hacer commit y Push.
 
@@ -35,6 +37,8 @@ Si la publicación falla diciendo que falta la base de datos: crearla a mano en 
 ## Cuánto aguanta gratis
 
 El plan gratis de Cloudflare da 100.000 pedidos por día y deja escribir 100.000 filas por día en la base. Cada pasada que se sube gasta un pedido y unas 6 filas; mirar una tabla gasta un pedido y no escribe nada. Con los topes que trae el servidor entran unas 12.000 pasadas por día, que son miles de jugadores.
+
+La base de datos queda lejos de Argentina: cada viaje de ida y vuelta tarda un tercio de segundo. Por eso el servidor hace un solo viaje por pedido (subir una pasada, entrar a un club, pedir una tabla).
 
 Si un día se llega al tope, no se rompe nada: hasta el día siguiente (los contadores vuelven a cero a las 21, hora argentina) los links salen largos y los tiempos nuevos tardan en aparecer en las tablas. El uso se ve en el panel de Cloudflare, en la página del Worker y en la de la base.
 

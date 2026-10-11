@@ -60,6 +60,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Publicidad en todas las pistas: tres sponsors en chiste en banderas, chapas, cartelones, pórticos y arcos; se cambian desde una lista y pueden traer su imagen; el auto los puede tirar
 - [x] Links cortos y clubes por invitación, con un servidor chico (carpeta `servidor/`), probado en la compu con tres jugadores
 - [x] Marca nueva: logo en la portada y en la carga, íconos para la pestaña y el celular, e imagen nueva para cuando se pega el link
+- [x] Servidor en línea en Cloudflare, conectado al repo: se publica solo con cada Push. Cada pedido hace un solo viaje a la base de datos (queda lejos de Argentina: un tercio de segundo por viaje)
 - [x] Trazada para seguir, con prendido y apagado (en la configuración o con la T): verde, amarilla o roja según la velocidad que se trae
 - [x] Ayuda de manejo que sigue la trazada y regula los pedales de a poco: ya no se escucha cortar el acelerador
 - [x] Antorchas rojas en las piedras pegadas al camino
@@ -67,7 +68,6 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 
 ## Lo que sigue
 
-0. **Poner el servidor en línea:** conectar el repo en Cloudflare (ver [`servidor/LEEME.md`](servidor/LEEME.md)) y poner su dirección en `SERVIDOR`, en `src/config.js`. Hasta entonces el juego anda como antes, con el link largo y sin clubes.
 1. **Más variedad en la pista del día:** anchos que cambian (ruta ancha, camino vecinal, huella angosta), pedazos de asfalto entre casas, puentes; y cornisas más cortas y con pirca en las curvas.
 2. **Tres autos argentinos más** (El Fitito, El Doce y El 504). Cada día se ofrecen tres, que van rotando según el día y la pista.
 3. **Probarlo en celulares y compus de verdad.** Todo está probado en un navegador sin placa de video: falta ver cómo rinde y cómo se siente con el teléfono en la mano.

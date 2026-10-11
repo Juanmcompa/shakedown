@@ -18,7 +18,12 @@ export function baseLocal(archivo = ':memory:') {
     run: async () => { const r = db.prepare(sql).run(...datos); return { success: true, meta: { changes: Number(r.changes) } }; },
     ya: () => (lee(sql) ? { success: true, results: db.prepare(sql).all(...datos).map((f) => ({ ...f })) } : (db.prepare(sql).run(...datos), { success: true, results: [] })),
   });
-  return { prepare: (sql) => pedido(sql), batch: async (lista) => lista.map((p) => p.ya()), exec: async (sql) => db.exec(sql), cerrar: () => db.close() };
+  // (una tanda, igual que en D1, se cumple entera o no se cumple)
+  const tanda = async (lista) => {
+    db.exec('BEGIN');
+    try { const r = lista.map((p) => p.ya()); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; }
+  };
+  return { prepare: (sql) => pedido(sql), batch: tanda, exec: async (sql) => db.exec(sql), cerrar: () => db.close() };
 }
 
 // Atiende un pedido de Node con el programa del servidor.

@@ -42,7 +42,11 @@ export const LIMITES = {
 };
 const ORIGENES = 'https://juanmcompa.github.io';   // desde que paginas se puede usar (se cambia con la variable ORIGENES)
 
-// --- la base de datos: las tablas se crean solas la primera vez ---
+// --- la base de datos ---
+// Cada pedido hace UN solo viaje a la base: una consulta, o una tanda que se cumple entera o no se cumple. La base puede
+// quedar lejos de quien juega (desde Argentina, cada viaje tarda un tercio de segundo), asi que cinco consultas seguidas
+// se sienten. Por eso las reglas (los topes, "una sola oficial", "hay lugar en el club") van escritas adentro de las
+// mismas consultas, y despues se mira que paso.
 const ESQUEMA = [
   // una pasada. "cent" es el tiempo en centesimas: con el corredor, la pista y si fue practica, dice que pasada es
   // (si se la sube de nuevo, por ejemplo despues de cambiarse el apodo, se actualiza esa misma y no se duplica).
@@ -56,14 +60,20 @@ const ESQUEMA = [
   // quien esta en cada club, con el apodo que uso la ultima vez (para poder nombrar al que todavia no corrio)
   "CREATE TABLE IF NOT EXISTS miembros (club TEXT NOT NULL, jugador TEXT NOT NULL, nombre TEXT NOT NULL DEFAULT '', desde INTEGER NOT NULL, PRIMARY KEY (club, jugador))",
   'CREATE INDEX IF NOT EXISTS miembros_de ON miembros (jugador)',
-  // los contadores de los limites: uno por conexion y por rato ("vence" dice cuando se puede borrar)
+  // los contadores de los limites: uno por conexion y por dia ("vence" dice cuando se puede borrar)
   'CREATE TABLE IF NOT EXISTS limites (clave TEXT PRIMARY KEY, n INTEGER NOT NULL, vence INTEGER NOT NULL)',
 ];
-const listas = new WeakMap();   // (una vez por base, mientras el programa siga despierto)
-function preparar(DB) {
-  if (!listas.has(DB)) listas.set(DB, DB.batch(ESQUEMA.map((s) => DB.prepare(s))).catch((e) => { listas.delete(DB); throw e; }));
-  return listas.get(DB);
+const crearTablas = (DB) => DB.batch(ESQUEMA.map((s) => DB.prepare(s)));
+// Las tablas se crean solas: si un pedido falla porque todavia no existen (la base es nueva), se crean y se lo repite.
+// (Se puede repetir sin miedo: de una tanda que falla no queda nada hecho.)
+async function conTablas(DB, hacer) {
+  try { return await hacer(); } catch (e) {
+    if (e instanceof Aviso || !/no such table/i.test(String(e && e.message))) throw e;
+    await crearTablas(DB);
+    return hacer();
+  }
 }
+const revisadas = new WeakSet();   // (las bases a las que ya se les repaso el esquema, mientras el programa siga despierto)
 
 // --- cosas chicas ---
 const LETRAS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -84,6 +94,7 @@ const limpiar = (txt, largo) => String(txt || '').replace(/[\u0000-\u001f<>]/g, 
 const esLlave = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(x);
 const esCodigoCorto = (x) => typeof x === 'string' && /^[0-9A-Za-z]{6,12}$/.test(x);
 const ahora = () => Math.floor(Date.now() / 1000);
+const esRepetido = (e) => /UNIQUE|PRIMARY/i.test(String(e && e.message));
 
 class Aviso extends Error { constructor(estado, texto) { super(texto); this.estado = estado; } }
 const falla = (estado, texto) => { throw new Aviso(estado, texto); };
@@ -97,14 +108,21 @@ function conexionDe(ip) {
   return grupos.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':');
 }
 
-// Cuenta un pedido mas de esa clave en el dia y dice si se paso del tope.
-// (Una vez pasado el tope ya no anota nada: los pedidos de mas no gastan escrituras en la base.)
+// Un contador del dia (por ejemplo, las pasadas que subio una conexion). Tiene tres partes, para usar en una misma tanda:
+//   anotar(DB)       la consulta que suma uno. Una vez pasado el tope ya no anota nada: los pedidos de mas no gastan
+//                    escrituras en la base.
+//   ENTRA(clave, tope)  la condicion "todavia no se paso", para ponerle a lo que viene despues en la tanda
+//   sePaso(resultado)   mirando lo que devolvio "anotar", si este pedido ya se paso
 const DIA = 86400;
-async function seVaDeMambo(DB, clave, tope) {
-  const dia = Math.floor(ahora() / DIA);
-  const fila = await DB.prepare('INSERT INTO limites (clave, n, vence) VALUES (?1, 1, ?2) ON CONFLICT (clave) DO UPDATE SET n = n + 1 WHERE n <= ?3 RETURNING n')
-    .bind(clave + ':' + dia, (dia + 2) * DIA, tope).first();
-  return !fila || fila.n > tope;
+const SUMA = 'ON CONFLICT (clave) DO UPDATE SET n = n + 1 WHERE n <= ';
+const ENTRA = (clave, tope) => `COALESCE((SELECT n FROM limites WHERE clave = ${clave}), 0) <= ${tope}`;
+function contador(nombre, tope) {
+  const dia = Math.floor(ahora() / DIA), clave = nombre + ':' + dia, vence = (dia + 2) * DIA;
+  return {
+    clave, tope, vence,
+    anotar: (DB) => DB.prepare(`INSERT INTO limites (clave, n, vence) VALUES (?1, 1, ?2) ${SUMA}?3 RETURNING n`).bind(clave, vence, tope),
+    sePaso: (resultado) => { const f = resultado.results[0]; return !f || f.n > tope; },
+  };
 }
 
 // --- las pasadas ---
@@ -124,25 +142,36 @@ async function guardarPasada(env, pedido, de) {
     if (l.muestras < 1900 && Math.abs((l.muestras - 1) * 0.5 - m.t) > 3) falla(400, 'El tiempo no coincide con la pasada grabada.');
   }
   const jugador = await huella(pedido.llave), practica = m.practica ? 1 : 0, cent = Math.round(m.t * 100);
-  // la oficial es una sola: si ya hay una de este corredor en esta pista, vale esa
-  if (!practica) {
-    const ya = await DB.prepare('SELECT id, cent FROM pasadas WHERE pista = ?1 AND version = ?2 AND jugador = ?3 AND practica = 0 LIMIT 1').bind(pista, version, jugador).first();
-    if (ya && ya.cent !== cent) falla(409, 'Ya tenés una pasada oficial en esta pista.');
-  }
-  if (await seVaDeMambo(DB, 'p:' + de, LIMITES.pasadasPorConexion)) falla(429, 'Desde esta conexión ya se subieron muchas pasadas hoy.');
-  if (await seVaDeMambo(DB, 'total', LIMITES.pasadasPorDia)) falla(429, 'Hoy el servidor ya no recibe más pasadas.');
+  const deLaConexion = contador('p:' + de, LIMITES.pasadasPorConexion), deTodos = contador('total', LIMITES.pasadasPorDia);
+  const ESTA = 'pista = ?2 AND version = ?3 AND jugador = ?4';
   for (let intento = 0; intento < 4; intento++) {
+    let r;
     try {
-      const fila = await DB.prepare(`INSERT INTO pasadas (id, pista, version, jugador, practica, cent, nombre, t, c, auto, ab, ayuda, codigo, creado)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
-        ON CONFLICT (pista, version, jugador, practica, cent) DO UPDATE SET nombre = excluded.nombre, codigo = excluded.codigo RETURNING id`)
-        .bind(alAzar(7), pista, version, jugador, practica, cent, m.nombre, m.t, m.c, m.auto, m.ab || '', m.ayuda ? 1 : 0, codigo, ahora()).first();
-      // en sus clubes figura con el apodo de su ultima pasada
-      await DB.prepare('UPDATE miembros SET nombre = ?2 WHERE jugador = ?1 AND nombre <> ?2').bind(jugador, m.nombre).run();
-      return { id: fila.id };
+      r = await DB.batch([
+        deLaConexion.anotar(DB),
+        deTodos.anotar(DB),
+        // La pasada entra si no se paso ningun tope y, si es oficial, si ese corredor no tiene ya OTRA en esa pista
+        // (la oficial es una sola: vale la primera que llego). Si es la misma de antes, se actualiza: cambio el apodo.
+        DB.prepare(`INSERT INTO pasadas (id, pista, version, jugador, practica, cent, nombre, t, c, auto, ab, ayuda, codigo, creado)
+          SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14
+          WHERE ${ENTRA('?15', '?16')} AND ${ENTRA('?17', '?18')}
+            AND (?5 = 1 OR NOT EXISTS (SELECT 1 FROM pasadas WHERE ${ESTA} AND practica = 0 AND cent <> ?6))
+          ON CONFLICT (pista, version, jugador, practica, cent) DO UPDATE SET nombre = excluded.nombre, codigo = excluded.codigo RETURNING id`)
+          .bind(alAzar(7), pista, version, jugador, practica, cent, m.nombre, m.t, m.c, m.auto, m.ab || '', m.ayuda ? 1 : 0, codigo, ahora(),
+            deLaConexion.clave, deLaConexion.tope, deTodos.clave, deTodos.tope),
+        // en sus clubes figura con el apodo de su ultima pasada (si es que quedo guardada)
+        DB.prepare(`UPDATE miembros SET nombre = ?1 WHERE jugador = ?4 AND nombre <> ?1
+          AND EXISTS (SELECT 1 FROM pasadas WHERE ${ESTA} AND practica = ?5 AND cent = ?6)`).bind(m.nombre, pista, version, jugador, practica, cent),
+      ]);
     } catch (e) {
-      if (intento === 3 || !/UNIQUE|PRIMARY/i.test(String(e && e.message))) throw e;   // (justo ese codigo corto ya existia: se prueba con otro)
+      if (intento < 3 && esRepetido(e)) continue;   // (justo ese codigo corto ya existia: se prueba con otro)
+      throw e;
     }
+    const fila = r[2].results[0];
+    if (fila) return { id: fila.id };
+    if (deLaConexion.sePaso(r[0])) falla(429, 'Desde esta conexión ya se subieron muchas pasadas hoy.');
+    if (deTodos.sePaso(r[1])) falla(429, 'Hoy el servidor ya no recibe más pasadas.');
+    falla(409, 'Ya tenés una pasada oficial en esta pista.');
   }
   return falla(500, 'No se pudo guardar.');
 }
@@ -153,48 +182,76 @@ async function traerPasada(env, id) {
 }
 
 // --- los clubes ---
+const CUANTOS = '(SELECT COUNT(*) FROM miembros WHERE club = ?1)';      // cuanta gente hay en el club ?1
+const MIS_CLUBES = '(SELECT COUNT(*) FROM miembros WHERE jugador = ?2)';   // en cuantos clubes esta el corredor ?2
 const clubDe = async (DB, codigo) => {
   if (!esCodigoCorto(codigo)) falla(404, 'Ese club no existe.');
-  const c = await DB.prepare('SELECT c.codigo, c.nombre, (SELECT COUNT(*) FROM miembros m WHERE m.club = c.codigo) AS miembros FROM clubes c WHERE c.codigo = ?1').bind(codigo).first();
+  const c = await DB.prepare(`SELECT codigo, nombre, ${CUANTOS} AS miembros FROM clubes WHERE codigo = ?1`).bind(codigo).first();
   return c || falla(404, 'Ese club no existe.');
 };
 async function crearClub(env, pedido, de) {
   const DB = env.DB, nombre = limpiar(pedido.nombre, 24);
   if (!esLlave(pedido.llave)) falla(400, 'Falta la llave.');
   if (nombre.length < 2) falla(400, 'Ponele un nombre al club.');
-  const jugador = await huella(pedido.llave);
-  const mios = await DB.prepare('SELECT COUNT(*) AS n FROM miembros WHERE jugador = ?1').bind(jugador).first();
-  if (mios.n >= LIMITES.clubesPorJugador) falla(400, 'Ya estás en muchos clubes. Salí de alguno para crear otro.');
-  if (await seVaDeMambo(DB, 'c:' + de, LIMITES.clubesPorConexion)) falla(429, 'Desde esta conexión ya se crearon muchos clubes hoy. Probá mañana.');
-  const codigo = alAzar(8), t = ahora();
-  await DB.batch([
-    DB.prepare('INSERT INTO clubes (codigo, nombre, creador, creado) VALUES (?1, ?2, ?3, ?4)').bind(codigo, nombre, jugador, t),
-    DB.prepare('INSERT INTO miembros (club, jugador, nombre, desde) VALUES (?1, ?2, ?3, ?4)').bind(codigo, jugador, limpiar(pedido.apodo, 14), t),
-  ]);
-  return { codigo, nombre, miembros: 1 };
+  const jugador = await huella(pedido.llave), creados = contador('c:' + de, LIMITES.clubesPorConexion), t = ahora();
+  for (let intento = 0; intento < 3; intento++) {
+    const codigo = alAzar(8);
+    let r;
+    try {
+      r = await DB.batch([
+        creados.anotar(DB),
+        // el club se crea si el corredor no esta ya en demasiados y si la conexion no creo demasiados hoy
+        DB.prepare(`INSERT INTO clubes (codigo, nombre, creador, creado) SELECT ?1, ?3, ?2, ?4
+          WHERE ${MIS_CLUBES} < ?5 AND ${ENTRA('?6', '?7')} RETURNING codigo`).bind(codigo, jugador, nombre, t, LIMITES.clubesPorJugador, creados.clave, creados.tope),
+        // y quien lo crea queda adentro (solo si de verdad se creo recien)
+        DB.prepare(`INSERT INTO miembros (club, jugador, nombre, desde) SELECT ?1, ?2, ?3, ?4
+          WHERE EXISTS (SELECT 1 FROM clubes WHERE codigo = ?1 AND creador = ?2 AND creado = ?4)`).bind(codigo, jugador, limpiar(pedido.apodo, 14), t),
+      ]);
+    } catch (e) {
+      if (intento < 2 && esRepetido(e)) continue;   // (justo ese codigo ya existia: se prueba con otro)
+      throw e;
+    }
+    if (r[1].results[0]) return { codigo, nombre, miembros: 1 };
+    if (creados.sePaso(r[0])) falla(429, 'Desde esta conexión ya se crearon muchos clubes hoy. Probá mañana.');
+    falla(400, 'Ya estás en muchos clubes. Salí de alguno para crear otro.');
+  }
+  return falla(500, 'No se pudo crear.');
 }
 async function entrarAlClub(env, codigo, pedido, de) {
   const DB = env.DB;
   if (!esLlave(pedido.llave)) falla(400, 'Falta la llave.');
-  const club = await clubDe(DB, codigo), jugador = await huella(pedido.llave), apodo = limpiar(pedido.apodo, 14);
-  const ya = await DB.prepare('SELECT nombre FROM miembros WHERE club = ?1 AND jugador = ?2').bind(codigo, jugador).first();
-  if (ya) {
-    if (apodo && apodo !== ya.nombre) await DB.prepare('UPDATE miembros SET nombre = ?3 WHERE club = ?1 AND jugador = ?2').bind(codigo, jugador, apodo).run();
-    return club;
-  }
-  if (club.miembros >= LIMITES.miembrosPorClub) falla(400, 'Ese club está completo.');
-  const mios = await DB.prepare('SELECT COUNT(*) AS n FROM miembros WHERE jugador = ?1').bind(jugador).first();
-  if (mios.n >= LIMITES.clubesPorJugador) falla(400, 'Ya estás en muchos clubes. Salí de alguno para sumarte a otro.');
-  if (await seVaDeMambo(DB, 'e:' + de, LIMITES.entradasPorConexion)) falla(429, 'Desde esta conexión ya se sumó mucha gente a clubes hoy. Probá mañana.');
-  await DB.prepare('INSERT OR IGNORE INTO miembros (club, jugador, nombre, desde) VALUES (?1, ?2, ?3, ?4)').bind(codigo, jugador, apodo, ahora()).run();
-  return { ...club, miembros: club.miembros + 1 };
+  if (!esCodigoCorto(codigo)) falla(404, 'Ese club no existe.');
+  const jugador = await huella(pedido.llave), apodo = limpiar(pedido.apodo, 14), ingresos = contador('e:' + de, LIMITES.entradasPorConexion);
+  const EXISTE = 'EXISTS (SELECT 1 FROM clubes WHERE codigo = ?1)', YA_ESTOY = 'EXISTS (SELECT 1 FROM miembros WHERE club = ?1 AND jugador = ?2)';
+  const HAY_LUGAR = `${EXISTE} AND NOT ${YA_ESTOY} AND ${CUANTOS} < ?3 AND ${MIS_CLUBES} < ?4`;
+  const r = await DB.batch([
+    // como estaba todo antes: el club, cuantos son, en cuantos clubes estoy y si ya estoy en este
+    DB.prepare(`SELECT nombre, ${CUANTOS} AS miembros, ${MIS_CLUBES} AS mios, ${YA_ESTOY} AS soy FROM clubes WHERE codigo = ?1`).bind(codigo, jugador),
+    // el ingreso se cuenta solo si es alguien nuevo y hay lugar (volver a entrar no cuenta)
+    DB.prepare(`INSERT INTO limites (clave, n, vence) SELECT ?5, 1, ?6 WHERE ${HAY_LUGAR} ${SUMA}?7 RETURNING n`)
+      .bind(codigo, jugador, LIMITES.miembrosPorClub, LIMITES.clubesPorJugador, ingresos.clave, ingresos.vence, ingresos.tope),
+    // entra, si hay lugar y la conexion no sumo demasiada gente hoy
+    DB.prepare(`INSERT INTO miembros (club, jugador, nombre, desde) SELECT ?1, ?2, ?5, ?6 WHERE ${HAY_LUGAR} AND ${ENTRA('?7', '?8')}`)
+      .bind(codigo, jugador, LIMITES.miembrosPorClub, LIMITES.clubesPorJugador, apodo, ahora(), ingresos.clave, ingresos.tope),
+    // el que ya estaba y cambio de apodo queda con el nuevo
+    DB.prepare("UPDATE miembros SET nombre = ?3 WHERE club = ?1 AND jugador = ?2 AND ?3 <> '' AND nombre <> ?3").bind(codigo, jugador, apodo),
+    DB.prepare(`SELECT ${YA_ESTOY} AS soy`).bind(codigo, jugador),
+  ]);
+  const antes = r[0].results[0];
+  if (!antes) falla(404, 'Ese club no existe.');
+  if (r[4].results[0].soy) return { codigo, nombre: antes.nombre, miembros: antes.miembros + (antes.soy ? 0 : 1) };
+  if (antes.miembros >= LIMITES.miembrosPorClub) falla(400, 'Ese club está completo.');
+  if (antes.mios >= LIMITES.clubesPorJugador) falla(400, 'Ya estás en muchos clubes. Salí de alguno para sumarte a otro.');
+  return falla(429, 'Desde esta conexión ya se sumó mucha gente a clubes hoy. Probá mañana.');
 }
 async function salirDelClub(env, codigo, pedido) {
   const DB = env.DB;
   if (!esLlave(pedido.llave) || !esCodigoCorto(codigo)) falla(400, 'Falta la llave.');
-  await DB.prepare('DELETE FROM miembros WHERE club = ?1 AND jugador = ?2').bind(codigo, await huella(pedido.llave)).run();
-  // un club sin nadie se borra
-  await DB.prepare('DELETE FROM clubes WHERE codigo = ?1 AND NOT EXISTS (SELECT 1 FROM miembros WHERE club = ?1)').bind(codigo).run();
+  await DB.batch([
+    DB.prepare('DELETE FROM miembros WHERE club = ?1 AND jugador = ?2').bind(codigo, await huella(pedido.llave)),
+    // un club sin nadie se borra
+    DB.prepare('DELETE FROM clubes WHERE codigo = ?1 AND NOT EXISTS (SELECT 1 FROM miembros WHERE club = ?1)').bind(codigo),
+  ]);
   return { listo: true };
 }
 
@@ -210,7 +267,7 @@ async function tablas(env, pedido) {
   if (!codigos.length) return salida;
   const pedidos = [];
   for (const codigo of codigos) {
-    pedidos.push(DB.prepare('SELECT c.nombre, (SELECT COUNT(*) FROM miembros m WHERE m.club = c.codigo) AS miembros, (SELECT COUNT(*) FROM miembros m WHERE m.club = c.codigo AND m.jugador = ?2) AS soy FROM clubes c WHERE c.codigo = ?1').bind(codigo, yo));
+    pedidos.push(DB.prepare(`SELECT nombre, ${CUANTOS} AS miembros, EXISTS (SELECT 1 FROM miembros WHERE club = ?1 AND jugador = ?2) AS soy FROM clubes WHERE codigo = ?1`).bind(codigo, yo));
     pedidos.push(DB.prepare(`SELECT p.id, p.jugador, p.nombre, m.nombre AS apodo, p.t, p.c, p.auto, p.ab, p.ayuda, p.practica, p.creado
       FROM miembros m JOIN pasadas p ON p.jugador = m.jugador AND p.pista = ?2 AND p.version = ?3 WHERE m.club = ?1`).bind(codigo, pista, version));
     pedidos.push(DB.prepare("SELECT jugador, nombre FROM miembros WHERE club = ?1 AND nombre <> '' ORDER BY desde LIMIT ?2").bind(codigo, LIMITES.miembrosPorClub));
@@ -259,8 +316,11 @@ export default {
       const partes = new URL(pedido.url).pathname.split('/').filter(Boolean), metodo = pedido.method, donde = partes[0] || '';
       if (metodo !== 'GET' && metodo !== 'POST') falla(405, 'Eso no se puede.');
       if (!donde) return contestar(200, { juego: 'Shakedown', hoy: hoy() });
-      if (!env.DB) falla(500, 'El servidor no tiene base de datos.');
-      await preparar(env.DB);
+      const DB = env.DB, despues = (promesa) => { if (ctx && ctx.waitUntil) ctx.waitUntil(promesa.catch(() => {})); };
+      if (!DB) falla(500, 'El servidor no tiene base de datos.');
+      // (la primera vez que el programa se despierta repasa el esquema, sin hacer esperar a nadie: asi, si un dia se le
+      // agrega una tabla o un indice, aparecen solos)
+      if (!revisadas.has(DB)) { revisadas.add(DB); despues(crearTablas(DB)); }
       let cuerpo = {};
       if (metodo === 'POST') {
         const texto = await pedido.text();
@@ -270,17 +330,17 @@ export default {
       }
       // de que conexion viene (para los limites): se guarda su huella, no la direccion
       const de = await huella(conexionDe(pedido.headers.get('cf-connecting-ip') || 'local') + '|' + (env.SAL || 'shakedown'));
-      let cosa;
-      if (donde === 'pasadas' && metodo === 'POST' && partes.length === 1) {
-        cosa = await guardarPasada(env, cuerpo, de);
-        if (Math.random() < 0.02 && ctx && ctx.waitUntil) ctx.waitUntil(limpiarLoViejo(env.DB).catch(() => {}));
-      } else if (donde === 'pasadas' && metodo === 'GET' && partes.length === 2) cosa = await traerPasada(env, partes[1]);
-      else if (donde === 'clubes' && metodo === 'POST' && partes.length === 1) cosa = await crearClub(env, cuerpo, de);
-      else if (donde === 'clubes' && metodo === 'GET' && partes.length === 2) cosa = await clubDe(env.DB, partes[1]);
-      else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'entrar') cosa = await entrarAlClub(env, partes[1], cuerpo, de);
-      else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'salir') cosa = await salirDelClub(env, partes[1], cuerpo);
-      else if (donde === 'tablas' && metodo === 'POST' && partes.length === 1) cosa = await tablas(env, cuerpo);
+      let hacer;
+      if (donde === 'pasadas' && metodo === 'POST' && partes.length === 1) hacer = () => guardarPasada(env, cuerpo, de);
+      else if (donde === 'pasadas' && metodo === 'GET' && partes.length === 2) hacer = () => traerPasada(env, partes[1]);
+      else if (donde === 'clubes' && metodo === 'POST' && partes.length === 1) hacer = () => crearClub(env, cuerpo, de);
+      else if (donde === 'clubes' && metodo === 'GET' && partes.length === 2) hacer = () => clubDe(DB, partes[1]);
+      else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'entrar') hacer = () => entrarAlClub(env, partes[1], cuerpo, de);
+      else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'salir') hacer = () => salirDelClub(env, partes[1], cuerpo);
+      else if (donde === 'tablas' && metodo === 'POST' && partes.length === 1) hacer = () => tablas(env, cuerpo);
       else falla(404, 'Eso no existe.');
+      const cosa = await conTablas(DB, hacer);
+      if (donde === 'pasadas' && metodo === 'POST' && Math.random() < 0.02) despues(limpiarLoViejo(DB));
       return contestar(200, cosa);
     } catch (e) {
       if (e instanceof Aviso) return contestar(e.estado, { error: e.message });

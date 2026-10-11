@@ -148,6 +148,12 @@ ver('contesta la consulta previa del navegador', r.estado === 204, r.estado);
 
 // --- los limites (solo con el programa directo: en un servidor de verdad no se puede cambiar el tope) ---
 if (!BASE) {
+  // una base recien nacida no tiene tablas: el primer pedido las crea y sigue como si nada
+  const nueva = { DB: baseLocal() };
+  const primero = await servidor.fetch(new Request('http://prueba/clubes/noexiste1'), nueva, {});
+  ver('con la base vacia, el primer pedido crea las tablas', primero.status === 404 && (await primero.json()).error === 'Ese club no existe.', primero.status);
+  const segundo = await servidor.fetch(new Request('http://prueba/pasadas', { method: 'POST', body: JSON.stringify({ llave: llave('n'), codigo: codA }) }), { DB: baseLocal() }, {});
+  ver('tambien si lo primero que llega es una pasada', segundo.status === 200 && /^[0-9A-Za-z]{7}$/.test((await segundo.json()).id), segundo.status);
   const topes = { ...LIMITES };
   const sube = async (quien, ip, k) => (await pedir('POST', '/pasadas', { llave: llave(quien) + k, codigo: await pasada(T, { nombre: 'Lluvia', t: 100 + k, practica: true }) }, { 'cf-connecting-ip': ip })).estado;
   const anotado = (ip) => env.DB.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM limites WHERE clave LIKE 'p:%'").first().then((f) => f.n);

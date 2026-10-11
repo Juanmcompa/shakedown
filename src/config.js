@@ -91,7 +91,7 @@ export const AYUDA = { auto: { firme: 0.8, estable: 1.1, alinea: 0.85 }, ritmo: 
 // El servidor del juego: guarda las pasadas que se comparten (asi el link es corto) y las tablas de los clubes.
 // Es la direccion donde quedo publicado servidor/worker.js (ver servidor/LEEME.md), sin barra al final.
 // Vacio = sin servidor: el juego anda igual, con el link largo, y la tabla se arma con los links que se abren.
-export const SERVIDOR = '';
+export const SERVIDOR = 'https://shakedown.juanmcomparini.workers.dev';
 
 // La configuracion que puede tocar cada uno (se guarda en su aparato): lo que vale cada cosa si nunca se la toco.
 //   sensible: de 0 a 100, cuanto dobla al inclinar el celular. Con 55 hacen falta 24 grados para llevar el volante a fondo;
