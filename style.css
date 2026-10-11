@@ -417,3 +417,56 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   #pistaDetalle { display: none; }
   .marca { width: min(13rem, 58%); }
 }
+
+/* --- El tutorial de la primera vez: una luz sobre lo que se explica y, al lado, quien lo explica (ver tutorial.js) ---
+   El retrato es un dibujo de 431 x 458 con el marco en el medio (ocupa tres cuartos del ancho) y, en los margenes, lo que
+   se sale del marco. "--retrato" es cuanto mide el MARCO de ancho: de ahi sale todo lo demas. */
+.tutorial { position: fixed; inset: 0; z-index: 40; touch-action: none; }
+/* la sombra tapa todo menos lo que se explica (los agujeros los recorta tutorial.js); cada luz es un borde amarillo */
+.tut-sombra { position: absolute; inset: 0; background: rgba(6, 7, 8, .66); }
+.tut-luces i { position: absolute; border-radius: 12px; box-shadow: 0 0 0 3px var(--amarillo); pointer-events: none; animation: tutLuz .25s ease-out; }
+@keyframes tutLuz { from { opacity: 0; transform: scale(1.06); } }
+.tut-tarjeta { --retrato: 128px; position: absolute; left: 0; top: 0; width: min(36rem, 100vw - var(--mi) - var(--md)); min-height: calc(var(--retrato) * .9); padding: 12px 16px 14px calc(var(--retrato) + 46px); display: grid; align-content: start; gap: 7px; background: #15171b; border-radius: 10px; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .16), 0 14px 44px rgba(0, 0, 0, .65); }
+/* el retrato va apoyado abajo a la izquierda y asoma por arriba de la tarjeta */
+.tut-retrato { position: absolute; left: calc(14px - var(--retrato) * .168); bottom: 10px; width: calc(var(--retrato) * 1.34); height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .45)); }
+.tut-quien { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 9px; padding-right: 34px; }
+.tut-quien b { font: 800 26px/1 var(--titulos); color: var(--amarillo); text-transform: uppercase; letter-spacing: .01em; }
+.tut-quien span { font: 600 15px/1.1 var(--titulos); opacity: .8; text-transform: uppercase; letter-spacing: .05em; }
+.tut-texto { display: grid; gap: 7px; font-size: 16.5px; line-height: 1.36; }
+.tut-texto kbd { margin: 0 1px; }
+.tut-pie { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+.tut-puntos { flex: 1; display: flex; justify-content: center; gap: 5px; }
+.tut-puntos i { width: 8px; height: 8px; background: rgba(255, 255, 255, .22); }
+.tut-puntos i.ya { background: rgba(255, 255, 255, .6); }
+.tut-puntos i.aca { background: var(--amarillo); }
+.tut-botones { display: flex; gap: 8px; margin-left: auto; }
+.tut-pie button.con-texto { padding: 9px 14px 10px; font-size: 18px; }
+button.con-texto.fuerte { background: var(--amarillo); }
+.tut-cerrar { position: absolute; top: 6px; right: 6px; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; background: none; opacity: .7; }
+.tut-cerrar .icono { width: 18px; height: 18px; vertical-align: 0; }
+/* En el celular parado no hay lugar para el retrato al costado: va arriba, asomado en la esquina, y el texto ocupa todo el ancho. */
+@media (max-width: 600px) {
+  .tut-tarjeta { --retrato: 92px; padding: 12px 14px 14px; row-gap: 8px; }
+  .tut-retrato { left: calc(10px - var(--retrato) * .168); bottom: auto; top: calc(var(--retrato) * -.62); }
+  .tut-quien { min-height: calc(var(--retrato) * .62); padding-left: calc(var(--retrato) + 14px); align-content: center; }
+  .tut-quien b { font-size: 24px; flex-basis: 100%; }
+  .tut-texto { font-size: 16px; }
+}
+/* Acostado (o con poca altura): todo mas apretado. */
+@media (max-height: 480px) {
+  .tut-tarjeta { --retrato: 92px; width: min(31rem, 100vw - var(--mi) - var(--md)); padding-top: 9px; padding-bottom: 10px; gap: 4px; }
+  .tut-quien b { font-size: 22px; }
+  .tut-texto { font-size: 15px; line-height: 1.3; gap: 4px; }
+  .tut-pie { margin-top: 2px; }
+  .tut-pie button.con-texto { padding: 6px 12px 7px; font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .tut-luces i { animation: none; } }
+
+/* --- el equipo, en "El club": los retratos con su nombre y lo que hace cada uno --- */
+.equipo { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px 4px; }
+.equipo figure { margin: 0; display: grid; justify-items: center; gap: 2px; text-align: center; }
+.equipo img { width: 100%; max-width: 104px; height: auto; }
+.equipo figcaption { display: grid; }
+.equipo b { font: 700 17px/1.1 var(--titulos); }
+.equipo span { font-size: 12px; line-height: 1.15; opacity: .75; }
+@media (max-width: 420px) { .equipo { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

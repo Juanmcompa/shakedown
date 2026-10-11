@@ -6,6 +6,7 @@ import { CIRCUITOS, circuitoDe } from './circuitos.js';
 import { fechaDe } from './dia.js';
 import { tiempoFinal, CLASE_DE_COLOR } from './hud.js';
 import { iconoDeNota, textoDeNota, ponerIconos, rotular, icono } from './iconos.js';
+import { EQUIPO, retrato } from './equipo.js';
 
 const $ = (id) => document.getElementById(id);
 const CUADRO = { v: '🟩', a: '🟨', r: '🟥', n: '⬛' };
@@ -245,6 +246,16 @@ export function crearMenu(o) {
     <p>Un club clandestino de puristas del rally, cansados de los circuitos cerrados, busca caminos olvidados. Cada medianoche, el organizador anónimo publica en un foro cerrado las coordenadas y las notas del copiloto del desafío del día: un sendero forestal embarrado, una ruta rural castigada por la lluvia o un paso de montaña de ripio perdido entre los pinos.</p>
     <p>No hay vueltas de reconocimiento. Sos vos, tu lectura del terreno y un auto noventero guerrero contra el cronómetro: una Vitara del 92 levantada o un humilde Ka con chapón cubrecárter.</p>
     <p>Tenés una sola pasada oficial antes de que los vecinos se quejen, caigan las autoridades y clausuren el trazado para siempre. Al final del día los tiempos se comparan en la tabla del club. Mañana habrá que embarrarse en otro lado.</p>`;
+  // el equipo: los personajes, cada uno con su retrato (se bajan recien cuando se abre esta parte)
+  for (const p of EQUIPO) {
+    const ficha = crear('figure'), img = crear('img'), pie = crear('figcaption');
+    Object.assign(img, { src: retrato(p.id), loading: 'lazy', decoding: 'async', alt: '', width: 431, height: 458, draggable: false });
+    pie.append(crear('b', '', p.nombre), crear('span', '', p.rol));
+    ficha.append(img, pie);
+    $('equipo').append(ficha);
+  }
+  // (el tutorial se puede volver a ver cuando se quiera: cierra el panel y arranca en la largada)
+  $('verTutorial').addEventListener('click', () => { abrir(''); o.tutorial(); });
   const dib = (nombre, color) => '<span data-icono="' + nombre + '"' + (color ? ' data-color="' + color + '"' : '') + '></span>';
   $('comoSeJuega').innerHTML = `
     <dl class="teclas teclado">

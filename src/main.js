@@ -14,6 +14,7 @@ import { crearGrabacion, leerCodigo, crearFantasma } from './fantasma.js';
 import { crearClub } from './club.js';
 import { crearNube } from './nube.js';
 import { crearMenu } from './menu.js';
+import { crearTutorial } from './tutorial.js';
 import { crearMundo } from './world.js';
 import { crearPost } from './post.js';
 import { crearDibujo, crearEspectro } from './autos.js';
@@ -29,7 +30,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '14' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '15' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
@@ -242,6 +243,8 @@ const menu = crearMenu({
     fundar: fundarClub, dejar: dejarClub, de: (codigo) => deLosClubes[codigo] || null, refrescar: () => tablasDeLosClubes(false),
     renombrar: () => { for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); },
   } : null,
+  // volver a ver el tutorial (desde "Como se juega")
+  tutorial: () => largar(true),
 });
 
 let pantalla = 'portada';   // portada, jugando o fin
@@ -269,16 +272,20 @@ function mandosDeCelular() {
   if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
 }
 
-function largar() {
+// conTutorial: true para que el equipo explique la pantalla antes de largar (si no se dice, lo explica igual la primera
+// vez que alguien corre en este aparato). Con el tutorial, el auto espera en la largada: la cuenta regresiva arranca
+// cuando termina.
+function largar(conTutorial) {
   if (pantalla === 'jugando') return;
   if (!tactil && teclas.esTactil()) mandosDeCelular();
+  const explicar = conTutorial === true || club.esNuevo();
   modo = club.sePuedeOficial() ? 'oficial' : 'practica';
   raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
   pantalla = 'jugando';
   tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda;
   rondas = 0; mejorRonda = null; mejoroAlgo = false;
   partida.preparar(c);
-  partida.largar();
+  if (!explicar) partida.largar();
   grabacion = crearGrabacion(T);
   copiloto.reiniciar();
   copiloto.voz(conVoz);
@@ -294,7 +301,24 @@ function largar() {
   menu.portada(false);
   for (const id in espectros) espectros[id].ocultar();
   sonido.iniciar();
+  if (explicar) tutorial.abrir();
 }
+
+// --- el tutorial de la primera vez (ver tutorial.js): el equipo explica lo que hay en pantalla, con el auto esperando ---
+const tutorial = crearTutorial({
+  dedos: () => tactil,
+  flechas: () => raiz.classList.contains('sin-volante'),
+  // Se termino (o se salto): queda anotado que ya se vio, y ahora si, la cuenta regresiva.
+  // (ayudaElegida: lo que se eligio en el ultimo paso; si se salto, queda la ayuda como estaba)
+  alTerminar: (ayudaElegida) => {
+    club.gusto('tutorial', 1);
+    if (ayudaElegida !== undefined && ayudaElegida !== conAyuda) ajustar('ayuda', ayudaElegida);
+    ayudaDeLaPasada = conAyuda;
+    trazada.mostrar(conTrazada);
+    partida.largar();
+  },
+  alCancelar: () => aLaPortada(),
+});
 
 // los resultados de otros que se conocen de esta pista: van en el link, para que la tabla se complete entre todos
 // (Solo lo que llego por link. Lo que se sabe por un club queda en el club: no viaja en los links de sus miembros.)
@@ -357,7 +381,9 @@ function terminar() {
 }
 
 function aLaPortada() {
-  if (pantalla === 'jugando' && modo === 'oficial') return;   // la oficial no se deja por la mitad
+  // la oficial no se deja por la mitad (pero si todavia no arranco la cuenta regresiva, por el tutorial, no empezo)
+  if (pantalla === 'jugando' && modo === 'oficial' && partida.estado !== 'previa') return;
+  tutorial.cerrar();
   if (pantalla === 'jugando' && T.vuelta && mejorRonda) { terminar(); return; }   // vuelta cerrada: salir es terminar, y queda la mejor ronda
   pantalla = 'portada';
   partida.preparar(c);
@@ -402,7 +428,8 @@ const teclas = crearTeclas((tecla) => {
 
 // --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
 const APLICAR = {
-  ayuda: (v) => { conAyuda = !!v; if (pantalla !== 'jugando') ponerAuto(club.auto()); APLICAR.trazada(gusto('trazada')); },
+  // (el auto se arma de nuevo, salvo que ya este corriendo: en la largada, mientras dura el tutorial, todavia se puede)
+  ayuda: (v) => { conAyuda = !!v; if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); APLICAR.trazada(gusto('trazada')); },
   trazada: (v) => { conTrazada = !!v; if (conTrazada) trazada.usar(refDe(club.auto())); trazada.mostrar(conTrazada && pantalla === 'jugando'); },
   lejos: (v) => camara.alejar(v),
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
@@ -546,7 +573,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && pa
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
 if (enCasa) window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial,
   auto: () => c,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,

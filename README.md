@@ -20,6 +20,19 @@ No hay vueltas de reconocimiento. Sos vos, tu lectura del terreno y un auto nove
 
 Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el trazado. Al final del día los tiempos se comparan en la tabla del club.
 
+### El equipo
+
+El club tiene su gente. Los dibujó Juanma, y están en `personajes/`:
+
+| | | |
+| --- | --- | --- |
+| **Gaby**, instructora | **Pablo**, marketing | **Paloma**, médica |
+| **Sebastián**, mecánico | **Juanma**, tech | **Gonza**, remolques |
+| **Leo**, ingeniero de pista | **Julián**, el rival | **Moi**, motoquero |
+| **Rober**, mecánico fan | | |
+
+Aparecen en "El club" y son los que explican el juego la primera vez (ver "La primera vez").
+
 ## Cómo es
 
 - **La pista sale de la fecha.** El número del día genera todo: el recorrido, el lugar (bosque, campo o montaña), el clima (seco, lluvia, niebla o atardecer) y las notas del copiloto. La #1 es la del 10 de octubre de 2026. El día cambia a la medianoche de Argentina.
@@ -85,6 +98,19 @@ Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 - No hay cuentas ni contraseñas: se guarda el nombre que cada uno elige, su tiempo y su pasada. Nada más: ni mails, ni direcciones de internet, ni publicidad, ni programas de terceros que sigan a la gente.
 - El servidor solo deja escribir al juego publicado, y revisa lo que puede (ver [`servidor/LEEME.md`](servidor/LEEME.md)). No es a prueba de tramposos: alcanza para clubes de amigos.
 
+## La primera vez
+
+La primera vez que alguien larga en un aparato, el juego lo frena un minuto en la largada y el equipo le explica lo que tiene en pantalla, de a una cosa, iluminándola:
+
+1. **Gaby** (instructora): con qué se maneja. En la compu, las teclas; en el celular, los pedales y cómo se dobla (inclinando, o con las flechas si el celular no tiene sensor).
+2. **Leo** (ingeniero de pista): las notas de arriba, y que hay que frenar antes de la curva.
+3. **Julián** (el rival): el reloj, los sectores y que la oficial es una sola.
+4. **Sebastián** (mecánico): la barra de daño.
+5. **Gonza** (remolques): el botón de volver al camino.
+6. **Paloma** (médica): ofrece largar con la ayuda de manejo.
+
+Se puede saltar, cerrar con la X (vuelve a la portada, sin gastar la oficial) y volver a ver desde "Cómo se juega". Que alguien es nuevo se sabe porque en ese aparato no hay nada guardado: ni una pasada, ni el tutorial visto. No se le pregunta nada a ningún servidor.
+
 ## Cómo se juega
 
 | Tecla | Qué hace |
@@ -131,6 +157,8 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | --- | --- |
 | Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
 | Cuánto ayuda la ayuda de manejo (`AYUDA`) y con qué configuración arranca el juego (`GUSTOS`) | `src/config.js` |
+| Lo que dice cada personaje en el tutorial de la primera vez, en qué orden y qué ilumina (`PASOS`) | `src/tutorial.js` |
+| Los personajes: nombres, roles y cuáles hay (`EQUIPO`); sus retratos | `src/equipo.js`, `personajes/` |
 | La trazada: sus colores, el tamaño de las rayitas y desde qué velocidad avisa (`RITMO`, `FRENADA`, `JUSTO`) | `src/trazada.js` |
 | Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` (y subir `VERSION` ahí mismo: ver abajo) |
 | El recorrido de cada circuito fijo: sus rectas, curvas, puentes, casas y cosas en la calle, y por qué ambiente pasa cada pedazo | `src/circuitos.js` (cada circuito es una lista que se lee de arriba hacia abajo; al cambiar uno hay que subirle su `version`) |
@@ -160,6 +188,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | Archivo | Qué hace |
 | --- | --- |
 | `index.html`, `style.css` | La página: portada, tablero, botones y paneles |
+| `personajes/` | Los retratos del equipo (431 x 458, con el fondo de afuera transparente y el marco siempre en el mismo lugar) |
 | `vista-previa.jpg` | La imagen que muestra WhatsApp cuando se pega el link |
 | `marca/`, `manifest.webmanifest` | El logo, los íconos (pestaña, celular) y los datos para agregar el juego a la pantalla de inicio |
 | `servidor/`, `wrangler.jsonc` | El servidor de los links cortos y los clubes, y cómo se publica en Cloudflare |
@@ -178,6 +207,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus clubes, tus gustos) |
 | `src/nube.js` | Lo que el juego le pide al servidor: guardar y traer pasadas, y los clubes |
 | `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
+| `src/equipo.js`, `src/tutorial.js` | Los personajes del club, y el tutorial de la primera vez |
 | `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, las antorchas de las piedras, el público, la lluvia y los faros |
 | `src/sponsors.js`, `src/publicidad.js` | La lista de sponsors, y dónde va y cómo se dibuja su publicidad |
 | `src/autos.js` | Los modelos de los autos y el fantasma |

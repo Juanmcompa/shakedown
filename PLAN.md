@@ -21,6 +21,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Clubes por invitación.** Un club es un grupo con tabla propia ("torneo" es lo mismo). Se arma con un nombre y se invita con un link, una sola vez. Un jugador puede estar en todos los que quiera, y su pasada oficial del día es una sola y vale para todos, también para los clubes a los que entra después. En la tabla se ve el nombre de cada uno con su tiempo, y quiénes faltan correr.
 - **El servidor es un extra, nunca un requisito.** Guarda las pasadas (para que el link sea corto) y los clubes. Corre gratis en Cloudflare, se publica solo con cada Push y no pide cuentas a nadie: cada aparato tiene una llave al azar. Si no está o no contesta, el juego sigue con el link largo y la tabla armada con los links que se abren. Los links largos ya compartidos no se rompen nunca.
 - **El link corto no pierde fidelidad.** El servidor guarda la pasada entera, la misma que antes viajaba en el link; lo único que se acorta es el link.
+- **La primera vez, el equipo explica.** Seis de los diez personajes hablan en el tutorial, cada uno de lo suyo: Gaby (cómo se maneja), Leo (las notas), Julián (el reloj y la oficial), Sebastián (el daño), Gonza (volver al camino) y Paloma (la ayuda de manejo). Quedan para más adelante Pablo, Juanma, Moi y Rober.
 - **El fantasma es fiel.** El link lleva la pasada completa, con los saltos y las salidas de pista. Para que no sea eterno, la pasada se guarda respecto del camino (cuánto avanzó y cuánto se corrió del medio) y comprimida: unas 800 letras, la mitad que al principio, con la misma precisión (10 cm).
 - **Dos autos noventosos:** La Vitarita (4x4, alta) y El Kacito (tracción delantera, bajo). Parejos en tiempo, distintos de manejar.
 - **En piso suelto el auto derrapa.** Manejando tranquilo va por donde se lo apunta; exigido, hay que llevarlo cruzado. Las ruedas de adelante se acomodan solas hacia donde va el auto, así se lo puede llevar de costado sin que se vaya en trompo. La cámara mira hacia donde va el auto, no hacia donde apunta.
@@ -60,6 +61,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Publicidad en todas las pistas: tres sponsors en chiste en banderas, chapas, cartelones, pórticos y arcos; se cambian desde una lista y pueden traer su imagen; el auto los puede tirar
 - [x] Links cortos y clubes por invitación, con un servidor chico (carpeta `servidor/`), probado en la compu con tres jugadores
 - [x] Marca nueva: logo en la portada y en la carga, íconos para la pestaña y el celular, e imagen nueva para cuando se pega el link
+- [x] Tutorial de la primera vez: al largar por primera vez en un aparato, el equipo (los personajes de Juanma) explica la pantalla de a una cosa, iluminándola. Se puede saltar, cerrar y volver a ver. Los diez personajes están en "El club"
 - [x] Pasada de seguridad: el servidor solo le deja escribir al juego publicado y no guarda direcciones de internet; los nombres se limpian; lo que se sabe por un club no sale en los links de sus miembros; el juego publicado ya no trae los atajos de prueba; y los pedidos al servidor aguantan un aparato trabado
 - [x] Servidor en línea en Cloudflare, conectado al repo: se publica solo con cada Push. Cada pedido hace un solo viaje a la base de datos (queda lejos de Argentina: un tercio de segundo por viaje)
 - [x] Trazada para seguir, con prendido y apagado (en la configuración o con la T): verde, amarilla o roja según la velocidad que se trae
@@ -93,6 +95,8 @@ Lo que piden las tiendas y lo que conviene tener resuelto antes. Revisado en oct
 
 ## Ideas para más adelante
 
+- Que los personajes aparezcan en otros momentos: Pablo al compartir, Juanma en la configuración, Rober en el resultado, Moi con la pista del día
+- Que la primera vez se pueda dar una vuelta de práctica antes de gastar la oficial
 - Racha de días corridos y estadísticas propias, como en el Wordle
 - Autos desbloqueables
 - Más circuitos fijos, y tabla de cada uno

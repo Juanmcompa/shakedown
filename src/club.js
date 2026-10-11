@@ -68,6 +68,8 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
     ponerNombre: (n) => { datos.nombre = limpio(n); if (D.oficial && !D.oficial.corriendo) D.oficial.nombre = datos.nombre; guardar(); },
     // gustos sueltos (sonido, voz del copiloto): gusto('voz') lo lee, gusto('voz', false) lo cambia
     gusto: (clave, valor) => { if (valor !== undefined) { (datos.gustos || (datos.gustos = {}))[clave] = valor; guardar(); } return datos.gustos ? datos.gustos[clave] : undefined; },
+    // Si en este aparato nunca se corrio nada ni se vio el tutorial: es la primera vez de alguien.
+    esNuevo: () => !(datos.gustos && datos.gustos.tutorial) && !Object.values(datos.dias).some((d) => d.oficial || d.practica),
     auto: () => datos.auto,
     ponerAuto: (a) => { datos.auto = a; guardar(); },
     // --- la pasada oficial: una sola por dia ---

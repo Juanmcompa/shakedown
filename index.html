@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="14" class="cargando">
+<html lang="es" data-pagina="15" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -42,7 +42,7 @@
   // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'sponsors', 'publicidad', 'trazada', 'nube'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'sponsors', 'publicidad', 'trazada', 'nube', 'equipo', 'tutorial'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -96,6 +96,24 @@
   <button class="pedal der" data-tecla="ArrowRight" data-icono="derecha" aria-label="Doblar a la derecha"></button>
   <button class="redondo mano" data-tecla="Space" data-icono="mano" aria-label="Freno de mano"></button>
   <div id="volante" aria-hidden="true"><i id="volanteAca"></i></div>
+</div>
+
+<!-- El tutorial de la primera vez (ver tutorial.js). Alguien del equipo explica una parte de la pantalla, que queda
+     iluminada mientras el resto se oscurece. El auto espera en la largada, con el reloj parado. -->
+<div id="tutorial" class="tutorial" hidden>
+  <div id="tutSombra" class="tut-sombra" aria-hidden="true"></div>
+  <div id="tutLuces" class="tut-luces" aria-hidden="true"></div>
+  <section class="tut-tarjeta" role="dialog" aria-modal="true" aria-labelledby="tutNombre" aria-describedby="tutTexto">
+    <img id="tutRetrato" class="tut-retrato" alt="" width="431" height="458" decoding="async" draggable="false">
+    <button id="tutCerrar" type="button" class="tut-cerrar" data-icono="cerrar" aria-label="Cerrar y volver a la portada"></button>
+    <p class="tut-quien"><b id="tutNombre"></b><span id="tutRol"></span></p>
+    <div id="tutTexto" class="tut-texto" aria-live="polite"></div>
+    <div class="tut-pie">
+      <button id="tutSaltar" type="button" class="con-texto discreto">Saltar</button>
+      <span id="tutPuntos" class="tut-puntos" aria-hidden="true"></span>
+      <span id="tutBotones" class="tut-botones"></span>
+    </div>
+  </section>
 </div>
 
 <!-- la portada: la pista del dia, el auto y el boton de largar -->
@@ -187,7 +205,11 @@
   <div id="panelAyuda" hidden>
     <h2>El club</h2>
     <div id="historia"></div>
+    <!-- el equipo: los personajes, con su retrato (los pone menu.js, de la lista de equipo.js) -->
+    <h3>El equipo</h3>
+    <div id="equipo" class="equipo"></div>
     <h2>Cómo se juega</h2>
+    <p><button id="verTutorial" type="button" class="con-texto" data-icono="bandera" data-color="#000000">Que te lo explique el equipo</button></p>
     <div id="comoSeJuega"></div>
   </div>
   <!-- Las configuraciones. Cada grupo de botones (data-ajuste) y cada barra (input con data-ajuste) cambia un gusto,
