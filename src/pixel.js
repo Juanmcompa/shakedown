@@ -1,6 +1,6 @@
 // Herramientas del estilo del juego: bloques con texturas de pocos pixeles.
 // Las texturas se pintan con codigo (no hay archivos de imagen) y las formas se arman con cajas.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { azar } from './noise.js';
 
 // --- la paleta: todo color que se pinta pasa por aca, asi el mundo entero tiene el mismo aire ---

@@ -63,6 +63,14 @@ export function crearMenu(o) {
     $('autos').append(b);
   }
 
+  // En el celular parado, la parte de arriba de la portada se corre con el dedo si no entra (el pie queda fijo):
+  // cuando queda algo por ver, el borde del pie lo avisa con una flechita (ver ".hay-mas" en style.css).
+  const arriba = document.querySelector('#portada .arriba'), raiz = document.documentElement;
+  raiz.style.setProperty('--mas', 'url(' + icono('abajo') + ')');
+  const hayMas = () => raiz.classList.toggle('hay-mas', arriba.scrollHeight - arriba.clientHeight - arriba.scrollTop > 10);
+  arriba.addEventListener('scroll', hayMas, { passive: true });
+  window.addEventListener('resize', hayMas);
+
   function pintar() {
     // en un circuito no hay pasada oficial: lo que cuenta es el mejor tiempo
     const oficial = fijo ? club.practica() : club.oficial(), puede = club.sePuedeOficial(), rival = o.rival();
@@ -91,6 +99,7 @@ export function crearMenu(o) {
     $('practicasTitulo').hidden = !!fijo || club.practicas().length === 0;
     $('tablaPista').textContent = fijo ? '· ' + fijo.corto : '#' + numero;
     ponerIconos();
+    hayMas();
   }
 
   // --- la tabla ---

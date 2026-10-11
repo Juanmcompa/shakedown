@@ -4,7 +4,7 @@
 //   - brillo alrededor de lo muy iluminado
 //   - un ajuste de color (sombras frias, luces calidas) y los bordes de la pantalla un poco mas oscuros
 // Si el aparato no da, se apaga solo y el mundo se dibuja directo (ver "liviano" y calidad()).
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 
 const VERTICE = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
 // achicar a la mitad promediando cuatro puntos

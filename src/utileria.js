@@ -1,6 +1,6 @@
 // La utileria del rally: arcos de largada, de control y de meta, banderines, cintas, carteles,
 // alambrados, fardos, mojones y las piedras grandes. Casi todo son cajas con un dibujo de pocos pixeles.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { azar } from './noise.js';
 import { crearLote } from './pixel.js';
 import { estilo } from './material.js';

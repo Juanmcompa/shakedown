@@ -1,6 +1,6 @@
 // El clima y las luces chicas: la lluvia que cae, los faros del auto cuando hay poca luz
 // y los resplandores en el piso (fogones, bengalas). Las luces grandes (sol y cielo) estan en world.js.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { ambiente } from './material.js';
 import { lienzoPintado } from './pixel.js';
 

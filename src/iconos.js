@@ -134,7 +134,7 @@ export function icono(nombre, color, tachado) {
 export function ponerIconos(raiz = document) {
   for (const el of raiz.querySelectorAll('[data-icono]')) {
     let img = el.querySelector(':scope > img.icono');
-    if (!img) { img = document.createElement('img'); img.className = 'icono'; img.alt = ''; el.prepend(img); }
+    if (!img) { img = document.createElement('img'); img.className = 'icono'; img.alt = ''; img.draggable = false; el.prepend(img); }
     const src = icono(el.dataset.icono, el.dataset.color, el.dataset.tachado === 'si');
     if (img.getAttribute('src') !== src) img.src = src;
   }

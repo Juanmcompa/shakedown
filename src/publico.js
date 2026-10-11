@@ -1,6 +1,6 @@
 // El publico: gente parada detras de las cintas, que festeja cuando se acerca el auto
 // y se corre si se le va encima. Son sprites (ver sprites.js). Algunos grupos hacen un asado.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { azar } from './noise.js';
 import { crearLoteDeSprites } from './sprites.js';
 import { granito } from './arte.js';

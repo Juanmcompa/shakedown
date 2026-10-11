@@ -1,6 +1,6 @@
 // La vegetacion: los arboles (hechos de bloques) y todo lo chico que crece al costado del camino
 // (arbustos, matas, flores, yuyos y piedras sueltas), que son sprites.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { crearRuido, azar } from './noise.js';
 import { crearLote } from './pixel.js';
 import { crearLoteDeSprites } from './sprites.js';

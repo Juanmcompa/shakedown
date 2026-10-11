@@ -4,7 +4,7 @@
 // cada caja toma de cada vista los pixeles que le tocan segun donde esta.
 //
 // Para cambiar un auto: sus colores estan en PINTURAS, su forma en "cajas" y sus dibujos en "vistas".
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { crearAtlas, crearLote, textura, tono } from './pixel.js';
 import { conEstilo } from './material.js';
 

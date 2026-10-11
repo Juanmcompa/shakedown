@@ -1,7 +1,7 @@
 // Dibuja el mundo: el terreno, el agua, la luz de cada clima, y llama a los que ponen
 // la vegetacion (flora.js), la utileria del rally (utileria.js), el publico (publico.js), el pueblo (pueblo.js) y la publicidad (publicidad.js).
 // Todo esta hecho de bloques y de dibujos de pocos pixeles (las herramientas estan en pixel.js y los dibujos en arte.js).
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { SUELOS } from './config.js';
 import { crearRuido } from './noise.js';
 import { glslPixel } from './pixel.js';

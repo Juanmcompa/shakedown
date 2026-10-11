@@ -1,6 +1,6 @@
 // Lo que comparten todos los materiales del mundo: el tinte de lo que queda abajo, el hueco que se abre
 // en las copas alrededor del auto, la niebla y los "sprites" (dibujos planos que siempre miran a la camara).
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { GLSL_AZAR } from './pixel.js';
 
 // datos que cambian cuadro a cuadro y leen todos los materiales

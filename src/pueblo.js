@@ -1,7 +1,7 @@
 // El pueblo: los edificios, las cosas de la calle (conos, vallas, volquetes, faroles, colectivos),
 // las barandas de los puentes y las pircas de las cornisas. Todo son cajas con un dibujo de pocos pixeles, como el resto del mundo.
 // Donde va cada cosa lo decide la pista (terrain.js); las medidas estan en edificios.js. Aca solo se dibuja.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { azar } from './noise.js';
 import { crearAtlas, crearLote, tono } from './pixel.js';
 import { estilo } from './material.js';

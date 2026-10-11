@@ -1,6 +1,6 @@
 // Efectos: las huellas que quedan marcadas en el piso, el polvo que queda flotando sobre el camino
 // y los cubitos de barro o de agua que saltan de las ruedas.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { SUELO, SUELOS } from './config.js';
 import { granito } from './arte.js';
 import { crearAtlas } from './pixel.js';

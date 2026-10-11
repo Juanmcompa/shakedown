@@ -94,6 +94,9 @@ En el celular los botones son íconos y muestran su estado:
 - **Cámara:** el ícono es el auto visto como lo ves, y tres puntitos marcan cuál de las tres está puesta.
 - **Sonido y voz del copiloto:** apagados se ven tenues y tachados.
 - **Volver al camino:** lleva el "+8" de lo que cuesta. Titila en amarillo cuando el auto quedó trabado.
+- **La portada entra entera en la pantalla.** Abajo quedan fijos el botón de largar y las secciones (tabla, circuitos, pistas pasadas, ayuda y configuración). Si la pista tiene mucho para mostrar, se corre con el dedo solo la parte de arriba, y una flechita avisa que hay más.
+- **Las cámaras se acomodan a la pantalla.** En el celular, la aérea va más cerca, la de atrás más lejos, y el auto queda siempre por arriba de los pedales, para que no lo tapen los pulgares.
+- **Mientras carga** se ve la marca con una barra y lo que está haciendo. Si no puede cargar, lo dice y ofrece probar de nuevo.
 
 Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina. También avisa los puentes, las lajas, los adoquines y los lomos de burro.
 
@@ -164,6 +167,8 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/camera.js`, `src/audio.js`, `src/input.js`, `src/noise.js` | Cámaras, sonido del motor, mandos y ruido para el relieve |
 | `vendor/` | Three.js (la biblioteca 3D) y las tipografías |
 | `tools/` | Pruebas sin gráficos (opcionales) |
+
+Los archivos de `src/` se piden entre sí por su camino (`./config.js`, `../vendor/three.module.js`), sin nombres sueltos. Así el juego carga también en los navegadores que no entienden el mapa de importación de `index.html` (los iPhone con iOS 15 y 16). Ese mapa solo sirve para que los cambios se vean apenas se publican.
 
 ## Probarlo en tu compu
 

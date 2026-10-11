@@ -91,10 +91,13 @@ export const gradosDeInclinacion = (sensible) => 24 * 2 ** ((55 - sensible) / 55
 // dist: metros hasta el auto.  alto: grados sobre el horizonte (90 = justo desde arriba).
 // mira: metros que mira por delante del auto.  sigue: segundos que tarda en ponerse atras del auto.
 // La de arriba no es del todo vertical: asi el publico y las plantas (que son dibujos planos) se ven de cuerpo entero.
+// celu: en la pantalla de un celular, por cuanto se multiplica la distancia [despacio, rapido], parado y acostado.
+//       Las de arriba se acercan (la pantalla es chica y el auto quedaba lejos); la de atras se aleja (lo tapaba todo).
+// fovParado: con el celular parado, hasta cuanto se puede abrir el angulo (la pantalla es angosta: si no, no entra el camino).
 export const CAMARAS = [
-  { id: 'aerea',  nombre: 'Aérea',        dist: [46, 74], alto: [60, 47], fov: 30, sigue: 0.8, mira: [3, 20] },
-  { id: 'atras',  nombre: 'De atrás',     dist: [9, 14],  alto: [20, 16], fov: 58, sigue: 0.3, mira: [2, 6] },
-  { id: 'arriba', nombre: 'Desde arriba', dist: [74, 104], alto: [78, 76], fov: 30, sigue: 1.0, mira: [5, 21] },
+  { id: 'aerea',  nombre: 'Aérea',        dist: [46, 74], alto: [60, 47], fov: 30, sigue: 0.8, mira: [3, 20], celu: { parado: [0.52, 0.43], acostado: [0.54, 0.46] } },
+  { id: 'atras',  nombre: 'De atrás',     dist: [9, 14],  alto: [20, 16], fov: 58, sigue: 0.3, mira: [2, 6], celu: { parado: [1.2, 1.12], acostado: [1.05, 0.95] }, fovParado: 68 },
+  { id: 'arriba', nombre: 'Desde arriba', dist: [74, 104], alto: [78, 76], fov: 30, sigue: 1.0, mira: [5, 21], celu: { parado: [0.62, 0.58], acostado: [0.62, 0.56] } },
 ];
 
 export const JUEGO = {

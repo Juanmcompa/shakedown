@@ -1,7 +1,7 @@
 // Sprites: dibujos planos de pocos pixeles que siempre miran a la camara. Son el publico, los arbustos,
 // las matas de pasto, las flores y los yuyos. Van a 8 pixeles por metro, igual que los autos.
 // Los dibujos de la gente estan escritos como texto (una letra por pixel); las plantas se pintan con cuentas.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { crearAtlas } from './pixel.js';
 import { estilo } from './material.js';
 

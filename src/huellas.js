@@ -2,7 +2,7 @@
 // El piso lo lee al dibujarse, asi cada huella es un pixel entero del mundo y queda hasta que termina la vuelta.
 // En el mismo mapa va la pintura del piso (las lineas de la ruta, las sendas, la raya de largada y la de meta):
 // son dos valores que las huellas no usan nunca, y por eso una huella no las tapa.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 
 export const PINTURA = { blanca: 255, amarilla: 254 }, HUELLA_MAXIMA = 250;
 

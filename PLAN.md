@@ -23,6 +23,8 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **En piso suelto el auto derrapa.** Manejando tranquilo va por donde se lo apunta; exigido, hay que llevarlo cruzado. Las ruedas de adelante se acomodan solas hacia donde va el auto, así se lo puede llevar de costado sin que se vaya en trompo. La cámara mira hacia donde va el auto, no hacia donde apunta.
 - **Tres cámaras:** aérea, de atrás y desde arriba (casi vertical: 78 grados, para que los dibujos planos se vean enteros).
 - **Menos palabras, más íconos.** En el celular todos los botones son íconos y muestran su estado.
+- **En el celular, lo que se toca está siempre a la vista.** En la portada y en el resultado, los botones quedan fijos abajo: nadie tiene que adivinar que hay que bajar. Mientras se maneja, el auto queda por arriba de los pedales.
+- **Nunca una pantalla a medio armar.** Mientras el juego carga se ve la marca, una barra y en qué anda; lo demás aparece cuando está listo. Si no puede cargar, lo dice.
 - **Rally puro, pero con una mano para el que arranca.** La ayuda de manejo es optativa y está apagada de fábrica: frena sola antes de las curvas y hace que el auto se cruce menos. Es más lenta que manejar bien, así que no da ventaja; igual, esos tiempos van marcados en la tabla. Un piloto de prueba que no suelta nunca el acelerador rompe el auto en 7 de 8 pistas; con la ayuda llega en las 8.
 - **Lenguaje visual:** bloques con dibujos de pocos píxeles (un píxel = 25 cm), público y plantas como dibujos planos que miran a la cámara, colores apagados y polvorientos, y un "revelado" de maqueta (desenfoque, brillos, bruma cálida). Los instrumentos son carteles viales, amarillos y negros.
 - **Publicidad en chiste, y solo de adorno.** Los sponsors son parodias de marcas conocidas, con el nombre cambiado (FPY, CAC, Mercado Ladri). Van en banderas, chapas contra la cinta del público, cartelones, pórticos y arcos. No se chocan ni cambian la pista: se reparten con un sorteo aparte, así se pueden cambiar sin tocar los tiempos de nadie ni subir la versión. Los soportes están pensados para que el día de mañana lleven sponsors de verdad: alcanza con cambiar la lista.
@@ -50,6 +52,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Vuelta del Club: circuito cerrado de práctica por campo, bosque y montaña, con vueltas, mejor vuelta y fantasma de la mejor
 - [x] Piezas nuevas para armar pistas: puentes de madera con barandas, pircas, lajas, casas y edificios, veredas, calles cortadas con vallas y vecinos, faroles con cables, autos estacionados, colectivos, volquetes, conos, lomos de burro y calles pintadas
 - [x] Publicidad en todas las pistas: tres sponsors en chiste en banderas, chapas, cartelones, pórticos y arcos; se cambian desde una lista y pueden traer su imagen; el auto los puede tirar
+- [x] Arreglos para el celular: en el iPhone los botones ya no se "arrastran" al dejar el dedo apoyado; cartel de carga; portada y resultado con los botones fijos abajo; distancia de cada cámara pensada para la pantalla chica; carga también en iPhones con iOS 15 y 16
 
 ## Lo que sigue
 

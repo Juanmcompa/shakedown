@@ -1,6 +1,6 @@
 // Los dibujos del mundo, pintados de a pixeles: los pisos, los arboles, las piedras y los carteles.
 // La escenografia va a 4 pixeles por metro (un pixel = 25 cm); los objetos chicos, a 8.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { crearAtlas, lienzoPintado, textura } from './pixel.js';
 import { SUELOS } from './config.js';
 

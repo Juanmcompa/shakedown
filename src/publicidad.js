@@ -7,7 +7,7 @@
 // Todo esto es solo dibujo: no se choca, no cambia el terreno y se sortea con su propio azar (no toca el de la pista).
 // Por eso sumar, sacar o cambiar sponsors no cambia las pistas ni los tiempos.
 // (Si el auto se lleva puesta una chapa o un cartelon, queda tirado: tambien eso es solo dibujo, al auto no le hace nada.)
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { azar } from './noise.js';
 import { crearAtlas, crearLote, deLaPaleta, tono } from './pixel.js';
 import { estilo } from './material.js';

@@ -1,5 +1,5 @@
 // SHAKEDOWN: arma el juego y corre el ciclo principal.
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { JUEGO, AUTOS, REFERENCIA, AYUDA, GUSTOS, gradosDeInclinacion } from './config.js';
 import { hoy } from './dia.js';
 import { generarPista, versionDe } from './generador.js';
@@ -27,11 +27,20 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '11' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '12' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+
+// --- el cartel de carga ---
+// Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
+// si no, en un celular lento la pantalla queda quieta varios segundos y parece rota. (El cartel esta en index.html.)
+const respiro = (texto) => {
+  $('cargaTexto').textContent = texto;
+  return new Promise((sigue) => { requestAnimationFrame(() => setTimeout(sigue, 0)); setTimeout(sigue, 250); });
+};
+let cargando = true;
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
-  $('largar').textContent = 'Este navegador no pudo iniciar los gráficos 3D';
+  window.cargaFallo('Este navegador no puede mostrar los gráficos 3D del juego. Probá actualizarlo, o entrá desde otro aparato.');
   throw e;
 }
 const liviano = window.matchMedia('(pointer: coarse)').matches;   // celular o tablet: menos pixeles y sombras mas chicas
@@ -47,6 +56,7 @@ const numero = leido && vale(leido.marca.pista) ? leido.marca.pista : fijo ? fij
 // la direccion de una pista: la de hoy no lleva nada; un circuito, su nombre; un dia pasado, su numero
 const direccionDe = (n) => location.pathname + (esCircuito(n) ? '?c=' + circuitoDe(n).id : n !== HOY ? '?p=' + n : '');
 
+await respiro('Armando la pista…');
 const etapa = generarPista(numero), T = crearTerreno(etapa), P = T.camino, ref = crearReferencia(T, AUTOS[REFERENCIA]);
 const club = crearClub(numero, HOY, versionDe), copiloto = crearCopiloto(T);
 // lo que trajo el link: el resultado del amigo (con su fantasma) y los otros que el conocia. El queda de rival.
@@ -62,6 +72,7 @@ if (leido && leido.marca.pista === numero) {
   history.replaceState(null, '', direccionDe(numero));
 }
 
+await respiro('Plantando el paisaje…');
 const escena = new THREE.Scene();
 const huellas = crearHuellas(T, render), mundo = crearMundo(T, escena, liviano, huellas), partida = crearPartida(T, ref.sectores);
 huellas.pintar();   // la raya de largada, la meta y las lineas del asfalto
@@ -72,6 +83,7 @@ const post = crearPost(render, etapa.clima, liviano);
 // lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica)
 const gusto = (clave) => { const v = club.gusto(clave); return v === undefined ? GUSTOS[clave] : v; };
 
+await respiro('Preparando el auto…');
 // --- el auto del jugador (se puede cambiar en la portada) y los fantasmas ---
 // Con la ayuda de manejo, el mismo auto se cruza menos (y ademas frena solo: ver ayuda.js).
 const ayuda = crearAyuda(T);
@@ -283,17 +295,19 @@ for (const clave in APLICAR) if (clave !== 'ayuda') APLICAR[clave](gusto(clave))
 // En el celular, si no hay sensor de inclinacion (o se eligio doblar con flechas), aparecen las flechas.
 function pintarVolante() { raiz.classList.toggle('sin-volante', tactil && (hayVolante === false || conFlechas)); encuadrar(); }
 
-// Donde puede quedar el auto en la pantalla. En el celular, nunca mas abajo que el freno de mano (parado)
-// o que los pedales (acostado), ni tan al costado como para quedar detras de un boton.
+// Donde puede quedar el auto en la pantalla. En el celular, siempre bien por arriba de los botones: parado, mas arriba
+// que el freno de mano; acostado, que los pedales. (A fondo, la camara mira mas adelante y el auto se va hacia abajo:
+// si llega a la altura de los botones lo tapan los pulgares, y parece que se fue de la pantalla.)
+// Tampoco tan al costado como para quedar detras de un boton.
 function encuadrar() {
   const W = window.innerWidth, H = window.innerHeight, parado = W < H;
   let abajo = 0.16, lados = 0.2;
   if (tactil) {
     const mano = document.querySelector('.redondo.mano').getBoundingClientRect(), pedal = document.querySelector('.pedal.gas').getBoundingClientRect();
-    if (mano.height) abajo = parado ? (H - mano.top - mano.height / 2) / H : (H - pedal.top + 10) / H;
+    if (mano.height) abajo = parado ? (H - mano.top) / H + 0.075 : (H - pedal.top) / H + 0.07;
     lados = parado ? 0.24 : 0.28;
   }
-  camara.encuadrar(Math.min(0.4, abajo), parado ? 0.24 : 0.2, lados);
+  camara.encuadrar(Math.min(0.42, abajo), parado ? 0.24 : 0.2, lados);
 }
 function medir() {
   render.setSize(window.innerWidth, window.innerHeight, false);
@@ -367,6 +381,8 @@ function cuadro(ahora) {
   // el foco de la imagen va en el auto: a cuantos metros esta, medido hacia donde mira la camara
   camara.cam.getWorldDirection(HACIA);
   post.dibujar(escena, camara.cam, AL_AUTO.set(c.pos[0], c.pos[1], c.pos[2]).sub(camara.cam.position).dot(HACIA));
+  // con el primer cuadro dibujado, se va el cartel de carga y aparece la portada
+  if (cargando) { cargando = false; raiz.classList.remove('cargando'); menu.pintar(); $('largar').focus({ preventScroll: true }); }
 }
 
 window.addEventListener('resize', medir);
@@ -376,8 +392,13 @@ $('salir').addEventListener('click', aLaPortada);
 medir();
 await cargarRival();
 menu.portada(true);
+await respiro('Últimos ajustes…');
+// los materiales se preparan antes de mostrar nada, asi el primer cuadro no se traba (si no se puede, se preparan al dibujar)
+try {
+  if (render.extensions.has('KHR_parallel_shader_compile')) await Promise.race([render.compileAsync(escena, camara.cam), new Promise((sigue) => setTimeout(sigue, 8000))]);
+  else render.compile(escena, camara.cam);
+} catch (e) { /* no pasa nada */ }
 $('largar').disabled = false;
-$('largar').focus({ preventScroll: true });
 requestAnimationFrame(cuadro);
 
 // para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino

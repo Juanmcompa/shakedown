@@ -14,9 +14,17 @@ export function crearTeclas(alTocar) {
   window.addEventListener('blur', () => abajo.clear());
 
   // --- botones en pantalla: cada uno vale por una tecla (atributo data-tecla) ---
+  // En el iPhone, dejar el dedo apoyado en un boton lo "levanta" para arrastrarlo (como a un texto o a una imagen), y el
+  // navegador le saca el toque al juego: el pedal queda suelto. Se evita atajando el toque antes de que el navegador haga
+  // algo con el (ademas de lo que ya pide el estilo: que no se seleccione ni se arrastre nada).
+  const sinGestos = (e) => { if (e.cancelable) e.preventDefault(); };
+  document.addEventListener('dragstart', sinGestos);
+  // (pellizcar para agrandar la pagina, mientras se maneja, tampoco)
+  document.addEventListener('gesturestart', (e) => { if (document.documentElement.classList.contains('jugando')) sinGestos(e); });
   document.querySelectorAll('[data-tecla]').forEach((b) => {
     const tecla = b.dataset.tecla;
     const soltar = () => { abajo.delete(tecla); b.classList.remove('apretado'); };
+    for (const tipo of ['touchstart', 'touchmove', 'touchend']) b.addEventListener(tipo, sinGestos, { passive: false });
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       try { b.setPointerCapture(e.pointerId); } catch (x) { /* sin captura: igual anda */ }
