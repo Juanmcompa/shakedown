@@ -71,6 +71,25 @@ Shakedown · Urbano 🏘️ ⏱️ 01:30:42 🟩 🟩 🟩 🟩 🟩 🏁
 
 **La Vuelta del Club no tiene llegada.** Se larga unos metros antes de la raya y el reloj arranca al cruzarla. Cada vez que se la vuelve a cruzar se cierra una vuelta: aparece su tiempo, el reloj y los cuadraditos empiezan de nuevo y el auto queda arreglado. La mejor vuelta queda guardada y pasa a ser el fantasma contra el que se corre. Para terminar se sale con `Esc` (o con la X en el celular) y se ve el resultado de la mejor vuelta, que es la que se comparte.
 
+## Pistas de la comunidad
+
+Las arma la gente en el **creador**, nota por nota, como las cantaría el copiloto. No hay mapa: se eligen las notas y el camino sale solo. Leo, el ingeniero de pista, va diciendo qué pasa.
+
+- **Dónde.** Se abre desde **Circuitos** (`Armar una pista`) o desde la tabla de un club (`Armar una para el club`). Lo que se va armando queda guardado en el aparato: se puede cerrar y seguir otro día.
+- **Las notas.** Curvas para cada lado (del 6, casi recta, al 1, la más cerrada; la horquilla y la esquina de 90), rectas de 50, 100 y 180 metros, cosas del camino (salto, vado, puente, barro, angosto, lomo de burro y una cuadra de pueblo; en la montaña, además, cornisa y lajas) y cosas al costado (público, piedras, conos y fardos, que van en la nota de antes). La largada y la llegada se ponen solas.
+- **El camino no se cruza.** No puede pasar por donde ya pasó ni irse demasiado lejos: las notas que no entran como siguiente se ven apagadas, y si se las toca Leo dice por qué. El ambiente y el clima se cambian cuando se quiera: cambian el suelo y el paisaje, no el recorrido.
+- **Medidas.** De 700 metros a 3,2 km, con hasta 40 notas de camino y 30 cosas al costado.
+- **Probar** la corre como borrador: los tiempos quedan en el aparato y no se comparten. **Publicar** la sube al servidor con su nombre: dura dos semanas, tiene su tabla con el mejor tiempo de cada uno que la corre, y se comparte con un link (`…/shakedown/?pista=13042-1`). Si se la arma para un club, aparece en la tabla del club para todos sus miembros: así cada club hace sus propias pistas.
+- **Cinco por persona.** Cada uno puede tener hasta cinco publicadas a la vez. Para publicar otra, se borra una con el tacho (dos toques), en Circuitos o abajo de todo en el creador. Se va con todos sus tiempos.
+- **Se corren como un circuito.** No hay oficial: se corren las veces que se quiera y queda el mejor tiempo. Las que armaste, las que abriste y las de tus clubes aparecen en Circuitos mientras duren.
+- **Quién la armó se ve solo en la portada de la pista**, antes de largar: no al largar ni en lo que se comparte. El mensaje lleva el nombre de la pista:
+
+```
+Shakedown · La Curva del Tero 📝 ⏱️ 01:12:34 🟩 🟩 🟨 🟥 🟩 🏁
+```
+
+El link lleva el número de la pista y su versión: cuando una vence (o la borran), su número se puede volver a usar, y un link viejo nunca abre la pista nueva. Las pistas de la comunidad son lo único del juego que necesita el servidor.
+
 ## Los sponsors
 
 Las pistas llevan publicidad en cinco lugares: banderas a los costados de la largada y de la llegada, chapas apoyadas en la cinta del público, cartelones al costado del camino, pórticos en las calles del pueblo y una tira de marcas arriba de cada arco.
@@ -96,7 +115,7 @@ Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 
 **Clubes.** En la tabla, el `+` arma un club: le ponés un nombre y lo invitás con un link, una sola vez, en el grupo. El que abre la invitación queda adentro. Desde ahí, la pasada oficial de cada uno aparece sola en la tabla del club, con su nombre, su tiempo y su fantasma, y abajo dice quiénes todavía no corrieron. Se puede estar en todos los clubes que se quiera: la oficial del día es una sola y vale para todos, también para un club al que te sumes después de correr. Si entrás a un club sin haber puesto tu nombre, la tabla te lo pide: así los demás te reconocen.
 
-**El servidor.** Los clubes y los links cortos (`…/shakedown/#r=k7Qx2Mp`) necesitan un servidor chico que guarde las pasadas: está en la carpeta `servidor/` y corre gratis en Cloudflare ([cómo publicarlo](servidor/LEEME.md)). El juego no depende de él:
+**El servidor.** Los clubes, los links cortos (`…/shakedown/#r=k7Qx2Mp`) y las pistas de la comunidad necesitan un servidor chico que guarde las pasadas: está en la carpeta `servidor/` y corre gratis en Cloudflare ([cómo publicarlo](servidor/LEEME.md)). El juego no depende de él:
 
 - Sin servidor configurado (`SERVIDOR` vacío en `src/config.js`), o si un día no contesta, el link lleva la pasada completa adentro (por eso es largo: de 500 a 800 letras) y la tabla se arma con los links que se abren. Ese link también lleva los tiempos que te llegaron por otros links, así la tabla se va completando entre todos. (Lo que sabés por un club no viaja en tus links: queda en el club.)
 - Los links largos que ya se compartieron siguen andando siempre.
@@ -189,6 +208,9 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Lo mismo, en la vista previa del link (título, descripción e imagen) | El principio de `index.html` y `vista-previa.jpg` |
 | Los textos y los códigos de la pantalla de "no se pudo cargar" | El principio de `index.html` |
 | Lo que dice cada personaje en el tutorial de la primera vez, en qué orden y qué ilumina (`PASOS`) | `src/tutorial.js` |
+| Las notas del creador de pistas y cómo se arma el camino de cada una (`PIEZAS`); el largo mínimo y el máximo (`TOPES`) | `src/hoja.js` |
+| Lo que dice Leo en el creador y cómo se ordenan los botones de las notas | `src/creador.js` |
+| Cuánto duran las pistas de la comunidad y cuántas puede tener cada uno (`COMUNIDAD`) | `src/circuitos.js` |
 | Los personajes: nombres, roles y cuáles hay (`EQUIPO`); sus retratos | `src/equipo.js`, `personajes/` |
 | La trazada: sus colores, el tamaño de las rayitas y desde qué velocidad avisa (`RITMO`, `FRENADA`, `JUSTO`) | `src/trazada.js` |
 | Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` (y subir `VERSION` ahí mismo: ver abajo) |
@@ -197,7 +219,7 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Los dibujos de las casas, los colectivos, los faroles, las barandas y las pircas | `src/pueblo.js` |
 | Los sponsors: nombres, colores, dibujos y cuánto aparece cada uno | `src/parodias.js` |
 | La dirección del servidor de los clubes (`SERVIDOR`) | `src/config.js` |
-| Los topes del servidor: pasadas por día, tamaño de los clubes, cuánto se guarda (`LIMITES`) | `servidor/worker.js` |
+| Los topes del servidor: pasadas por día, tamaño de los clubes, pistas de la comunidad, cuánto se guarda (`LIMITES`) | `servidor/worker.js` |
 | Dónde va la publicidad, cuánta hay y qué tan vivos son sus colores (`VIVO`) | `src/carteleria.js` |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
@@ -233,6 +255,7 @@ Ya pasó: el archivo que dibuja los carteles de la pista se llamaba `publicidad.
 | `src/config.js` | Los números para ajustar |
 | `src/dia.js`, `src/generador.js` | El calendario y el generador: de un número de día sale una pista |
 | `src/circuitos.js` | Los circuitos fijos, escritos a mano |
+| `src/hoja.js`, `src/creador.js` | Las pistas de la comunidad: de la hoja de notas que arma un jugador sale el camino; el creador, donde se arma la hoja |
 | `src/terrain.js` | Convierte la pista en terreno: alturas, suelos, agua, puentes, árboles, público, y dónde va cada casa, cada pirca y cada cosa de la calle |
 | `src/edificios.js`, `src/pueblo.js` | Las medidas de los edificios y de las cosas de la calle, y cómo se dibujan |
 | `src/referencia.js` | Calcula la trazada, el tiempo de referencia de cada sector y dónde hay que frenar |
@@ -241,8 +264,8 @@ Ya pasó: el archivo que dibuja los carteles de la pista se llamaba `publicidad.
 | `src/ayuda.js` | La ayuda de manejo: lleva el auto por la trazada y regula los pedales antes de las curvas |
 | `src/trazada.js` | La trazada pintada en el camino, y sus colores |
 | `src/copiloto.js` | Las notas y la voz que las canta |
-| `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus clubes, tus gustos) |
-| `src/nube.js` | Lo que el juego le pide al servidor: guardar y traer pasadas, y los clubes |
+| `src/fantasma.js`, `src/club.js` | Graban la pasada y la meten en un link; lo que se guarda en el aparato (tu pasada, la tabla, tus clubes, tus gustos, el borrador del creador y las pistas de la comunidad que conocés) |
+| `src/nube.js` | Lo que el juego le pide al servidor: guardar y traer pasadas, los clubes y las pistas de la comunidad |
 | `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
 | `src/equipo.js`, `src/tutorial.js` | Los personajes del club, y el tutorial de la primera vez |
 | `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, las antorchas de las piedras, el público, la lluvia y los faros |
@@ -268,6 +291,7 @@ Direcciones útiles para probar:
 
 - `?p=3` abre la pista #3, si ya pasó. Con `?p=6&futuro` se abre cualquiera, aunque todavía no haya llegado su día (como práctica).
 - `?c=subida`, `?c=bajada`, `?c=urbano` y `?c=practica` abren los circuitos.
+- `?pista=borrador` abre el borrador del creador, y `?pista=13042-1` una pista de la comunidad (esa necesita el servidor).
 - `?simple` saca el desenfoque y los brillos.
 
 ## Pruebas (opcional)
@@ -278,7 +302,7 @@ Con Node instalado, desde la carpeta del repo:
 - `node tools/piloto.mjs 16001 4`: lo mismo en los cuatro circuitos (sus números de pista van del 16001 al 16004). En la vuelta cerrada cada piloto da tres vueltas y cuenta la mejor.
 - `SOLO=novato,ayudado,sinManos node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo; y `sinManos`, que además no toca el volante. Sirve para ver cuánto ayuda. Para probar otros números sin tocar `config.js`: `AYUDA="ritmo=0.74,frena=3.2" SOLO=ayudado node tools/piloto.mjs 1 8`.
 - `node tools/fisica.mjs`: aceleración, frenada, curvas y subidas en cada suelo.
-- `node servidor/prueba.mjs`: prueba el servidor de los clubes sin publicar nada (pide Node 22 o más nuevo).
+- `node servidor/prueba.mjs`: prueba el servidor de los clubes y de las pistas de la comunidad sin publicar nada (pide Node 22 o más nuevo).
 - `node tools/maniobras.mjs`: qué tan fácil se descontrola cada auto con volantazos.
 
 Sirven para revisar que las pistas se puedan terminar después de tocar `config.js`, `generador.js` o `circuitos.js`.

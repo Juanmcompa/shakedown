@@ -38,6 +38,8 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Lo que rompe el auto se tiene que ver venir.** Las piedras pegadas al camino llevan una antorcha roja. Es solo dibujo: las piedras son las mismas de siempre.
 - **Lenguaje visual:** bloques con dibujos de pocos píxeles (un píxel = 25 cm), público y plantas como dibujos planos que miran a la cámara, colores apagados y polvorientos, y un "revelado" de maqueta (desenfoque, brillos, bruma cálida). Los instrumentos son carteles viales, amarillos y negros.
 - **Publicidad en chiste, y solo de adorno.** Los sponsors son parodias de marcas conocidas, con el nombre cambiado (FPY, CAC, Mercado Ladri). Van en banderas, chapas contra la cinta del público, cartelones, pórticos y arcos. No se chocan ni cambian la pista: se reparten con un sorteo aparte, así se pueden cambiar sin tocar los tiempos de nadie ni subir la versión. Los soportes están pensados para que el día de mañana lleven sponsors de verdad: alcanza con cambiar la lista.
+- **Pistas de la comunidad, armadas con íconos.** Cualquiera arma una pista en el creador eligiendo las notas una por una (curvas, rectas, cosas del camino y del costado), sin mapa: el camino sale solo y no se puede cruzar. Duran dos semanas, se corren como un circuito (sin oficial, queda el mejor tiempo), tienen su tabla y se comparten con un link. También se arman para un club: cada club hace sus propias pistas. Quien la armó se ve solo en la portada de la pista. El servidor guarda solo la hoja de notas (unas 400 letras): el camino y el terreno los arma cada aparato.
+- **Cinco pistas por persona.** Para ahorrar lugar, cada uno puede tener hasta cinco publicadas a la vez, y las puede borrar cuando quiera (con sus tiempos) para publicar otra.
 - **Sin instalación ni compilado.** HTML y JavaScript, publicado con GitHub Pages en `/shakedown`.
 - **Ningún archivo se llama como un anuncio.** Los bloqueadores de publicidad frenan las direcciones con palabras como "publicidad", "sponsor" o "banner", y con un solo archivo frenado el juego no carga. Por eso los carteles de la pista están en `carteleria.js` y los sponsors en `parodias.js`.
 
@@ -71,6 +73,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] El juego ya carga con bloqueador de publicidad: el archivo `publicidad.js` cambió de nombre (lo frenaban AdGuard y uBlock Origin en castellano, y el juego mostraba "No se pudo cargar"). Revisadas todas las direcciones del juego y todos los nombres de la página contra las listas de uBlock Origin, AdGuard, EasyList y EasyList en español
 - [x] Cartel de Early Access en la largada de cada pasada, renglón de aviso en el resultado y en la invitación a un club, y título, descripción e imagen nuevos para la vista previa del link. La firma, solo en la portada
 - [x] Códigos en la pantalla de "no se pudo cargar": qué falló, en qué paso y, si fue un archivo, cuál; consejo distinto para cada caso; botón para copiar el detalle; y aviso si la carga tarda más de 40 segundos
+- [x] Creador de pistas de la comunidad: se arman nota por nota con íconos, sin mapa, con Leo avisando qué entra y qué no; se prueban como borrador y se publican por dos semanas, con link o para un club; tabla propia; cinco por persona, con tacho para borrar
 - [x] Trazada para seguir, con prendido y apagado (en la configuración o con la T): verde, amarilla o roja según la velocidad que se trae
 - [x] Ayuda de manejo que sigue la trazada y regula los pedales de a poco: ya no se escucha cortar el acelerador
 - [x] Antorchas rojas en las piedras pegadas al camino
@@ -92,9 +95,9 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 Lo que piden las tiendas y lo que conviene tener resuelto antes. Revisado en octubre de 2026; las reglas cambian, hay que volver a mirarlas llegado el momento.
 
 1. **Política de privacidad publicada.** Las dos tiendas la piden aunque se guarde poco, y además hay que completar la declaración de datos de cada una (en Google Play, "Data safety"; en App Store, "App Privacy"). Lo que se guarda está en [`servidor/LEEME.md`](servidor/LEEME.md).
-2. **Que cada uno pueda borrar sus datos** del servidor desde el juego (hoy las pasadas se borran solas a los 120 días, pero los clubes quedan).
+2. **Que cada uno pueda borrar sus datos** del servidor desde el juego (hoy las pasadas se borran solas a los 120 días y las pistas de la comunidad se pueden borrar, pero los clubes quedan).
 3. **Confirmar antes de entrar a un club.** Hoy el que abre una invitación entra solo; conviene que primero vea a qué club entra y diga que sí.
-4. **Nombres ofensivos.** Cuando la gente ve nombres escritos por otros, las tiendas piden reglas de uso, una forma de denunciar y otra de bloquear.
+4. **Nombres ofensivos.** Cuando la gente ve nombres escritos por otros (apodos, clubes y pistas de la comunidad), las tiendas piden reglas de uso, una forma de denunciar y otra de bloquear.
 5. **Marcas de otros.** Revisar el nombre "Shakedown" (ya hubo juegos con esa palabra) y los sponsors y autos en chiste: las tiendas no hacen excepción con las parodias. Conviene consultarlo con alguien que sepa de marcas.
 6. **Código cerrado.** Pasar el repo a privado y publicar el juego compactado. No impide copiarlo, pero deja de estar servido en bandeja. Un dominio propio también ayuda.
 7. **Prueba cerrada.** En Google Play, una cuenta personal nueva tiene que probar la app con 12 personas durante 14 días antes de poder publicarla.

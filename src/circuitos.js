@@ -20,6 +20,12 @@ export const CIRCUITOS = [
     detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
+// Las pistas de la comunidad (las que arma un jugador: ver hoja.js) usan los numeros de 13000 a 15999. Duran dos semanas
+// (o hasta que quien la armo la borre); despues el numero se puede volver a usar, con la version siguiente (el link de un
+// resultado guarda numero y version: el de una pista vieja no se confunde con la nueva). El borrador que se esta probando
+// en el creador es el 12999. Cada uno puede tener hasta cinco vigentes. (Los dias recien llegan al 13000 en el año 2062.)
+export const COMUNIDAD = { desde: 13000, hasta: 15999, borrador: 12999, dias: 14, porPersona: 5 };
+export const esDeLaComunidad = (numero) => numero >= COMUNIDAD.desde && numero <= COMUNIDAD.hasta;
 export const circuitoDe = (clave) => CIRCUITOS.find((c) => c.id === clave || c.numero === clave) || null;
 
 // que tan cerrada es una curva, como la canta el copiloto: del 1 (la mas cerrada) al 6, "h" la horquilla y "e" la esquina de 90
@@ -80,7 +86,7 @@ function trazado() {
 }
 
 // piedras al borde de un tramo, cada tantos metros, de un lado o de los dos
-function piedras(t, r, cada = 9, lados = [-1, 1]) {
+export function piedras(t, r, cada = 9, lados = [-1, 1]) {
   t.piedras = t.piedras || [];
   for (let u = 4; u < t.largo - 3; u += cada * (0.7 + r() * 0.6)) t.piedras.push([Math.round(u), lados[Math.floor(r() * lados.length)] * (t.ancho / 2 + 0.6 + r() * 0.7), Math.round((0.5 + r() * 0.45) * 100) / 100]);
 }
@@ -237,7 +243,7 @@ function elegir(r, lista) {
 }
 // Llena los costados de un tramo con edificios, uno al lado del otro, mirando a la calle.
 // o.lados: de que lados ([-1, 1] = los dos).  o.desde / o.hasta: metros que se dejan libres en cada punta (para las esquinas).
-function casas(t, r, o = {}) {
+export function casas(t, r, o = {}) {
   const hasta = t.largo - (o.hasta === undefined ? 6 : o.hasta), vereda = t.vereda || 0, lista = t.casas || (t.casas = []);
   for (const lado of o.lados || [-1, 1]) {
     let u = (o.desde === undefined ? 6 : o.desde) + r() * 1.5;
@@ -254,7 +260,7 @@ function casas(t, r, o = {}) {
   return t;
 }
 // faroles de un lado y arboles del otro, en la vereda
-function arbolado(t, r, o = {}) {
+export function arbolado(t, r, o = {}) {
   const borde = t.ancho / 2 + 1.25, cosas = t.objetos || (t.objetos = []), verdes = t.arboles || (t.arboles = []), ladoFarol = o.farol || (r() < 0.5 ? -1 : 1);
   for (let u = 8 + r() * 6; u < t.largo - 5; u += 26) cosas.push([Math.round(u), ladoFarol * borde, 'farol', 0]);
   if (o.arboles !== false) for (let u = 6 + r() * 5; u < t.largo - 5; u += 11 + r() * 8) verdes.push([Math.round(u), -ladoFarol * (borde + 0.3), r() < 0.7 ? 'lenga' : 'alamo', 0.75 + r() * 0.3]);

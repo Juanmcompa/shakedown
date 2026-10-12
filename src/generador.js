@@ -31,7 +31,7 @@
 //   arboles    arboles plantados: lista de [metros desde el inicio, metros hacia la derecha, tipo, tamaño]
 //   autos      autos estacionados: lista de [metros desde el inicio, metros hacia la derecha, giro en grados, cual]
 import { azar } from './noise.js';
-import { esCircuito, circuitoDe, armarCircuito } from './circuitos.js';
+import { esCircuito, circuitoDe, armarCircuito, esDeLaComunidad, COMUNIDAD } from './circuitos.js';
 
 const RAD = Math.PI / 180;
 // La version de las pistas. Hay que subirla cada vez que un cambio hace que el mismo dia de OTRA pista
@@ -39,7 +39,10 @@ const RAD = Math.PI / 180;
 // anterior se descartan solos (ya no coinciden con el camino) y se puede volver a correr la oficial.
 export const VERSION = 1;
 // Los circuitos fijos llevan cada uno su version (en circuitos.js): cambiar uno no borra lo guardado de los demas ni de los dias.
-export const versionDe = (numero) => (esCircuito(numero) ? circuitoDe(numero).version || 1 : VERSION);
+// Las pistas de la comunidad, la que les dio el servidor (ver anotarPista, mas abajo). De una que no esta anotada no se sabe:
+// da null (y lo guardado de esa pista se deja como esta).
+export const versionDe = (numero) => (esCircuito(numero) ? circuitoDe(numero).version || 1
+  : esDeLaComunidad(numero) || numero === COMUNIDAD.borrador ? (anotadas.has(numero) ? anotadas.get(numero).version : null) : VERSION);
 
 // --- biomas: como es el lugar ---
 // suelos: [suelo, peso]. pendiente: [cuanto cambia de un tramo a otro, maxima], en grados. relieve: alto de las lomas lejos del camino.
@@ -77,7 +80,7 @@ export const CLIMAS = {
 
 // --- curvas: del 1 (la mas cerrada) al 6 (casi recta), y la horquilla ("h") ---
 // [radio minimo, radio maximo, angulo minimo, angulo maximo, velocidad tipica en m/s (para estimar cuanto dura la pista)]
-const CURVAS = {
+export const CURVAS = {
   h: [8.5, 11, 150, 180, 6.5], 1: [13, 18, 65, 125, 8.5], 2: [19, 27, 50, 110, 11], 3: [28, 40, 40, 95, 14],
   4: [42, 62, 30, 80, 18], 5: [66, 100, 22, 60, 22], 6: [110, 180, 12, 38, 26],
 };
@@ -89,20 +92,20 @@ export const CARACTER = {
 };
 
 // mezcla dos numeros en una semilla
-const semilla = (a, b) => (Math.imul(a + 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x165667b1, 0xc2b2ae35)) >>> 0;
+export const semilla = (a, b) => (Math.imul(a + 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x165667b1, 0xc2b2ae35)) >>> 0;
 
-function elegir(r, lista) {   // lista de [cosa, peso]
+export function elegir(r, lista) {   // lista de [cosa, peso]
   let total = 0;
   for (const x of lista) total += x[1];
   let t = r() * total;
   for (const x of lista) { t -= x[1]; if (t <= 0) return x[0]; }
   return lista[lista.length - 1][0];
 }
-const entre = (r, a, b) => a + r() * (b - a);
-const redondo = (v, d = 1) => Math.round(v * d) / d;
+export const entre = (r, a, b) => a + r() * (b - a);
+export const redondo = (v, d = 1) => Math.round(v * d) / d;
 
 // Recorre unos tramos desde una posicion y devuelve los puntos del eje (uno por metro) y donde termina.
-function trazar(tramos, desde) {
+export function trazar(tramos, desde) {
   let { x, z, rumbo } = desde;
   const pts = [];
   for (const t of tramos) {
@@ -117,7 +120,7 @@ function trazar(tramos, desde) {
 }
 
 // El terreno ocupado: una grilla para saber rapido si un punto queda cerca de lo ya trazado.
-function crearOcupado(lado) {
+export function crearOcupado(lado) {
   const celdas = new Map(), clave = (a, b) => (a + 512) * 2048 + b + 512;
   return {
     agregar: (x, z, i) => {
@@ -372,8 +375,13 @@ function intentar(numero, vuelta) {
 
 // La pista de un dia. Si con una semilla no sale (se encierra), se prueba con la siguiente: siempre da la misma.
 const hechas = new Map();
+// Las pistas que no salen de su numero: las de la comunidad. Se arman afuera, con la hoja que manda el servidor (ver hoja.js),
+// y se anotan aca con su numero y su version: desde ahi, generarPista y versionDe las tratan como a cualquier otra.
+const anotadas = new Map();
+export function anotarPista(etapa, version) { anotadas.set(etapa.numero, { etapa, version }); hechas.set(etapa.numero, etapa); }
 export function generarPista(numero) {
   if (hechas.has(numero)) return hechas.get(numero);
+  if (esDeLaComunidad(numero) || numero === COMUNIDAD.borrador) throw new Error('La pista ' + numero + ' no está cargada');
   if (esCircuito(numero)) { const p = armarCircuito(numero); hechas.set(numero, p); return p; }   // (los circuitos fijos estan escritos a mano, en circuitos.js)
   for (let vuelta = 0; vuelta < 60; vuelta++) {
     const p = intentar(numero, vuelta);

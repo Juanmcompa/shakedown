@@ -508,3 +508,89 @@ button.con-texto.fuerte { background: var(--amarillo); }
 .equipo b { font: 700 17px/1.1 var(--titulos); }
 .equipo span { font-size: 12px; line-height: 1.15; opacity: .75; }
 @media (max-width: 420px) { .equipo { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* --- las pistas de la comunidad: en los circuitos y en cada club (las filas son como las de los circuitos) --- */
+.comunidad, .club-pistas { display: grid; gap: 10px; }
+.club-pistas { margin-top: 8px; }
+.comunidad h3, .club-pistas h3 { margin-top: 10px; }
+/* las pistas propias llevan un tacho al costado, para borrarlas (se toca dos veces: la primera se pone rojo) */
+.circuitos li.con-tacho { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+button.chiquito.tacho.seguro { background: var(--rojo); }
+button.chiquito.tacho.seguro .icono { opacity: 1; }
+
+/* --- el creador de pistas (ver creador.js): arriba Leo, despues el lugar, la pista que se va armando y las notas para
+   elegir, que se tocan como un teclado. Al final, el nombre, para quien es, probar y publicar. --- */
+.creador { position: fixed; inset: 0; z-index: 30; overflow-y: auto; overscroll-behavior: contain; background: #121417; padding: var(--ma) var(--md) var(--mb) var(--mi); display: grid; justify-items: center; align-content: start; }
+.cr-cuerpo { width: min(40rem, 100%); display: grid; gap: 12px; padding-bottom: 8px; }
+/* (la cruz se va con lo de arriba al bajar: si quedara fija, en el celular taparia las notas de la derecha) */
+.creador > .cerrar { position: absolute; }
+.cr-cabeza { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: 12px; align-items: end; padding-right: 58px; }
+.cr-retrato { width: 96px; height: auto; display: block; }
+.cr-quien { display: grid; gap: 4px; }
+.cr-quien h2 { font: 800 30px/1.05 var(--titulos); }
+.cr-leo { display: flex; align-items: baseline; gap: 8px; }
+.cr-leo b { font: 800 18px/1 var(--titulos); color: var(--amarillo); text-transform: uppercase; letter-spacing: .01em; }
+.cr-leo span { font: 600 13px/1 var(--titulos); text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
+/* lo que dice Leo: un globito (cambia con cada nota que se toca) */
+.cr-dice { font-size: 15px; line-height: 1.3; padding: 7px 10px 8px; background: rgba(255, 255, 255, .08); border-left: 3px solid var(--amarillo); min-height: 3.2em; }
+.cr-lugar { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.cr-lugar .opciones button { font: 400 22px/1 system-ui, sans-serif; min-width: 48px; padding: 7px 8px; }
+/* la pista que se va armando: la largada, las notas y la llegada (que se pone sola) */
+.cr-tu-pista { background: var(--placa); border-left: 4px solid var(--amarillo); padding: 10px 12px; display: grid; gap: 8px; }
+.cr-hoja { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 3px 3px; max-height: 146px; overflow-y: auto; overscroll-behavior: contain; }
+.cr-hoja .nota { display: inline-flex; flex-direction: column; align-items: center; width: 30px; background: none; padding: 0; }
+.cr-hoja .nota .icono { width: 30px; height: 30px; }
+.cr-hoja .nota b { font: 700 13px/1 var(--titulos); min-height: 13px; }
+.cr-hoja .cr-objeto { width: 20px; }
+.cr-hoja .cr-objeto .icono { width: 20px; height: 20px; margin-top: 10px; }
+.cr-hoja .cr-punta { opacity: .55; }
+.cr-hoja .cr-ultima b { box-shadow: 0 3px 0 var(--amarillo); }
+.cr-medida { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cr-medida b { font: 800 26px/1 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.cr-medida b.corta { color: #fff; opacity: .65; }
+.cr-medida button { margin-left: auto; font-size: 15px; padding: 6px 12px 7px 8px; }
+.cr-medida button:disabled { opacity: .4; }
+/* las notas para elegir: filas de ocho, como un teclado. Las que no entran como siguiente se ven apagadas. */
+.cr-teclas { display: grid; gap: 10px; }
+.cr-grupo { display: grid; gap: 4px; }
+.cr-fila { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+button.cr-pieza { min-height: 54px; padding: 5px 0 5px; display: grid; justify-items: center; align-content: center; gap: 3px; border-radius: 6px; background: rgba(255, 255, 255, .1); color: #fff; font: 700 13px/1 var(--titulos); }
+.cr-pieza > .icono { width: 30px; height: 30px; vertical-align: 0; display: block; }
+.cr-pieza small { font: inherit; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+button.cr-pieza.no-entra { opacity: .28; }
+button.cr-pieza:active:not(.no-entra) { background: rgba(255, 255, 255, .32); }
+@media (hover: hover) and (pointer: fine) { button.cr-pieza:hover:not(.no-entra) { background: rgba(255, 255, 255, .2); } }
+/* el nombre, para quien es, probar y publicar */
+.cr-fin { display: grid; gap: 8px; padding: 10px 12px; background: rgba(255, 255, 255, .07); }
+.cr-fin label, .cr-para > span { font: 700 17px/1.1 var(--titulos); }
+.cr-fin input { width: 100%; padding: 8px 10px; border: 0; border-radius: 5px; font: 600 16px/1.2 var(--texto); color: #000; background: #fff; -webkit-user-select: text; user-select: text; }
+.cr-fin input::placeholder { color: #8a8780; }
+.cr-fin input:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; }
+.cr-apodo { display: grid; gap: 8px; }
+.cr-para { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.cr-para .opciones { flex-wrap: wrap; }
+.cr-para .opciones button { font-size: 16px; max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-fin .botones { margin-top: 4px; }
+.cr-fin .botones button { font-size: 21px; padding: 10px 18px 11px 12px; }
+.cr-fin .botones button:disabled { opacity: .5; }
+.cr-fin button.discreto { font-size: 14px; padding: 6px 12px 7px; }
+/* las pistas que ya publicaste, con su tacho */
+.cr-mias { display: grid; gap: 8px; padding: 10px 12px; background: rgba(255, 255, 255, .07); }
+.cr-mias h3 { font: 700 18px/1.1 var(--titulos); }
+.cr-mias-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.cr-mias-lista li { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 6px 8px; background: rgba(255, 255, 255, .06); }
+.cr-mias-lista .emoji { grid-row: 1 / 3; font-size: 20px; text-align: center; }
+.cr-mias-lista b { font: 800 18px/1.1 var(--titulos); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-mias-lista small { grid-column: 2; font-size: 13px; opacity: .8; }
+.cr-mias-lista button { grid-column: 3; grid-row: 1 / 3; }
+/* en el celular parado: Leo mas chico, y las notas un poco mas apretadas */
+@media (max-width: 600px) {
+  .cr-cabeza { grid-template-columns: 66px minmax(0, 1fr); column-gap: 10px; padding-right: 54px; }
+  .cr-retrato { width: 66px; }
+  .cr-quien h2 { font-size: 25px; }
+  .cr-dice { font-size: 14px; }
+  .cr-fila { gap: 3px; }
+  button.cr-pieza { min-height: 50px; font-size: 12px; }
+  .cr-pieza > .icono { width: 28px; height: 28px; }
+  .cr-hoja { max-height: 112px; }
+}

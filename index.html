@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="18" class="cargando">
+<html lang="es" data-pagina="19" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -131,7 +131,7 @@
     var guarda = false, graficos = 'no';
     try { localStorage.setItem('shakedown.prueba', '1'); localStorage.removeItem('shakedown.prueba'); guarda = true; } catch (x) { /* sin memoria */ }
     try { var gl = document.createElement('canvas').getContext('webgl2'); if (gl) { var d = gl.getExtension('WEBGL_debug_renderer_info'); graficos = 'sí' + (d ? ' (' + recortar(gl.getParameter(d.UNMASKED_RENDERER_WEBGL), 80) + ')' : ''); } } catch (x) { graficos = 'falló al probar'; }
-    var h = location.hash, link = /[#&]r=/.test(h) ? 'link de una pasada (' + (h.length - 3) + ' letras)' : /[#&]club=/.test(h) ? 'invitación a un club' : 'sin link';
+    var h = location.hash, link = /[#&]r=/.test(h) ? 'link de una pasada (' + (h.length - 3) + ' letras)' : /[#&]club=/.test(h) ? 'invitación a un club' : /[?&]pista=/.test(location.search) ? 'pista de la comunidad (' + (/[?&]pista=([\w-]+)/.exec(location.search) || [])[1] + ')' : 'sin link';
     r.push('Shakedown no cargó. ' + (carga.linea || 'Código ' + carga.codigo));
     r.push('Qué: ' + (e.mensaje || carga.texto || '?') + (e.donde ? ' (' + e.donde + ')' : ''));
     r.push('Paso ' + carga.paso + (carga.paso ? '' : ' (el programa todavía no había arrancado)') + ' · a los ' + ((Date.now() - carga.desde) / 1000).toFixed(1) + ' s · ' + new Date().toLocaleString());
@@ -225,7 +225,7 @@
   // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -343,6 +343,8 @@
     <div class="botones">
       <button id="largar" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Largar</span></button>
       <button id="compartirPortada" class="segundo" data-icono="compartir" data-color="#000000" aria-label="Compartir" hidden><span class="rotulo">Compartir</span></button>
+      <!-- en el borrador del creador de pistas: volver a armarlo -->
+      <button id="editarPista" class="segundo" data-icono="lapiz" data-color="#000000" aria-label="Seguir armando" hidden><span class="rotulo">Seguir armando</span></button>
     </div>
     <p id="queEs" class="chico"></p>
     <nav class="solapas" aria-label="Secciones">
@@ -385,6 +387,13 @@
     <p id="clubFaltan" class="chico" hidden></p>
     <h3 id="practicasTitulo" hidden>Prácticas</h3>
     <ol id="practicas" class="tabla"></ol>
+    <!-- las pistas que armo la gente del club (las trae el servidor con la tabla) -->
+    <div id="clubPistas" class="club-pistas" hidden>
+      <h3>Pistas del club</h3>
+      <ol id="clubPistasLista" class="circuitos"></ol>
+      <p id="clubPistasVacia" class="chico">Todavía no hay. Armá una: la ven todos los del club, y dura dos semanas.</p>
+      <p><button id="clubArmar" type="button" class="con-texto" data-icono="lapiz" data-color="#000000">Armar una para el club</button></p>
+    </div>
     <p id="clubPie" class="club-pie" hidden><button id="clubSalir" type="button" class="con-texto discreto">Salir del club</button></p>
   </div>
   <!-- los circuitos fijos: siempre los mismos, para correr las veces que se quiera -->
@@ -392,6 +401,14 @@
     <h2>Circuitos</h2>
     <p class="chico">Siempre los mismos, para correr las veces que quieras. Queda tu mejor tiempo, y lo podés compartir como el de la pista del día.</p>
     <ol id="circuitos" class="circuitos"></ol>
+    <!-- las pistas de la comunidad que se conocen en este aparato: las que armaste, las que abriste y las de tus clubes -->
+    <div class="con-servidor comunidad">
+      <h3>Pistas de la comunidad</h3>
+      <p class="chico">Las arma la gente, nota por nota. Duran dos semanas: se comparten con un link, o se arman para un club.</p>
+      <ol id="comunidad" class="circuitos"></ol>
+      <p id="comunidadVacia" class="chico">Todavía no tenés ninguna. Cuando abras el link de una, aparece acá.</p>
+      <p><button id="armarPista" type="button" class="con-texto" data-icono="lapiz" data-color="#000000">Armar una pista</button></p>
+    </div>
   </div>
   <div id="panelPasadas" hidden>
     <h2>Pistas pasadas</h2>
@@ -452,6 +469,62 @@
     <div class="ajuste">
       <span class="que" data-icono="voz">Voz del copiloto</span>
       <div class="opciones" data-ajuste="voz" role="radiogroup" aria-label="Voz del copiloto"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- El creador de pistas (ver creador.js): la pista se arma nota por nota, sin mapa. Leo, el ingeniero de pista, va diciendo
+     que pasa. Los botones del ambiente, el clima y las notas los pone creador.js. -->
+<section id="creador" class="creador" hidden aria-labelledby="crTitulo">
+  <button id="crCerrar" class="cerrar" data-icono="cerrar" data-color="#000000" aria-label="Cerrar el creador"></button>
+  <div class="cr-cuerpo">
+    <header class="cr-cabeza">
+      <img class="cr-retrato" src="personajes/leo.webp" alt="" width="431" height="458" decoding="async" loading="lazy" draggable="false">
+      <div class="cr-quien">
+        <h2 id="crTitulo">Armá tu pista</h2>
+        <p class="cr-leo"><b>Leo</b> <span>ingeniero de pista</span></p>
+        <p id="crDice" class="cr-dice" role="status"></p>
+      </div>
+    </header>
+    <div class="cr-lugar">
+      <div id="crAmbiente" class="opciones" role="radiogroup" aria-label="Ambiente"></div>
+      <div id="crClima" class="opciones" role="radiogroup" aria-label="Clima"></div>
+    </div>
+    <div class="cr-tu-pista">
+      <div id="crHoja" class="cr-hoja" role="img"></div>
+      <div class="cr-medida">
+        <b id="crLargo"></b>
+        <span id="crCuenta" class="chico"></span>
+        <button id="crBorrar" type="button" class="con-texto discreto" data-icono="borrar" aria-label="Borrar la última nota">Borrar la última</button>
+      </div>
+    </div>
+    <div class="cr-teclas">
+      <div id="crCurvas" class="cr-grupo" aria-label="Curvas"></div>
+      <div id="crCamino" class="cr-grupo" aria-label="Rectas y camino"></div>
+      <div id="crCostado" class="cr-grupo" aria-label="Al costado del camino"></div>
+    </div>
+    <div class="cr-fin">
+      <label for="crNombre">Nombre de la pista</label>
+      <input id="crNombre" type="text" maxlength="24" autocomplete="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" placeholder="La Curva del Tero">
+      <div id="crApodoCaja" class="cr-apodo" hidden>
+        <label for="crApodo">Tu nombre</label>
+        <input id="crApodo" type="text" maxlength="14" autocomplete="nickname" autocapitalize="words" spellcheck="false" enterkeyhint="done">
+      </div>
+      <div id="crParaCaja" class="cr-para" hidden>
+        <span>Para</span>
+        <div id="crPara" class="opciones" role="radiogroup" aria-label="Para quién es la pista"></div>
+      </div>
+      <div class="botones">
+        <button id="crProbar" type="button" class="con-texto" data-icono="cono" data-color="#000000">Probar</button>
+        <button id="crPublicar" type="button" class="con-texto fuerte" data-icono="bandera" data-color="#000000">Publicar</button>
+      </div>
+      <p class="chico">Publicada, dura dos semanas: se comparte con un link y tiene su tabla. Tu nombre sale en la portada de la pista. Podés tener hasta cinco publicadas a la vez.</p>
+      <p><button id="crDeCero" type="button" class="con-texto discreto" hidden>Empezar otra</button></p>
+    </div>
+    <!-- las pistas que ya publicaste (con un tacho para borrar alguna y hacer lugar) -->
+    <div id="crMias" class="cr-mias" hidden>
+      <h3 id="crMiasTitulo"></h3>
+      <ol id="crMiasLista" class="cr-mias-lista"></ol>
     </div>
   </div>
 </section>

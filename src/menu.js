@@ -1,5 +1,6 @@
-// Las pantallas que no son manejar: la portada con la pista del dia (o con un circuito fijo), la tabla del club,
-// los circuitos, las pistas pasadas, la ayuda, la configuracion y el resultado de cada pasada con su boton de compartir.
+// Las pantallas que no son manejar: la portada con la pista del dia (o con un circuito fijo, o una pista de la comunidad),
+// la tabla del club, los circuitos y las pistas de la comunidad, las pistas pasadas, la ayuda, la configuracion y el
+// resultado de cada pasada con su boton de compartir.
 import { AUTOS, FIRMA } from './config.js';
 import { BIOMAS, CLIMAS, CARACTER, datosDelDia } from './generador.js';
 import { CIRCUITOS, circuitoDe } from './circuitos.js';
@@ -14,10 +15,13 @@ const ABANDONO = { roto: 'Rompiste el auto', tiempo: 'Se acabó el tiempo', cerr
 const crear = (etiqueta, clase, texto) => { const el = document.createElement(etiqueta); if (clase) el.className = clase; if (texto !== undefined) el.textContent = texto; return el; };
 
 // El mensaje para compartir: Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
-// (el de un circuito fijo lleva su nombre en vez del numero: Shakedown · Subida ⛰️ ⏱️ 01:42:85 ...)
+// (el de un circuito fijo lleva su nombre en vez del numero: Shakedown · Subida ⛰️ ⏱️ 01:42:85 ...; el de una pista de la
+// comunidad, su nombre y el anotador: Shakedown · La Curva del Tero 📝 ⏱️ ...; quien la armo no va: solo en la portada)
+export const EMOJI_COMUNIDAD = '📝';
 export function mensaje(etapa, r) {
   const cuadros = [...(r.c || 'nnnnn')].map((x) => CUADRO[x]).join(' '), fijo = circuitoDe(etapa.numero);
-  return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
+  return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : etapa.comunidad ? 'Shakedown · ' + etapa.nombre + ' ' + EMOJI_COMUNIDAD
+    : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
     + (r.ab ? ' 💥 abandono ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
 }
 // El renglon que cierra todo lo que se comparte (el resultado y la invitacion a un club), debajo del link:
@@ -33,15 +37,26 @@ function cuadritos(colores) {
   return caja;
 }
 
+// cuanto le queda a una pista de la comunidad (vence: en segundos)
+export const quedan = (vence) => { const d = Math.ceil((vence - Date.now() / 1000) / 86400); return d <= 1 ? 'vence hoy' : 'quedan ' + d + ' días'; };
+
 // o: { T, club, hoy, ref, copiloto, elegirAuto(id), rival(),
+//      comunidad                     null, o la pista de la comunidad que se corre: { nombre, autor, club, clubNombre, vence }
+//                                    (o { borrador: true, nombre, club } si es el borrador del creador)
+//      armar(codigo)                 abre el creador de pistas (codigo: el club para el que se arma)
+//      linkDeLaPista()               el link de esta pista (para compartir una de la comunidad)
+//      borrarPista(numero)           borra una pista propia: promesa de { borrada } o { error }
 //      claveDe(r)                    como se nombra a alguien de la tabla para elegirlo de rival
 //      elegirRival(clave, practica)  promesa de false si no se pudo traer su fantasma del servidor
 //      acortar(r, codigo)            promesa de lo que va en el link: el codigo corto del servidor, o la pasada entera
 //      clubes: null si el juego no tiene servidor; si no { fundar(nombre), dejar(codigo), de(codigo), refrescar() }
 //      ajustes: { leer(clave), poner(clave, valor), probar() }   la configuracion (ver GUSTOS en config.js) }
 export function crearMenu(o) {
-  const { T, club, hoy, ref, copiloto, ajustes } = o, etapa = T.etapa, numero = etapa.numero, esHoy = numero === hoy;
+  const { T, club, hoy, ref, copiloto, ajustes, comunidad } = o, etapa = T.etapa, numero = etapa.numero, esHoy = numero === hoy;
   const fijo = circuitoDe(numero);   // si lo que se corre es un circuito fijo, cual
+  // En lo libre (un circuito o una pista de la comunidad) no hay oficial: se corre las veces que se quiera y queda el mejor
+  // tiempo. El borrador es libre tambien, pero no se comparte (todavia no existe para los demas).
+  const libre = !!fijo || !!comunidad, borrador = !!(comunidad && comunidad.borrador);
   // el salvavidas que marca un tiempo hecho con la ayuda de manejo
   const conAyuda = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('salvavidas'); img.alt = 'con ayuda de manejo'; img.title = 'Con ayuda de manejo'; return img; };
   let ultimo = null, linkDe = null;   // el ultimo resultado mostrado, y la funcion que arma su link
@@ -54,11 +69,15 @@ export function crearMenu(o) {
   // quien hace el juego: debajo de la marca, solo en la portada
   $('firmaAutor').textContent = FIRMA.autor;
   $('firma').hidden = !FIRMA.autor;
-  $('pistaNumero').textContent = fijo ? fijo.emoji : '#' + numero;
-  $('pistaFecha').textContent = fijo ? 'Circuito' : fechaDe(numero);
-  $('pistaLugar').textContent = etapa.lugar;
+  // (de una pista de la comunidad: quien la armo, cuanto le queda y de que club es. Quien la armo va solo aca, en la portada:
+  // ni al largar ni en lo que se comparte)
+  $('pistaNumero').textContent = fijo ? fijo.emoji : comunidad ? EMOJI_COMUNIDAD : '#' + numero;
+  $('pistaFecha').textContent = fijo ? 'Circuito' : borrador ? 'Borrador' : comunidad ? 'Hecha por ' + (comunidad.autor || '?') : fechaDe(numero);
+  $('pistaLugar').textContent = comunidad ? (borrador ? '' : quedan(comunidad.vence)) : etapa.lugar;
   $('pistaNombre').textContent = etapa.nombre;
-  if (fijo) { $('pistaDetalle').textContent = fijo.detalle; $('pistaDetalle').hidden = false; }
+  const detalle = fijo ? fijo.detalle : borrador ? 'Probala las veces que quieras: los tiempos quedan solo en este aparato. Cuando esté lista, publicala desde el creador.'
+    : comunidad && comunidad.club ? 'Pista del club «' + (comunidad.clubNombre || '?') + '».' : '';
+  if (detalle) { $('pistaDetalle').textContent = detalle; $('pistaDetalle').hidden = false; }
   const datos = $('pistaDatos');
   // (si la pista pasa por varios ambientes, se nombran todos: 🌾🌲⛰️ Campo, bosque y montaña)
   const varios = etapa.biomas && etapa.biomas.length > 1 ? etapa.biomas.map((b) => BIOMAS[b].nombre.toLowerCase()) : null;
@@ -89,8 +108,8 @@ export function crearMenu(o) {
   window.addEventListener('resize', hayMas);
 
   function pintar() {
-    // en un circuito no hay pasada oficial: lo que cuenta es el mejor tiempo
-    const oficial = fijo ? club.practica() : club.oficial(), puede = club.sePuedeOficial(), rival = o.rival();
+    // en un circuito (y en una pista de la comunidad) no hay pasada oficial: lo que cuenta es el mejor tiempo
+    const oficial = libre ? club.practica() : club.oficial(), puede = club.sePuedeOficial(), rival = o.rival();
     for (const b of $('autos').children) { const si = b.dataset.auto === club.auto(); b.classList.toggle('elegido', si); b.setAttribute('aria-checked', si); }
     // contra quien
     $('desafio').hidden = !rival;
@@ -100,27 +119,34 @@ export function crearMenu(o) {
     mio.hidden = !oficial || !!oficial.corriendo;
     if (!mio.hidden) {
       mio.textContent = '';
-      mio.append(crear('span', 'chico', T.vuelta ? 'Tu mejor vuelta' : fijo ? 'Tu mejor tiempo' : 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
+      mio.append(crear('span', 'chico', T.vuelta ? 'Tu mejor vuelta' : libre ? 'Tu mejor tiempo' : 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
     }
     $('avisoAyuda').hidden = !ajustes.leer('ayuda');
     pintarAjustes();
     // la bandera a cuadros larga la pasada oficial; el cono, una practica
-    rotular($('largar'), puede || fijo ? 'Largar' : 'Practicar');
-    $('largar').dataset.icono = puede || fijo ? 'bandera' : 'cono';
-    $('compartirPortada').hidden = !(oficial && !oficial.corriendo && oficial.codigo);
-    $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (T.vuelta ? 'Vuelta cerrada: das las que quieras y queda la mejor. Para terminar, salí con la X' + (window.matchMedia('(pointer: coarse)').matches ? '.' : ' o con Esc.') : fijo ? 'Circuito fijo: se corre las veces que quieras. Queda tu mejor tiempo.' : puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
-    // la tabla: en un circuito, los mejores tiempos de cada uno; en una pista del dia, las oficiales y, aparte, las practicas
+    rotular($('largar'), puede || libre ? 'Largar' : 'Practicar');
+    $('largar').dataset.icono = puede || libre ? 'bandera' : 'cono';
+    // compartir: el resultado propio (con su fantasma) o, en una pista de la comunidad que todavia no corriste, la pista
+    $('compartirPortada').hidden = borrador || !((oficial && !oficial.corriendo && oficial.codigo) || (comunidad && o.clubes));
+    $('editarPista').hidden = !borrador;
+    $('queEs').textContent = (o.aviso ? o.aviso + ' ' : '') + (T.vuelta ? 'Vuelta cerrada: das las que quieras y queda la mejor. Para terminar, salí con la X' + (window.matchMedia('(pointer: coarse)').matches ? '.' : ' o con Esc.')
+      : borrador ? 'Borrador: todavía no la ve nadie más.' : comunidad ? 'Pista de la comunidad: se corre las veces que quieras. Queda tu mejor tiempo.'
+      : fijo ? 'Circuito fijo: se corre las veces que quieras. Queda tu mejor tiempo.' : puede ? 'Pasada oficial: una sola. Sin reconocimiento.' : esHoy ? 'Ya corriste la oficial. Las prácticas no cuentan para la tabla.' : 'Pista pasada: se puede practicar, pero ya no cuenta.');
+    // la tabla: en lo libre, los mejores tiempos de cada uno; en una pista del dia, las oficiales y, aparte, las practicas
     pintarClubes();
-    const principal = fijo ? club.practicas(vista) : club.tabla(vista), practicas = fijo ? [] : club.practicas(vista);
+    const principal = libre ? club.practicas(vista) : club.tabla(vista), practicas = libre ? [] : club.practicas(vista);
     pintarTabla($('tabla'), principal);
     pintarTabla($('practicas'), practicas);
     $('tablaVacia').hidden = principal.length > 0 || armando;
-    $('tablaVacia').textContent = vista ? 'Todavía no corrió nadie de este club.'
+    $('tablaVacia').textContent = vista ? 'Todavía no corrió nadie de este club.' : borrador ? 'Los tiempos del borrador quedan solo en este aparato.'
+      : comunidad ? 'Todavía no hay tiempos. Corrila y compartila: acá aparecen todos los que la corren.'
       : 'Todavía no hay tiempos. Corré tu pasada y compartila: los de tus amigos aparecen acá cuando abrís sus links' + (o.clubes ? ', o solos si arman un club.' : '.');
-    $('practicasTitulo').hidden = !!fijo || practicas.length === 0;
-    $('tablaPista').textContent = fijo ? '· ' + fijo.corto : '#' + numero;
+    $('practicasTitulo').hidden = libre || practicas.length === 0;
+    $('tablaPista').textContent = fijo ? '· ' + fijo.corto : comunidad ? '· ' + etapa.nombre : '#' + numero;
+    // (si estan abiertos los circuitos, la lista de pistas de la comunidad tambien: pueden haber llegado las de un club)
+    if (!$('panelCircuitos').hidden) pintarComunidad();
     // (si se esta mostrando un resultado, su tabla tambien se pone al dia: pueden haber llegado tiempos de los clubes)
-    if (ultimo) { const todos = fijo ? club.practicas() : club.tabla(); $('finRanking').hidden = todos.length < 2; pintarTabla($('finTabla'), todos); }
+    if (ultimo) { const todos = libre ? club.practicas() : club.tabla(); $('finRanking').hidden = todos.length < 2; pintarTabla($('finTabla'), todos); }
     ponerIconos();
     hayMas();
   }
@@ -160,6 +186,13 @@ export function crearMenu(o) {
     if (faltan.length) $('clubFaltan').textContent = (faltan.length === 1 ? 'Todavía no corrió ' : 'Todavía no corrieron ') + lista(faltan) + '.';
     $('clubAviso').hidden = !aviso;
     $('clubAviso').textContent = aviso;
+    // las pistas que armo la gente del club (cada club hace las suyas)
+    $('clubPistas').hidden = !enClub;
+    if (enClub) {
+      const pistas = (info && info.pistas) || [];
+      pintarPistas($('clubPistasLista'), pistas.map((p) => ({ ...p, club: vista })), false);
+      $('clubPistasVacia').hidden = pistas.length > 0;
+    }
   }
   const avisar = (texto) => { aviso = texto; pintar(); };
   $('clubNuevo').addEventListener('submit', async (e) => {
@@ -207,7 +240,7 @@ export function crearMenu(o) {
           const llego = await o.elegirRival(es ? '' : clave, !!r.practica);
           aviso = llego === false ? 'No pude traer el fantasma de ' + r.nombre + ': no hay conexión con el servidor.' : '';
           pintar();
-          if (ultimo) pintarTabla($('finTabla'), fijo ? club.practicas() : club.tabla());
+          if (ultimo) pintarTabla($('finTabla'), libre ? club.practicas() : club.tabla());
         });
         li.append(b);
       } else li.append(crear('span'));
@@ -232,6 +265,55 @@ export function crearMenu(o) {
     const d = datosDelDia(hoy), deHoy = club.resumen(hoy);
     fila(location.pathname, esHoy, '🏁', 'La pista de hoy · #' + hoy, CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji + ' ' + d.nombre + '. Una sola pasada oficial.', deHoy.oficial);
     for (const c of CIRCUITOS) fila(location.pathname + '?c=' + c.id, c.numero === numero, c.emoji, c.nombre, c.detalle, club.resumen(c.numero).practica);
+  }
+
+  // --- las pistas de la comunidad: una fila por pista, con lo que le queda y tu mejor tiempo ---
+  // (conClub: si se dice de que club es; en la lista de un club no hace falta). Las propias llevan un tacho para borrarlas
+  // (hay que tocarlo dos veces): cada uno puede tener cinco vigentes, y si quiere otra, borra una.
+  // (el tacho que se toco una vez: queda preguntando unos segundos, aunque la lista se vuelva a pintar; y lo que salio mal)
+  let porBorrar = { numero: 0, desde: 0, error: '' };
+  const preguntando = (n) => porBorrar.numero === n && !porBorrar.error && performance.now() - porBorrar.desde < 6000;
+  const repintarPistas = () => { pintarComunidad(); pintar(); };
+  function pintarPistas(ol, pistas, conClub) {
+    ol.textContent = '';
+    const mias = new Set(club.pistas().filter((x) => x.mia).map((x) => x.numero));
+    for (const p of pistas) {
+      const a = crear('a', p.numero === numero ? 'aca' : ''), res = club.resumen(p.numero).practica, mia = p.mia || mias.has(p.numero), pregunta = preguntando(p.numero);
+      const detalle = [conClub && p.clubNombre ? 'Club ' + p.clubNombre : '', mia ? 'la armaste vos' : '', quedan(p.vence)].filter(Boolean).join(' · ');
+      a.href = (o.direccion || String)(location.pathname + '?pista=' + p.numero + '-' + (p.version || p.v));
+      a.append(crear('span', 'emoji', EMOJI_COMUNIDAD), crear('b', '', p.nombre),
+        crear('small', '', pregunta ? '¿Borrarla? Se van también sus tiempos. Tocá de nuevo el tacho.' : porBorrar.numero === p.numero && porBorrar.error ? porBorrar.error : detalle));
+      if (res) a.append(crear('span', 'tiempoMarca', res.ab ? 'abandono' : tiempoFinal(res.t)), cuadritos(res.c));
+      const li = crear('li');
+      li.append(a);
+      if (mia && o.borrarPista) {
+        const b = crear('button', 'chiquito tacho' + (pregunta ? ' seguro' : ''));
+        b.type = 'button'; b.dataset.icono = 'tacho'; b.title = 'Borrar «' + p.nombre + '»'; b.setAttribute('aria-label', b.title);
+        b.addEventListener('click', async () => {
+          if (!preguntando(p.numero)) {
+            porBorrar = { numero: p.numero, desde: performance.now(), error: '' };
+            repintarPistas();
+            setTimeout(() => { if (porBorrar.numero === p.numero && !porBorrar.error) { porBorrar.numero = 0; repintarPistas(); } }, 6100);
+            return;
+          }
+          b.disabled = true;
+          porBorrar.numero = 0;
+          const r = await o.borrarPista(p.numero);
+          if (r.error) porBorrar = { numero: p.numero, desde: 0, error: r.error };
+          if (!r.sale) repintarPistas();
+        });
+        li.classList.add('con-tacho');
+        li.append(b);
+      }
+      ol.append(li);
+    }
+    ponerIconos(ol);
+  }
+  function pintarComunidad() {
+    const pistas = club.pistas();
+    pintarPistas($('comunidad'), pistas, true);
+    $('comunidadVacia').hidden = pistas.length > 0;
+    $('armarPista').hidden = !o.armar;
   }
 
   // --- pistas pasadas ---
@@ -286,6 +368,7 @@ export function crearMenu(o) {
     </dl>
     <p>${dib('bandera')} larga la pasada oficial: una sola por día. ${dib('cono')} es práctica: no cuenta para la tabla.</p>
     <p>${dib('circuito')} Además de la pista del día hay circuitos fijos, para correr las veces que quieras: una subida y una bajada de montaña, un callejero por el pueblo y una vuelta cerrada para practicar, donde das las vueltas que quieras. Queda guardado tu mejor tiempo.</p>
+    <p class="con-servidor">${dib('lapiz')} Ahí también están las pistas de la comunidad: las arma la gente en el creador, nota por nota, como las canta el copiloto. Duran dos semanas y se comparten con un link. Si la armás para un club, aparece en el club y la corren todos sus miembros.</p>
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
     <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina.</p>
     <p>Los golpes rompen el auto. Si se rompe del todo, es abandono. Las piedras que están pegadas al camino llevan una antorcha roja.</p>
@@ -333,7 +416,7 @@ export function crearMenu(o) {
   function abrir(cual) {
     for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelCircuitos', 'circuitos'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes']]) $(id).hidden = nombre !== cual;
     if (cual === 'pasadas') pintarPasadas();
-    if (cual === 'circuitos') pintarCircuitos();
+    if (cual === 'circuitos') { pintarCircuitos(); pintarComunidad(); }
     // en el celular, al abrir la configuracion se prende el sensor (si lo hay) para poder probar la sensibilidad
     if (cual === 'ajustes') { pintarAjustes(); if (window.matchMedia('(pointer: coarse)').matches) ajustes.probar(); }
     // al abrir la tabla se le piden al servidor los tiempos de los clubes (si paso un rato desde la ultima vez)
@@ -343,8 +426,13 @@ export function crearMenu(o) {
   }
   for (const b of document.querySelectorAll('[data-panel]')) b.addEventListener('click', () => abrir(b.dataset.panel));
   $('cerrarPanel').addEventListener('click', () => abrir(''));
-  // desde el resultado: vuelve a la portada y abre los circuitos
-  $('irCircuitos').addEventListener('click', () => { $('salir').click(); abrir('circuitos'); });
+  // desde el resultado: vuelve a la portada y abre los circuitos (en el borrador: vuelve al creador)
+  $('irCircuitos').addEventListener('click', () => { $('salir').click(); if (borrador) o.armar(); else abrir('circuitos'); });
+  // el creador de pistas: desde los circuitos, desde un club (la pista queda para ese club) y, en el borrador, desde la portada
+  const armar = (codigo) => { abrir(''); o.armar(codigo); };
+  $('armarPista').addEventListener('click', () => armar());
+  $('clubArmar').addEventListener('click', () => armar(vista));
+  $('editarPista').addEventListener('click', () => armar());
 
   // --- compartir ---
   // Pasa un texto: en el celular abre el menu de compartir; en la compu lo copia. decir(texto): donde se avisa como salio.
@@ -359,6 +447,10 @@ export function crearMenu(o) {
       decir('No pude copiarlo. Copialo de acá: ' + texto.replace(/\n/g, ' '));
     }
   }
+  // una pista de la comunidad, sin resultado: el nombre y su link (quien la armo no va: solo en la portada)
+  async function compartirPista(salida) {
+    await pasar('Shakedown · ' + etapa.nombre + ' ' + EMOJI_COMUNIDAD + ' ¿Quién la hace más rápido?\n' + conAviso(o.linkDeLaPista()), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
+  }
   async function compartir(r, salida) {
     if (!club.nombre()) { $('nombre').focus(); if (salida) salida.textContent = 'Poné tu nombre para compartir.'; return; }
     const codigo = r.codigo || (linkDe && await linkDe());
@@ -368,7 +460,11 @@ export function crearMenu(o) {
     await pasar(mensaje(etapa, r) + '\n' + conAviso(location.origin + location.pathname + (final ? '#r=' + final : '')), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
   }
   $('compartir').addEventListener('click', () => ultimo && compartir(ultimo, $('compartido')));
-  $('compartirPortada').addEventListener('click', () => { const r = fijo ? club.practica() : club.oficial(); if (r) compartir({ ...r, nombre: club.nombre() }, $('queEs')); });
+  $('compartirPortada').addEventListener('click', () => {
+    const r = libre ? club.practica() : club.oficial();
+    if (r && r.codigo) compartir({ ...r, nombre: club.nombre() }, $('queEs'));
+    else if (comunidad && !borrador) compartirPista($('queEs'));
+  });
   // El nombre se pone al terminar una pasada o, si se esta en un club, en la tabla. Al cambiarlo se arma de nuevo el
   // link de la pasada que se esta mostrando (asi sube al servidor con el nombre nuevo) y se avisa a los clubes.
   const ponerNombre = (valor) => {
@@ -389,7 +485,7 @@ export function crearMenu(o) {
     // mejoro: true si es tu mejor tiempo en esa pista (para las practicas y los circuitos).
     fin: (r, armarLink, mejoro) => {
       ultimo = r; linkDe = armarLink;
-      $('finTipo').textContent = (fijo ? 'Circuito · ' : (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ') + etapa.nombre + (mejoro ? (T.vuelta ? ' · ¡tu mejor vuelta!' : ' · ¡tu mejor tiempo!') : '');
+      $('finTipo').textContent = (fijo ? 'Circuito · ' : borrador ? 'Borrador · ' : comunidad ? 'Pista de la comunidad · ' : (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ') + etapa.nombre + (mejoro ? (T.vuelta ? ' · ¡tu mejor vuelta!' : ' · ¡tu mejor tiempo!') : '');
       $('finTitulo').textContent = r.ab ? ABANDONO[r.ab] || 'Abandono' : '';
       $('finTitulo').hidden = !r.ab;
       $('finGrande').textContent = r.ab ? 'Abandono' : tiempoFinal(r.t);
@@ -410,11 +506,14 @@ export function crearMenu(o) {
       $('probarAyuda').hidden = false;
       $('nombre').value = club.nombre();
       $('compartido').textContent = '';
-      const tabla = fijo ? club.practicas() : club.tabla();
+      $('social').hidden = borrador;   // (el borrador no se comparte: todavia no existe para los demas)
+      const tabla = libre ? club.practicas() : club.tabla();
       $('finRanking').hidden = tabla.length < 2;
       pintarTabla($('finTabla'), tabla);
-      rotular($('otra'), fijo ? 'Otra vez' : 'Practicar');
-      $('otra').dataset.icono = fijo ? 'bandera' : 'cono';
+      rotular($('otra'), libre ? 'Otra vez' : 'Practicar');
+      $('otra').dataset.icono = libre ? 'bandera' : 'cono';
+      rotular($('irCircuitos'), borrador ? 'Seguir armando' : 'Circuitos');
+      $('irCircuitos').dataset.icono = borrador ? 'lapiz' : 'circuito';
       $('fin').hidden = false;
       ponerIconos();
     },

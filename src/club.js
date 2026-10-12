@@ -8,7 +8,12 @@
 //                    id (el codigo corto con el que esta guardado en el servidor) }
 // Los de los demas llevan ademas: j (su numero de corredor en el servidor), de: [los clubes tuyos en los que figura]
 // y link: true si llego por un link que abriste.
+// (En una pista de la comunidad, la tabla de todos los que la corrieron llega como la de un club mas, con el codigo '#'.)
+//
+// Ademas: el borrador del creador de pistas (ver creador.js) y las pistas de la comunidad que se conocen en este aparato
+// (las que armaste, las que abriste y las de tus clubes), para poder listarlas y correrlas aunque no haya señal.
 import { limpio } from './fantasma.js';
+import { esDeLaComunidad, COMUNIDAD } from './circuitos.js';
 
 const CLAVE = 'shakedown';
 const GUARDA_FANTASMAS = 21;   // dias: de las pistas mas viejas se guardan los tiempos, pero no los fantasmas
@@ -16,6 +21,14 @@ const GUARDA_AMIGOS = 60;      // dias: despues, de cada pista quedan solo los t
 const GUARDA_DEL_CLUB = 14;    // dias: lo que se sabe solo por un club se guarda menos (al abrir esa pista se le pide de nuevo al servidor)
 const CABEN = 80;              // de lo que llego por link, cuantos tiempos se guardan por pista (y otros tantos de practica)
 const RECIENTES = 7;           // dias: los tiempos propios de estos dias se suben al servidor si todavia no estan
+const CONOCIDAS = 60;          // pistas de la comunidad que se recuerdan, como mucho (si hay mas, se olvidan las que vencen antes)
+const ahora = () => Math.floor(Date.now() / 1000);
+
+// Lo guardado en este aparato, tal cual. main.js lo lee antes de armar la pista (el borrador y las pistas de la comunidad
+// conocidas hacen falta para armarla, y el club se arma despues). Devuelve {} si no hay nada o no se puede leer.
+export function guardado() {
+  try { const x = JSON.parse(localStorage.getItem(CLAVE) || '{}'); return x && typeof x === 'object' ? x : {}; } catch (e) { return {}; }
+}
 
 // una llave al azar para este aparato: 22 letras que no se muestran nunca (ver "llave", mas abajo)
 function llaveNueva() {
@@ -27,12 +40,20 @@ function llaveNueva() {
 }
 
 // versionDe(numero): la version de cada pista (ver generador.js; los circuitos fijos tienen cada uno la suya).
-// Lo guardado con otra version se descarta: era otro camino.
+// Lo guardado con otra version se descarta: era otro camino. (De una pista de la comunidad que no se esta corriendo no se
+// sabe la version: lo suyo se deja como esta, y se olvida cuando la pista vence.)
 export function crearClub(pista, hoy, versionDe = () => 1) {
   let datos = { nombre: '', auto: 'vitarita', dias: {} };
   try { datos = Object.assign(datos, JSON.parse(localStorage.getItem(CLAVE) || '{}')); } catch (e) { /* sin memoria: se pierde al cerrar */ }
   const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(datos)); } catch (e) { /* idem */ } };
-  for (const n in datos.dias) if ((datos.dias[n].v || 1) !== versionDe(Number(n))) delete datos.dias[n];
+  // las pistas de la comunidad: las vencidas se olvidan, con sus tiempos (y los tiempos de una que no se sabe cual era, tambien)
+  const conocidas = datos.comunidad || (datos.comunidad = {});
+  for (const n in conocidas) if (!(conocidas[n].vence > ahora())) { delete conocidas[n]; delete datos.dias[n]; }
+  for (const n in datos.dias) {
+    const numero = Number(n), v = versionDe(numero);
+    if (esDeLaComunidad(numero) && !conocidas[n] && numero !== pista) delete datos.dias[n];
+    else if (v !== null && (datos.dias[n].v || 1) !== v) delete datos.dias[n];
+  }
   const dia = (n) => datos.dias[n] || (datos.dias[n] = { oficial: null, practica: null, club: [], rival: '', v: versionDe(Number(n)) });
   const D = dia(pista);
   // si quedo una pasada oficial empezada y sin terminar (se cerro el juego en el medio), es un abandono
@@ -94,12 +115,13 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
       for (const x of propios(d)) if (esElMismo(x, r)) { if (id) { x.id = id; delete x.noSube; } else x.noSube = true; }
       guardar();
     },
-    // Los resultados propios que todavia no estan en el servidor: los de estos dias y los de los circuitos. [{ numero, r }]
+    // Los resultados propios que todavia no estan en el servidor: los de estos dias, los de los circuitos y los de las pistas
+    // de la comunidad (los del borrador no: el borrador no se sube). [{ numero, r }]
     sinSubir: () => {
       const lista = [];
       for (const n in datos.dias) {
         const numero = Number(n);
-        if (numero > hoy - RECIENTES) for (const r of propios(datos.dias[n])) if (r.codigo && !r.id && !r.noSube) lista.push({ numero, r: { ...r } });
+        if (numero > hoy - RECIENTES && numero !== COMUNIDAD.borrador) for (const r of propios(datos.dias[n])) if (r.codigo && !r.id && !r.noSube) lista.push({ numero, r: { ...r } });
       }
       return lista;
     },
@@ -110,7 +132,8 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
       if (ya) ya.nombre = c.nombre; else lista.push({ codigo: c.codigo, nombre: c.nombre });
       guardar();
     },
-    // al salir de un club, de las tablas se va la gente que solo se conocia por ese club
+    // al salir de un club, de las tablas se va la gente que solo se conocia por ese club (y de la lista, sus pistas: salvo
+    // las que armaste vos o abriste, que se pueden seguir corriendo con el link)
     sacarClub: (codigo) => {
       datos.clubes = (datos.clubes || []).filter((x) => x.codigo !== codigo);
       for (const n in datos.dias) {
@@ -118,6 +141,7 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
         for (const r of d.club) if (r.de) r.de = r.de.filter((c) => c !== codigo);
         d.club = d.club.filter(seQueda);
       }
+      for (const n in conocidas) if (conocidas[n].club === codigo && !conocidas[n].mia && !conocidas[n].hoja) delete conocidas[n];
       guardar();
     },
     // La tabla de un club en una pista, como la manda el servidor: se mezcla con lo que ya habia.
@@ -178,5 +202,36 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
     elegirRival: (clave) => { D.rival = clave; guardar(); },
     // --- las pistas ya corridas, para la lista de pasadas ---
     resumen: (n) => { const d = datos.dias[n]; return d ? { oficial: d.oficial && !d.oficial.corriendo ? d.oficial : null, practica: d.practica, amigos: d.club.filter((r) => !r.practica).length } : { oficial: null, practica: null, amigos: 0 }; },
+
+    // --- las pistas de la comunidad que se conocen en este aparato ---
+    // Cada una: { numero, v (su version), nombre, autor, club, clubNombre, vence (segundos), hoja (si se la trajo entera: asi
+    // se puede correr sin señal), mia (si la armaste vos) }. Las vigentes, de la mas nueva a la que vence antes.
+    pistas: () => Object.keys(conocidas).map((n) => ({ numero: Number(n), ...conocidas[n] })).filter((p) => p.vence > ahora()).sort((a, b) => b.vence - a.vence),
+    // Anota (o pone al dia) una pista. p: lo que contesta el servidor ({ numero, version, nombre, vence, ... }). Lo que no
+    // venga se deja como estaba (de la lista de un club no viene la hoja, por ejemplo).
+    conocerPista: (p) => {
+      if (!p || !esDeLaComunidad(p.numero) || !(p.vence > ahora())) return;
+      const n = p.numero;
+      // (si ese numero era de otra pista, que vencio, la vieja se olvida con sus tiempos)
+      if (conocidas[n] && conocidas[n].v !== p.version) { delete conocidas[n]; if (n !== pista) delete datos.dias[n]; }
+      const x = conocidas[n] || (conocidas[n] = {});
+      x.v = p.version; x.nombre = p.nombre; x.vence = p.vence;
+      for (const k of ['autor', 'club', 'clubNombre', 'hoja', 'mia']) if (p[k] !== undefined && p[k] !== null && p[k] !== '') x[k] = p[k];
+      // si hay demasiadas, se olvidan las que vencen antes (las propias, al final)
+      const sobran = Object.keys(conocidas).length - CONOCIDAS;
+      if (sobran > 0) for (const k of Object.keys(conocidas).sort((a, b) => (!!conocidas[a].mia - !!conocidas[b].mia) || conocidas[a].vence - conocidas[b].vence).slice(0, sobran)) { delete conocidas[k]; if (Number(k) !== pista) delete datos.dias[k]; }
+      guardar();
+    },
+    // la olvida, con sus tiempos (se borro, o ya no existe)
+    olvidarPista: (n) => { delete conocidas[n]; if (n !== pista) delete datos.dias[n]; guardar(); },
+    // --- el borrador del creador de pistas: { hoja, nombre, club } (club: el codigo del club para el que se arma, o '') ---
+    borrador: () => (datos.borrador ? JSON.parse(JSON.stringify(datos.borrador)) : null),
+    // (null lo borra. Si cambia el camino, los tiempos del borrador anterior ya no valen: era otra pista)
+    ponerBorrador: (b) => {
+      const antes = datos.borrador;
+      if (b) datos.borrador = JSON.parse(JSON.stringify(b)); else delete datos.borrador;
+      if (!b || !antes || JSON.stringify(antes.hoja) !== JSON.stringify(b.hoja)) delete datos.dias[COMUNIDAD.borrador];
+      guardar();
+    },
   };
 }

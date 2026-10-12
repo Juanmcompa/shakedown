@@ -1,5 +1,5 @@
 // La nube: lo que el juego le pide al servidor (servidor/worker.js). Guardar una pasada para que el link sea corto,
-// traer la de un amigo, y los clubes con sus tablas.
+// traer la de un amigo, los clubes con sus tablas y las pistas de la comunidad.
 // Todo es "si se puede": sin servidor configurado, sin señal o con el servidor caido, cada pedido devuelve null
 // y el juego sigue como siempre, con el link largo y la tabla armada con los links que se abren.
 //
@@ -9,7 +9,12 @@
 //   subir(codigo, espera)  guarda una pasada. Promesa de: el codigo corto; '' si el servidor no la quiso; null si no se pudo (se puede reintentar)
 //   pasada(id)             trae una pasada por su codigo corto. Promesa de { codigo, j } o null
 //   crearClub(nombre, apodo), entrar(codigo, apodo), salir(codigo), verClub(codigo)    promesa de lo que conteste el servidor, { error } o null
-//   tablas(pista, version, codigos)    promesa de { codigo: { nombre, miembros, soy, tabla, faltan } o null (el club ya no existe) } o null
+//   tablas(pista, version, codigos)    promesa de { codigo: { nombre, miembros, soy, tabla, faltan, pistas } o null (el club ya no existe) } o null
+//   crearPista(nombre, apodo, club, hoja)   publica una pista armada en el creador. Promesa de { numero, version, nombre, autor, club, vence },
+//                          { error, estado } o null
+//   borrarPista(numero)    borra una pista de la comunidad (solo la puede borrar quien la armo). Promesa de { borrada }, { error, estado } o null
+//   pista(numero)          trae una pista de la comunidad: { numero, version, nombre, autor, club, clubNombre, hoja, vence, tabla }
+//                          (en la tabla, lo propio va marcado con "mio"); { error, estado } si no existe (404) o ya vencio (410); o null
 export function crearNube(base) {
   base = String(base || '').replace(/\/+$/, '');
   let llave = () => '';
@@ -33,6 +38,22 @@ export function crearNube(base) {
     } catch (e) { return null; } finally { clearTimeout(reloj); }
   }
   const tarda = (promesa, ms, siNo) => Promise.race([promesa, new Promise((sigue) => setTimeout(() => sigue(siNo), ms))]);
+  // El numero de corredor de este aparato: la misma huella de la llave que guarda el servidor (ver "huella" en worker.js).
+  // Sirve para reconocer lo propio en una tabla que se pide sin llave.
+  let yo = null;
+  async function miNumero() {
+    const l = llave();
+    if (!l) return '';
+    if (!yo || yo.l !== l) {
+      try {
+        const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(l)));
+        let s = '';
+        for (let i = 0; i < 12; i++) s += String.fromCharCode(b[i]);
+        yo = { l, j: btoa(s).replace(/\+/g, '-').replace(/\//g, '_') };
+      } catch (e) { return ''; }   // (sin "crypto.subtle", en una pagina sin https: lo propio no se marca)
+    }
+    return yo.j;
+  }
 
   return {
     hay: !!base,
@@ -65,6 +86,14 @@ export function crearNube(base) {
       if (!base || !codigos.length) return null;
       const r = await pedir('POST', '/tablas', { llave: llave(), pista, version, clubes: codigos });
       return r && r.clubes ? r.clubes : null;
+    },
+    crearPista: (nombre, apodo, club, hoja) => pedir('POST', '/pistas', { llave: llave(), nombre, apodo, club: club || '', hoja }, 12000),
+    borrarPista: (numero) => pedir('POST', '/pistas/' + numero + '/borrar', { llave: llave() }),
+    pista: async (numero) => {
+      if (!base || !/^\d{5}$/.test(String(numero))) return null;
+      const r = await pedir('GET', '/pistas/' + numero);
+      if (r && Array.isArray(r.tabla)) { const j = await miNumero(); if (j) for (const x of r.tabla) if (x.j === j) x.mio = true; }
+      return r;
     },
   };
 }

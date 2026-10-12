@@ -4,7 +4,9 @@
 import servidor, { LIMITES } from './worker.js';
 import { baseLocal } from './local.mjs';
 import { crearTerreno } from '../src/terrain.js';
-import { generarPista } from '../src/generador.js';
+import { generarPista, anotarPista } from '../src/generador.js';
+import { armarHoja } from '../src/hoja.js';
+import { COMUNIDAD } from '../src/circuitos.js';
 import { crearGrabacion } from '../src/fantasma.js';
 import { hoy } from '../src/dia.js';
 
@@ -137,6 +139,111 @@ ver('quedan dos', r.cosa && r.cosa.miembros === 2, r);
 r = await pedir('POST', '/clubes/' + otro + '/salir', { llave: LB });
 r = await pedir('GET', '/clubes/' + otro);
 ver('un club sin nadie se borra', r.estado === 404, r);
+
+// --- las pistas de la comunidad ---
+const HOJA = { v: 1, a: 'campo', c: 'sol', p: ['r2', 'd3', 'ge', 'r1', 'i4', 'sa', 'r2', 'd5', 'pu', 'i2', 'r3', 'd4', 'cn', 'r2', 'i5', 'va', 'r2'] };
+r = await pedir('POST', '/pistas', { llave: LA, nombre: 'La <Curva> del Tero', apodo: 'Anita', club: '', hoja: HOJA });
+const pistaLibre = r.cosa && r.cosa.numero;
+ver('publica una pista con link (sin club)', r.estado === 200 && pistaLibre >= COMUNIDAD.desde && pistaLibre <= COMUNIDAD.hasta && r.cosa.version >= 1 && r.cosa.nombre === 'La Curva del Tero' && r.cosa.autor === 'Anita' && r.cosa.vence - Date.now() / 1000 > 13.9 * 86400, r);
+r = await pedir('POST', '/pistas', { llave: LA, nombre: 'Rota', apodo: 'Anita', hoja: { v: 1, a: 'marte', c: 'sol', p: ['r1'] } });
+ver('una hoja que no se puede leer no entra', r.estado === 400, r);
+r = await pedir('POST', '/pistas', { llave: LA, nombre: 'Petisa', apodo: 'Anita', hoja: { v: 1, a: 'campo', c: 'sol', p: ['r1', 'd3'] } });
+ver('una pista demasiado corta no entra', r.estado === 400 && /corta/.test(r.cosa.error), r);
+r = await pedir('POST', '/pistas', { llave: LA, nombre: 'Enroscada', apodo: 'Anita', hoja: { v: 1, a: 'campo', c: 'sol', p: ['r3', 'r3', 'dh', 'r3', 'r3'] } });
+ver('una pista que se cruza no entra', r.estado === 400 && /cruza/.test(r.cosa.error), r);
+r = await pedir('POST', '/pistas', { llave: LA, nombre: 'X', apodo: 'Anita', hoja: HOJA });
+ver('una pista sin nombre no entra', r.estado === 400, r);
+r = await pedir('POST', '/pistas', { llave: LA, nombre: 'Sin autor', apodo: '', hoja: HOJA });
+ver('sin el nombre de quien la publica no entra', r.estado === 400, r);
+r = await pedir('POST', '/pistas', { llave: LB, nombre: 'Pista del club', apodo: 'Beto', club, hoja: { ...HOJA, a: 'bosque', c: 'lluvia' } });
+const pistaClub = r.cosa && r.cosa.numero;
+ver('alguien del club publica una pista para el club', r.estado === 200 && r.cosa.club === club && pistaClub !== pistaLibre, r);
+r = await pedir('POST', '/pistas', { llave: LC, nombre: 'Colada', apodo: 'Caro', club, hoja: HOJA });
+ver('quien no esta en el club no puede publicarle pistas', r.estado === 403, r);
+r = await pedir('POST', '/pistas', { llave: LC, nombre: 'Fantasma', apodo: 'Caro', club: 'noexiste1', hoja: HOJA });
+ver('ni en un club que no existe', r.estado === 404, r);
+r = await pedir('GET', '/pistas/' + pistaLibre);
+const vLibre = r.cosa && r.cosa.version;
+ver('trae la pista, con su hoja y su tabla vacia', r.estado === 200 && JSON.stringify(r.cosa.hoja) === JSON.stringify(HOJA) && r.cosa.nombre === 'La Curva del Tero' && r.cosa.autor === 'Anita' && r.cosa.club === '' && r.cosa.tabla.length === 0, r);
+r = await pedir('GET', '/pistas/' + pistaClub);
+ver('la del club dice de que club es', r.estado === 200 && r.cosa.club === club && r.cosa.clubNombre.startsWith('Los'), r);
+ver('una pista que no existe da 404', (await pedir('GET', '/pistas/abc')).estado === 404 && (await pedir('GET', '/pistas/12345')).estado === 404 && (await pedir('GET', '/pistas/' + (pistaLibre === COMUNIDAD.hasta ? pistaLibre - 1 : pistaLibre + 1))).estado === 404);
+// se corre: hay que armarla como la arma el juego (con su version) para grabar pasadas de verdad
+const etapaLibre = armarHoja(HOJA, pistaLibre, 'La Curva del Tero').etapa;
+anotarPista(etapaLibre, vLibre);
+const TL = crearTerreno(etapaLibre);
+r = await pedir('POST', '/pasadas', { llave: LA, codigo: await pasada(TL, { nombre: 'Anita', t: 70.5, practica: true }) });
+const idL1 = r.cosa && r.cosa.id;
+ver('se sube una pasada en una pista de la comunidad', r.estado === 200 && idL1, r);
+r = await pedir('POST', '/pasadas', { llave: LA, codigo: await pasada(TL, { nombre: 'Anita', t: 74.25, practica: true }) });
+r = await pedir('POST', '/pasadas', { llave: LC, codigo: await pasada(TL, { nombre: 'Caro', t: 66.1, practica: true }) });
+ver('cualquiera con el link la puede correr', r.estado === 200, r);
+r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(TL, { nombre: 'Beto', t: 69, practica: false }) });
+ver('en una pista de la comunidad no hay oficial', r.estado === 400, r);
+r = await pedir('GET', '/pistas/' + pistaLibre);
+ver('la tabla de la pista: el mejor tiempo de cada uno, del mas rapido al mas lento', r.estado === 200 && r.cosa.tabla.map((x) => x.nombre + ' ' + x.t).join() === 'Caro 66.1,Anita 70.5' && r.cosa.tabla[1].id === idL1 && /^[\w-]{16}$/.test(r.cosa.tabla[0].j), r.cosa && r.cosa.tabla);
+// en la tabla del club: sus pistas, y en una pista del club, los tiempos de su gente
+const etapaClub = armarHoja({ ...HOJA, a: 'bosque', c: 'lluvia' }, pistaClub, 'Pista del club').etapa, vClub = (await pedir('GET', '/pistas/' + pistaClub)).cosa.version;
+anotarPista(etapaClub, vClub);
+r = await pedir('POST', '/pasadas', { llave: LA, codigo: await pasada(crearTerreno(etapaClub), { nombre: 'Anita', t: 80, practica: true }) });
+r = await pedir('POST', '/tablas', { llave: LB, pista: pistaClub, version: vClub, clubes: [club] });
+{
+  const t = r.cosa && r.cosa.clubes[club];
+  ver('la tabla del club trae sus pistas vigentes', t && t.pistas.length === 1 && t.pistas[0].numero === pistaClub && t.pistas[0].autor === 'Beto' && t.pistas[0].vence > Date.now() / 1000, t && t.pistas);
+  ver('y en la pista del club, los tiempos de su gente (como en un circuito)', t && t.tabla.length === 1 && t.tabla[0].nombre === 'Anita' && t.tabla[0].practica && JSON.stringify(t.faltan) === JSON.stringify([]), t);
+}
+// borrar: solo quien la armo. Se va con sus tiempos, y su lugar queda libre.
+ver('cada uno puede tener hasta cinco pistas vigentes', LIMITES.pistasPorJugador === 5, LIMITES.pistasPorJugador);
+r = await pedir('POST', '/pistas/' + pistaLibre + '/borrar', { llave: LB });
+ver('una pista ajena no se puede borrar', r.estado === 403, r);
+r = await pedir('POST', '/pistas/' + pistaLibre + '/borrar', {});
+ver('sin llave, tampoco', r.estado === 400, r);
+r = await pedir('POST', '/pistas/' + pistaLibre + '/borrar', { llave: LA });
+ver('quien la armo la puede borrar', r.estado === 200 && r.cosa.borrada === true, r);
+r = await pedir('GET', '/pistas/' + pistaLibre);
+ver('una pista borrada da 410 y dice que la borraron', r.estado === 410 && /borró/.test(r.cosa.error), r);
+r = await pedir('POST', '/pasadas', { llave: LC, codigo: await pasada(TL, { nombre: 'Caro', t: 65, practica: true }) });
+ver('en una pista borrada ya no se suben pasadas', r.estado === 410, r);
+r = await pedir('POST', '/pistas/' + pistaLibre + '/borrar', { llave: LA });
+ver('borrarla de nuevo da 404', r.estado === 404, r);
+if (!BASE) ver('y sus tiempos se borraron del servidor', (await env.DB.prepare('SELECT COUNT(*) AS n FROM pasadas WHERE pista = ?1').bind(pistaLibre).first()).n === 0);
+if (!BASE) {
+  // vence: no se trae, no se corre y no figura en el club. Y su numero se puede volver a usar, con la version siguiente.
+  await env.DB.prepare('UPDATE pistas SET vence = ?1 WHERE numero = ?2').bind(Math.floor(Date.now() / 1000) - 5, pistaClub).run();
+  r = await pedir('GET', '/pistas/' + pistaClub);
+  ver('una pista vencida da 410', r.estado === 410, r);
+  r = await pedir('POST', '/pasadas', { llave: LA, codigo: await pasada(crearTerreno(etapaClub), { nombre: 'Anita', t: 79, practica: true }) });
+  ver('en una pista vencida ya no se suben pasadas', r.estado === 410, r);
+  r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: 1, clubes: [club] });
+  ver('y del club se va', r.cosa.clubes[club].pistas.length === 0, r.cosa.clubes[club].pistas);
+  const rango = { desde: COMUNIDAD.desde, hasta: COMUNIDAD.hasta };
+  COMUNIDAD.desde = COMUNIDAD.hasta = pistaClub;   // (solo queda libre ese numero)
+  r = await pedir('POST', '/pistas', { llave: LB, nombre: 'La segunda', apodo: 'Beto', club, hoja: HOJA });
+  ver('el numero de una pista vencida se vuelve a usar, con la version siguiente', r.estado === 200 && r.cosa.numero === pistaClub && r.cosa.version === vClub + 1, r);
+  r = await pedir('GET', '/pistas/' + pistaClub);
+  ver('y la pista nueva arranca con la tabla vacia (los tiempos de la vieja no se mezclan)', r.estado === 200 && r.cosa.nombre === 'La segunda' && r.cosa.tabla.length === 0, r.cosa);
+  r = await pedir('POST', '/pistas', { llave: LA, nombre: 'Sin lugar', apodo: 'Anita', hoja: HOJA });
+  ver('si no queda ningun numero libre, avisa', r.estado === 503, r);
+  Object.assign(COMUNIDAD, rango);
+  const topes = { ...LIMITES };
+  LIMITES.pistasPorClub = 1;
+  r = await pedir('POST', '/pistas', { llave: LA, nombre: 'Otra del club', apodo: 'Anita', club, hoja: HOJA });
+  ver('un club no puede tener demasiadas pistas vigentes', r.estado === 400, r);
+  LIMITES.pistasPorClub = topes.pistasPorClub;
+  LIMITES.pistasPorJugador = 1;
+  r = await pedir('POST', '/pistas', { llave: LB, nombre: 'Otra mas', apodo: 'Beto', hoja: HOJA });
+  ver('ni un corredor (y le dice que puede borrar alguna)', r.estado === 400 && /Borrá/.test(r.cosa.error), r);
+  r = await pedir('POST', '/pistas/' + pistaClub + '/borrar', { llave: LB });
+  r = await pedir('POST', '/pistas', { llave: LB, nombre: 'Otra mas', apodo: 'Beto', hoja: HOJA });
+  ver('pero si borra una, puede publicar otra', r.estado === 200, r);
+  r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: 1, clubes: [club] });
+  ver('y la que borro ya no figura en el club', r.cosa.clubes[club].pistas.length === 0, r.cosa.clubes[club].pistas);
+  LIMITES.pistasPorJugador = topes.pistasPorJugador;
+  LIMITES.pistasPorConexion = 1;
+  const publica = async (k) => (await pedir('POST', '/pistas', { llave: llave('s') + k, nombre: 'Lluvia ' + k, apodo: 'S', hoja: HOJA }, { 'cf-connecting-ip': '4.4.4.4' })).estado;
+  ver('una conexion no puede publicar demasiadas por dia', [await publica(1), await publica(2)].join() === '200,429');
+  LIMITES.pistasPorConexion = topes.pistasPorConexion;
+}
 
 // --- quien puede usarlo desde un navegador ---
 r = await pedir('GET', '/', undefined, { origin: 'https://juanmcompa.github.io' });

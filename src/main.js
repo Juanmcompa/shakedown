@@ -2,8 +2,9 @@
 import * as THREE from '../vendor/three.module.js';
 import { JUEGO, AUTOS, REFERENCIA, AYUDA, GUSTOS, SERVIDOR, gradosDeInclinacion } from './config.js';
 import { hoy } from './dia.js';
-import { generarPista, versionDe } from './generador.js';
-import { esCircuito, circuitoDe } from './circuitos.js';
+import { generarPista, versionDe, anotarPista } from './generador.js';
+import { esCircuito, circuitoDe, esDeLaComunidad, COMUNIDAD } from './circuitos.js';
+import { armarHoja, huellaDeHoja } from './hoja.js';
 import { crearTerreno } from './terrain.js';
 import { crearReferencia } from './referencia.js';
 import { crearAuto } from './vehicle.js';
@@ -11,9 +12,10 @@ import { crearPartida } from './reglas.js';
 import { crearAyuda } from './ayuda.js';
 import { crearCopiloto } from './copiloto.js';
 import { crearGrabacion, leerCodigo, crearFantasma } from './fantasma.js';
-import { crearClub } from './club.js';
+import { crearClub, guardado } from './club.js';
 import { crearNube } from './nube.js';
 import { crearMenu } from './menu.js';
+import { crearCreador } from './creador.js';
 import { crearTutorial } from './tutorial.js';
 import { crearMundo } from './world.js';
 import { crearPost } from './post.js';
@@ -30,7 +32,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '18' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '19' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
@@ -53,12 +55,17 @@ let nitidez = Math.min(window.devicePixelRatio, liviano ? 1.5 : 2), cuadros = 0,
 render.setPixelRatio(nitidez);
 render.shadowMap.enabled = true;
 
-// --- que pista se corre: la del link de un amigo, un circuito fijo (?c=subida), la pedida con ?p=numero, o la de hoy ---
+// --- que pista se corre: la del link de un amigo, un circuito fijo (?c=subida), una pista de la comunidad (?pista=13042-1:
+// numero y version), el borrador del creador (?pista=borrador), la pedida con ?p=numero, o la de hoy ---
 const HOY = hoy(), consulta = new URLSearchParams(location.search), pedida = Math.floor(Number(consulta.get('p'))), fijo = circuitoDe(consulta.get('c'));
+const deLaComunidad = /^(\d{5})(?:-(\d{1,2}))?$/.exec(consulta.get('pista') || ''), esBorrador = consulta.get('pista') === 'borrador';
 // El servidor (ver nube.js) guarda las pasadas que se comparten y las tablas de los clubes. Sin el, todo lo demas anda igual.
 // (Desde una copia del juego abierta en la misma compu se puede probar con otro: ?servidor=http://127.0.0.1:8787)
 const enCasa = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const nube = crearNube(enCasa && consulta.has('servidor') ? consulta.get('servidor') : SERVIDOR);
+// (lo guardado en el aparato: hace falta antes de armar el club, para el borrador y las pistas de la comunidad conocidas)
+const aca = guardado();
+nube.conLlave(() => aca.llave || '');
 // El link de un amigo trae su pasada. Los largos (cientos de letras) la traen entera; los cortos traen el codigo con
 // el que quedo guardada en el servidor, y hay que ir a buscarla. Un link de invitacion termina en #club=...
 const enlace = /[#&]r=([\w-]+)/.exec(location.hash), invitacion = /[#&]club=([0-9A-Za-z]{6,12})/.exec(location.hash);
@@ -69,15 +76,69 @@ if (enlace && enlace[1].length <= 12) {
   codigoDelLink = p ? p.codigo : ''; corredorDelLink = p ? p.j : ''; linkCaido = !p;
 }
 const leido = codigoDelLink ? await leerCodigo(codigoDelLink) : null;
-const vale = (n) => n >= 1 && (n <= HOY || esCircuito(n));
-const numero = leido && vale(leido.marca.pista) ? leido.marca.pista : fijo ? fijo.numero : vale(pedida) || (pedida >= 1 && consulta.has('futuro')) ? pedida : HOY;
-// la direccion de una pista: la de hoy no lleva nada; un circuito, su nombre; un dia pasado, su numero
-const direccionDe = (n) => location.pathname + (esCircuito(n) ? '?c=' + circuitoDe(n).id : n !== HOY ? '?p=' + n : '');
+const vale = (n) => n >= 1 && (n <= HOY || esCircuito(n) || esDeLaComunidad(n));
+let numero = leido && vale(leido.marca.pista) ? leido.marca.pista : fijo ? fijo.numero
+  : deLaComunidad && esDeLaComunidad(Number(deLaComunidad[1])) ? Number(deLaComunidad[1]) : esBorrador ? COMUNIDAD.borrador
+  : vale(pedida) || (pedida >= 1 && consulta.has('futuro')) ? pedida : HOY;
+// la direccion de una pista: la de hoy no lleva nada; un circuito, su nombre; una de la comunidad, su numero y su version;
+// un dia pasado, su numero
+const direccionDe = (n) => location.pathname + (esCircuito(n) ? '?c=' + circuitoDe(n).id : esDeLaComunidad(n) ? '?pista=' + n + '-' + versionDe(n)
+  : n === COMUNIDAD.borrador ? '?pista=borrador' : n !== HOY ? '?p=' + n : '');
+// (una copia local del juego que se esta probando con otro servidor lo sigue usando al pasar de una pista a otra)
+const conServidor = (dir) => {
+  if (!enCasa || !consulta.has('servidor')) return dir;
+  const [d, ...h] = dir.split('#');
+  return d + (d.includes('?') ? '&' : '?') + 'servidor=' + encodeURIComponent(consulta.get('servidor')) + (h.length ? '#' + h.join('#') : '');
+};
+const quedarseEn = (n) => history.replaceState(null, '', conServidor(direccionDe(n)));
+
+// --- las pistas de la comunidad (las arma un jugador en el creador: ver creador.js y hoja.js) ---
+// No salen de su numero: hay que traer su hoja del servidor (o, sin señal, de lo guardado en el aparato) y armarla.
+// "comunidad" queda con lo que se sabe de la pista: { nombre, autor, club, clubNombre, vence, tabla }, o { borrador: true, ... }.
+// Si la pista ya vencio, no existe, o el link es de la pista que antes tenia ese numero, se corre la de hoy y se avisa.
+let comunidad = null, avisoDeLaPista = '', olvidar = 0;
+if (esDeLaComunidad(numero)) {
+  const quiere = leido && leido.marca.pista === numero ? leido.version : deLaComunidad && deLaComunidad[2] ? Number(deLaComunidad[2]) : 0;
+  await respiro('Buscando la pista…', 1);
+  let p = await nube.pista(numero);
+  // (404: no existe; 410: vencio, o la borro quien la armo. Otro error es un problema del servidor: como no tener señal)
+  const seFue = !!p && (p.estado === 404 || p.estado === 410);
+  if (p && p.error && !seFue) p = null;
+  const sabida = (aca.comunidad || {})[numero];
+  if (!p && sabida && sabida.hoja && sabida.vence > Date.now() / 1000) p = { numero, version: sabida.v, nombre: sabida.nombre, autor: sabida.autor || '', club: sabida.club || '', clubNombre: sabida.clubNombre || '', hoja: sabida.hoja, vence: sabida.vence, tabla: null };
+  const otra = !!p && !p.error && !!quiere && p.version !== quiere;   // (el link es de la pista que antes tenia ese numero)
+  const armada = p && !p.error && !otra ? armarHoja(p.hoja, numero, p.nombre) : null;
+  if (armada && !armada.error) { anotarPista(armada.etapa, p.version); comunidad = p; }
+  else {
+    avisoDeLaPista = (!p ? 'No pude traer esa pista de la comunidad: revisá la conexión y abrí el link de nuevo.'
+      : p.error ? p.error.replace('Esa pista', 'Esa pista de la comunidad') : otra ? 'Esa pista de la comunidad ya no está: venció o la borraron.'
+      : 'Esa pista de la comunidad no se pudo armar.') + ' Mientras, la de hoy.';
+    // (si ya no esta, la direccion vuelve a ser la de hoy y se la olvida; si fue la señal, queda: recargando se prueba de nuevo)
+    if (p) quedarseEn(HOY);
+    if (seFue || (otra && sabida && sabida.v === quiere)) olvidar = numero;
+    numero = HOY;
+  }
+} else if (numero === COMUNIDAD.borrador) {
+  const b = aca.borrador, armada = b && b.hoja ? armarHoja(b.hoja, numero, b.nombre || 'Tu pista') : null;
+  if (armada && !armada.error) { anotarPista(armada.etapa, (huellaDeHoja(b.hoja) & 63) || 1); comunidad = { borrador: true, nombre: b.nombre || '', club: b.club || '' }; }
+  else { avisoDeLaPista = (b ? 'Tu borrador todavía es muy corto para correrlo: seguí armándolo en el creador.' : 'No encontré tu borrador.') + ' Mientras, la de hoy.'; quedarseEn(HOY); numero = HOY; }
+}
+// en lo libre (circuitos y pistas de la comunidad) no hay oficial: se corre las veces que se quiera y queda el mejor tiempo
+const libre = esCircuito(numero) || !!comunidad;
+// lo del borrador no se sube al servidor (es una pista que todavia no existe)
+const seSube = !(comunidad && comunidad.borrador);
 
 await respiro('Armando la pista…', 2);
 const etapa = generarPista(numero), T = crearTerreno(etapa), P = T.camino, ref = crearReferencia(T, AUTOS[REFERENCIA]);
 const club = crearClub(numero, HOY, versionDe), copiloto = crearCopiloto(T);
 nube.conLlave(() => club.llave());
+if (olvidar) club.olvidarPista(olvidar);
+// la pista de la comunidad queda anotada en el aparato (asi aparece en la lista y se puede volver a correr sin señal),
+// y la tabla de todos los que la corrieron se suma a la del aparato como la de un club mas (el '#')
+if (comunidad && !comunidad.borrador) {
+  club.conocerPista(comunidad);
+  if (comunidad.tabla) club.anotarDelClub('#', comunidad.tabla, numero);
+}
 // Como se nombra a alguien de la tabla para elegirlo de rival: por su numero de corredor, si se lo conoce
 // (lo da el servidor); si no, por el nombre. '*' es la pasada propia.
 const claveDe = (r) => (r.mio ? '*' : r.j ? '@' + r.j : r.nombre);
@@ -92,7 +153,7 @@ if (leido && leido.marca.pista === numero) {
     for (const o of leido.tabla) club.anotarAmigo(o);
     if (leido.tieneVuelta && leido.marca.nombre !== club.nombre()) club.elegirRival(claveDe(amigo) + (leido.marca.practica ? '|p' : ''));
   }
-  history.replaceState(null, '', direccionDe(numero));
+  quedarseEn(numero);
 }
 
 await respiro('Plantando el paisaje…', 3);
@@ -163,13 +224,13 @@ async function cargarRival() {
 }
 
 // --- el servidor: links cortos y clubes (ver nube.js). Si no hay servidor o no contesta, nada de esto molesta ---
-// Sube una pasada propia y anota con que codigo corto quedo guardada.
-const subir = (r, codigo, n = numero) => nube.subir(codigo).then((id) => { if (id !== null) club.ponerId(r, id, n); return id; });
+// Sube una pasada propia y anota con que codigo corto quedo guardada. (Lo del borrador no se sube.)
+const subir = (r, codigo, n = numero) => (seSube ? nube.subir(codigo) : Promise.resolve(null)).then((id) => { if (id !== null) club.ponerId(r, id, n); return id; });
 // Lo que va despues de "#r=" al compartir: el codigo corto si la pasada esta en el servidor; si no, la pasada entera.
 // (Casi siempre ya se subio al terminar de correr. Si justo esta en eso, se la espera un momento y nada mas: en el
 // celular, el menu de compartir solo se abre si no pasa mucho desde que se toco el boton.)
 async function acortar(r, codigo) {
-  if (!codigo || !nube.hay) return codigo || '';
+  if (!codigo || !nube.hay || !seSube) return codigo || '';
   if (r.id && r.codigo === codigo) return r.id;   // ya esta guardada tal cual
   const id = await nube.subir(codigo, 900);
   if (id !== null) club.ponerId(r, id);
@@ -181,25 +242,32 @@ async function sincronizar() {
   for (const { numero: n, r } of club.sinSubir().slice(0, 8)) await subir(r, r.codigo, n);
 }
 // Las tablas de mis clubes en esta pista. Lo ultimo que dijo el servidor de cada club queda en "deLosClubes"
-// ({ codigo: { miembros, faltan: [apodos de los que todavia no corrieron] } }); los tiempos, en el club (club.js).
+// ({ codigo: { miembros, faltan: [apodos de los que todavia no corrieron], pistas: [las pistas del club] } }); los tiempos,
+// en el club (club.js). En una pista de la comunidad se pide ademas su tabla: la de todos los que la corrieron.
 const deLosClubes = {};
 let ultimaTabla = -1e9;
 async function tablasDeLosClubes(ya) {
-  const mios = club.clubes();
-  if (!nube.hay || !mios.length || (!ya && performance.now() - ultimaTabla < 15000)) return;
+  const mios = club.clubes(), deLaPista = !!comunidad && !comunidad.borrador;
+  if (!nube.hay || (!mios.length && !deLaPista) || (!ya && performance.now() - ultimaTabla < 15000)) return;
   ultimaTabla = performance.now();
-  const t = await nube.tablas(numero, versionDe(numero), mios.map((x) => x.codigo));
-  if (!t) return;
-  for (const { codigo } of mios) {
-    const x = t[codigo];
-    if (x === null) { club.sacarClub(codigo); delete deLosClubes[codigo]; continue; }   // ese club ya no existe
-    if (!x) continue;
-    if (!x.soy) nube.entrar(codigo, club.nombre());   // (la vez que me sume no habia llegado al servidor)
-    club.ponerClub({ codigo, nombre: x.nombre });
-    club.anotarDelClub(codigo, x.tabla);
-    deLosClubes[codigo] = { miembros: x.miembros + (x.soy ? 0 : 1), faltan: x.faltan || [] };
+  const [t, p] = await Promise.all([mios.length ? nube.tablas(numero, versionDe(numero), mios.map((x) => x.codigo)) : null, deLaPista ? nube.pista(numero) : null]);
+  if (p && !p.error && p.version === versionDe(numero)) club.anotarDelClub('#', p.tabla, numero);
+  if (t) {
+    for (const { codigo } of mios) {
+      const x = t[codigo];
+      if (x === null) { club.sacarClub(codigo); delete deLosClubes[codigo]; continue; }   // ese club ya no existe
+      if (!x) continue;
+      if (!x.soy) nube.entrar(codigo, club.nombre());   // (la vez que me sume no habia llegado al servidor)
+      club.ponerClub({ codigo, nombre: x.nombre });
+      club.anotarDelClub(codigo, x.tabla);
+      deLosClubes[codigo] = { miembros: x.miembros + (x.soy ? 0 : 1), faltan: x.faltan || [], pistas: x.pistas || [] };
+      // las pistas del club quedan anotadas en el aparato (para la lista de pistas de la comunidad); las que ya no estan
+      // (vencieron, o las borro quien las armo), se olvidan
+      for (const q of x.pistas || []) club.conocerPista({ ...q, club: codigo, clubNombre: x.nombre });
+      for (const q of club.pistas()) if (q.club === codigo && q.numero !== numero && !(x.pistas || []).some((y) => y.numero === q.numero && y.version === q.v)) club.olvidarPista(q.numero);
+    }
   }
-  menu.pintar();
+  if (t || p) menu.pintar();
 }
 // Crear un club, entrar a uno con el codigo de una invitacion, y salir. Devuelven { codigo, nombre } o { error }.
 const sinRed = { error: 'No hay conexión con el servidor del juego. Probá más tarde.' };
@@ -207,7 +275,7 @@ async function fundarClub(nombre) {
   const r = await nube.crearClub(nombre, club.nombre());
   if (!r || r.error) return r || sinRed;
   club.ponerClub(r);
-  deLosClubes[r.codigo] = { miembros: 1, faltan: [] };
+  deLosClubes[r.codigo] = { miembros: 1, faltan: [], pistas: [] };
   sincronizar().then(() => tablasDeLosClubes(true));
   return r;
 }
@@ -228,11 +296,33 @@ async function dejarClub(codigo) {
   return r;
 }
 
+// Borrar una pista de la comunidad propia (desde la lista de pistas o desde el creador): se borra en el servidor y se la
+// olvida aca. Devuelve { borrada } o { error }. Si es la que se esta corriendo, se vuelve a la pista de hoy.
+async function borrarPista(n) {
+  const r = await nube.borrarPista(n);
+  if (!r) return sinRed;
+  if (r.error && r.estado !== 404) return r;   // (404: ya no existia: igual se la olvida)
+  club.olvidarPista(n);
+  if (n === numero) { location.href = conServidor(location.pathname); return { borrada: true, sale: true }; }
+  menu.pintar();
+  return { borrada: true };
+}
+
+// --- el creador de pistas (ver creador.js): se abre desde los circuitos, desde un club o desde el borrador ---
+const creador = crearCreador({
+  club, nube, enElBorrador: !seSube, borrarPista,
+  probar: () => { location.href = conServidor(location.pathname + '?pista=borrador'); },
+  // recien publicada: se abre la pista, con su link (el aviso de "publicada" lo da la portada)
+  publicada: (p) => { location.href = conServidor(location.pathname + '?pista=' + p.numero + '-' + p.version + '#publicada'); },
+  renombrar: () => { if (nube.hay) for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); },
+  alCerrar: () => { if (pantalla !== 'jugando') $('largar').focus({ preventScroll: true }); },
+});
+
 const menu = crearMenu({
-  T, club, hoy: HOY, ref, copiloto,
+  T, club, hoy: HOY, ref, copiloto, comunidad,
   ajustes: { leer: gusto, poner: (clave, valor) => ajustar(clave, valor), probar: () => teclas.probarSensor() },
-  aviso: linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.'
-    : linkCaido ? 'No pude traer la pasada de tu amigo. Revisá la conexión y abrí el link de nuevo.' : '',
+  aviso: avisoDeLaPista || (linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.'
+    : linkCaido ? 'No pude traer la pasada de tu amigo. Revisá la conexión y abrí el link de nuevo.' : ''),
   rival: () => rival,
   claveDe,
   elegirAuto: (id) => { if (pantalla !== 'jugando') ponerAuto(id); },
@@ -247,6 +337,13 @@ const menu = crearMenu({
   } : null,
   // volver a ver el tutorial (desde "Como se juega")
   tutorial: () => largar(true),
+  // el creador de pistas (codigo: el club para el que se arma, si se abre desde un club)
+  armar: (codigo) => creador.abrir(codigo),
+  // el link de esta pista (para compartir una pista de la comunidad)
+  linkDeLaPista: () => location.origin + direccionDe(numero),
+  direccion: conServidor,
+  // borrar una pista propia
+  borrarPista,
 });
 
 let pantalla = 'portada';   // portada, jugando o fin
@@ -326,7 +423,7 @@ const tutorial = crearTutorial({
 
 // los resultados de otros que se conocen de esta pista: van en el link, para que la tabla se complete entre todos
 // (Solo lo que llego por link. Lo que se sabe por un club queda en el club: no viaja en los links de sus miembros.)
-const conocidos = () => (esCircuito(numero) ? club.practicas() : club.tabla()).filter((x) => !x.mio && (x.link || !x.j));
+const conocidos = () => (libre ? club.practicas() : club.tabla()).filter((x) => !x.mio && (x.link || !x.j));
 // (vuelta cerrada) el mejor tiempo que hay guardado, o null
 const mejorGuardado = () => { const g = T.vuelta && club.practica(); return g && !g.ab ? g.t : null; };
 
@@ -421,6 +518,7 @@ function atender(e) {
 }
 
 const teclas = crearTeclas((tecla) => {
+  if (creador.abierto()) { if (tecla === 'Escape') creador.cerrar(); return; }   // (con el creador abierto, las teclas son del creador)
   if (tecla === 'Enter') { if (pantalla !== 'jugando' && !['BUTTON', 'INPUT', 'A'].includes(document.activeElement.tagName)) largar(); }
   else if (tecla === 'KeyR') { if (pantalla === 'jugando') partida.volver(c, 'pedido'); }
   else if (tecla === 'Escape') aLaPortada();
@@ -486,6 +584,8 @@ const HACIA = new THREE.Vector3(), AL_AUTO = new THREE.Vector3();
 
 function cuadro(ahora) {
   requestAnimationFrame(cuadro);
+  // con el creador de pistas abierto (tapa toda la pantalla) no se dibuja nada: el aparato descansa
+  if (creador.abierto() && !cargando) { antes = ahora; return; }
   cuidarFluidez((ahora - antes) / 1000);
   const dt = Math.min(0.05, (ahora - antes) / 1000);
   antes = ahora;
@@ -563,7 +663,7 @@ requestAnimationFrame(cuadro);
 // al servidor se cuelgan. Si la pestaña esta escondida no se dibuja nada: ahi se espera un par de segundos y listo.)
 const yaAnda = new Promise((sigue) => { requestAnimationFrame(() => requestAnimationFrame(sigue)); setTimeout(sigue, 2500); });
 if (invitacion) {
-  history.replaceState(null, '', direccionDe(numero));
+  quedarseEn(numero);
   if (!nube.hay) menu.decir('Ese link es una invitación a un club, pero el servidor del juego no está disponible.');
   else yaAnda.then(async () => {
     let r = await entrarAlClub(invitacion[1]);
@@ -572,13 +672,18 @@ if (invitacion) {
     if (r.error) menu.decir('No pude sumarte al club. ' + r.error); else menu.verClub(r.codigo, 'Ya estás en «' + r.nombre + '».');
   });
 } else yaAnda.then(sincronizar).then(() => tablasDeLosClubes(true));
+// recien publicada una pista de la comunidad: se avisa, y se ofrece compartirla
+if (location.hash === '#publicada' && comunidad && !comunidad.borrador) {
+  quedarseEn(numero);
+  menu.decir('¡Publicada! Compartila con el botón: dura dos semanas.');
+}
 // Al volver al juego (por ejemplo, despues de pasar la invitacion por WhatsApp) se piden de nuevo las tablas.
 document.addEventListener('visibilitychange', () => { if (!document.hidden && pantalla !== 'jugando') tablasDeLosClubes(false); });
 
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
 if (enCasa) window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial, creador, comunidad,
   auto: () => c,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,

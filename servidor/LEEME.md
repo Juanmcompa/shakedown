@@ -1,11 +1,12 @@
 # El servidor de Shakedown
 
-El juego se juega entero sin servidor. Con servidor suma dos cosas:
+El juego se juega entero sin servidor. Con servidor suma tres cosas:
 
 - **Links cortos.** La pasada (el fantasma) se guarda acá, y el link pasa de 500 a 800 letras a siete: `…/shakedown/#r=k7Qx2Mp`. El fantasma es igual de fiel: se guarda la pasada entera.
 - **Clubes.** Grupos de amigos con tabla propia. La pasada oficial de cada uno aparece sola en la tabla de todos sus clubes.
+- **Pistas de la comunidad.** Las que arma un jugador en el creador, nota por nota. Se guarda la hoja (las notas que eligió, unas 400 letras: el camino lo arma cada aparato), con su nombre, quién la armó y, si es para un club, cuál. Duran dos semanas, cada uno puede tener cinco a la vez y las puede borrar cuando quiera.
 
-Si el servidor no contesta, el juego sigue andando con el link largo de siempre.
+Si el servidor no contesta, el juego sigue andando con el link largo de siempre (lo único que no anda sin servidor son las pistas de la comunidad).
 
 Está publicado en `https://shakedown.juanmcomparini.workers.dev` (esa dirección es la que figura en `SERVIDOR`, en `src/config.js`). Abrirla tiene que mostrar `{"juego":"Shakedown", …}`.
 
@@ -15,7 +16,7 @@ Está publicado en `https://shakedown.juanmcomparini.workers.dev` (esa direcció
 | --- | --- |
 | `worker.js` | El servidor. Un solo programa, pensado para Cloudflare Workers, con una base de datos D1 |
 | `local.mjs` | El mismo servidor, en tu compu, para probar (guarda todo en la memoria) |
-| `prueba.mjs` | Las pruebas: sube pasadas, arma clubes y revisa lo que contesta |
+| `prueba.mjs` | Las pruebas: sube pasadas, arma clubes, publica y borra pistas, y revisa lo que contesta |
 
 En la raíz del repo, `wrangler.jsonc` le dice a Cloudflare cómo publicarlo.
 
@@ -65,6 +66,8 @@ No guarda direcciones de internet. Para los topes cuenta los pedidos de cada con
 
 Las pasadas de más de 120 días se borran solas. Los clubes y quiénes están en cada uno quedan hasta que la gente sale.
 
+De cada pista de la comunidad: su número, su nombre, el apodo de quien la armó (sale en la portada de la pista), su número de corredor, el club (si es de un club) y la hoja. A las dos semanas vence: deja de verse, y una semana después se borran sus tiempos y su hoja. Si quien la armó la borra, se va enseguida con sus tiempos. La fila queda (sin la hoja), para que su número se pueda volver a usar con la versión siguiente: así un link viejo nunca abre la pista nueva.
+
 ## Qué revisa y qué no
 
 Cada pasada que llega se lee con el mismo programa que usa el juego (`src/fantasma.js`), y lo que figura en la tabla sale de ahí. Se rechaza si no se puede leer, si es de una pista que todavía no empezó (se acepta desde 15 minutos antes de la medianoche, por los relojes adelantados), o si el tiempo no coincide con lo grabado. Cada corredor tiene una sola oficial por pista: la primera que llega.
@@ -73,9 +76,11 @@ Escribir (subir pasadas, crear clubes, entrar y salir) solo se puede desde el ju
 
 Los nombres (de la gente y de los clubes) se limpian: sin letras de control ni marcas invisibles, sin `<` ni `>`, y con un largo máximo. No hay filtro de palabras: si aparece un nombre ofensivo, se borra a mano (ver más abajo).
 
+Una pista de la comunidad se arma acá también antes de guardarla (armar el camino tarda un milisegundo; el terreno no, ese lo arma cada aparato): tiene que entrar entera, sin cruzarse, y medir lo que hace falta. En una pista de la comunidad no hay oficial: se aceptan prácticas mientras esté vigente. Solo quien la armó la puede borrar.
+
 No revisa que la pasada se haya manejado de verdad. Alguien que sepa programar puede fabricar una, o mentir desde qué página viene. Alcanza para clubes de amigos; no para un ranking con premios: para eso haría falta que el servidor repita cada pasada con el mismo motor del juego, y cuentas de usuario.
 
-Los topes están arriba de todo en `worker.js` (`LIMITES`). Por día y desde una misma conexión: 3.000 pasadas, 60 clubes nuevos y 600 ingresos a clubes. Entre todos: 12.000 pasadas por día. Además, 30 clubes por corredor y 100 corredores por club. Los topes por conexión son holgados a propósito: un colegio con el mismo wifi, o mucha gente de la misma compañía de celular, salen a internet con la misma dirección.
+Los topes están arriba de todo en `worker.js` (`LIMITES`). Por día y desde una misma conexión: 3.000 pasadas, 60 clubes nuevos, 600 ingresos a clubes y 40 pistas publicadas. Entre todos: 12.000 pasadas y 1.500 pistas por día. Además, 30 clubes por corredor, 100 corredores por club, 5 pistas vigentes por corredor (si quiere otra, borra una) y 30 por club. Los topes por conexión son holgados a propósito: un colegio con el mismo wifi, o mucha gente de la misma compañía de celular, salen a internet con la misma dirección.
 
 ## Mirar o borrar datos
 
@@ -96,6 +101,14 @@ DELETE FROM clubes WHERE codigo = 'EL-CODIGO';
 
 A quienes estaban en ese club les desaparece solo la próxima vez que abren el juego. Si se borra la base entera, se pierden los clubes y los links cortos dejan de andar; los tiempos de cada uno siguen guardados en su aparato.
 
+Las pistas de la comunidad vigentes, y cómo sacar una (por ejemplo, con un nombre ofensivo), con su número, que es lo que va en el link después de `?pista=` (antes del guion):
+
+```sql
+SELECT numero, version, nombre, autor, club, datetime(vence, 'unixepoch') AS vence FROM pistas WHERE vence > unixepoch() ORDER BY creado DESC LIMIT 50;
+DELETE FROM pasadas WHERE pista = EL-NUMERO;
+UPDATE pistas SET vence = 0, hoja = '' WHERE numero = EL-NUMERO;
+```
+
 ## Lo que se le puede pedir
 
 Todo va y viene como JSON.
@@ -108,7 +121,10 @@ Todo va y viene como JSON.
 | `GET /clubes/<codigo>` | | `{ codigo, nombre, miembros }` |
 | `POST /clubes/<codigo>/entrar` | `{ llave, apodo }` | lo mismo |
 | `POST /clubes/<codigo>/salir` | `{ llave }` | `{ listo: true }` |
-| `POST /tablas` | `{ llave, pista, version, clubes: [códigos] }` | de cada club: nombre, cuántos son, la tabla y quiénes faltan correr |
+| `POST /tablas` | `{ llave, pista, version, clubes: [códigos] }` | de cada club: nombre, cuántos son, la tabla, quiénes faltan correr y sus pistas vigentes |
+| `POST /pistas` | `{ llave, nombre, apodo, club, hoja }` | publica una pista de la comunidad: `{ numero, version, nombre, autor, club, vence }` |
+| `GET /pistas/<numero>` | | `{ numero, version, nombre, autor, club, clubNombre, hoja, vence, tabla }`: la pista y el mejor tiempo de cada uno. 410 si venció o la borraron |
+| `POST /pistas/<numero>/borrar` | `{ llave }` | `{ borrada: true }` (solo quien la armó) |
 
 Desde un navegador solo lo puede usar el juego publicado (`ORIGENES`, en `wrangler.jsonc`). Una copia local del juego puede usar el servidor de prueba (`local.mjs`), no el publicado.
 
