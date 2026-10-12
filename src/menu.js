@@ -1,6 +1,6 @@
 // Las pantallas que no son manejar: la portada con la pista del dia (o con un circuito fijo), la tabla del club,
 // los circuitos, las pistas pasadas, la ayuda, la configuracion y el resultado de cada pasada con su boton de compartir.
-import { AUTOS } from './config.js';
+import { AUTOS, FIRMA } from './config.js';
 import { BIOMAS, CLIMAS, CARACTER, datosDelDia } from './generador.js';
 import { CIRCUITOS, circuitoDe } from './circuitos.js';
 import { fechaDe } from './dia.js';
@@ -20,6 +20,10 @@ export function mensaje(etapa, r) {
   return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
     + (r.ab ? ' 💥 abandono ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
 }
+// El renglon que cierra todo lo que se comparte (el resultado y la invitacion a un club), debajo del link:
+//   🚧 Early Access · Desarrollado por Juan M. Comparini
+// (Sale de FIRMA, en config.js. El dia que el juego deje de estar en desarrollo queda solo quien lo hace.)
+export const firma = () => (FIRMA.etapa ? '🚧 ' + FIRMA.etapa + ' · ' : '') + 'Desarrollado por ' + FIRMA.autor;
 // los cuadraditos de un resultado, como elementos de la pagina
 function cuadritos(colores) {
   const caja = crear('span', 'cuadros');
@@ -167,7 +171,7 @@ export function crearMenu(o) {
   });
   $('clubInvitar').addEventListener('click', () => {
     const c = club.clubes().find((x) => x.codigo === vista);
-    if (c) pasar('Sumate a mi club de Shakedown «' + c.nombre + '»: una pista nueva por día, y vemos quién la hace más rápido.\n' + location.origin + location.pathname + '#club=' + c.codigo, avisar, 'Copiado. Pegalo en el grupo: el que lo abre queda en el club.');
+    if (c) pasar('Sumate a mi club de Shakedown «' + c.nombre + '»: una pista nueva por día, y vemos quién la hace más rápido.\n' + location.origin + location.pathname + '#club=' + c.codigo + '\n' + firma(), avisar, 'Copiado. Pegalo en el grupo: el que lo abre queda en el club.');
   });
   // salir pide confirmacion: hay que tocar dos veces
   $('clubSalir').addEventListener('click', async () => {
@@ -339,6 +343,7 @@ export function crearMenu(o) {
 
   // --- compartir ---
   // Pasa un texto: en el celular abre el menu de compartir; en la compu lo copia. decir(texto): donde se avisa como salio.
+  // (El link va siempre solo en su renglon: lo que venga despues, como la firma, no se le puede pegar.)
   async function pasar(texto, decir, listo) {
     try {
       if (navigator.share && window.matchMedia('(pointer: coarse)').matches) { await navigator.share({ text: texto }); return; }
@@ -346,7 +351,7 @@ export function crearMenu(o) {
       decir(listo);
     } catch (e) {
       if (e && e.name === 'AbortError') return;
-      decir('No pude copiarlo. Copialo de acá: ' + texto.replace('\n', ' '));
+      decir('No pude copiarlo. Copialo de acá: ' + texto.replace(/\n/g, ' '));
     }
   }
   async function compartir(r, salida) {
@@ -354,7 +359,8 @@ export function crearMenu(o) {
     const codigo = r.codigo || (linkDe && await linkDe());
     // el link lleva el codigo corto con el que la pasada quedo en el servidor; si no hay servidor, la pasada entera
     const final = codigo ? await o.acortar(r, codigo) : '';
-    await pasar(mensaje(etapa, r) + '\n' + location.origin + location.pathname + (final ? '#r=' + final : ''), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
+    // tres renglones: el resultado, el link, y en que anda el juego y quien lo hace
+    await pasar(mensaje(etapa, r) + '\n' + location.origin + location.pathname + (final ? '#r=' + final : '') + '\n' + firma(), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
   }
   $('compartir').addEventListener('click', () => ultimo && compartir(ultimo, $('compartido')));
   $('compartirPortada').addEventListener('click', () => { const r = fijo ? club.practica() : club.oficial(); if (r) compartir({ ...r, nombre: club.nombre() }, $('queEs')); });

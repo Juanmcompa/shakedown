@@ -1,6 +1,6 @@
 // Lo que se ve en pantalla mientras se corre: el reloj, los cuadraditos de los sectores, la velocidad,
 // el daño, las notas del copiloto, los avisos y el estado de los botones. (El HTML esta en index.html.)
-import { CAMARAS } from './config.js';
+import { CAMARAS, FIRMA } from './config.js';
 import { iconoDeNota, textoDeNota, icono } from './iconos.js';
 
 const $ = (id) => document.getElementById(id);
@@ -18,10 +18,15 @@ export function crearHud() {
   const puntos = boton('camara').querySelector('.puntos');
   puntos.textContent = '';
   for (let i = 0; i < CAMARAS.length; i++) puntos.append(document.createElement('i'));
+  // el cartel de la largada: en que anda el juego ("Early Access", mientras este en desarrollo) y quien lo hace
+  $('selloEtapa').textContent = FIRMA.etapa;
+  $('selloAviso').textContent = FIRMA.aviso;
+  $('selloAutor').textContent = FIRMA.autor;
+  $('selloEtapa').parentNode.hidden = !FIRMA.etapa && !FIRMA.aviso;
 
   return {
     // (los pedales del celular se ven solo mientras se corre: los esconde el estilo si no esta la clase "jugando")
-    mostrar: (si) => { $('hud').hidden = !si; $('mandos').hidden = !si; document.documentElement.classList.toggle('jugando', si); },
+    mostrar: (si) => { $('hud').hidden = !si; $('mandos').hidden = !si; document.documentElement.classList.toggle('jugando', si); if (!si) $('sello').classList.remove('se-ve'); },
     // --- el estado de los botones: tiene que verse de un vistazo ---
     // la camara: el auto dibujado como se lo ve con la que esta puesta, y encendido el puntito que le toca
     camara: (id) => {
@@ -51,6 +56,8 @@ export function crearHud() {
       }
       $('aviso').hidden = !txt && !dibujo; tAviso = seg || 0;
     },
+    // el cartel de la largada: se ve mientras dura la cuenta regresiva y se va solo cuando arranca la pasada
+    sello: (si) => $('sello').classList.toggle('se-ve', !!si),
     // cartel grande en el medio: la cuenta regresiva, una penalizacion, el tiempo de un sector
     grande: (txt, seg, clase) => { const el = $('grande'); el.textContent = txt; el.className = 'grande ' + (clase || ''); el.hidden = !txt; tGrande = seg || 0; },
     // los cuadraditos: "colores" es lo ya corrido ('va...'), y "actual" el sector en el que se esta

@@ -6,10 +6,14 @@ Rally diario. Cada medianoche hay una pista nueva, la misma para todos, y una so
 
 **Jugar:** https://juanmcompa.github.io/shakedown/
 
-El resultado se comparte así, con un link que lleva tu pasada:
+**En desarrollo (Early Access).** Desarrollado por Juan M. Comparini.
+
+El resultado se comparte así, con un link que lleva tu pasada y, al final, en qué anda el juego y quién lo hace:
 
 ```
 Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
+https://juanmcompa.github.io/shakedown/#r=k7Qx2Mp
+🚧 Early Access · Desarrollado por Juan M. Comparini
 ```
 
 ## La historia
@@ -85,6 +89,7 @@ Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 ## Correr contra amigos: links y clubes
 
 - Al terminar, poné tu nombre y compartí. En la compu se copia el mensaje con el link; en el celular se abre el menú de compartir.
+- El mensaje tiene tres renglones: el resultado, el link y la firma (`🚧 Early Access · Desarrollado por Juan M. Comparini`). La invitación a un club cierra con el mismo renglón. Al pegar el link, la vista previa también lo dice: en el título, en la descripción y en la imagen.
 - Quien abre tu link te ve en su tabla y **corre su pasada oficial contra tu fantasma**, que hace exactamente lo que hiciste vos.
 - Sin link de nadie, la oficial se corre solo. En las prácticas, el fantasma es tu mejor pasada.
 - En la tabla, el botón del fantasma elige contra quién corrés.
@@ -134,9 +139,31 @@ En el celular los botones son íconos y muestran su estado:
 - **Volver al camino:** lleva el "+8" de lo que cuesta. Titila en amarillo cuando el auto quedó trabado.
 - **La portada entra entera en la pantalla.** Abajo quedan fijos el botón de largar y las secciones (tabla, circuitos, pistas pasadas, ayuda y configuración). Si la pista tiene mucho para mostrar, se corre con el dedo solo la parte de arriba, y una flechita avisa que hay más.
 - **Las cámaras se acomodan a la pantalla.** En el celular, la aérea va más cerca, la de atrás más lejos, y el auto queda siempre por arriba de los pedales, para que no lo tapen los pulgares.
-- **Mientras carga** se ve la marca con una barra y lo que está haciendo. Si no puede cargar, lo dice y ofrece probar de nuevo.
+- **Mientras carga** se ve la marca con una barra y lo que está haciendo. Si no puede cargar, lo dice, ofrece probar de nuevo y muestra un código con lo que falló (ver "Si no carga").
+- **Al largar**, mientras dura la cuenta regresiva, un cartel avisa que el juego está en desarrollo (Early Access) y quién lo hace. Se va solo cuando arranca la pasada.
 
 Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina. También avisa los puentes, las lajas, los adoquines y los lomos de burro.
+
+## Si no carga
+
+Cuando el juego no puede arrancar, la pantalla de carga dice qué hacer y, abajo, deja un renglón así:
+
+```
+Código R0 · carteleria.js (sin respuesta) · pág. 17 · Chrome 141, Android 14
+```
+
+Con una captura de esa pantalla alcanza para saber qué pasó. La letra dice qué falló y el número, en qué paso de la carga estaba (0 = el programa todavía no había arrancado; del 1 al 6: buscar la pasada del link, armar la pista, el paisaje, el auto, los últimos ajustes y el primer cuadro).
+
+| Código | Qué pasó | Qué suele ser |
+| --- | --- | --- |
+| **R** | No bajó un archivo del juego. Dice cuál, y qué contestó el sitio | `(sin respuesta)` en uno o dos archivos, y los demás bien: algo en ese aparato lo frena (un bloqueador de publicidad, un antivirus, el filtro de una red). `(404)`: al sitio le falta ese archivo; pasa unos minutos después de publicar. "No responde ninguno": no hay conexión |
+| **E** | Falló el programa. Dice en qué archivo y en qué renglón | Un error del juego en ese aparato: hay que arreglarlo |
+| **P** | Falló algo que el programa estaba esperando | Lo mismo que E. A veces no impide jugar: si el juego termina de cargar, el cartel se va solo |
+| **V** | El navegador no entiende el programa | Un navegador viejo: hay que actualizarlo |
+| **G** | No se pudieron prender los gráficos 3D | El aparato o el navegador no tienen WebGL 2, o está apagado |
+| **T** | Pasaron 40 segundos y sigue cargando | Un aparato lento o una conexión mala. No corta nada: se puede esperar |
+
+Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el celular abre el menú de compartir): el error entero, qué archivos no bajaron, el navegador y el aparato. No se manda solo a ningún lado: lo manda quien quiera, pegándolo en un chat.
 
 ## Configuración
 
@@ -157,6 +184,9 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | --- | --- |
 | Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
 | Cuánto ayuda la ayuda de manejo (`AYUDA`) y con qué configuración arranca el juego (`GUSTOS`) | `src/config.js` |
+| El aviso de que el juego está en desarrollo y quién lo hace (`FIRMA`): el cartel de la largada y el último renglón de lo que se comparte | `src/config.js` |
+| Lo mismo, en la vista previa del link (título, descripción e imagen) | El principio de `index.html` y `vista-previa.jpg` |
+| Los textos y los códigos de la pantalla de "no se pudo cargar" | El principio de `index.html` |
 | Lo que dice cada personaje en el tutorial de la primera vez, en qué orden y qué ilumina (`PASOS`) | `src/tutorial.js` |
 | Los personajes: nombres, roles y cuáles hay (`EQUIPO`); sus retratos | `src/equipo.js`, `personajes/` |
 | La trazada: sus colores, el tamaño de las rayitas y desde qué velocidad avisa (`RITMO`, `FRENADA`, `JUSTO`) | `src/trazada.js` |
@@ -259,5 +289,7 @@ Sirven para revisar que las pistas se puedan terminar después de tocar `config.
 El plan de desarrollo está en [PLAN.md](PLAN.md).
 
 ## Créditos
+
+Desarrollado por Juan M. Comparini. El juego está en desarrollo (Early Access).
 
 Hecho con [Three.js](https://threejs.org/) (licencia MIT). Tipografías [Barlow y Barlow Condensed](https://github.com/jpt/barlow) (licencia OFL), incluidas en `vendor/fuentes`.

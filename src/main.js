@@ -30,20 +30,22 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '16' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '17' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
 // si no, en un celular lento la pantalla queda quieta varios segundos y parece rota. (El cartel esta en index.html.)
-const respiro = (texto) => {
-  $('cargaTexto').textContent = texto;
+// Cada paso lleva su numero: si la carga falla, el codigo que se muestra dice en cual estaba (ver el principio de index.html).
+const respiro = (texto, paso) => {
+  if (!raiz.classList.contains('carga-fallo')) $('cargaTexto').textContent = texto;
+  if (window.cargaPaso) window.cargaPaso(paso, texto);
   return new Promise((sigue) => { requestAnimationFrame(() => setTimeout(sigue, 0)); setTimeout(sigue, 250); });
 };
 let cargando = true;
 
 let render;
 try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true }); } catch (e) {
-  window.cargaFallo('Este navegador no puede mostrar los gráficos 3D del juego. Probá actualizarlo, o entrá desde otro aparato.');
+  window.cargaFallo('', 'G', e);   // (el cartel dice que este navegador no puede con los graficos 3D)
   throw e;
 }
 const liviano = window.matchMedia('(pointer: coarse)').matches;   // celular o tablet: menos pixeles y sombras mas chicas
@@ -62,7 +64,7 @@ const nube = crearNube(enCasa && consulta.has('servidor') ? consulta.get('servid
 const enlace = /[#&]r=([\w-]+)/.exec(location.hash), invitacion = /[#&]club=([0-9A-Za-z]{6,12})/.exec(location.hash);
 let codigoDelLink = enlace ? enlace[1] : '', corredorDelLink = '', linkCaido = false;
 if (enlace && enlace[1].length <= 12) {
-  await respiro('Buscando la pasada de tu amigo…');
+  await respiro('Buscando la pasada de tu amigo…', 1);
   const p = await nube.pasada(enlace[1]);
   codigoDelLink = p ? p.codigo : ''; corredorDelLink = p ? p.j : ''; linkCaido = !p;
 }
@@ -72,7 +74,7 @@ const numero = leido && vale(leido.marca.pista) ? leido.marca.pista : fijo ? fij
 // la direccion de una pista: la de hoy no lleva nada; un circuito, su nombre; un dia pasado, su numero
 const direccionDe = (n) => location.pathname + (esCircuito(n) ? '?c=' + circuitoDe(n).id : n !== HOY ? '?p=' + n : '');
 
-await respiro('Armando la pista…');
+await respiro('Armando la pista…', 2);
 const etapa = generarPista(numero), T = crearTerreno(etapa), P = T.camino, ref = crearReferencia(T, AUTOS[REFERENCIA]);
 const club = crearClub(numero, HOY, versionDe), copiloto = crearCopiloto(T);
 nube.conLlave(() => club.llave());
@@ -93,7 +95,7 @@ if (leido && leido.marca.pista === numero) {
   history.replaceState(null, '', direccionDe(numero));
 }
 
-await respiro('Plantando el paisaje…');
+await respiro('Plantando el paisaje…', 3);
 const escena = new THREE.Scene();
 const huellas = crearHuellas(T, render), mundo = crearMundo(T, escena, liviano, huellas), partida = crearPartida(T, ref.sectores);
 huellas.pintar();   // la raya de largada, la meta y las lineas del asfalto
@@ -106,7 +108,7 @@ const post = crearPost(render, etapa.clima, liviano);
 // La trazada, mientras nadie la toque, acompaña a la ayuda de manejo: con ayuda se ve, para entender por donde va a ir el auto.
 const gusto = (clave) => { const v = club.gusto(clave); return v !== undefined ? v : clave === 'trazada' ? !!gusto('ayuda') : GUSTOS[clave]; };
 
-await respiro('Preparando el auto…');
+await respiro('Preparando el auto…', 4);
 // --- el auto del jugador (se puede cambiar en la portada) y los fantasmas ---
 // Con la ayuda de manejo, el mismo auto se cruza menos (y ademas sigue la trazada y frena solo: ver ayuda.js).
 const ayuda = crearAyuda(T);
@@ -295,6 +297,7 @@ function largar(conTutorial) {
   mundo.reiniciar();
   trazada.mostrar(conTrazada);
   hud.sectores('', 0); hud.aviso(''); hud.grande(''); hud.sinRival(); hud.frenaSola(false); hud.mostrar(true);
+  hud.sello(!explicar);   // (el cartel de "en desarrollo" y la firma acompaña a la cuenta regresiva: con el tutorial, espera)
   hud.ronda(T.vuelta ? 0 : -1, mejorGuardado());
   encuadrar();
   menu.cerrarFin();
@@ -316,6 +319,7 @@ const tutorial = crearTutorial({
     ayudaDeLaPasada = conAyuda;
     trazada.mostrar(conTrazada);
     partida.largar();
+    hud.sello(true);
   },
   alCancelar: () => aLaPortada(),
 });
@@ -399,7 +403,7 @@ const VUELTA = { caida: 'Te fuiste al vacío', afuera: 'Te fuiste lejos del cami
 const CUENTA = ['', 'uno', 'dos', 'tres'];
 function atender(e) {
   if (e.tipo === 'cuenta') { hud.grande(String(e.dato), 0.95, 'cuenta'); copiloto.hablar(CUENTA[e.dato]); }
-  else if (e.tipo === 'ya') { hud.grande('¡YA!', 0.9, 'ya'); if (modo === 'oficial') club.empezarOficial(club.auto()); }
+  else if (e.tipo === 'ya') { hud.grande('¡YA!', 0.9, 'ya'); hud.sello(false); if (modo === 'oficial') club.empezarOficial(club.auto()); }
   else if (e.tipo === 'sector') {
     const n = partida.sectores.length, par = ref.sectores[e.dato.numero], dif = e.dato.tiempo - par;
     if (n) hud.sectores(partida.colores(), n);   // (en una vuelta cerrada, al cerrar el ultimo sector ya arranco la ronda siguiente)
@@ -542,13 +546,14 @@ $('salir').addEventListener('click', aLaPortada);
 medir();
 await cargarRival();
 menu.portada(true);
-await respiro('Últimos ajustes…');
+await respiro('Últimos ajustes…', 5);
 // los materiales se preparan antes de mostrar nada, asi el primer cuadro no se traba (si no se puede, se preparan al dibujar)
 try {
   if (render.extensions.has('KHR_parallel_shader_compile')) await Promise.race([render.compileAsync(escena, camara.cam), new Promise((sigue) => setTimeout(sigue, 8000))]);
   else render.compile(escena, camara.cam);
 } catch (e) { /* no pasa nada */ }
 $('largar').disabled = false;
+if (window.cargaPaso) window.cargaPaso(6, 'El primer cuadro');
 requestAnimationFrame(cuadro);
 
 // --- lo del servidor, con el juego ya andando (nada de esto demora la carga) ---

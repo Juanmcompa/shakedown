@@ -1,16 +1,20 @@
 <!doctype html>
-<html lang="es" data-pagina="16" class="cargando">
+<html lang="es" data-pagina="17" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Shakedown</title>
-<meta name="description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial.">
-<meta property="og:title" content="Shakedown">
-<meta property="og:description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial.">
+<meta name="description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial. App en desarrollo (Early Access). Desarrollado por Juan M. Comparini.">
+<meta name="author" content="Juan M. Comparini">
+<!-- Lo que muestran WhatsApp y otros al pegar el link: titulo, descripcion e imagen. Mientras el juego esta en desarrollo
+     lo dicen los tres, junto con quien lo hace (lo mismo que FIRMA, en src/config.js: si cambia alla, cambiarlo tambien aca
+     y volver a armar la imagen). Quien arma la vista previa no corre el juego: por eso esto va escrito a mano. -->
+<meta property="og:title" content="Shakedown · Early Access">
+<meta property="og:description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial. App en desarrollo, por Juan M. Comparini.">
 <meta property="og:type" content="website">
-<!-- la imagen que muestran WhatsApp y otros al pegar el link (tiene que ser una direccion completa) -->
-<meta property="og:image" content="https://juanmcompa.github.io/shakedown/vista-previa.jpg?2">
-<meta property="og:image:alt" content="Shakedown: rally diario">
+<!-- (la imagen tiene que ser una direccion completa; el numero del final se sube cuando cambia, para que la vuelvan a pedir) -->
+<meta property="og:image" content="https://juanmcompa.github.io/shakedown/vista-previa.jpg?3">
+<meta property="og:image:alt" content="Shakedown: rally diario. Early Access, app en desarrollo. Desarrollado por Juan M. Comparini.">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -23,21 +27,197 @@
 <link rel="preload" as="image" type="image/webp" href="marca/logo-640.webp" imagesrcset="marca/logo-640.webp 640w, marca/logo.webp 1200w" imagesizes="(max-width: 600px) 72vw, 26rem">
 <style>html { background: #16181b; }</style>
 <script>
-  // Si algo falla mientras carga (se corto la conexion, o el navegador es muy viejo para el juego), se avisa en el cartel
-  // de carga y se ofrece probar de nuevo, en vez de dejar la pantalla a medio armar. Vale solo mientras dura la carga.
-  window.cargaFallo = function (texto) {
-    var raiz = document.documentElement, t = document.getElementById('cargaTexto'), b = document.getElementById('cargaOtraVez');
-    if (!raiz.classList.contains('cargando') || raiz.classList.contains('carga-fallo')) return;
-    raiz.classList.add('carga-fallo');
-    if (t) t.textContent = texto || 'No se pudo cargar el juego. Revisá la conexión y probá de nuevo.';
-    if (b) { b.hidden = false; b.onclick = function () { location.reload(); }; }
+  // --- Si algo falla mientras carga ---
+  // Se avisa en el cartel de carga y se ofrece probar de nuevo, en vez de dejar la pantalla a medio armar. Abajo queda un
+  // CODIGO que dice que fue, para poder arreglarlo cuando alguien manda una captura de esa pantalla:
+  //   R = un archivo del juego no bajo (dice cual)          E = fallo el programa (dice en que archivo y en que renglon)
+  //   P = fallo algo que el programa estaba esperando       V = el navegador es muy viejo para el juego
+  //   G = el aparato no puede con los graficos 3D           T = tarda demasiado (pero sigue cargando)
+  // y un numero: en que paso de la carga estaba. 0 = el programa todavia no habia arrancado; del 1 al 6, los de main.js:
+  //   1 buscar la pasada del link   2 armar la pista   3 el paisaje   4 el auto   5 ultimos ajustes   6 el primer cuadro
+  // Ejemplo: "R0 · carteleria.js (sin respuesta)" = ese archivo no bajo: lo frena un bloqueador, o no hay conexion.
+  // El boton de al lado copia el detalle completo (en el celular abre el menu de compartir): el error, en que paso, que
+  // archivos no bajaron, el navegador y el aparato. No se manda solo a ningun lado: lo manda quien quiera.
+  // Todo esto vale solo mientras dura la carga.
+  (function () {
+  // (errores: todo lo que fue fallando, hasta seis; falla: el que se muestra, que es el primero que corto la carga)
+  var carga = window.carga = { desde: Date.now(), paso: 0, pasos: [], errores: [], falla: null, codigo: '', texto: '', sonda: null };
+  var TEXTOS = {
+    R: 'No se pudo bajar una parte del juego. Revisá la conexión y probá de nuevo.',
+    E: 'El juego falló al arrancar en este aparato. Probá de nuevo; si sigue igual, mandale el detalle a quien te pasó el juego.',
+    V: 'Este navegador es muy viejo para el juego. Probá actualizarlo, o entrá desde otro aparato.',
+    G: 'Este navegador no puede mostrar los gráficos 3D del juego. Probá actualizarlo, o entrá desde otro aparato.',
+    T: 'Está tardando más de lo normal. Podés esperar un poco más, o probar de nuevo.',
   };
-  var VIEJO = 'Este navegador es muy viejo para el juego. Probá actualizarlo, o entrá desde otro aparato.';
+  TEXTOS.P = TEXTOS.E;
+  var el = function (id) { return document.getElementById(id); }, raiz = document.documentElement;
+  var nombre = function (u) { return String(u || '').replace(/[?#].*$/, '').replace(/^.*\//, '') || '?'; };
+  var recortar = function (t, n) { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+  // lo que tiro el programa, en palabras; y donde fue (el archivo y el renglon: si no vienen, se buscan en la pila)
+  var describir = function (x) {
+    try { return { mensaje: x && x.message ? (x.name && x.name !== 'Error' && String(x.message).indexOf(x.name) !== 0 ? x.name + ': ' : '') + x.message : String(x), pila: x && x.stack ? String(x.stack) : '' }; } catch (e) { return { mensaje: 'error sin descripción', pila: '' }; }
+  };
+  var lugar = function (pila, archivo, linea, col) {
+    if (archivo) return nombre(archivo) + (linea ? ':' + linea + (col ? ':' + col : '') : '');
+    var m = /([\w.-]+\.js)(?:\?[^:\s)]*)?:(\d+):(\d+)/.exec(pila || '');
+    return m ? m[1] + ':' + m[2] + ':' + m[3] : '';
+  };
+  // el navegador y el sistema, en corto (para que se lea en una captura)
+  var navegador = function () {
+    var u = navigator.userAgent || '', de = function (re) { var m = re.exec(u); return m ? m[1] : ''; };
+    var cual = de(/(?:Edg|EdgA|EdgiOS)\/(\d+)/) ? 'Edge ' + de(/(?:Edg|EdgA|EdgiOS)\/(\d+)/) : de(/OPR\/(\d+)/) ? 'Opera ' + de(/OPR\/(\d+)/) : de(/SamsungBrowser\/(\d+)/) ? 'Samsung ' + de(/SamsungBrowser\/(\d+)/)
+      : de(/(?:Firefox|FxiOS)\/(\d+)/) ? 'Firefox ' + de(/(?:Firefox|FxiOS)\/(\d+)/) : de(/(?:Chrome|CriOS)\/(\d+)/) ? 'Chrome ' + de(/(?:Chrome|CriOS)\/(\d+)/) : de(/Version\/([\d.]+).*Safari/) ? 'Safari ' + de(/Version\/([\d.]+).*Safari/) : 'navegador desconocido';
+    var donde = de(/Android ([\d.]+)/) ? 'Android ' + de(/Android ([\d.]+)/) : de(/(?:iPhone|CPU) OS ([\d_]+)/) ? 'iOS ' + de(/(?:iPhone|CPU) OS ([\d_]+)/).replace(/_/g, '.') : /Windows/.test(u) ? 'Windows' : /Mac OS X/.test(u) ? 'Mac' : /CrOS/.test(u) ? 'ChromeOS' : /Linux/.test(u) ? 'Linux' : '';
+    return cual + (donde ? ', ' + donde : '') + (/FBAN|FBAV|Instagram|Line\/|; wv\)|WebView/.test(u) ? ', dentro de otra app' : '');
+  };
+  // --- que archivos no bajaron ---
+  // Cuando no baja un archivo del programa, el navegador avisa que fallo "main.js" aunque el que falto sea otro. Para
+  // saber cual fue se prueban todos, de dos maneras: pidiendolo como programa (dice si fallo en ESTA carga) y pidiendolo
+  // como dato (dice como esta AHORA: si responde, y con que numero).
+  function sondear() {
+    if (carga.sonda) return;
+    var lista = modulos.map(function (m) { return 'src/' + m + '.js?v=' + V; }).concat(['vendor/three.module.js', 'vendor/three.core.js', 'style.css?v=' + V]);
+    var s = carga.sonda = { total: lista.length, lista: [], listo: false }, faltan = lista.length * 2, puede = false;
+    try { puede = document.createElement('link').relList.supports('modulepreload'); } catch (e) { /* no se sabe: se prueba de la otra manera */ }
+    var cerrar = function () { if (s.listo) return; s.listo = true; pintarFallo(); };
+    var una = function () { if (--faltan <= 0) cerrar(); };
+    lista.forEach(function (u) {
+      var x = { archivo: nombre(u), antes: '', ahora: '' };
+      s.lista.push(x);
+      if (puede && /\.js/.test(u)) {
+        var l = document.createElement('link');
+        l.rel = 'modulepreload'; l.href = u; l.sonda = true;
+        l.onload = function () { x.antes = 'bajó'; una(); };
+        l.onerror = function () { x.antes = 'no bajó'; una(); };
+        document.head.appendChild(l);
+      } else una();
+      if (window.fetch) fetch(u).then(function (r) { x.ahora = r.ok ? 'responde' : String(r.status); una(); }, function () { x.ahora = 'sin respuesta'; una(); });
+      else una();
+    });
+    setTimeout(cerrar, 9000);
+    if (!s.listo) pintarFallo();   // (mientras tanto, el codigo dice que esta buscando que fallo)
+  }
+  // --- lo que se ve ---
+  function pintarFallo() {
+    var e = carga.falla || {}, s = carga.sonda, letra = carga.codigo.charAt(0), texto = carga.texto, que = [e.donde, recortar(e.mensaje, 110)].filter(Boolean).join(' · ');
+    if (s && s.listo && letra !== 'G' && letra !== 'T') {
+      var mal = s.lista.filter(function (x) { return x.antes === 'no bajó' || (x.ahora && x.ahora !== 'responde'); });
+      var mudos = mal.filter(function (x) { return x.ahora === 'sin respuesta'; }), numeros = mal.filter(function (x) { return /^\d+$/.test(x.ahora); });
+      if (mal.length) {
+        // el problema es que falta algun archivo, se haya visto como se haya visto: el codigo pasa a ser R y dice cual
+        letra = 'R';
+        que = mudos.length === s.total ? 'no responde ninguno de los ' + s.total + ' archivos'
+          : mal.slice(0, 3).map(function (x) { return x.archivo + ' (' + (x.ahora && x.ahora !== 'responde' ? x.ahora : 'no bajó') + ')'; }).join(', ') + (mal.length > 3 ? ' y ' + (mal.length - 3) + ' más' : '');
+        texto = mudos.length === s.total || navigator.onLine === false ? 'No hay conexión con el sitio del juego. Revisá la conexión y probá de nuevo.'
+          : numeros.length ? 'Al juego le falta una parte. Puede que se esté actualizando: probá de nuevo en un par de minutos.'
+          : mudos.length ? 'Algo en este aparato está frenando una parte del juego. Si tenés un bloqueador de publicidad o un antivirus, apagalo para esta página y probá de nuevo.'
+          : 'No bajó una parte del juego. Probá de nuevo; si sigue igual, puede ser un bloqueador de publicidad: apagalo para esta página.';
+      } else if (letra === 'R') { texto = 'Se cortó la conexión mientras bajaba el juego. Probá de nuevo.'; que = 'ahora los archivos responden'; }
+      carga.codigo = letra + carga.codigo.slice(1);
+    }
+    if (el('cargaTexto')) el('cargaTexto').textContent = texto;
+    if (el('cargaNota')) el('cargaNota').hidden = true;
+    carga.linea = 'Código ' + carga.codigo + (que ? ' · ' + que : '') + ' · pág. ' + (raiz.getAttribute('data-pagina') || '?') + ' · ' + navegador();
+    if (el('cargaCodigo')) { el('cargaCodigo').textContent = carga.linea + (s && !s.listo ? ' · buscando qué falló…' : ''); el('cargaCodigo').hidden = false; }
+    var otra = el('cargaOtraVez'), det = el('cargaDetalle');
+    if (otra) { otra.hidden = false; otra.onclick = function () { location.reload(); }; }
+    if (det) { det.hidden = false; det.textContent = puedeMandar() ? 'Mandar el detalle' : 'Copiar el detalle'; det.onclick = pasarDetalle; }
+  }
+  // --- el detalle completo, para mandar ---
+  var puedeMandar = function () { try { return !!navigator.share && window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } };
+  function detalle() {
+    var e = carga.falla || {}, s = carga.sonda, si = function (v) { return v ? 'sí' : 'no'; }, r = [];
+    var guarda = false, graficos = 'no';
+    try { localStorage.setItem('shakedown.prueba', '1'); localStorage.removeItem('shakedown.prueba'); guarda = true; } catch (x) { /* sin memoria */ }
+    try { var gl = document.createElement('canvas').getContext('webgl2'); if (gl) { var d = gl.getExtension('WEBGL_debug_renderer_info'); graficos = 'sí' + (d ? ' (' + recortar(gl.getParameter(d.UNMASKED_RENDERER_WEBGL), 80) + ')' : ''); } } catch (x) { graficos = 'falló al probar'; }
+    var h = location.hash, link = /[#&]r=/.test(h) ? 'link de una pasada (' + (h.length - 3) + ' letras)' : /[#&]club=/.test(h) ? 'invitación a un club' : 'sin link';
+    r.push('Shakedown no cargó. ' + (carga.linea || 'Código ' + carga.codigo));
+    r.push('Qué: ' + (e.mensaje || carga.texto || '?') + (e.donde ? ' (' + e.donde + ')' : ''));
+    r.push('Paso ' + carga.paso + (carga.paso ? '' : ' (el programa todavía no había arrancado)') + ' · a los ' + ((Date.now() - carga.desde) / 1000).toFixed(1) + ' s · ' + new Date().toLocaleString());
+    r.push('Dirección: ' + location.pathname + location.search.replace(/([?&]fresca=)\d+/, '$1…') + ' · ' + link);
+    if (s) {
+      var mal = s.lista.filter(function (x) { return x.antes === 'no bajó' || (x.ahora && x.ahora !== 'responde'); });
+      r.push('Archivos: ' + s.total + ' probados' + (s.listo ? '' : ' (sin terminar)') + '; ' + (mal.length ? mal.map(function (x) { return x.archivo + ': ' + (x.antes || 'no se sabe si bajó') + ', ahora ' + (x.ahora || '?'); }).join(' | ') : 'todos responden'));
+    }
+    r.push('Navegador: ' + navigator.userAgent);
+    r.push('Aparato: pantalla ' + window.innerWidth + 'x' + window.innerHeight + ' x' + (window.devicePixelRatio || 1) + ' · en línea ' + si(navigator.onLine !== false) + ' · idioma ' + (navigator.language || '?') + ' · guarda datos ' + si(guarda)
+      + (navigator.deviceMemory ? ' · memoria ' + navigator.deviceMemory + ' GB' : '') + (navigator.hardwareConcurrency ? ' · núcleos ' + navigator.hardwareConcurrency : '') + ' · gráficos 3D ' + graficos);
+    if (carga.pasos.length) r.push('Pasos: ' + carga.pasos.join(' | '));
+    carga.errores.forEach(function (x) { if (x !== e) r.push('Además (' + x.letra + x.paso + '): ' + recortar(x.mensaje, 200) + (x.donde ? ' (' + x.donde + ')' : '')); });
+    if (e.pila) r.push('Pila:\n' + e.pila.split('\n').slice(0, 8).map(function (l) { return '  ' + l.trim().replace(/https?:\/\/[^\s)]*\/(src|vendor)\//g, '$1/').replace(/\?v=\d+/g, ''); }).join('\n'));
+    return r.join('\n');
+  }
+  function pasarDetalle() {
+    var texto = detalle(), boton = el('cargaDetalle'), dijo = function (t) { boton.textContent = t; };
+    // si no se puede copiar ni compartir, el detalle queda a la vista, ya marcado, para copiarlo a mano
+    var aMano = function () { var c = el('cargaTodo'); if (!c) return; c.hidden = false; c.value = texto; c.focus(); c.select(); c.scrollTop = 0; dijo('Copialo de acá abajo'); };
+    try {
+      if (puedeMandar()) navigator.share({ text: texto }).catch(function (e) { if (!e || e.name !== 'AbortError') aMano(); });
+      else if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(function () { dijo('Copiado: pegalo en el chat'); }, aMano);
+      else aMano();
+    } catch (e) { aMano(); }
+  }
+  // --- lo que usa el programa (main.js) ---
+  // en que paso de la carga anda
+  window.cargaPaso = function (n, texto) {
+    carga.paso = n; carga.pasos.push(n + ' ' + texto + ' ' + (Date.now() - carga.desde) + ' ms');
+    if (raiz.classList.contains('carga-lenta')) lenta();
+  };
+  // fallo la carga. texto: lo que se le dice al jugador (si no se pasa, sale de la letra). letra: ver arriba.
+  // que: lo que fallo (un error del programa, o { mensaje, donde, pila }).
+  window.cargaFallo = function (texto, letra, que) {
+    letra = letra || 'E';
+    if (que && que.mensaje === undefined) { var d = describir(que); que = { mensaje: d.mensaje, pila: d.pila, donde: lugar(d.pila) }; }
+    que = que || { mensaje: texto || '' };
+    var anotado = { letra: letra, paso: carga.paso, mensaje: que.mensaje || '', donde: que.donde || '', pila: que.pila || '' };
+    if (carga.errores.length < 6) carga.errores.push(anotado);
+    if (!raiz.classList.contains('cargando') || raiz.classList.contains('carga-fallo')) return;
+    carga.falla = anotado;
+    raiz.classList.add('carga-fallo');
+    raiz.classList.remove('carga-lenta');
+    carga.codigo = letra + carga.paso;
+    carga.texto = texto || TEXTOS[letra] || TEXTOS.E;
+    pintarFallo();
+    if (letra !== 'G') { try { sondear(); } catch (e) { /* sin sonda: queda el codigo como esta */ } }
+  };
+  // (lo que falla adentro de una extension del navegador no es del juego: queda anotado en el detalle, pero no se muestra)
+  var ajeno = function (pila, archivo) { var t = String(pila || '') + ' ' + String(archivo || ''); return /\b[\w-]*extension:\/\//.test(t) && !/\/(src|vendor)\//.test(t); };
   window.addEventListener('error', function (e) {
-    if (e.target && e.target !== window && e.target.tagName !== 'SCRIPT') return;   // (una imagen o una letra que no bajo no es para tanto)
-    window.cargaFallo(/SyntaxError|Unexpected|does not resolve|Importing a module/i.test(String(e.message || '')) ? VIEJO : '');
+    var t = e.target;
+    if (t && t !== window) {
+      // no bajo un archivo. Si es un programa o la hoja de estilos, sin eso no hay juego (una imagen o una letra no es para tanto)
+      // (solo los del juego: los que mete una extension del navegador no cuentan)
+      var u = String(t.src || t.href || ''), mio = u.indexOf(location.origin + '/') === 0;
+      if (!t.sonda && mio && (t.tagName === 'SCRIPT' || (t.tagName === 'LINK' && /stylesheet/i.test(t.rel || '')))) window.cargaFallo('', 'R', { mensaje: 'no bajó ' + nombre(u) + ' (o algo que ese archivo necesita)', donde: '', pila: '' });
+      return;
+    }
+    // (un navegador viejo no llega ni a leer el programa: falla antes del primer paso. Mas adelante, un error asi es del programa)
+    var d = describir(e.error || e.message), viejo = carga.paso === 0 && /SyntaxError|Unexpected|does not resolve|Importing a module/i.test(String(e.message || ''));
+    if (ajeno(d.pila, e.filename)) { if (carga.errores.length < 6) carga.errores.push({ letra: 'x', paso: carga.paso, mensaje: 'de una extensión: ' + d.mensaje, donde: '', pila: '' }); return; }
+    window.cargaFallo('', viejo ? 'V' : 'E', { mensaje: d.mensaje, pila: d.pila, donde: lugar(d.pila, e.filename, e.lineno, e.colno) });
   }, true);
-  window.addEventListener('unhandledrejection', function () { window.cargaFallo(''); });
+  window.addEventListener('unhandledrejection', function (e) {
+    var d = describir(e.reason);
+    if (ajeno(d.pila)) { if (carga.errores.length < 6) carga.errores.push({ letra: 'x', paso: carga.paso, mensaje: 'de una extensión: ' + d.mensaje, donde: '', pila: '' }); return; }
+    window.cargaFallo('', 'P', { mensaje: d.mensaje, pila: d.pila, donde: lugar(d.pila) });
+  });
+  // Si pasa mucho rato y sigue cargando, se ofrece probar de nuevo. No se corta nada: puede ser un aparato lento.
+  // (Cuenta solo el tiempo con la pagina a la vista: escondida, el navegador la deja en espera.)
+  function lenta() {
+    raiz.classList.add('carga-lenta');
+    carga.codigo = 'T' + carga.paso; carga.texto = TEXTOS.T;
+    carga.linea = 'Código ' + carga.codigo + ' · pág. ' + (raiz.getAttribute('data-pagina') || '?') + ' · ' + navegador();
+    if (el('cargaNota')) { el('cargaNota').textContent = TEXTOS.T; el('cargaNota').hidden = false; }
+    if (el('cargaCodigo')) { el('cargaCodigo').textContent = carga.linea; el('cargaCodigo').hidden = false; }
+    if (el('cargaOtraVez')) { el('cargaOtraVez').hidden = false; el('cargaOtraVez').onclick = function () { location.reload(); }; }
+    if (el('cargaDetalle')) { el('cargaDetalle').hidden = false; el('cargaDetalle').textContent = puedeMandar() ? 'Mandar el detalle' : 'Copiar el detalle'; el('cargaDetalle').onclick = pasarDetalle; }
+  }
+  var aLaVista = 0, guardia = setInterval(function () {
+    if (!raiz.classList.contains('cargando') || raiz.classList.contains('carga-fallo')) { clearInterval(guardia); return; }
+    if (!document.hidden) aLaVista += 2;
+    if (aLaVista >= (window.cargaEspera || 40)) { clearInterval(guardia); lenta(); }
+  }, 2000);
+  })();
   // Mientras el juego esta en desarrollo, sus archivos se piden de nuevo en cada visita (el numero V
   // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
   // (Ningun archivo puede llevar en el nombre una palabra de anuncios, como "publicidad" o "sponsors": los bloqueadores
@@ -70,6 +250,9 @@
       <span id="frenaSola" class="frena-sola" data-icono="salvavidas" title="La ayuda de manejo está frenando" hidden></span>
       <span class="medidor" data-icono="dano" title="Daño"><span class="barra roto"><i id="roto"></i></span></span>
     </div>
+    <!-- El cartel de la largada, mientras dura la cuenta regresiva: en que anda el juego y quien lo hace.
+         (Los textos los pone hud.js: salen de FIRMA, en config.js.) -->
+    <p id="sello" class="sello"><span class="sello-etapa"><b id="selloEtapa"></b><span id="selloAviso"></span></span><span class="sello-firma">Desarrollado por <b id="selloAutor"></b></span></p>
   </div>
   <div id="notas" class="notas" aria-live="off"></div>
   <div class="carteles">
@@ -125,10 +308,17 @@
     <!-- la marca -->
     <a id="inicio" class="marca" href="./" aria-label="Shakedown: ir a la pista de hoy"><img src="marca/logo-640.webp" srcset="marca/logo-640.webp 640w, marca/logo.webp 1200w" sizes="(max-width: 600px) 72vw, 26rem" width="1200" height="604" alt="Shakedown" decoding="async" draggable="false"></a>
     <!-- mientras carga: una barra que se mueve y en que anda (lo va cambiando main.js) -->
+    <!-- Si la carga falla (o tarda demasiado) aparecen los botones y un codigo que dice que fue: ver el principio de la pagina. -->
     <div id="carga" class="carga" role="status">
       <span class="carga-barra" aria-hidden="true"><i></i></span>
       <span id="cargaTexto">Cargando el juego…</span>
-      <button id="cargaOtraVez" type="button" class="con-texto" hidden>Probar de nuevo</button>
+      <span id="cargaNota" class="chico" hidden></span>
+      <span class="carga-botones">
+        <button id="cargaOtraVez" type="button" class="con-texto" hidden>Probar de nuevo</button>
+        <button id="cargaDetalle" type="button" class="con-texto discreto" hidden>Copiar el detalle</button>
+      </span>
+      <span id="cargaCodigo" class="carga-codigo" hidden></span>
+      <textarea id="cargaTodo" class="carga-todo" readonly rows="8" aria-label="El detalle de lo que falló" hidden></textarea>
     </div>
     <section class="aviso-del-club" aria-label="La pista">
       <p class="fecha"><b id="pistaNumero"></b> <span id="pistaFecha"></span> <span id="pistaLugar" class="lugar"></span></p>

@@ -27,7 +27,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
 /* Nada de la interfaz se selecciona ni se arrastra: en el iPhone, mantener apretado un boton lo "levantaba" como si fuera
    un texto o una imagen, y el pedal quedaba suelto. (Lo que se escribe o se copia si se puede seleccionar.) */
 html { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-input, #compartido { -webkit-user-select: text; user-select: text; }
+input, textarea, #compartido { -webkit-user-select: text; user-select: text; }
 img, svg, a, button { -webkit-user-drag: none; user-drag: none; }
 img.icono:not(.con-ayuda) { pointer-events: none; }
 canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -84,6 +84,18 @@ p, h1, h2, h3 { margin: 0; }
 .aviso .icono { margin-right: 8px; }
 .grande { font: 800 clamp(64px, 12vw, 120px)/1 var(--titulos); text-shadow: 0 3px 0 #000, 0 0 18px rgba(0, 0, 0, .5); }
 .grande.ya { color: var(--amarillo); } .grande.verde, .grande.amarillo, .grande.rojo { font-size: clamp(40px, 7vw, 68px); }
+/* El cartel de la largada: en que anda el juego ("Early Access") y quien lo hace. Es una placa como las del tablero, con
+   una franja de obra (amarilla y negra) al costado. Aparece con la cuenta regresiva y se va solo cuando arranca la pasada.
+   En la compu va abajo, en el medio. Con pedales en pantalla ese lugar esta ocupado: ver mas abajo donde va en cada caso. */
+.sello { position: fixed; left: 50%; bottom: var(--mb); transform: translateX(-50%); width: max-content; max-width: calc(100vw - var(--mi) - var(--md)); display: grid; gap: 3px; padding: 8px 14px 9px 26px; background: var(--placa); border-radius: 5px; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity .4s ease .5s, visibility 0s linear .9s; }
+.sello::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12px; background: repeating-linear-gradient(-45deg, var(--amarillo) 0 6px, #0c0d0f 6px 12px); }
+.sello.se-ve { opacity: 1; visibility: visible; transition: opacity .25s ease, visibility 0s; }
+.sello-etapa { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 9px; }
+.sello-etapa b { font: 800 22px/1 var(--titulos); letter-spacing: .04em; text-transform: uppercase; color: var(--amarillo); white-space: nowrap; }
+.sello-etapa span { font: 600 14px/1.2 var(--texto); white-space: nowrap; }
+.sello-firma { font-size: 13.5px; line-height: 1.2; color: #d9d6cc; }
+.sello-firma b { font-weight: 700; color: #fff; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .sello, .sello.se-ve { transition: none; } }
 
 /* --- los botones que estan siempre mientras se corre: camara, sonido, voz, salir de la practica y volver al camino ---
    Cada uno muestra su estado: la camara, el auto como se lo ve y un puntito por cada una de las tres;
@@ -133,6 +145,11 @@ html:not(.practica) .mando.salir { display: none; }
 @keyframes carga { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 #cargaTexto { font: 700 21px/1.2 var(--titulos); max-width: 22em; }
 .carga-fallo .carga-barra { display: none; }
+/* si la carga fallo (o tarda demasiado): los botones, el codigo que dice que fue y, si no se pudo copiar, el detalle a la vista */
+.carga-botones { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.carga .carga-botones button { padding-left: 14px; }
+.carga-codigo { max-width: 36em; font: 500 13px/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; color: #d9d6cc; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+.carga-todo { width: min(36em, 100%); padding: 8px 10px; border: 0; border-radius: 5px; background: rgba(255, 255, 255, .1); color: #fff; font: 500 12px/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
 .marca { display: block; width: min(26rem, 100%); }
 .marca img { display: block; width: 100%; height: auto; }
 .aviso-del-club { background: var(--placa); border-left: 4px solid var(--amarillo); padding: 12px 14px; display: grid; gap: 6px; }
@@ -313,6 +330,10 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
 .tactil .marcha { min-width: 0; }
 .tactil .vel b { font-size: 38px; }
 .tactil #reloj { font-size: 34px; }
+/* El cartel de la largada, con pedales en pantalla: va del lado donde no esta el freno de mano. Si se dobla inclinando,
+   a la derecha, debajo del boton de volver al camino; si se dobla con flechas, a la izquierda, como una placa mas del tablero. */
+.tactil .sello { left: auto; right: var(--md); top: calc(var(--ma) + 150px); bottom: auto; transform: none; }
+.tactil.sin-volante .sello { position: relative; right: auto; top: auto; }
 
 /* La ayuda muestra las teclas o los botones segun el aparato. En el celular, los botones son solo el icono
    (el texto queda para los lectores de pantalla). */
@@ -359,6 +380,10 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   .tactil .cuadros i { width: 12px; height: 12px; }
   .tactil .marcha { padding: 7px 9px; }
   .tactil .vel b { font-size: 32px; }
+  /* el cartel de la largada va en el medio, debajo de la cuenta regresiva: a los costados y abajo no hay lugar */
+  .sello, .tactil .sello, .tactil.sin-volante .sello { position: fixed; left: 50%; right: auto; top: calc(34% + 40px); bottom: auto; transform: translateX(-50%); padding: 7px 12px 8px 24px; }
+  .sello-etapa b { font-size: 20px; }
+  .sello-etapa span, .sello-firma { font-size: 13px; }
 }
 @media (max-width: 760px) {
   #portada { background: rgba(8, 9, 10, .78); align-items: center; }
@@ -383,6 +408,11 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   #finGrande { font-size: clamp(48px, 16vh, 90px); }
   .sector i { width: 32px; height: 32px; }
   #fin { gap: 6px; padding: 12px 24px; }
+  /* el cartel de la largada, mas apretado */
+  .sello { gap: 2px; padding: 5px 11px 6px 22px; }
+  .sello::before { width: 10px; }
+  .sello-etapa b { font-size: 18px; }
+  .sello-etapa span, .sello-firma { font-size: 12px; }
 }
 /* Acostado van dos columnas: a la izquierda la marca y la pista; a la derecha los autos y, fijo abajo, el pie.
    Si algo no entra, se corre esa columna sola: largar y las secciones no se van nunca de la pantalla. */
@@ -416,6 +446,11 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   .hoja { max-height: 43px; }
   #pistaDetalle { display: none; }
   .marca { width: min(13rem, 58%); }
+  /* el cartel de la largada, mas apretado: entre la cuenta regresiva y el auto queda poco lugar */
+  .sello, .tactil .sello, .tactil.sin-volante .sello { gap: 2px; padding: 5px 11px 6px 22px; }
+  .sello::before { width: 10px; }
+  .sello-etapa b { font-size: 18px; }
+  .sello-etapa span, .sello-firma { font-size: 12px; }
 }
 
 /* --- El tutorial de la primera vez: una luz sobre lo que se explica y, al lado, quien lo explica (ver tutorial.js) ---
