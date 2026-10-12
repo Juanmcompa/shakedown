@@ -75,9 +75,9 @@ Las marcas son un chiste: **FPY**, **CAC** y **Mercado Ladri**. El parecido con 
 
 - **Es solo dibujo.** Nada de esto se choca ni cambia la pista. Se puede sumar, sacar o cambiar un sponsor sin tocar los tiempos de nadie y sin subir la `VERSION`. Si el auto se lleva puesta una chapa o un cartelón, queda tirado en el piso; al auto no le pasa nada.
 - **Se reparten solos.** Cada pista sortea dónde van, igual para todos. Los cartelones aparecen solo donde hay lugar: lejos de los árboles, del público y del agua. Por eso en el bosque hay menos que en el campo.
-- **La lista** está en `src/sponsors.js`. Cada sponsor lleva un nombre, dos colores y hasta tres dibujos de pocos píxeles: el cartel grande, la chapa y la bandera. Los dibujos se escriben renglón por renglón, con un punto para el fondo y un numeral para la tinta.
+- **La lista** está en `src/parodias.js`. (No se llama "sponsors" a propósito: ver "Los nombres de los archivos", más abajo.) Cada sponsor lleva un nombre, dos colores y hasta tres dibujos de pocos píxeles: el cartel grande, la chapa y la bandera. Los dibujos se escriben renglón por renglón, con un punto para el fondo y un numeral para la tinta.
 - **`peso`** dice cuánto aparece cada uno: con peso 2 sale el doble que los demás.
-- **Con una imagen.** En vez de escribir los renglones se puede dibujar un PNG chiquito, guardarlo en una carpeta del juego (por ejemplo `sponsors/`) y nombrarlo en `imagen`. Medidas: cartel 52 × 16 píxeles, chapa 21 × 7 y bandera 7 × 25. Lo transparente deja ver el color de fondo. Si la imagen es más grande, se achica.
+- **Con una imagen.** En vez de escribir los renglones se puede dibujar un PNG chiquito, guardarlo en una carpeta del juego (por ejemplo `parodias/`) y nombrarlo en `imagen`. Medidas: cartel 52 × 16 píxeles, chapa 21 × 7 y bandera 7 × 25. Lo transparente deja ver el color de fondo. Si la imagen es más grande, se achica.
 - **Sin dibujo.** Al soporte que le falte el dibujo se le escribe el nombre con las letras del juego. Para probar un sponsor nuevo alcanza con el nombre y los dos colores. En la chapa entran cinco letras y en la bandera tres: si el nombre es más largo, conviene darle un `corto`.
 
 Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
@@ -164,10 +164,10 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | El recorrido de cada circuito fijo: sus rectas, curvas, puentes, casas y cosas en la calle, y por qué ambiente pasa cada pedazo | `src/circuitos.js` (cada circuito es una lista que se lee de arriba hacia abajo; al cambiar uno hay que subirle su `version`) |
 | Las medidas de los edificios y de las cosas de la calle, y cuáles se caen al chocarlas | `src/edificios.js` |
 | Los dibujos de las casas, los colectivos, los faroles, las barandas y las pircas | `src/pueblo.js` |
-| Los sponsors: nombres, colores, dibujos y cuánto aparece cada uno | `src/sponsors.js` |
+| Los sponsors: nombres, colores, dibujos y cuánto aparece cada uno | `src/parodias.js` |
 | La dirección del servidor de los clubes (`SERVIDOR`) | `src/config.js` |
 | Los topes del servidor: pasadas por día, tamaño de los clubes, cuánto se guarda (`LIMITES`) | `servidor/worker.js` |
-| Dónde va la publicidad, cuánta hay y qué tan vivos son sus colores (`VIVO`) | `src/publicidad.js` |
+| Dónde va la publicidad, cuánta hay y qué tan vivos son sus colores (`VIVO`) | `src/carteleria.js` |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
 | La luz y la bruma de cada clima | `LUCES` en `src/world.js` y `REVELADOS` en `src/post.js` |
@@ -184,6 +184,12 @@ El juego no usa archivos de imagen: todo se pinta con código, de a píxeles, cu
 Es HTML, CSS y JavaScript sin instalación ni compilado. Subir al repo es publicar: GitHub Pages lo actualiza en un minuto.
 
 Mientras está en desarrollo, la página vuelve a pedir los archivos del juego en cada visita, así los cambios se ven apenas se publican. Si se suma un archivo nuevo en `src/`, hay que agregarlo a la lista que está al principio de `index.html`.
+
+### Los nombres de los archivos
+
+Ningún archivo ni carpeta del juego puede llevar en el nombre una palabra de anuncios: `publicidad`, `sponsor`, `banner`, `ads`, `anuncio` y parecidas. Los bloqueadores de publicidad (uBlock Origin, AdGuard, Adblock Plus) frenan las direcciones que las contienen, y como el juego necesita todos sus archivos, con uno solo frenado no carga: aparece el cartel de "No se pudo cargar el juego".
+
+Ya pasó: el archivo que dibuja los carteles de la pista se llamaba `publicidad.js` y lo frenaba la regla `/publicidad.` de la lista en español de AdGuard, que uBlock Origin también prende sola cuando el navegador está en castellano. Por eso hoy se llama `carteleria.js`, y la lista de sponsors, `parodias.js`. La regla vale también para las imágenes y para los nombres de las cosas de la página (`id` y `class` en `index.html`): esos mismos bloqueadores esconden lo que se llame, por ejemplo, `banner` o `publicidad`.
 
 | Archivo | Qué hace |
 | --- | --- |
@@ -209,7 +215,7 @@ Mientras está en desarrollo, la página vuelve a pedir los archivos del juego e
 | `src/menu.js`, `src/hud.js`, `src/iconos.js` | Portada, paneles y resultado; el tablero mientras se corre; los íconos |
 | `src/equipo.js`, `src/tutorial.js` | Los personajes del club, y el tutorial de la primera vez |
 | `src/world.js`, `src/flora.js`, `src/utileria.js`, `src/publico.js`, `src/clima.js` | Dibujan el terreno, la vegetación, los arcos y carteles, las antorchas de las piedras, el público, la lluvia y los faros |
-| `src/sponsors.js`, `src/publicidad.js` | La lista de sponsors, y dónde va y cómo se dibuja su publicidad |
+| `src/parodias.js`, `src/carteleria.js` | La lista de sponsors, y dónde va y cómo se dibuja su publicidad |
 | `src/autos.js` | Los modelos de los autos y el fantasma |
 | `src/material.js`, `src/pixel.js`, `src/arte.js`, `src/sprites.js` | El estilo: materiales, herramientas para pintar de a píxeles, y los dibujos |
 | `src/post.js` | El "revelado": desenfoque de maqueta, brillos y ajuste de color. Se apaga solo si el aparato no da |

@@ -30,7 +30,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '15' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '16' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:

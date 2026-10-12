@@ -1,4 +1,7 @@
-// La publicidad del rally: reparte las marcas de sponsors.js por los soportes de la pista y los dibuja.
+// La publicidad del rally: reparte las marcas de parodias.js por los soportes de la pista y los dibuja.
+// (Este archivo se llamaba publicidad.js. Con ese nombre lo frenaban los bloqueadores de publicidad, que cortan toda
+// direccion que diga "/publicidad.", y sin el el juego no cargaba. Por eso ni este ni ningun otro archivo del juego
+// puede llevar en el nombre una palabra de anuncios: publicidad, sponsor, banner, ads, anuncio...)
 //   velas       banderas altas y angostas a los dos lados del camino, en la largada y en la llegada
 //   chapas      carteles bajos apoyados contra la cinta del publico
 //   cartelones  un cartel grande al costado: del lado de afuera de las curvas o en las rectas, mirando al que viene
@@ -13,7 +16,7 @@ import { crearAtlas, crearLote, deLaPaleta, tono } from './pixel.js';
 import { estilo } from './material.js';
 import { escribir } from './arte.js';
 import { crearLoteDeSprites } from './sprites.js';
-import { SPONSORS, pintarSponsor, repartirSponsors } from './sponsors.js';
+import { SPONSORS, pintarSponsor, repartirSponsors } from './parodias.js';
 
 // --- medidas, en pixeles de 12,5 cm ---
 const CARTEL = [52, 16], CHAPA = [21, 7], VELA = [7, 25];   // lo que mide el dibujo de cada soporte

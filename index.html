@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="15" class="cargando">
+<html lang="es" data-pagina="16" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -40,9 +40,11 @@
   window.addEventListener('unhandledrejection', function () { window.cargaFallo(''); });
   // Mientras el juego esta en desarrollo, sus archivos se piden de nuevo en cada visita (el numero V
   // cambia siempre), asi los cambios se ven apenas se publican. Al sumar un archivo a src/, agregarlo aca.
+  // (Ningun archivo puede llevar en el nombre una palabra de anuncios, como "publicidad" o "sponsors": los bloqueadores
+  // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'sponsors', 'publicidad', 'trazada', 'nube', 'equipo', 'tutorial'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');

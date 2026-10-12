@@ -36,6 +36,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Lenguaje visual:** bloques con dibujos de pocos píxeles (un píxel = 25 cm), público y plantas como dibujos planos que miran a la cámara, colores apagados y polvorientos, y un "revelado" de maqueta (desenfoque, brillos, bruma cálida). Los instrumentos son carteles viales, amarillos y negros.
 - **Publicidad en chiste, y solo de adorno.** Los sponsors son parodias de marcas conocidas, con el nombre cambiado (FPY, CAC, Mercado Ladri). Van en banderas, chapas contra la cinta del público, cartelones, pórticos y arcos. No se chocan ni cambian la pista: se reparten con un sorteo aparte, así se pueden cambiar sin tocar los tiempos de nadie ni subir la versión. Los soportes están pensados para que el día de mañana lleven sponsors de verdad: alcanza con cambiar la lista.
 - **Sin instalación ni compilado.** HTML y JavaScript, publicado con GitHub Pages en `/shakedown`.
+- **Ningún archivo se llama como un anuncio.** Los bloqueadores de publicidad frenan las direcciones con palabras como "publicidad", "sponsor" o "banner", y con un solo archivo frenado el juego no carga. Por eso los carteles de la pista están en `carteleria.js` y los sponsors en `parodias.js`.
 
 ## Hecho
 
@@ -64,6 +65,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Tutorial de la primera vez: al largar por primera vez en un aparato, el equipo (los personajes de Juanma) explica la pantalla de a una cosa, iluminándola. Se puede saltar, cerrar y volver a ver. Los diez personajes están en "El club"
 - [x] Pasada de seguridad: el servidor solo le deja escribir al juego publicado y no guarda direcciones de internet; los nombres se limpian; lo que se sabe por un club no sale en los links de sus miembros; el juego publicado ya no trae los atajos de prueba; y los pedidos al servidor aguantan un aparato trabado
 - [x] Servidor en línea en Cloudflare, conectado al repo: se publica solo con cada Push. Cada pedido hace un solo viaje a la base de datos (queda lejos de Argentina: un tercio de segundo por viaje)
+- [x] El juego ya carga con bloqueador de publicidad: el archivo `publicidad.js` cambió de nombre (lo frenaban AdGuard y uBlock Origin en castellano, y el juego mostraba "No se pudo cargar"). Revisadas todas las direcciones del juego y todos los nombres de la página contra las listas de uBlock Origin, AdGuard, EasyList y EasyList en español
 - [x] Trazada para seguir, con prendido y apagado (en la configuración o con la T): verde, amarilla o roja según la velocidad que se trae
 - [x] Ayuda de manejo que sigue la trazada y regula los pedales de a poco: ya no se escucha cortar el acelerador
 - [x] Antorchas rojas en las piedras pegadas al camino

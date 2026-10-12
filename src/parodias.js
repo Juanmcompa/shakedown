@@ -1,6 +1,8 @@
 // Los sponsors: las marcas que aparecen en las banderas, el vallado, los cartelones y los arcos de las pistas.
 // Son de mentira: chistes sobre marcas conocidas de aca. Para sumar, sacar o cambiar uno alcanza con tocar esta lista:
-// publicidad.js los reparte solo por todos los soportes de todas las pistas (no cambia las pistas: es solo dibujo).
+// carteleria.js los reparte solo por todos los soportes de todas las pistas (no cambia las pistas: es solo dibujo).
+// (El archivo no se llama "sponsors" a proposito: los bloqueadores de publicidad frenan los archivos con nombres de
+// anuncios, y un solo archivo frenado alcanza para que el juego no cargue. Ver la nota al principio de carteleria.js.)
 //
 // Cada sponsor lleva:
 //   id       un nombre corto, sin espacios          nombre   como se llama
@@ -15,7 +17,7 @@
 // ("corto", si lo tiene, o el nombre) con las letras de pixeles del juego.
 //
 // En vez de escribir los renglones se puede dibujar un PNG chiquito (con el fondo transparente o ya pintado) y nombrarlo en
-//   imagen: { cartel: 'sponsors/algo-cartel.png', chapa: 'sponsors/algo-chapa.png', vela: 'sponsors/algo-vela.png' }
+//   imagen: { cartel: 'parodias/algo-cartel.png', chapa: 'parodias/algo-chapa.png', vela: 'parodias/algo-vela.png' }
 // (el camino va desde donde esta index.html). Tamaños: cartel 52 x 16, chapa 21 x 7, vela 7 x 25. Si es mas grande, se achica.
 export const SPONSORS = [
   {
