@@ -1,20 +1,21 @@
 <!doctype html>
-<html lang="es" data-pagina="17" class="cargando">
+<html lang="es" data-pagina="18" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Shakedown</title>
-<meta name="description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial. App en desarrollo (Early Access). Desarrollado por Juan M. Comparini.">
+<meta name="description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial. App en desarrollo (Early Access).">
 <meta name="author" content="Juan M. Comparini">
 <!-- Lo que muestran WhatsApp y otros al pegar el link: titulo, descripcion e imagen. Mientras el juego esta en desarrollo
-     lo dicen los tres, junto con quien lo hace (lo mismo que FIRMA, en src/config.js: si cambia alla, cambiarlo tambien aca
-     y volver a armar la imagen). Quien arma la vista previa no corre el juego: por eso esto va escrito a mano. -->
+     lo dicen los tres (lo mismo que FIRMA, en src/config.js: si cambia alla, cambiarlo tambien aca y volver a armar la imagen).
+     Quien lo hace no va aca: se ve solo en la portada, antes de largar. Quien arma la vista previa no corre el juego: por eso
+     esto va escrito a mano. -->
 <meta property="og:title" content="Shakedown · Early Access">
-<meta property="og:description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial. App en desarrollo, por Juan M. Comparini.">
+<meta property="og:description" content="Rally diario: cada medianoche, una pista nueva y una sola pasada oficial. App en desarrollo (Early Access).">
 <meta property="og:type" content="website">
 <!-- (la imagen tiene que ser una direccion completa; el numero del final se sube cuando cambia, para que la vuelvan a pedir) -->
-<meta property="og:image" content="https://juanmcompa.github.io/shakedown/vista-previa.jpg?3">
-<meta property="og:image:alt" content="Shakedown: rally diario. Early Access, app en desarrollo. Desarrollado por Juan M. Comparini.">
+<meta property="og:image" content="https://juanmcompa.github.io/shakedown/vista-previa.jpg?4">
+<meta property="og:image:alt" content="Shakedown: rally diario. Early Access, app en desarrollo.">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -250,9 +251,9 @@
       <span id="frenaSola" class="frena-sola" data-icono="salvavidas" title="La ayuda de manejo está frenando" hidden></span>
       <span class="medidor" data-icono="dano" title="Daño"><span class="barra roto"><i id="roto"></i></span></span>
     </div>
-    <!-- El cartel de la largada, mientras dura la cuenta regresiva: en que anda el juego y quien lo hace.
+    <!-- El cartel de la largada, mientras dura la cuenta regresiva: que el juego esta en desarrollo.
          (Los textos los pone hud.js: salen de FIRMA, en config.js.) -->
-    <p id="sello" class="sello"><span class="sello-etapa"><b id="selloEtapa"></b><span id="selloAviso"></span></span><span class="sello-firma">Desarrollado por <b id="selloAutor"></b></span></p>
+    <p id="sello" class="sello"><span class="sello-etapa"><b id="selloEtapa"></b><span id="selloAviso"></span></span></p>
   </div>
   <div id="notas" class="notas" aria-live="off"></div>
   <div class="carteles">
@@ -307,6 +308,8 @@
   <div class="col">
     <!-- la marca -->
     <a id="inicio" class="marca" href="./" aria-label="Shakedown: ir a la pista de hoy"><img src="marca/logo-640.webp" srcset="marca/logo-640.webp 640w, marca/logo.webp 1200w" sizes="(max-width: 600px) 72vw, 26rem" width="1200" height="604" alt="Shakedown" decoding="async" draggable="false"></a>
+    <!-- quien hace el juego: se ve solo aca, en la portada, antes de largar (el nombre lo pone menu.js: sale de FIRMA, en config.js) -->
+    <p id="firma" class="firma-portada" hidden>Desarrollado por <b id="firmaAutor"></b></p>
     <!-- mientras carga: una barra que se mueve y en que anda (lo va cambiando main.js) -->
     <!-- Si la carga falla (o tarda demasiado) aparecen los botones y un codigo que dice que fue: ver el principio de la pagina. -->
     <div id="carga" class="carga" role="status">

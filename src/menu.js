@@ -21,9 +21,11 @@ export function mensaje(etapa, r) {
     + (r.ab ? ' 💥 abandono ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
 }
 // El renglon que cierra todo lo que se comparte (el resultado y la invitacion a un club), debajo del link:
-//   🚧 Early Access · Desarrollado por Juan M. Comparini
-// (Sale de FIRMA, en config.js. El dia que el juego deje de estar en desarrollo queda solo quien lo hace.)
-export const firma = () => (FIRMA.etapa ? '🚧 ' + FIRMA.etapa + ' · ' : '') + 'Desarrollado por ' + FIRMA.autor;
+//   🚧 Early Access · App en desarrollo
+// (Sale de FIRMA, en config.js. El dia que el juego deje de estar en desarrollo no queda nada: el mensaje vuelve a tener
+// dos renglones. Quien hace el juego no va aca: se ve solo en la portada.)
+export const enDesarrollo = () => [FIRMA.etapa, FIRMA.aviso].filter(Boolean).join(' · ').replace(/^(.)/, '🚧 $1');
+const conAviso = (texto) => texto + (enDesarrollo() ? '\n' + enDesarrollo() : '');
 // los cuadraditos de un resultado, como elementos de la pagina
 function cuadritos(colores) {
   const caja = crear('span', 'cuadros');
@@ -49,6 +51,9 @@ export function crearMenu(o) {
 
   // --- la portada ---
   $('inicio').href = location.pathname;
+  // quien hace el juego: debajo de la marca, solo en la portada
+  $('firmaAutor').textContent = FIRMA.autor;
+  $('firma').hidden = !FIRMA.autor;
   $('pistaNumero').textContent = fijo ? fijo.emoji : '#' + numero;
   $('pistaFecha').textContent = fijo ? 'Circuito' : fechaDe(numero);
   $('pistaLugar').textContent = etapa.lugar;
@@ -171,7 +176,7 @@ export function crearMenu(o) {
   });
   $('clubInvitar').addEventListener('click', () => {
     const c = club.clubes().find((x) => x.codigo === vista);
-    if (c) pasar('Sumate a mi club de Shakedown «' + c.nombre + '»: una pista nueva por día, y vemos quién la hace más rápido.\n' + location.origin + location.pathname + '#club=' + c.codigo + '\n' + firma(), avisar, 'Copiado. Pegalo en el grupo: el que lo abre queda en el club.');
+    if (c) pasar('Sumate a mi club de Shakedown «' + c.nombre + '»: una pista nueva por día, y vemos quién la hace más rápido.\n' + conAviso(location.origin + location.pathname + '#club=' + c.codigo), avisar, 'Copiado. Pegalo en el grupo: el que lo abre queda en el club.');
   });
   // salir pide confirmacion: hay que tocar dos veces
   $('clubSalir').addEventListener('click', async () => {
@@ -343,7 +348,7 @@ export function crearMenu(o) {
 
   // --- compartir ---
   // Pasa un texto: en el celular abre el menu de compartir; en la compu lo copia. decir(texto): donde se avisa como salio.
-  // (El link va siempre solo en su renglon: lo que venga despues, como la firma, no se le puede pegar.)
+  // (El link va siempre solo en su renglon: lo que venga despues, como el aviso de Early Access, no se le puede pegar.)
   async function pasar(texto, decir, listo) {
     try {
       if (navigator.share && window.matchMedia('(pointer: coarse)').matches) { await navigator.share({ text: texto }); return; }
@@ -359,8 +364,8 @@ export function crearMenu(o) {
     const codigo = r.codigo || (linkDe && await linkDe());
     // el link lleva el codigo corto con el que la pasada quedo en el servidor; si no hay servidor, la pasada entera
     const final = codigo ? await o.acortar(r, codigo) : '';
-    // tres renglones: el resultado, el link, y en que anda el juego y quien lo hace
-    await pasar(mensaje(etapa, r) + '\n' + location.origin + location.pathname + (final ? '#r=' + final : '') + '\n' + firma(), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
+    // tres renglones: el resultado, el link y que el juego esta en desarrollo
+    await pasar(mensaje(etapa, r) + '\n' + conAviso(location.origin + location.pathname + (final ? '#r=' + final : '')), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
   }
   $('compartir').addEventListener('click', () => ultimo && compartir(ultimo, $('compartido')));
   $('compartirPortada').addEventListener('click', () => { const r = fijo ? club.practica() : club.oficial(); if (r) compartir({ ...r, nombre: club.nombre() }, $('queEs')); });

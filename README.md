@@ -8,12 +8,12 @@ Rally diario. Cada medianoche hay una pista nueva, la misma para todos, y una so
 
 **En desarrollo (Early Access).** Desarrollado por Juan M. Comparini.
 
-El resultado se comparte así, con un link que lleva tu pasada y, al final, en qué anda el juego y quién lo hace:
+El resultado se comparte así, con un link que lleva tu pasada y, al final, el aviso de que el juego está en desarrollo:
 
 ```
 Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
 https://juanmcompa.github.io/shakedown/#r=k7Qx2Mp
-🚧 Early Access · Desarrollado por Juan M. Comparini
+🚧 Early Access · App en desarrollo
 ```
 
 ## La historia
@@ -89,7 +89,7 @@ Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 ## Correr contra amigos: links y clubes
 
 - Al terminar, poné tu nombre y compartí. En la compu se copia el mensaje con el link; en el celular se abre el menú de compartir.
-- El mensaje tiene tres renglones: el resultado, el link y la firma (`🚧 Early Access · Desarrollado por Juan M. Comparini`). La invitación a un club cierra con el mismo renglón. Al pegar el link, la vista previa también lo dice: en el título, en la descripción y en la imagen.
+- El mensaje tiene tres renglones: el resultado, el link y el aviso (`🚧 Early Access · App en desarrollo`). La invitación a un club cierra con el mismo renglón. Al pegar el link, la vista previa también lo dice: en el título, en la descripción y en la imagen. Quién hace el juego no va en lo que se comparte: se ve solo en la portada.
 - Quien abre tu link te ve en su tabla y **corre su pasada oficial contra tu fantasma**, que hace exactamente lo que hiciste vos.
 - Sin link de nadie, la oficial se corre solo. En las prácticas, el fantasma es tu mejor pasada.
 - En la tabla, el botón del fantasma elige contra quién corrés.
@@ -140,7 +140,8 @@ En el celular los botones son íconos y muestran su estado:
 - **La portada entra entera en la pantalla.** Abajo quedan fijos el botón de largar y las secciones (tabla, circuitos, pistas pasadas, ayuda y configuración). Si la pista tiene mucho para mostrar, se corre con el dedo solo la parte de arriba, y una flechita avisa que hay más.
 - **Las cámaras se acomodan a la pantalla.** En el celular, la aérea va más cerca, la de atrás más lejos, y el auto queda siempre por arriba de los pedales, para que no lo tapen los pulgares.
 - **Mientras carga** se ve la marca con una barra y lo que está haciendo. Si no puede cargar, lo dice, ofrece probar de nuevo y muestra un código con lo que falló (ver "Si no carga").
-- **Al largar**, mientras dura la cuenta regresiva, un cartel avisa que el juego está en desarrollo (Early Access) y quién lo hace. Se va solo cuando arranca la pasada.
+- **Al largar**, mientras dura la cuenta regresiva, un cartel avisa que el juego está en desarrollo (Early Access). Se va solo cuando arranca la pasada.
+- **La firma** ("Desarrollado por Juan M. Comparini") va solo en la portada, debajo de la marca: no en la largada ni en lo que se comparte.
 
 Las notas del copiloto aparecen arriba y se escuchan. Los números van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina. También avisa los puentes, las lajas, los adoquines y los lomos de burro.
 
@@ -184,7 +185,7 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | --- | --- |
 | Cómo se maneja cada auto, los suelos, las cámaras, el recargo y los cuadraditos | `src/config.js` |
 | Cuánto ayuda la ayuda de manejo (`AYUDA`) y con qué configuración arranca el juego (`GUSTOS`) | `src/config.js` |
-| El aviso de que el juego está en desarrollo y quién lo hace (`FIRMA`): el cartel de la largada y el último renglón de lo que se comparte | `src/config.js` |
+| El aviso de que el juego está en desarrollo (el cartel de la largada y el último renglón de lo que se comparte) y la firma de la portada (`FIRMA`) | `src/config.js` |
 | Lo mismo, en la vista previa del link (título, descripción e imagen) | El principio de `index.html` y `vista-previa.jpg` |
 | Los textos y los códigos de la pantalla de "no se pudo cargar" | El principio de `index.html` |
 | Lo que dice cada personaje en el tutorial de la primera vez, en qué orden y qué ilumina (`PASOS`) | `src/tutorial.js` |

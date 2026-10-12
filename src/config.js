@@ -93,11 +93,11 @@ export const AYUDA = { auto: { firme: 0.8, estable: 1.1, alinea: 0.85 }, ritmo: 
 // Vacio = sin servidor: el juego anda igual, con el link largo, y la tabla se arma con los links que se abren.
 export const SERVIDOR = 'https://shakedown.juanmcomparini.workers.dev';
 
-// En que anda el juego y quien lo hace. Se avisa en la largada de cada pasada (el cartel de la cuenta regresiva) y
-// en el ultimo renglon de todo lo que se comparte: el resultado y la invitacion a un club.
-//   etapa, aviso: mientras el juego esta en desarrollo. El dia que salga la version final se dejan vacios ('') y el
-//                 aviso se va de todos lados: queda la firma sola.
-//   autor: quien lo desarrolla.
+// En que anda el juego y quien lo hace.
+//   etapa, aviso: mientras el juego esta en desarrollo. Se avisa en la largada de cada pasada (el cartel de la cuenta
+//                 regresiva) y en el ultimo renglon de todo lo que se comparte (el resultado y la invitacion a un club).
+//                 El dia que salga la version final se dejan vacios ('') y el aviso se va de todos lados.
+//   autor: quien lo desarrolla. Se ve solo en la portada, antes de largar: no en la largada ni en lo que se comparte.
 // (Lo que muestran WhatsApp y otros al pegar el link no sale de aca: el titulo y la descripcion estan escritos en
 // index.html, y el cartel de la imagen esta dibujado en vista-previa.jpg.)
 export const FIRMA = { etapa: 'Early Access', aviso: 'App en desarrollo', autor: 'Juan M. Comparini' };

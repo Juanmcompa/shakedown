@@ -84,7 +84,7 @@ p, h1, h2, h3 { margin: 0; }
 .aviso .icono { margin-right: 8px; }
 .grande { font: 800 clamp(64px, 12vw, 120px)/1 var(--titulos); text-shadow: 0 3px 0 #000, 0 0 18px rgba(0, 0, 0, .5); }
 .grande.ya { color: var(--amarillo); } .grande.verde, .grande.amarillo, .grande.rojo { font-size: clamp(40px, 7vw, 68px); }
-/* El cartel de la largada: en que anda el juego ("Early Access") y quien lo hace. Es una placa como las del tablero, con
+/* El cartel de la largada: que el juego esta en desarrollo ("Early Access"). Es una placa como las del tablero, con
    una franja de obra (amarilla y negra) al costado. Aparece con la cuenta regresiva y se va solo cuando arranca la pasada.
    En la compu va abajo, en el medio. Con pedales en pantalla ese lugar esta ocupado: ver mas abajo donde va en cada caso. */
 .sello { position: fixed; left: 50%; bottom: var(--mb); transform: translateX(-50%); width: max-content; max-width: calc(100vw - var(--mi) - var(--md)); display: grid; gap: 3px; padding: 8px 14px 9px 26px; background: var(--placa); border-radius: 5px; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity .4s ease .5s, visibility 0s linear .9s; }
@@ -93,8 +93,6 @@ p, h1, h2, h3 { margin: 0; }
 .sello-etapa { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 9px; }
 .sello-etapa b { font: 800 22px/1 var(--titulos); letter-spacing: .04em; text-transform: uppercase; color: var(--amarillo); white-space: nowrap; }
 .sello-etapa span { font: 600 14px/1.2 var(--texto); white-space: nowrap; }
-.sello-firma { font-size: 13.5px; line-height: 1.2; color: #d9d6cc; }
-.sello-firma b { font-weight: 700; color: #fff; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .sello, .sello.se-ve { transition: none; } }
 
 /* --- los botones que estan siempre mientras se corre: camara, sonido, voz, salir de la practica y volver al camino ---
@@ -152,6 +150,10 @@ html:not(.practica) .mando.salir { display: none; }
 .carga-todo { width: min(36em, 100%); padding: 8px 10px; border: 0; border-radius: 5px; background: rgba(255, 255, 255, .1); color: #fff; font: 500 12px/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
 .marca { display: block; width: min(26rem, 100%); }
 .marca img { display: block; width: 100%; height: auto; }
+/* quien hace el juego: debajo de la marca, solo en la portada (mientras carga no se ve) */
+.firma-portada { margin-top: -6px; font: 500 13px/1.2 var(--texto); color: #cfccc3; letter-spacing: .01em; }
+.firma-portada b { font-weight: 700; color: #fff; }
+.cargando .firma-portada { display: none; }
 .aviso-del-club { background: var(--placa); border-left: 4px solid var(--amarillo); padding: 12px 14px; display: grid; gap: 6px; }
 .fecha { font-size: 14px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .fecha b { font: 800 22px/1 var(--titulos); color: var(--amarillo); }
@@ -383,7 +385,7 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   /* el cartel de la largada va en el medio, debajo de la cuenta regresiva: a los costados y abajo no hay lugar */
   .sello, .tactil .sello, .tactil.sin-volante .sello { position: fixed; left: 50%; right: auto; top: calc(34% + 40px); bottom: auto; transform: translateX(-50%); padding: 7px 12px 8px 24px; }
   .sello-etapa b { font-size: 20px; }
-  .sello-etapa span, .sello-firma { font-size: 13px; }
+  .sello-etapa span { font-size: 13px; }
 }
 @media (max-width: 760px) {
   #portada { background: rgba(8, 9, 10, .78); align-items: center; }
@@ -412,7 +414,7 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   .sello { gap: 2px; padding: 5px 11px 6px 22px; }
   .sello::before { width: 10px; }
   .sello-etapa b { font-size: 18px; }
-  .sello-etapa span, .sello-firma { font-size: 12px; }
+  .sello-etapa span { font-size: 12px; }
 }
 /* Acostado van dos columnas: a la izquierda la marca y la pista; a la derecha los autos y, fijo abajo, el pie.
    Si algo no entra, se corre esa columna sola: largar y las secciones no se van nunca de la pantalla. */
@@ -437,6 +439,7 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   .pie { position: relative; gap: 8px; }
   .hoja { max-height: 88px; overflow: hidden; }
   .marca { width: min(17rem, 74%); margin: 0 auto; }
+  .firma-portada { text-align: center; margin-top: -4px; }
   .hay-mas .pie::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 34px; margin-bottom: 10px; pointer-events: none; background: var(--mas) center bottom / 24px 24px no-repeat, linear-gradient(rgba(8, 9, 10, 0), rgba(8, 9, 10, .92)); image-rendering: pixelated; }
   .cargando #portada { justify-content: center; }
   .cargando .arriba { flex: none; }
@@ -450,7 +453,7 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   .sello, .tactil .sello, .tactil.sin-volante .sello { gap: 2px; padding: 5px 11px 6px 22px; }
   .sello::before { width: 10px; }
   .sello-etapa b { font-size: 18px; }
-  .sello-etapa span, .sello-firma { font-size: 12px; }
+  .sello-etapa span { font-size: 12px; }
 }
 
 /* --- El tutorial de la primera vez: una luz sobre lo que se explica y, al lado, quien lo explica (ver tutorial.js) ---
