@@ -33,8 +33,9 @@ export function crearPartida(T, par) {
     lanzado: !V,        // si ya se cruzo la raya por primera vez (antes de eso el reloj no corre)
     rondas: [],         // las rondas ya cerradas: { tiempo, sectores: [segundos], colores, vueltas, roto }
   };
-  let reloj = 0, desde = 0, enSector = 0, golpe = 0, tGolpe = 0, tVolcado = 0, tCaida = 0, tQuieto = 0, tAlReves = 0, dicho = 0;
-  const avisar = (tipo, dato) => p.eventos.push({ tipo, dato });
+  let reloj = 0, desde = 0, enSector = 0, golpe = 0, contra = '', tGolpe = 0, tVolcado = 0, tCaida = 0, tQuieto = 0, tAlReves = 0, dicho = 0;
+  // (mas: datos de yapa, por ejemplo contra que fue un golpe)
+  const avisar = (tipo, dato, mas) => p.eventos.push(mas ? { tipo, dato, ...mas } : { tipo, dato });
 
   function apoyar(c, i) {
     c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i]));
@@ -107,15 +108,17 @@ export function crearPartida(T, par) {
     if (!V && p.tiempo > JUEGO.maximo) return abandonar('tiempo');   // (en una vuelta cerrada no hay apuro: se practica lo que se quiera)
 
     // daño: de cada choque cuenta el golpe mas fuerte. Los de una caida al vacio no cuentan: eso se paga volviendo al camino.
+    // (el aviso dice tambien contra que fue y como quedo el auto. El ruido del choque no lo espera: suena en el momento, ver
+    // "toque" en main.js)
     const cae = c.pos[1] < P.Y[i] - 6;
-    if (c.impacto > golpe) golpe = c.impacto;
+    if (c.impacto > golpe) { golpe = c.impacto; contra = c.contra; }
     c.impacto = 0;
     if (cae) golpe = tGolpe = 0;
     if (golpe > JUEGO.golpes.desde && tGolpe === 0) tGolpe = reloj;
     if (tGolpe > 0 && reloj - tGolpe > 0.25) {
       const suma = (golpe - JUEGO.golpes.desde) * JUEGO.golpes.porMetro;
       p.roto = Math.min(100, p.roto + suma);
-      avisar('golpe', suma);
+      avisar('golpe', suma, { contra, roto: p.roto });
       golpe = tGolpe = 0;
       if (p.roto >= 100) return abandonar('roto');
     } else if (tGolpe === 0) golpe = 0;

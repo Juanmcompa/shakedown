@@ -518,6 +518,34 @@ button.con-texto.fuerte { background: var(--amarillo); }
 button.chiquito.tacho.seguro { background: var(--rojo); }
 button.chiquito.tacho.seguro .icono { opacity: 1; }
 
+/* --- el panel de circuitos: arriba, crear una pista; despues los oficiales y al final los de la comunidad (en una
+   pantalla ancha, oficiales y comunidad van uno al lado del otro). Las filas son compactas, para que entren todas: el
+   nombre y un renglon de detalle (lo que no entra se corta con puntos suspensivos); a la derecha, el tiempo arriba y los
+   cuadritos abajo. Las de un club llevan una marca con el nombre del club. La lista de pistas de cada club (en la tabla)
+   usa las mismas filas. --- */
+/* (el titulo, del alto de la cruz: asi el boton de crear queda debajo de ella y no se tocan) */
+.panel-circuitos > h2 { min-height: 48px; display: flex; align-items: center; }
+.panel-circuitos .crear-pista { justify-content: center; padding: 11px 18px 12px 14px; font-size: 21px; }
+.panel-circuitos .crear-pista > .icono { width: 28px; height: 28px; }
+.panel-circuitos h3 { margin-top: 2px; }
+.oficiales, .panel-circuitos .comunidad { display: grid; gap: 8px; align-content: start; }
+.circuitos.compactos { gap: 5px; }
+.circuitos.compactos a { grid-template-columns: 2em minmax(0, 1fr) auto; gap: 1px 10px; padding: 7px 10px 8px; }
+.circuitos.compactos .emoji { font-size: 21px; }
+.circuitos.compactos b { font-size: 19px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.circuitos.compactos small { grid-column: 2; font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.circuitos.compactos small.pregunta { white-space: normal; color: var(--amarillo); opacity: 1; }
+.circuitos.compactos .tiempoMarca { grid-row: 1; grid-column: 3; justify-self: end; font-size: 19px; }
+.circuitos.compactos .cuadros { grid-row: 2; grid-column: 3; justify-self: end; gap: 3px; }
+.circuitos.compactos .cuadros i { width: 11px; height: 11px; }
+.marca-club { display: inline-block; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top; margin-right: 2px; padding: 0 6px 0 4px; border-radius: 3px; background: rgba(255, 255, 255, .17); color: #fff; font-weight: 700; line-height: 18px; }
+.marca-club > .icono { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; }
+@media (min-width: 62rem) {
+  .panel > .panel-circuitos:has(> .comunidad:not([hidden])) { width: min(68rem, 100%); grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; align-items: start; }
+  .panel-circuitos > h2, .panel-circuitos > .crear-pista { grid-column: 1 / -1; }
+  .panel-circuitos > .crear-pista { justify-self: start; }
+}
+
 /* --- el creador de pistas (ver creador.js): arriba Leo, despues el lugar, la pista que se va armando y las notas para
    elegir, que se tocan como un teclado. Al final, el nombre, para quien es, probar y publicar. --- */
 .creador { position: fixed; inset: 0; z-index: 30; overflow-y: auto; overscroll-behavior: contain; background: #121417; padding: var(--ma) var(--md) var(--mb) var(--mi); display: grid; justify-items: center; align-content: start; }
@@ -594,3 +622,12 @@ button.cr-pieza:active:not(.no-entra) { background: rgba(255, 255, 255, .32); }
   .cr-pieza > .icono { width: 28px; height: 28px; }
   .cr-hoja { max-height: 112px; }
 }
+
+/* --- la meta: los papelitos (ver papelitos.js), en un lienzo chico que se ve agrandado y sin suavizar --- */
+.papelitos { z-index: 25; pointer-events: none; touch-action: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* --- en el resultado, debajo del tiempo: como quedaste contra los de la tabla --- */
+.fin-amigos { display: grid; justify-items: center; gap: 5px; }
+.fin-amigos b { font: 800 26px/1 var(--titulos); padding: 5px 14px 6px; border-radius: 5px; background: rgba(255, 255, 255, .14); }
+.fin-amigos.primero b { background: var(--amarillo); color: #000; }
+.fin-amigos span { font-size: 15px; opacity: .92; max-width: 30em; }
+.fin-amigos span:empty { display: none; }

@@ -44,6 +44,8 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 - **Una pasada oficial por día.** Después se puede practicar todo lo que se quiera, pero no cuenta para la tabla.
 - **Rally puro.** No hay nafta ni rescates. Si te salís o volcás, volvés al camino con 8 segundos de recargo. Si rompés el auto, es abandono.
 - **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
+- **La meta.** Al cruzarla salen papelitos, como en la cancha, y grita el público. En el resultado, debajo del tiempo, se ve cómo quedaste contra tus amigos: el puesto («2º de 6») y a cuánto del de adelante y del de atrás. Si quedaste primero va en amarillo y salen más papelitos. En una práctica dice dónde habrías quedado. (Los amigos son los de la tabla: los de los links que abriste y los de tus clubes.)
+- **Los golpes suenan.** Cada cosa suena a lo suyo: una piedra, el alambrado, un árbol, un fardo, un cono, la chapa de un auto tirado, una caída al vacío. Y el auto suena cada vez más roto: la chapa cruje más, algo suelto tintinea, el motor falla y, al final, pierde vapor.
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
 - **Circuitos fijos.** Además de la pista del día hay cuatro recorridos que no cambian nunca, para correr las veces que se quiera. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día. Uno es una vuelta cerrada para practicar: no tiene llegada, se dan las vueltas que se quiera.
 - **Clubes de amigos.** Con un link de invitación se arma un grupo con tabla propia: la pasada oficial de cada uno aparece sola, con su nombre y su tiempo (ver "Correr contra amigos").
@@ -54,7 +56,13 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 
 ## Los circuitos
 
-Se abren con el botón de circuitos de la portada.
+Se abren con el botón de circuitos de la portada. El panel tiene tres partes, de arriba hacia abajo:
+
+1. **Crear una pista**: abre el creador (ver "Pistas de la comunidad"). Solo aparece si hay servidor.
+2. **Oficiales**: las nuestras. La pista de hoy y los cuatro circuitos fijos.
+3. **De la comunidad**: las que armó la gente y tenés a mano (las tuyas, las de tus clubes y las que abriste por link). Cada una lleva la marca de su club, si es de uno, y quién la armó ("por vos" si es tuya).
+
+Cada fila ocupa dos renglones (el nombre y un detalle corto; lo que no entra se corta con puntos suspensivos) y a la derecha va tu mejor tiempo con sus cuadraditos, para que entren todas en la pantalla del celular. En una pantalla ancha, las oficiales y las de la comunidad van una al lado de la otra. El detalle corto de cada circuito es su `breve`, en `src/circuitos.js`.
 
 | Circuito | Cómo es |
 | --- | --- |
@@ -75,7 +83,7 @@ Shakedown · Urbano 🏘️ ⏱️ 01:30:42 🟩 🟩 🟩 🟩 🟩 🏁
 
 Las arma la gente en el **creador**, nota por nota, como las cantaría el copiloto. No hay mapa: se eligen las notas y el camino sale solo. Leo, el ingeniero de pista, va diciendo qué pasa.
 
-- **Dónde.** Se abre desde **Circuitos** (`Armar una pista`) o desde la tabla de un club (`Armar una para el club`). Lo que se va armando queda guardado en el aparato: se puede cerrar y seguir otro día.
+- **Dónde.** Se abre desde **Circuitos** (`Crear una pista`, arriba de todo) o desde la tabla de un club (`Armar una para el club`). Lo que se va armando queda guardado en el aparato: se puede cerrar y seguir otro día.
 - **Las notas.** Curvas para cada lado (del 6, casi recta, al 1, la más cerrada; la horquilla y la esquina de 90), rectas de 50, 100 y 180 metros, cosas del camino (salto, vado, puente, barro, angosto, lomo de burro y una cuadra de pueblo; en la montaña, además, cornisa y lajas) y cosas al costado (público, piedras, conos y fardos, que van en la nota de antes). La largada y la llegada se ponen solas.
 - **El camino no se cruza.** No puede pasar por donde ya pasó ni irse demasiado lejos: las notas que no entran como siguiente se ven apagadas, y si se las toca Leo dice por qué. El ambiente y el clima se cambian cuando se quiera: cambian el suelo y el paisaje, no el recorrido.
 - **Medidas.** De 700 metros a 3,2 km, con hasta 40 notas de camino y 30 cosas al costado.
@@ -217,6 +225,10 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Las notas del creador de pistas y cómo se arma el camino de cada una (`PIEZAS`); el largo mínimo y el máximo (`TOPES`) | `src/hoja.js` |
 | Lo que dice Leo en el creador y cómo se ordenan los botones de las notas | `src/creador.js` |
 | Cuánto duran las pistas de la comunidad y cuántas puede tener cada uno (`COMUNIDAD`) | `src/circuitos.js` |
+| Cómo suena cada golpe: de qué material es cada cosa (`MATERIAL`), cada sonido, el público de la meta y cómo suena un auto roto | `src/audio.js` |
+| Los papelitos de la meta: colores, tamaño y cómo caen | `src/papelitos.js` |
+| Lo que dice el resultado al compararte con tus amigos | `src/menu.js` (`pintarContra`) |
+| El panel de circuitos: el orden de sus partes y cómo es cada fila (`pintarCircuitos`, `pintarPistas`); el detalle corto de cada circuito (`breve`) | `index.html` (`#panelCircuitos`), `src/menu.js`, `src/circuitos.js` |
 | Los personajes: nombres, roles y cuáles hay (`EQUIPO`); sus retratos | `src/equipo.js`, `personajes/` |
 | La trazada: sus colores, el tamaño de las rayitas y desde qué velocidad avisa (`RITMO`, `FRENADA`, `JUSTO`) | `src/trazada.js` |
 | Cómo se arman las pistas: biomas, climas, tipos de tramo, nombres de lugares | `src/generador.js` (y subir `VERSION` ahí mismo: ver abajo) |
@@ -280,7 +292,8 @@ Ya pasó: el archivo que dibuja los carteles de la pista se llamaba `publicidad.
 | `src/material.js`, `src/pixel.js`, `src/arte.js`, `src/sprites.js` | El estilo: materiales, herramientas para pintar de a píxeles, y los dibujos |
 | `src/post.js` | El "revelado": desenfoque de maqueta, brillos y ajuste de color. Se apaga solo si el aparato no da |
 | `src/huellas.js`, `src/fx.js` | Las huellas en el piso y la pintura de las calles; el polvo que queda flotando y el barro y el agua que saltan de las ruedas |
-| `src/camera.js`, `src/audio.js`, `src/input.js`, `src/noise.js` | Cámaras, sonido del motor, mandos y ruido para el relieve |
+| `src/camera.js`, `src/audio.js`, `src/input.js`, `src/noise.js` | Cámaras, sonido (el motor, los golpes, un auto roto, la meta), mandos y ruido para el relieve |
+| `src/papelitos.js` | Los papelitos de la meta |
 | `vendor/` | Three.js (la biblioteca 3D) y las tipografías |
 | `tools/` | Pruebas sin gráficos (opcionales) |
 

@@ -13,6 +13,7 @@ export function crearAuto(terreno, C) {
     volante: 0, gas: 0, freno: 1, sentido: 1, frenando: false, mano: false, giroRuedas: 0,
     velocidad: 0, enPiso: 0, patina: 0, suelo: 0, agua: 0, golpe: 0, ruedas: [],
     impacto: 0,     // golpe mas fuerte desde la ultima vez que se leyo, en m/s (lo usan las reglas para el daño)
+    contra: '',     // y contra que fue: 'piso', o la clase de lo chocado ('piedra', 'arbol', 'poste'...; de un objeto, su tipo). Para el sonido
     rompio: [],     // postes y fardos que se llevo puestos (los saca de aca el dibujo del mundo, para tirarlos)
   };
   const cubierta = SUELO.map((s) => C.cubiertas[s.blando >= 0.5 ? 1 : 0]);   // agarre de las cubiertas de este auto en cada suelo
@@ -110,7 +111,7 @@ export function crearAuto(terreno, C) {
       const ritmo = -(vx * nx + vy * ny + vz * nz) / den;
       // suspension: resorte + amortiguador (+ tope de goma al final del recorrido)
       let Fs = C.resorte * comp + C.amortigua[ritmo > 0 ? 0 : 1] * ritmo;
-      if (comp > C.recorrido) { Fs += C.resorte * 7 * (comp - C.recorrido); if (ritmo > c.impacto) c.impacto = ritmo; }
+      if (comp > C.recorrido) { Fs += C.resorte * 7 * (comp - C.recorrido); if (ritmo > c.impacto) { c.impacto = ritmo; c.contra = 'piso'; } }
       const Nf = lim(Fs, 0, m * g * 3) / den;
       r.carga = Nf;
 
@@ -182,7 +183,7 @@ export function crearAuto(terreno, C) {
       const vx = v[0] + w[1] * oz - w[2] * oy, vy = v[1] + w[2] * ox - w[0] * oz, vz = v[2] + w[0] * oy - w[1] * ox;
       const vn = vx * N[0] + vy * N[1] + vz * N[2];
       const Fn = lim(C.chasis[0] * hondo * N[1] - C.chasis[1] * vn, 0, m * g * 4);
-      if (-vn > c.impacto) c.impacto = -vn;
+      if (-vn > c.impacto) { c.impacto = -vn; c.contra = 'piso'; }
       const tx = vx - N[0] * vn, ty = vy - N[1] * vn, tz = vz - N[2] * vn, tv = Math.hypot(tx, ty, tz) + 1e-6;
       const Fr = -Math.min(C.chasis[2] * Fn, m / 8 / dt * 0.4 * tv) / tv;
       const Ax = N[0] * Fn + tx * Fr, Ay = N[1] * Fn + ty * Fr, Az = N[2] * Fn + tz * Fr;
@@ -222,7 +223,7 @@ export function crearAuto(terreno, C) {
         // el roce: pasar raspando una pared, una pirca o una piedra tambien frena (si no, apoyarse en un paredon saldria gratis)
         const vt = vcz * dx - vcx * dz, Ft = -Math.sign(vt) * Math.min(C.roce * Fn, m / dt * 0.25 * Math.abs(vt));
         const Ax = dx * Fn - dz * Ft, Az = dz * Fn + dx * Ft;
-        if (-vn * o.duro > c.impacto) c.impacto = -vn * o.duro;
+        if (-vn * o.duro > c.impacto) { c.impacto = -vn * o.duro; c.contra = o.clase === 'objeto' ? o.tipo : o.clase === 'arbol' && o.tipo === 'arbusto' ? 'arbusto' : o.clase; }
         if (o.cede && -vn > 3) { o.roto = true; c.rompio.push(o); }
         Fx += Ax; Fz += Az;
         Tx += oy * Az; Ty += oz * Ax - ox * Az; Tz -= oy * Ax;

@@ -27,12 +27,13 @@ import { crearTrazada } from './trazada.js';
 import { crearSonido } from './audio.js';
 import { crearTeclas } from './input.js';
 import { crearHud, tiempoFinal } from './hud.js';
+import { crearPapelitos } from './papelitos.js';
 
 const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
 // Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '19' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+if (raiz.dataset.pagina !== '20' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
@@ -165,6 +166,7 @@ const trazada = crearTrazada(T, escena, ref);   // la linea para seguir (se pren
 const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
 const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento]), sonido = crearSonido(), hud = crearHud();
 const post = crearPost(render, etapa.clima, liviano);
+const papelitos = crearPapelitos($('papelitos'));   // (los de la meta)
 // lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica).
 // La trazada, mientras nadie la toque, acompaña a la ayuda de manejo: con ayuda se ve, para entender por donde va a ir el auto.
 const gusto = (clave) => { const v = club.gusto(clave); return v !== undefined ? v : clave === 'trazada' ? !!gusto('ayuda') : GUSTOS[clave]; };
@@ -390,6 +392,7 @@ function largar(conTutorial) {
   copiloto.voz(conVoz);
   fx.cortar(); fx.limpiar();
   huellas.limpiar();
+  papelitos.limpiar();
   camara.saltar();
   mundo.reiniciar();
   trazada.mostrar(conTrazada);
@@ -441,6 +444,7 @@ function cerrarRonda(v) {
     }
   }
   const dif = marca === null ? null : v.tiempo - marca;
+  if (dif !== null && dif < 0) papelitos.tirar(60, 0.8);   // (le gano a su mejor vuelta: unos papelitos)
   hud.grande(tiempoFinal(v.tiempo), 2.6, dif === null || dif < 0 ? 'verde' : dif < 2 ? 'amarillo' : 'rojo');
   hud.aviso('Vuelta ' + rondas + (dif === null ? '' : dif < 0 ? ' · ¡tu mejor vuelta! −' + (-dif).toFixed(2) : ' · +' + dif.toFixed(2) + ' contra tu mejor'), 3.2);
   grabacion = crearGrabacion(T);
@@ -478,7 +482,9 @@ function terminar() {
   trazada.mostrar(false);
   hud.aviso(''); hud.grande(''); hud.frenaSola(false);
   hud.mostrar(false);
-  menu.fin(r, armarLink, mejoro);
+  // Como quedo contra los de la tabla (lo dice el resultado). Si quedo primero (y cuenta), otra tanda de papelitos.
+  const contra = menu.fin(r, armarLink, mejoro);
+  if (llego && contra.puesto === 1 && contra.cuenta) setTimeout(() => papelitos.tirar(120, 1.1), 300);
 }
 
 function aLaPortada() {
@@ -507,13 +513,14 @@ function atender(e) {
     hud.grande((dif < 0 ? '−' : '+') + Math.abs(dif).toFixed(1), 1.8, e.dato.color === 'v' ? 'verde' : e.dato.color === 'a' ? 'amarillo' : 'rojo');
   } else if (e.tipo === 'raya') { grabacion = crearGrabacion(T); hud.ronda(1, mejorGuardado()); }   // (vuelta cerrada) arranca la primera ronda
   else if (e.tipo === 'ronda') cerrarRonda(e.dato);
-  else if (e.tipo === 'golpe') camara.sacudir(e.dato);
+  else if (e.tipo === 'golpe') camara.sacudir(e.dato);   // (el ruido del choque ya sono en el momento: ver "toque" en el cuadro)
   else if (e.tipo === 'vuelta') {
+    if (e.dato === 'caida') sonido.caida('caida');   // (se cayo al vacio: el golpe contra el fondo. Un vuelco ya sono al volcar)
     fx.cortar();
     camara.saltar();
     hud.grande('+' + JUEGO.penalizacion + ' s', 1.8, 'rojo');
     hud.aviso(VUELTA[e.dato] || '', 2.5);
-  } else if (e.tipo === 'llegada') { tFin = 1.7; hud.grande('', 0); }
+  } else if (e.tipo === 'llegada') { tFin = 1.7; hud.grande('', 0); papelitos.tirar(); sonido.meta(); }   // la meta: papelitos y el publico
   else if (e.tipo === 'abandono') tFin = 1.3;
 }
 
@@ -596,6 +603,8 @@ function cuadro(ahora) {
   resto += dt;
   while (resto >= JUEGO.paso) { c.paso(manda, JUEGO.paso); resto -= JUEGO.paso; }
   if (pantalla === 'jugando') {
+    // el choque suena en el momento (cada cosa a lo suyo, y la chapa cruje mas cuanto mas roto esta el auto: ver audio.js)
+    if (partida.estado === 'corriendo') sonido.toque(c.contra, c.impacto, partida.roto);
     partida.paso(c, dt);
     for (const e of partida.eventos.splice(0)) atender(e);
     if (tFin > 0 && (tFin -= dt) <= 0) terminar();
@@ -628,10 +637,12 @@ function cuadro(ahora) {
   dibujo.actualizar(c);
   fx.actualizar(c, dt);
   camara.seguir(c, dt);
+  if (c.rompio.length) sonido.voltear(c.rompio, Math.abs(c.velocidad));   // lo que se lleva puesto suena (y el mundo lo tira: ver world.js)
   mundo.animar(dt, reloj3d, c, partida.indice);
   trazada.actualizar(c, partida.indice);
   mundo.mirar(camara, c, render.domElement.width, render.domElement.height);
-  sonido.actualizar(c);
+  // (el sonido del auto: un auto roto suena roto)
+  sonido.actualizar(c, pantalla === 'jugando' ? partida.roto : 0, dt);
   // el foco de la imagen va en el auto: a cuantos metros esta, medido hacia donde mira la camara
   camara.cam.getWorldDirection(HACIA);
   post.dibujar(escena, camara.cam, AL_AUTO.set(c.pos[0], c.pos[1], c.pos[2]).sub(camara.cam.position).dot(HACIA));
@@ -683,7 +694,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && pa
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
 if (enCasa) window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial, creador, comunidad,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial, creador, comunidad, sonido, papelitos,
   auto: () => c,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,

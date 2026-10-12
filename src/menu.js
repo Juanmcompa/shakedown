@@ -61,7 +61,7 @@ export function crearMenu(o) {
   const libre = !!fijo || !!comunidad, borrador = !!(comunidad && comunidad.borrador);
   // el salvavidas que marca un tiempo hecho con la ayuda de manejo
   const conAyuda = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('salvavidas'); img.alt = 'con ayuda de manejo'; img.title = 'Con ayuda de manejo'; return img; };
-  let ultimo = null, linkDe = null;   // el ultimo resultado mostrado, y la funcion que arma su link
+  let ultimo = null, linkDe = null, ultimoMejoro = false;   // el ultimo resultado mostrado, la funcion que arma su link y si fue tu mejor tiempo
   // la tabla: de quien se ven los tiempos ('' = todos los que se conocen; si no, el codigo de un club), si esta abierto
   // el formulario para armar un club, y lo ultimo que hay para avisar ahi
   let vista = '', armando = false, aviso = '', saliendo = 0;
@@ -148,7 +148,7 @@ export function crearMenu(o) {
     // (si estan abiertos los circuitos, la lista de pistas de la comunidad tambien: pueden haber llegado las de un club)
     if (!$('panelCircuitos').hidden) pintarComunidad();
     // (si se esta mostrando un resultado, su tabla tambien se pone al dia: pueden haber llegado tiempos de los clubes)
-    if (ultimo) { const todos = libre ? club.practicas() : club.tabla(); $('finRanking').hidden = todos.length < 2; pintarTabla($('finTabla'), todos); }
+    if (ultimo) { const todos = libre ? club.practicas() : club.tabla(); $('finRanking').hidden = todos.length < 2; pintarTabla($('finTabla'), todos); pintarContra(ultimo, ultimoMejoro); }
     ponerIconos();
     hayMas();
   }
@@ -252,9 +252,10 @@ export function crearMenu(o) {
   }
 
   // --- los circuitos fijos: cada uno con tu mejor tiempo; arriba de todo, la vuelta a la pista de hoy ---
+  // (cada fila: el dibujo, el nombre y un renglon de detalle; a la derecha, tu tiempo. Asi entran todas en la pantalla)
   function pintarCircuitos() {
     const ol = $('circuitos');
-    if (ol.children.length) return;
+    ol.textContent = '';
     const fila = (direccion, aca, emoji, nombre, detalle, res) => {
       const a = crear('a', aca ? 'aca' : '');
       a.href = direccion;
@@ -265,12 +266,38 @@ export function crearMenu(o) {
       ol.append(li);
     };
     const d = datosDelDia(hoy), deHoy = club.resumen(hoy);
-    fila(location.pathname, esHoy, '🏁', 'La pista de hoy · #' + hoy, CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji + ' ' + d.nombre + '. Una sola pasada oficial.', deHoy.oficial);
-    for (const c of CIRCUITOS) fila(location.pathname + '?c=' + c.id, c.numero === numero, c.emoji, c.nombre, c.detalle, club.resumen(c.numero).practica);
+    fila(location.pathname, esHoy, '🏁', 'La pista de hoy · #' + hoy, CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji + ' ' + d.nombre, deHoy.oficial);
+    for (const c of CIRCUITOS) fila(location.pathname + '?c=' + c.id, c.numero === numero, c.emoji, c.nombre, c.breve || c.detalle, club.resumen(c.numero).practica);
   }
 
-  // --- las pistas de la comunidad: una fila por pista, con lo que le queda y tu mejor tiempo ---
-  // (conClub: si se dice de que club es; en la lista de un club no hace falta). Las propias llevan un tacho para borrarlas
+  // --- el resultado contra los de la tabla (tus amigos: los de los links que abriste y los de tus clubes; en una pista de la
+  // comunidad, todos los que la corrieron): en que puesto quedaste y a cuanto del de adelante y del de atras. Va debajo del
+  // tiempo, y se pinta de nuevo si llegan tiempos nuevos de los clubes. Devuelve { puesto, de, cuenta } (puesto 0: no hay con
+  // quien comparar). Una practica en la pista del dia no cuenta: dice donde habria quedado; en lo libre, una pasada que no fue
+  // la mejor tuya, donde queda ese tiempo.
+  function pintarContra(r, mejoro) {
+    const el = $('finAmigos'), otros = (libre ? club.practicas() : club.tabla()).filter((x) => !x.mio && !x.ab && x.t > 0);
+    el.hidden = !!r.ab || !otros.length;
+    if (el.hidden) return { puesto: 0, de: 0, cuenta: false };
+    const ganaron = otros.filter((x) => x.t < r.t - 0.004).sort((a, b) => b.t - a.t);   // los que te ganaron: primero el mas cercano
+    const perdieron = otros.filter((x) => x.t > r.t + 0.004).sort((a, b) => a.t - b.t);   // a los que les ganaste: primero el mas cercano
+    const empate = otros.find((x) => Math.abs(x.t - r.t) <= 0.004);
+    const puesto = ganaron.length + 1, de = otros.length + 1, cuenta = libre ? !!mejoro : !r.practica;
+    const s = (d) => d.toFixed(2).replace('.', ',') + ' s', quien = (x) => x.nombre || '?';
+    const titulo = (cuenta ? '' : libre ? 'Con este tiempo, ' : 'Habrías quedado ') + (puesto === 1 && cuenta ? '¡1º de ' + de + '!' : puesto + 'º de ' + de);
+    const cerca = [];
+    if (ganaron.length) cerca.push('A ' + s(r.t - ganaron[0].t) + ' de ' + quien(ganaron[0]));
+    if (empate) cerca.push('Empatado con ' + quien(empate));
+    if (perdieron.length) cerca.push('Le sacás ' + s(perdieron[0].t - r.t) + ' a ' + quien(perdieron[0]));
+    el.textContent = '';
+    el.append(crear('b', '', titulo), crear('span', '', cerca.join(' · ')));
+    el.classList.toggle('primero', puesto === 1 && cuenta);
+    return { puesto, de, cuenta };
+  }
+
+  // --- las pistas de la comunidad: una fila por pista, con el club al que pertenece (una marca con su nombre), quien la
+  // armo, lo que le queda y tu mejor tiempo ---
+  // (conClub: si se marca de que club es; en la lista de un club no hace falta). Las propias llevan un tacho para borrarlas
   // (hay que tocarlo dos veces): cada uno puede tener cinco vigentes, y si quiere otra, borra una.
   // (el tacho que se toco una vez: queda preguntando unos segundos, aunque la lista se vuelva a pintar; y lo que salio mal)
   let porBorrar = { numero: 0, desde: 0, error: '' };
@@ -281,10 +308,15 @@ export function crearMenu(o) {
     const mias = new Set(club.pistas().filter((x) => x.mia).map((x) => x.numero));
     for (const p of pistas) {
       const a = crear('a', p.numero === numero ? 'aca' : ''), res = club.resumen(p.numero).practica, mia = p.mia || mias.has(p.numero), pregunta = preguntando(p.numero);
-      const detalle = [conClub && p.clubNombre ? 'Club ' + p.clubNombre : '', mia ? 'la armaste vos' : '', quedan(p.vence)].filter(Boolean).join(' · ');
       a.href = (o.direccion || String)(location.pathname + '?pista=' + p.numero + '-' + (p.version || p.v));
-      a.append(crear('span', 'emoji', EMOJI_COMUNIDAD), crear('b', '', p.nombre),
-        crear('small', '', pregunta ? '¿Borrarla? Se van también sus tiempos. Tocá de nuevo el tacho.' : porBorrar.numero === p.numero && porBorrar.error ? porBorrar.error : detalle));
+      const detalle = crear('small'), error = porBorrar.numero === p.numero && porBorrar.error;
+      // (la pregunta del tacho y lo que salio mal van enteros, aunque ocupen mas de un renglon)
+      if (pregunta || error) { detalle.className = 'pregunta'; detalle.textContent = pregunta ? '¿Borrarla? Se van también sus tiempos. Tocá de nuevo el tacho.' : error; }
+      else {
+        if (conClub && p.club) { const m = crear('span', 'marca-club', p.clubNombre || 'Club'); m.dataset.icono = 'podio'; m.title = 'Del club ' + (p.clubNombre || ''); detalle.append(m, ' '); }
+        detalle.append([mia ? 'por vos' : p.autor ? 'por ' + p.autor : '', quedan(p.vence)].filter(Boolean).join(' · '));
+      }
+      a.append(crear('span', 'emoji', EMOJI_COMUNIDAD), crear('b', '', p.nombre), detalle);
       if (res) a.append(crear('span', 'tiempoMarca', res.ab ? 'abandono' : tiempoFinal(res.t)), cuadritos(res.c));
       const li = crear('li');
       li.append(a);
@@ -315,7 +347,7 @@ export function crearMenu(o) {
     const pistas = club.pistas();
     pintarPistas($('comunidad'), pistas, true);
     $('comunidadVacia').hidden = pistas.length > 0;
-    $('armarPista').hidden = !o.armar;
+    $('armarPista').hidden = !o.armar || !o.clubes;   // (sin servidor no hay donde publicarla)
   }
 
   // --- pistas pasadas ---
@@ -486,8 +518,9 @@ export function crearMenu(o) {
     portada: (si) => { $('portada').hidden = !si; if (!si) abrir(''); else pintar(); },
     // Muestra el resultado de una pasada. r: el resultado. armarLink: funcion que devuelve el codigo del link (con el fantasma).
     // mejoro: true si es tu mejor tiempo en esa pista (para las practicas y los circuitos).
+    // Devuelve como quedaste contra los de la tabla: { puesto, de, cuenta } (ver pintarContra).
     fin: (r, armarLink, mejoro) => {
-      ultimo = r; linkDe = armarLink;
+      ultimo = r; linkDe = armarLink; ultimoMejoro = !!mejoro;
       $('finTipo').textContent = (fijo ? 'Circuito · ' : borrador ? 'Borrador · ' : comunidad ? 'Pista de la comunidad · ' : (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ') + etapa.nombre + (mejoro ? (T.vuelta ? ' · ¡tu mejor vuelta!' : ' · ¡tu mejor tiempo!') : '');
       $('finTitulo').textContent = r.ab ? ABANDONO[r.ab] || 'Abandono' : '';
       $('finTitulo').hidden = !r.ab;
@@ -517,8 +550,10 @@ export function crearMenu(o) {
       $('otra').dataset.icono = libre ? 'bandera' : 'cono';
       rotular($('irCircuitos'), borrador ? 'Seguir armando' : 'Circuitos');
       $('irCircuitos').dataset.icono = borrador ? 'lapiz' : 'circuito';
+      const contra = pintarContra(r, mejoro);
       $('fin').hidden = false;
       ponerIconos();
+      return contra;
     },
     cerrarFin: () => { $('fin').hidden = true; ultimo = null; },
     // dice algo en la portada, abajo del boton de largar (queda hasta que se cierre el juego)

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="19" class="cargando">
+<html lang="es" data-pagina="20" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -225,7 +225,7 @@
   // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -390,24 +390,27 @@
     <!-- las pistas que armo la gente del club (las trae el servidor con la tabla) -->
     <div id="clubPistas" class="club-pistas" hidden>
       <h3>Pistas del club</h3>
-      <ol id="clubPistasLista" class="circuitos"></ol>
+      <ol id="clubPistasLista" class="circuitos compactos"></ol>
       <p id="clubPistasVacia" class="chico">Todavía no hay. Armá una: la ven todos los del club, y dura dos semanas.</p>
       <p><button id="clubArmar" type="button" class="con-texto" data-icono="lapiz" data-color="#000000">Armar una para el club</button></p>
     </div>
     <p id="clubPie" class="club-pie" hidden><button id="clubSalir" type="button" class="con-texto discreto">Salir del club</button></p>
   </div>
-  <!-- los circuitos fijos: siempre los mismos, para correr las veces que se quiera -->
-  <div id="panelCircuitos" hidden>
+  <!-- Los circuitos: arriba, crear una pista; despues, los oficiales (la pista de hoy y los fijos, siempre los mismos);
+       al final, las pistas de la comunidad que se conocen en este aparato (las que armaste, las de tus clubes y las que
+       abriste por link), cada una con la marca de su club y quien la armo. Cada fila ocupa poco, para que entren todas.
+       En una pantalla ancha, los oficiales y los de la comunidad van uno al lado del otro. -->
+  <div id="panelCircuitos" class="panel-circuitos" hidden>
     <h2>Circuitos</h2>
-    <p class="chico">Siempre los mismos, para correr las veces que quieras. Queda tu mejor tiempo, y lo podés compartir como el de la pista del día.</p>
-    <ol id="circuitos" class="circuitos"></ol>
-    <!-- las pistas de la comunidad que se conocen en este aparato: las que armaste, las que abriste y las de tus clubes -->
+    <button id="armarPista" type="button" class="con-texto fuerte crear-pista con-servidor" data-icono="lapiz" data-color="#000000">Crear una pista</button>
+    <div class="oficiales">
+      <h3>Oficiales</h3>
+      <ol id="circuitos" class="circuitos compactos"></ol>
+    </div>
     <div class="con-servidor comunidad">
-      <h3>Pistas de la comunidad</h3>
-      <p class="chico">Las arma la gente, nota por nota. Duran dos semanas: se comparten con un link, o se arman para un club.</p>
-      <ol id="comunidad" class="circuitos"></ol>
-      <p id="comunidadVacia" class="chico">Todavía no tenés ninguna. Cuando abras el link de una, aparece acá.</p>
-      <p><button id="armarPista" type="button" class="con-texto" data-icono="lapiz" data-color="#000000">Armar una pista</button></p>
+      <h3>De la comunidad</h3>
+      <ol id="comunidad" class="circuitos compactos"></ol>
+      <p id="comunidadVacia" class="chico">Todavía no tenés ninguna. Las que armes, las de tus clubes y las que abras por link aparecen acá, y duran dos semanas.</p>
     </div>
   </div>
   <div id="panelPasadas" hidden>
@@ -534,6 +537,8 @@
   <p id="finTipo" class="chico"></p>
   <h2 id="finTitulo"></h2>
   <p id="finGrande"></p>
+  <!-- como quedaste contra los de la tabla (tus amigos): el puesto, y a cuanto del de adelante y del de atras (lo pone menu.js) -->
+  <p id="finAmigos" class="fin-amigos" hidden></p>
   <div id="finCuadros" class="sectores"></div>
   <p id="finDetalle"></p>
   <!-- aparece despues de una pasada complicada, si se corrio sin ayuda -->
@@ -553,6 +558,9 @@
     <button id="salir" class="segundo" data-icono="atras" data-color="#000000" aria-label="Volver a la portada"><span class="rotulo">Volver</span></button>
   </div>
 </section>
+
+<!-- los papelitos de la meta (ver papelitos.js): encima de todo, sin tapar los toques -->
+<canvas id="papelitos" class="papelitos" aria-hidden="true" hidden></canvas>
 
 <script>document.write('<script type="module" src="src/main.js?v=' + V + '"><\/script>');</script>
 </body>

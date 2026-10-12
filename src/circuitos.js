@@ -8,16 +8,17 @@ const RAD = Math.PI / 180;
 // Los circuitos usan numeros de pista que los dias no van a alcanzar nunca (el link de un resultado guarda ese numero).
 // version: hay que subirla cada vez que se toca el recorrido de ese circuito (o algo del terreno que lo cambie). Con eso,
 // los tiempos y los fantasmas guardados de la version anterior se descartan solos: eran de otro camino.
+// detalle: lo que dice la portada del circuito. breve: lo que dice su renglon en la lista de circuitos.
 export const CIRCUITOS = [
   { id: 'subida', numero: 16001, version: 1, nombre: 'Subida a Mina Vieja', corto: 'Subida', emoji: '⛰️', bioma: 'montana', clima: 'sol', caracter: 'tecnica', lugar: '38°51′S 70°58′O',
-    detalle: 'Angosta y empinada, con puentes y lajas. No hay velocidad: es pura técnica.' },
+    detalle: 'Angosta y empinada, con puentes y lajas. No hay velocidad: es pura técnica.', breve: 'Montaña angosta: pura técnica' },
   { id: 'bajada', numero: 16002, version: 1, nombre: 'Bajada del Portezuelo', corto: 'Bajada', emoji: '🦅', bioma: 'montana', clima: 'tarde', caracter: 'rapida', lugar: '38°44′S 71°02′O',
-    detalle: 'Ancha, rápida y en bajada, toda de ripio suelto. Hay que llevarlo cruzado.' },
+    detalle: 'Ancha, rápida y en bajada, toda de ripio suelto. Hay que llevarlo cruzado.', breve: 'Ripio en bajada: la más rápida' },
   { id: 'urbano', numero: 16003, version: 1, nombre: 'Callejero de Villa Cañada', corto: 'Urbano', emoji: '🏘️', bioma: 'campo', clima: 'sol', caracter: 'tecnica', lugar: '35°12′S 60°41′O',
-    detalle: 'Entre las casas del pueblo: esquinas de 90 grados, la plaza, un pasaje angosto y cosas para esquivar.' },
+    detalle: 'Entre las casas del pueblo: esquinas de 90 grados, la plaza, un pasaje angosto y cosas para esquivar.', breve: 'Esquinas de 90 entre las casas' },
   // vuelta: true = es una vuelta cerrada: no tiene llegada, se dan las vueltas que se quieran y queda la mejor.
   { id: 'practica', numero: 16004, version: 1, vuelta: true, nombre: 'Vuelta del Club', corto: 'Práctica', emoji: '🔁', bioma: 'campo', clima: 'sol', caracter: 'mixta', lugar: '37°46′S 68°12′O',
-    detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.' },
+    detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.', breve: 'Vuelta cerrada: queda la mejor' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
 // Las pistas de la comunidad (las que arma un jugador: ver hoja.js) usan los numeros de 13000 a 15999. Duran dos semanas

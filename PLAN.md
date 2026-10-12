@@ -40,6 +40,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - **Publicidad en chiste, y solo de adorno.** Los sponsors son parodias de marcas conocidas, con el nombre cambiado (FPY, CAC, Mercado Ladri). Van en banderas, chapas contra la cinta del público, cartelones, pórticos y arcos. No se chocan ni cambian la pista: se reparten con un sorteo aparte, así se pueden cambiar sin tocar los tiempos de nadie ni subir la versión. Los soportes están pensados para que el día de mañana lleven sponsors de verdad: alcanza con cambiar la lista.
 - **Pistas de la comunidad, armadas con íconos.** Cualquiera arma una pista en el creador eligiendo las notas una por una (curvas, rectas, cosas del camino y del costado), sin mapa: el camino sale solo y no se puede cruzar. Duran dos semanas, se corren como un circuito (sin oficial, queda el mejor tiempo), tienen su tabla y se comparten con un link. También se arman para un club: cada club hace sus propias pistas. Quien la armó la firma: su nombre va en la portada y en lo que se comparte (Pista «La Curva del Tero» por Juanma), no al largar. El servidor guarda solo la hoja de notas (unas 400 letras): el camino y el terreno los arma cada aparato.
 - **Cinco pistas por persona.** Para ahorrar lugar, cada uno puede tener hasta cinco publicadas a la vez, y las puede borrar cuando quiera (con sus tiempos) para publicar otra.
+- **El panel de circuitos, en este orden:** arriba de todo, crear una pista; después las oficiales (la de hoy y los circuitos fijos); al final, las de la comunidad, cada una con la marca de su club y quién la armó. Filas de dos renglones, para que todo entre en la pantalla del celular.
 - **Sin instalación ni compilado.** HTML y JavaScript, publicado con GitHub Pages en `/shakedown`.
 - **Ningún archivo se llama como un anuncio.** Los bloqueadores de publicidad frenan las direcciones con palabras como "publicidad", "sponsor" o "banner", y con un solo archivo frenado el juego no carga. Por eso los carteles de la pista están en `carteleria.js` y los sponsors en `parodias.js`.
 
@@ -78,6 +79,9 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Ayuda de manejo que sigue la trazada y regula los pedales de a poco: ya no se escucha cortar el acelerador
 - [x] Antorchas rojas en las piedras pegadas al camino
 - [x] Arreglos para el celular: en el iPhone los botones ya no se "arrastran" al dejar el dedo apoyado; cartel de carga; portada y resultado con los botones fijos abajo; distancia de cada cámara pensada para la pantalla chica; carga también en iPhones con iOS 15 y 16
+- [x] La meta se festeja: papelitos de colores desde las esquinas de abajo, el público y una bocina; y el resultado te compara solo con tus amigos (en qué puesto quedaste y a cuánto estás del de adelante y del de atrás; si saliste primero, más papelitos)
+- [x] Los golpes suenan según contra qué: piedra, madera, ramas, alambrado, fardo, chapa, plástico, goma, pared o el piso. Cuanto más roto está el auto, más se nota: el motor tose y raspa, larga vapor y le bailan las chapas sueltas
+- [x] Panel de circuitos reordenado: crear una pista arriba, después las oficiales y al final las de la comunidad con su club y quién la armó; filas compactas y, en la compu, dos columnas
 
 ## Lo que sigue
 
