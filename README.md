@@ -82,10 +82,16 @@ Las arma la gente en el **creador**, nota por nota, como las cantaría el copilo
 - **Probar** la corre como borrador: los tiempos quedan en el aparato y no se comparten. **Publicar** la sube al servidor con su nombre: dura dos semanas, tiene su tabla con el mejor tiempo de cada uno que la corre, y se comparte con un link (`…/shakedown/?pista=13042-1`). Si se la arma para un club, aparece en la tabla del club para todos sus miembros: así cada club hace sus propias pistas.
 - **Cinco por persona.** Cada uno puede tener hasta cinco publicadas a la vez. Para publicar otra, se borra una con el tacho (dos toques), en Circuitos o abajo de todo en el creador. Se va con todos sus tiempos.
 - **Se corren como un circuito.** No hay oficial: se corren las veces que se quiera y queda el mejor tiempo. Las que armaste, las que abriste y las de tus clubes aparecen en Circuitos mientras duren.
-- **Quién la armó se ve solo en la portada de la pista**, antes de largar: no al largar ni en lo que se comparte. El mensaje lleva el nombre de la pista:
+- **Quién la armó la firma.** Su nombre sale en la portada de la pista y en todo lo que se comparte de ella (no al largar). Compartir la pista desde su portada, antes de correrla:
 
 ```
-Shakedown · La Curva del Tero 📝 ⏱️ 01:12:34 🟩 🟩 🟨 🟥 🟩 🏁
+Shakedown · Pista «La Curva del Tero» por Juanma 📝 ¿Quién la hace más rápido?
+```
+
+Y un resultado en esa pista (lo comparta quien lo comparta, la firma es de quien la armó):
+
+```
+Shakedown · Pista «La Curva del Tero» por Juanma 📝 ⏱️ 01:12:34 🟩 🟩 🟨 🟥 🟩 🏁
 ```
 
 El link lleva el número de la pista y su versión: cuando una vence (o la borran), su número se puede volver a usar, y un link viejo nunca abre la pista nueva. Las pistas de la comunidad son lo único del juego que necesita el servidor.

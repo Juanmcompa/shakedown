@@ -16,11 +16,13 @@ const crear = (etiqueta, clase, texto) => { const el = document.createElement(et
 
 // El mensaje para compartir: Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
 // (el de un circuito fijo lleva su nombre en vez del numero: Shakedown · Subida ⛰️ ⏱️ 01:42:85 ...; el de una pista de la
-// comunidad, su nombre y el anotador: Shakedown · La Curva del Tero 📝 ⏱️ ...; quien la armo no va: solo en la portada)
+// comunidad, su nombre firmado por quien la armo: Shakedown · Pista «La Curva del Tero» por Juanma 📝 ⏱️ ...)
+// autor: quien armo la pista de la comunidad (su firma: va en todo lo que se comparte de esa pista)
 export const EMOJI_COMUNIDAD = '📝';
-export function mensaje(etapa, r) {
+export const firmada = (nombre, autor) => 'Pista «' + nombre + '»' + (autor ? ' por ' + autor : '');
+export function mensaje(etapa, r, autor) {
   const cuadros = [...(r.c || 'nnnnn')].map((x) => CUADRO[x]).join(' '), fijo = circuitoDe(etapa.numero);
-  return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : etapa.comunidad ? 'Shakedown · ' + etapa.nombre + ' ' + EMOJI_COMUNIDAD
+  return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : etapa.comunidad ? 'Shakedown · ' + firmada(etapa.nombre, autor) + ' ' + EMOJI_COMUNIDAD
     : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
     + (r.ab ? ' 💥 abandono ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
 }
@@ -69,8 +71,8 @@ export function crearMenu(o) {
   // quien hace el juego: debajo de la marca, solo en la portada
   $('firmaAutor').textContent = FIRMA.autor;
   $('firma').hidden = !FIRMA.autor;
-  // (de una pista de la comunidad: quien la armo, cuanto le queda y de que club es. Quien la armo va solo aca, en la portada:
-  // ni al largar ni en lo que se comparte)
+  // (de una pista de la comunidad: quien la armo, cuanto le queda y de que club es. Quien la armo es la firma de la pista: va
+  // aca y en lo que se comparte, no al largar)
   $('pistaNumero').textContent = fijo ? fijo.emoji : comunidad ? EMOJI_COMUNIDAD : '#' + numero;
   $('pistaFecha').textContent = fijo ? 'Circuito' : borrador ? 'Borrador' : comunidad ? 'Hecha por ' + (comunidad.autor || '?') : fechaDe(numero);
   $('pistaLugar').textContent = comunidad ? (borrador ? '' : quedan(comunidad.vence)) : etapa.lugar;
@@ -447,9 +449,10 @@ export function crearMenu(o) {
       decir('No pude copiarlo. Copialo de acá: ' + texto.replace(/\n/g, ' '));
     }
   }
-  // una pista de la comunidad, sin resultado: el nombre y su link (quien la armo no va: solo en la portada)
+  // una pista de la comunidad, sin resultado: su nombre firmado por quien la armo, y su link
+  //   Shakedown · Pista «La Curva del Tero» por Juanma 📝 ¿Quién la hace más rápido?
   async function compartirPista(salida) {
-    await pasar('Shakedown · ' + etapa.nombre + ' ' + EMOJI_COMUNIDAD + ' ¿Quién la hace más rápido?\n' + conAviso(o.linkDeLaPista()), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
+    await pasar('Shakedown · ' + firmada(etapa.nombre, comunidad.autor) + ' ' + EMOJI_COMUNIDAD + ' ¿Quién la hace más rápido?\n' + conAviso(o.linkDeLaPista()), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
   }
   async function compartir(r, salida) {
     if (!club.nombre()) { $('nombre').focus(); if (salida) salida.textContent = 'Poné tu nombre para compartir.'; return; }
@@ -457,7 +460,7 @@ export function crearMenu(o) {
     // el link lleva el codigo corto con el que la pasada quedo en el servidor; si no hay servidor, la pasada entera
     const final = codigo ? await o.acortar(r, codigo) : '';
     // tres renglones: el resultado, el link y que el juego esta en desarrollo
-    await pasar(mensaje(etapa, r) + '\n' + conAviso(location.origin + location.pathname + (final ? '#r=' + final : '')), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
+    await pasar(mensaje(etapa, r, comunidad && comunidad.autor) + '\n' + conAviso(location.origin + location.pathname + (final ? '#r=' + final : '')), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
   }
   $('compartir').addEventListener('click', () => ultimo && compartir(ultimo, $('compartido')));
   $('compartirPortada').addEventListener('click', () => {
