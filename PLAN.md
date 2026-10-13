@@ -82,6 +82,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] La meta se festeja: papelitos de colores desde las esquinas de abajo, el público y una bocina; y el resultado te compara solo con tus amigos (en qué puesto quedaste y a cuánto estás del de adelante y del de atrás; si saliste primero, más papelitos)
 - [x] Los golpes suenan según contra qué: piedra, madera, ramas, alambrado, fardo, chapa, plástico, goma, pared o el piso. Cuanto más roto está el auto, más se nota: el motor tose y raspa, larga vapor y le bailan las chapas sueltas
 - [x] Panel de circuitos reordenado: crear una pista arriba, después las oficiales y al final las de la comunidad con su club y quién la armó; filas compactas y, en la compu, dos columnas
+- [x] Ícono nuevo para el botón de circuitos: un mapa con tres lugares marcados. El de antes (una vuelta cerrada, como una O) no se entendía: la gente no se daba cuenta de que ahí había más pistas
 
 ## Lo que sigue
 

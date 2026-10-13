@@ -56,7 +56,7 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 
 ## Los circuitos
 
-Se abren con el botón de circuitos de la portada. El panel tiene tres partes, de arriba hacia abajo:
+Se abren con el botón de circuitos de la portada: el del mapa con tres lugares marcados (hay más pistas para elegir). El panel tiene tres partes, de arriba hacia abajo:
 
 1. **Crear una pista**: abre el creador (ver "Pistas de la comunidad"). Solo aparece si hay servidor.
 2. **Oficiales**: las nuestras. La pista de hoy y los cuatro circuitos fijos.
