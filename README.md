@@ -196,6 +196,7 @@ Con una captura de esa pantalla alcanza para saber qué pasó. La letra dice qu�
 | **V** | El navegador no entiende el programa | Un navegador viejo: hay que actualizarlo |
 | **G** | No se pudieron prender los gráficos 3D | El aparato o el navegador no tienen WebGL 2, o está apagado |
 | **T** | Pasaron 40 segundos y sigue cargando | Un aparato lento o una conexión mala. No corta nada: se puede esperar |
+| **A** | Hay una versión nueva del juego y a este aparato le sigue llegando la página anterior | Pasa en los minutos después de publicar, mientras el sitio todavía reparte la anterior. Se arregla solo: "Probar de nuevo" en un par de minutos |
 
 Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el celular abre el menú de compartir): el error entero, qué archivos no bajaron, el navegador y el aparato. No se manda solo a ningún lado: lo manda quien quiera, pegándolo en un chat.
 

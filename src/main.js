@@ -31,9 +31,24 @@ import { crearPapelitos } from './papelitos.js';
 
 const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
-// Si el navegador guardo una pagina vieja que no coincide con este codigo, la pide de nuevo.
+// --- la pagina vieja ---
+// Si el navegador tiene guardada una pagina vieja que no coincide con este codigo, la pide de nuevo con ?fresca=<hora> (una
+// direccion que no esta en ningun cache) y no arma nada con la vieja: le faltarian partes. Un ?fresca= de hace mas de un
+// minuto no cuenta: es el de una pestaña que quedo abierta con esa direccion y que el celular despues abre con la pagina
+// que tenia guardada (asi fallo una vez: "pág. 18" con el codigo de la 20, en papelitos.js). Si se pidio hace menos de un
+// minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
+// queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-if (raiz.dataset.pagina !== '20' && !location.search.includes('fresca')) location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'fresca=' + Date.now() + location.hash);
+const PAGINA = '20';
+const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
+sinFresca.delete('fresca');
+const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
+if (raiz.dataset.pagina !== PAGINA) {
+  if (Math.abs(Date.now() - fresca) > 60000) location.replace(direccionLimpia + (String(sinFresca) ? '&' : '?') + 'fresca=' + Date.now() + location.hash);
+  else if (window.cargaFallo) window.cargaFallo('Hay una versión nueva del juego y todavía no llegó entera a este aparato. Probá de nuevo en un par de minutos.', 'A');
+  await new Promise(() => {});   // (con la pagina vieja no se sigue: o se va a la nueva, o queda el aviso)
+}
+if (fresca) history.replaceState(history.state, '', direccionLimpia + location.hash);
 
 // --- el cartel de carga ---
 // Mientras se arma todo, va diciendo en que anda. Entre paso y paso se le da un respiro al navegador para que lo dibuje:
