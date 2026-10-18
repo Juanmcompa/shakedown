@@ -50,7 +50,7 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 - **Los golpes suenan.** Cada cosa suena a lo suyo: una piedra, el alambrado, un árbol, un fardo, un cono, la chapa de un auto tirado, una caída al vacío. Y el auto suena cada vez más roto: la chapa cruje más, algo suelto tintinea, el motor falla y, al final, pierde vapor.
 - **Tu auto, armado por partes.** En el garaje se elige un motor, un chasis y unas ruedas, como en el Mario Kart: 125 combinaciones, y ninguna es la mejor para todo (ver "El garaje").
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
-- **Circuitos fijos.** Además de la pista del día hay cuatro recorridos que no cambian nunca, para correr las veces que se quiera. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día. Uno es una vuelta cerrada para practicar: no tiene llegada, se dan las vueltas que se quiera.
+- **Circuitos fijos.** Además de la pista del día hay cinco recorridos que no cambian nunca, para correr las veces que se quiera. Uno es un tramo largo de verdad: Mina Clavero – Giulio Cesare, 19 km del Rally Argentina. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día. Uno es una vuelta cerrada para practicar: no tiene llegada, se dan las vueltas que se quiera.
 - **Clubes de amigos.** Con un link de invitación se arma un grupo con tabla propia: la pasada oficial de cada uno aparece sola, con su nombre y su tiempo (ver "Correr contra amigos").
 - **Trazada para seguir.** Optativa: una línea pintada en el camino muestra por dónde pasar, como en los juegos de carreras. Está verde donde se puede acelerar, amarilla donde venís justo y roja donde venís pasado: cuando el rojo llega al auto, hay que frenar. Se prende en la configuración o con la `T`. Es solo un dibujo: no cambia el manejo ni marca el tiempo.
 - **Ayuda de manejo, para arrancar.** Se prende en la configuración: el auto sigue solo la trazada, frena antes de las curvas y se cruza menos; vos acelerás y corregís con el volante. Es más fácil y más lento. En la tabla, esos tiempos llevan un salvavidas. Después de una pasada complicada, el juego la ofrece.
@@ -62,7 +62,7 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 Se abren con el botón de circuitos de la portada: el del mapa con tres lugares marcados (hay más pistas para elegir). El panel tiene tres partes, de arriba hacia abajo:
 
 1. **Crear una pista**: abre el creador (ver "Pistas de la comunidad"). Solo aparece si hay servidor.
-2. **Oficiales**: las nuestras. La pista de hoy y los cuatro circuitos fijos.
+2. **Oficiales**: las nuestras. La pista de hoy y los cinco circuitos fijos.
 3. **De la comunidad**: las que armó la gente y tenés a mano (las tuyas, las de tus clubes y las que abriste por link). Cada una lleva la marca de su club, si es de uno, y quién la armó ("por vos" si es tuya).
 
 Cada fila ocupa dos renglones (el nombre y un detalle corto; lo que no entra se corta con puntos suspensivos) y a la derecha va tu mejor tiempo con sus cuadraditos, para que entren todas en la pantalla del celular. En una pantalla ancha, las oficiales y las de la comunidad van una al lado de la otra. El detalle corto de cada circuito es su `breve`, en `src/circuitos.js`.
@@ -73,6 +73,7 @@ Cada fila ocupa dos renglones (el nombre y un detalle corto; lo que no entra se 
 | 🦅 **Bajada del Portezuelo** | 2,5 km de ripio suelto, ancha y siempre para abajo: 325 metros de desnivel. Es la más rápida del juego: rectas largas donde se pasan los 100 km/h, eses para llevar el auto cruzado, un salto y cuatro curvas cerradas a las que hay que llegar frenado (en bajada cuesta más). |
 | 🏘️ **Callejero de Villa Cañada** | 1,1 km entre las casas de un pueblo: esquinas de 90 grados, calles de adoquines, la vuelta a la plaza, un pasaje angosto y una avenida con autos estacionados, un colectivo, volquetes, conos y un lomo de burro. |
 | 🔁 **Vuelta del Club** | 1,6 km en vuelta cerrada, para practicar. Sale por la ruta, cruza un pueblo (una esquina de 90, adoquines, un lomo de burro y conos), se mete en el bosque (un vado y un barrial), trepa al cerro (dos horquillas, una cornisa de lajas con pirca y un puente) y baja rápido, con un salto, de vuelta al campo. |
+| 🏔️ **Mina Clavero – Giulio Cesare** | 19,2 km de la pampa de altura al pueblo, bajando 1000 metros. Basado en el tramo clásico del Rally Argentina (fue la Power Stage del Mundial): la forma es inventada, el carácter es el del camino real. Arriba hay horquillas y rectas rápidas con saltos entre el granito; después una quebrada con puente y vado, cuestas con pirca, el valle con su arroyo y, al final, las esquinas de Mina Clavero hasta la llegada. Dura unos 14 minutos (para la mayoría, entre 15 y 19); se puede tardar hasta 25. |
 
 Cada circuito tiene su tiempo de referencia y sus cinco cuadraditos, como la pista del día. El mensaje para compartir sale así:
 
@@ -225,6 +226,7 @@ Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el 
 La tuerca de la portada abre la configuración. Lo que se elige queda guardado en el aparato.
 
 - **Ayuda de manejo:** sí o no.
+- **Rally serio** (el casco): para el que sabe, el mismo auto sin ayudas escondidas. Frenando, el peso pasa adelante y la cola se aliviana: entrar frenando y doblar hace rotar el auto. El freno de mano bloquea las de atrás y suelta la cola. El agarre de costado crece hasta un ángulo y después cae (en ripio, más suave): el derrape se sostiene con el acelerador y el contravolante, y si te pasás, trompo. Lo que la rueda usa para acelerar o frenar no le queda para doblar. Cada tracción se siente: los 4x4 reparten, los de adelante tiran de la trompa y los de atrás se cruzan con el acelerador. El buggy rota rápido y el camioncito tarda. Los autos de poco motor (la Vitarita) derrapan con freno, amague o freno de mano; los de mucho motor (V8, Turbo), también con el acelerador. Es lo contrario de la ayuda de manejo (si se prende uno, se apaga el otro). Los tiempos hechos así llevan el casco en la tabla y en el link. Los números están en `SERIO` (`src/config.js`); para probarlo, `node tools/pruebas/verserio.mjs` y `SERIO=1 node tools/piloto.mjs 1 6`.
 - **Trazada:** sí o no. Es la línea pintada en el camino que muestra por dónde pasar y dónde frenar. Mientras no se la toque, acompaña a la ayuda de manejo: con ayuda viene prendida, para que se vea por dónde va a ir el auto.
 - **Distancia de la cámara:** más cerca o más lejos. Mientras se mueve la barra, el panel se corre para ver cómo queda.
 - **Doblar** (celular): inclinando o con flechas en pantalla.
@@ -346,7 +348,7 @@ Con Node instalado, desde la carpeta del repo:
 - `tools/pruebas/`: las pruebas del juego entero en un navegador sin pantalla (hace falta `npm i playwright sharp`). Cada una dice al principio qué prueba y cómo se corre; las del servidor piden antes `node servidor/local.mjs 8787`. Las usan los subagentes de Claude (ver `CLAUDE.md` y `.claude/agents/`): uno por área del juego, que se llama solo cuando hay que cambiar esa área.
 
 - `node tools/piloto.mjs 1 12`: cinco pilotos de distinto nivel corren las pistas 1 a 12 con cada auto. Dice si llegan, en cuánto, y dónde se salen.
-- `node tools/piloto.mjs 16001 4`: lo mismo en los cuatro circuitos (sus números de pista van del 16001 al 16004). En la vuelta cerrada cada piloto da tres vueltas y cuenta la mejor.
+- `node tools/piloto.mjs 16001 4`: lo mismo en los circuitos (sus números de pista van del 16001 al 16005; el 16005 es el tramo largo). En la vuelta cerrada cada piloto da tres vueltas y cuenta la mejor.
 - `SOLO=novato,ayudado,sinManos node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo; y `sinManos`, que además no toca el volante. Sirve para ver cuánto ayuda. Para probar otros números sin tocar `config.js`: `AYUDA="ritmo=0.74,frena=3.2" SOLO=ayudado node tools/piloto.mjs 1 8`.
 - `node tools/fisica.mjs`: aceleración, frenada, curvas y subidas en cada suelo.
 - `node servidor/prueba.mjs`: prueba el servidor de los clubes y de las pistas de la comunidad sin publicar nada (pide Node 22 o más nuevo).

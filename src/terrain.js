@@ -107,10 +107,45 @@ export function crearTerreno(etapa) {
   // (con varios ambientes) en la grilla gruesa: de que zona es el punto del camino mas cercano, y cuanto relieve toca ahi
   // (el relieve se mezcla de a poco entre un ambiente y otro, para que no quede un escalon donde cambian)
   const ZG = varios ? new Uint8Array(gx * gz) : null, RG = varios ? new Float32Array(gx * gz) : null;
+  // En un camino larguisimo (un circuito de mas de 4,8 km), recorrer todos los puntos del camino para cada celda tardaria
+  // minutos: se miran solo los que estan cerca (guardados en cubos de 64 m), con un borde que se va apagando de a poco para
+  // que no haya saltos donde un punto entra o sale. Las pistas de siempre siguen por el camino de antes, sin tocar.
+  const GRANDE = pts.length / 11 > 2400, CUBO = 64, RCERCA = 260, cubos = new Map(), claveC = (a, b) => (a + 512) * 4096 + b + 512;
+  if (GRANDE) for (let k = 0; k < pts.length; k += 11) {
+    const c = claveC(Math.floor((pts[k] - x0) / CUBO), Math.floor((pts[k + 1] - z0) / CUBO));
+    if (!cubos.has(c)) cubos.set(c, []);
+    cubos.get(c).push(k);
+  }
   for (let j = 0; j < gz; j++) for (let i = 0; i < gx; i++) {
     const x = x0 + i * G, z = z0 + j * G;
     let sw = 0, sh = 0, dm = 1e9, sr = 0, cual = 0;
-    for (let k = 0; k < pts.length; k += 11) {
+    if (GRANDE) {
+      // 1) el punto mas cercano (se agranda la busqueda hasta que no pueda haber uno mas cerca)
+      const cx = Math.floor((x - x0) / CUBO), cz = Math.floor((z - z0) / CUBO);
+      for (let rad = 1; rad <= 64; rad *= 2) {
+        for (let a = -rad; a <= rad; a++) for (let b = -rad; b <= rad; b++) {
+          const l = cubos.get(claveC(cx + a, cz + b));
+          if (l) for (const k of l) { const ax = x - pts[k], az = z - pts[k + 1], d2 = ax * ax + az * az; if (d2 < dm) { dm = d2; cual = k; } }
+        }
+        if (dm <= (rad * CUBO) * (rad * CUBO)) break;
+        dm = 1e9;
+      }
+      // 2) todos los que quedan a menos de "R" (lo comun son 260 m; en un lugar bien lejos del camino, el doble de lo que lo separa)
+      const R = Math.max(RCERCA, 2 * Math.sqrt(dm)), R2 = R * R, n = Math.ceil(R / CUBO);
+      for (let a = -n; a <= n; a++) for (let b = -n; b <= n; b++) {
+        const l = cubos.get(claveC(cx + a, cz + b));
+        if (!l) continue;
+        for (const k of l) {
+          const ax = x - pts[k], az = z - pts[k + 1], d2 = ax * ax + az * az;
+          if (d2 >= R2) continue;
+          const u = 1 - d2 / R2, w = u * u / ((d2 + 12) * (d2 + 12));
+          const lado = ax * pts[k + 3] + az * pts[k + 4], f = Math.max(0, Math.abs(lado) - pts[k + (lado > 0 ? 9 : 10)]);
+          sw += w;
+          sh += w * (pts[k + 2] + (lado > 0 ? pts[k + 5] * Math.min(1, f / pts[k + 6]) : pts[k + 7] * Math.min(1, f / pts[k + 8])));
+          if (varios) sr += w * BIO[zonaDeTramo[P.T[k / 11 * 2]]].relieve;
+        }
+      }
+    } else for (let k = 0; k < pts.length; k += 11) {
       const ax = x - pts[k], az = z - pts[k + 1], d2 = ax * ax + az * az, w = 1 / ((d2 + 12) * (d2 + 12));
       const lado = ax * pts[k + 3] + az * pts[k + 4], f = Math.max(0, Math.abs(lado) - pts[k + (lado > 0 ? 9 : 10)]);
       sw += w;

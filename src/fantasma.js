@@ -16,6 +16,10 @@ const ESCALA = 10;         // las posiciones se guardan cada 10 cm
 const ALTO = 20;           // la altura sobre el piso, cada 5 cm
 const VUELTA = 256;        // el rumbo: 256 pasos por vuelta entera
 export const AUTOS_DEL_LINK = ['vitarita', 'kacito'];   // el orden no se puede cambiar: los links guardan el numero (hasta 8)
+// Cuantas muestras se graban como mucho: 3600 = 30 minutos (el tramo largo, Mina Clavero – Giulio Cesare, lleva 15 a 20).
+// Las pasadas de mas de 2047 muestras (17 minutos) anotan su largo en 12 bits en vez de 11, y lo avisan con la marca 8
+// (asi los links de antes, de 11 bits, se siguen leyendo igual).
+export const TOPE_MUESTRAS = 3600;
 const COLORES = 'varn', ABANDONOS = ['', 'roto', 'tiempo', 'cerrado'];
 
 // --- texto <-> bytes (base64 que se puede poner en un link) ---
@@ -45,7 +49,7 @@ export function limpiarTexto(txt, largo) {
 export const limpio = (txt) => limpiarTexto(txt, 14);
 
 // Un resultado es: { pista, nombre, t (segundos), s: [segundos de cada sector], c: 'vvarv', auto, ab: '' o por que abandono,
-//                    vueltas, roto, practica, ayuda (corrio con la ayuda de manejo) }
+//                    vueltas, roto, practica, ayuda (corrio con la ayuda de manejo), serio (en modo "rally serio") }
 
 // --- el compresor: escribe bits sueltos, cada uno con la probabilidad que le calcula un "modelo" que va aprendiendo ---
 // (Es el metodo de los compresores de archivos, en chico. Todo con numeros enteros: da lo mismo en cualquier aparato.)
@@ -160,9 +164,12 @@ function pasarResultado(io, m, enc, dec, pista, completo) {
   // con un programa viejo; y un link viejo, sin partes, se sigue leyendo: su auto queda con el nombre de antes.
   const codigo = enc ? codigoDe(m.auto) : '', parecido = codigo[1] === '2' ? 'kacito' : 'vitarita';
   o.auto = AUTOS_DEL_LINK[io.crudo(Math.max(0, AUTOS_DEL_LINK.indexOf(parecido)), 3)] || AUTOS_DEL_LINK[0];
-  // (cuatro marcas: la primera es la ayuda de manejo; la segunda, que trae las partes del auto; las otras dos quedan libres)
-  const marcas = io.crudo((m.ayuda ? 1 : 0) | (enc ? 2 : 0), 4);
+  // (cuatro marcas: la primera es la ayuda de manejo; la segunda, que trae las partes del auto; la tercera, que corrio en
+  // modo "rally serio"; la cuarta queda libre. Los links de antes tienen la tercera en cero: sin modo serio.)
+  const marcas = io.crudo((m.ayuda ? 1 : 0) | (enc ? 2 : 0) | (m.serio ? 4 : 0) | (m.largas ? 8 : 0), 4);
   o.ayuda = !!(marcas & 1);
+  o.serio = !!(marcas & 4);
+  o.largas = !!(marcas & 8);   // (la pasada dura mas de 17 minutos: su largo va en 12 bits)
   if (marcas & 2) {   // las partes: cuantas (hasta 7 tipos) y el numero de cada una (de 1 a 16)
     const n = io.crudo(codigo.length, 3);
     let s = '';
@@ -259,7 +266,7 @@ export function crearGrabacion(T) {
     // se llama en cada cuadro; guarda una muestra cada medio segundo.
     // (cuando el reloj salta por una penalizacion, se repite la muestra: el fantasma se queda esperando esos segundos)
     muestra: (tiempo, c) => {
-      while (tiempo >= xs.length * PASO && xs.length < 1900) {
+      while (tiempo >= xs.length * PASO && xs.length < TOPE_MUESTRAS) {
         xs.push(c.pos[0]); zs.push(c.pos[2]); hs.push(Math.atan2(c.adelante[0], -c.adelante[2]));
         ys.push(Math.max(0, Math.min(255, Math.round((c.pos[1] - T.altura(c.pos[0], c.pos[2])) * ALTO))));
       }
@@ -269,11 +276,11 @@ export function crearGrabacion(T) {
     codigo: async (m, tabla, espia) => {
       const w = crearEscritor(espia), enc = new TextEncoder(), dec = new TextDecoder();
       w.crudo(versionDe(m.pista) & 63, 6); w.crudo(m.pista & 16383, 14);
-      pasarResultado(w, m, enc, dec, m.pista, true);
+      pasarResultado(w, { ...m, largas: xs.length > 2047 }, enc, dec, m.pista, true);
       const otros = tabla.slice(0, 10);
       w.crudo(otros.length, 4);
-      for (const x of otros) pasarResultado(w, x, enc, dec, m.pista, false);
-      w.crudo(xs.length, 11);
+      for (const x of otros) pasarResultado(w, { ...x, largas: false }, enc, dec, m.pista, false);
+      w.crudo(xs.length, xs.length > 2047 ? 12 : 11);
       recorrerVuelta(w, crearModelos(), xs.length, enCamino(T.camino, xs, zs, hs, ys, T.vuelta ? T.vuelta.desde : T.largada.i));
       return 'd' + aTexto(w.fin());
     },
@@ -309,7 +316,7 @@ function leerNuevo(b) {
   const version = r.crudo(0, 6), pista = r.crudo(0, 14);
   const marca = pasarResultado(r, vacio, null, dec, pista, true), tabla = [], cuantos = Math.min(10, r.crudo(0, 4));
   for (let k = 0; k < cuantos; k++) tabla.push(pasarResultado(r, vacio, null, dec, pista, false));
-  const n = Math.min(2000, r.crudo(0, 11));
+  const n = Math.min(TOPE_MUESTRAS + 100, r.crudo(0, marca.largas ? 12 : 11));
   if (!(pista > 0) || r.seAcabo()) return null;
   let hecha;
   return {

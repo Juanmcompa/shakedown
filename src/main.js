@@ -7,7 +7,7 @@ import { esCircuito, circuitoDe, esDeLaComunidad, COMUNIDAD } from './circuitos.
 import { armarHoja, huellaDeHoja } from './hoja.js';
 import { crearTerreno } from './terrain.js';
 import { crearReferencia } from './referencia.js';
-import { crearAuto } from './vehicle.js';
+import { crearAuto, enSerio } from './vehicle.js';
 import { crearPartida } from './reglas.js';
 import { crearAyuda } from './ayuda.js';
 import { crearCopiloto } from './copiloto.js';
@@ -40,7 +40,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '22';
+const PAGINA = '23';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -196,6 +196,8 @@ const ayuda = crearAyuda(T);
 // (id: el codigo del auto armado: ver partes.js)
 const refs = { [codigoDe(REFERENCIA)]: ref }, refDe = (id) => { id = codigoDe(id); return refs[id] || (refs[id] = crearReferencia(T, configDe(id))); };
 let c = null, dibujo = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false, conTrazada = !!gusto('trazada');
+// el modo "rally serio" (ver SERIO en config.js): lo contrario de la ayuda. (Si alguna vez quedaron los dos, gana la ayuda.)
+let conSerio = !conAyuda && !!gusto('serio'), serioDeLaPasada = false;
 // El auto con el que se corre: el que armaste en el garaje (su codigo de partes, como '431'; ver partes.js).
 // (Lo guardado de antes, 'vitarita' o 'kacito', pasa a ser su codigo.)
 function ponerAuto(id) {
@@ -203,7 +205,7 @@ function ponerAuto(id) {
   const C = configDe(id);
   if (dibujo) escena.remove(dibujo.grupo);
   club.ponerAuto(id);
-  c = crearAuto(T, conAyuda ? { ...C, ...AYUDA.auto } : C);
+  c = crearAuto(T, conAyuda ? { ...C, ...AYUDA.auto } : conSerio ? enSerio(C) : C);
   if (conAyuda) ayuda.preparar(C, refDe(id));
   if (conTrazada) trazada.usar(refDe(id));
   dibujo = crearDibujo(escena, C);
@@ -449,7 +451,7 @@ function largar(conTutorial) {
   modo = club.sePuedeOficial() ? 'oficial' : 'practica';
   raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
   pantalla = 'jugando';
-  tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda;
+  tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio;
   rondas = 0; mejorRonda = null; mejoroAlgo = false;
   partida.preparar(c);
   if (!explicar) partida.largar();
@@ -482,7 +484,7 @@ const tutorial = crearTutorial({
   alTerminar: (ayudaElegida) => {
     club.gusto('tutorial', 1);
     if (ayudaElegida !== undefined && ayudaElegida !== conAyuda) ajustar('ayuda', ayudaElegida);
-    ayudaDeLaPasada = conAyuda;
+    ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio;
     trazada.mostrar(conTrazada);
     partida.largar();
     hud.sello(true);
@@ -499,7 +501,7 @@ const mejorGuardado = () => { const g = T.vuelta && club.practica(); return g &&
 // (vuelta cerrada) Se cruzo la raya: se cerro una ronda. Si es la mejor de la salida, queda como resultado (y de fantasma).
 function cerrarRonda(v) {
   rondas++;
-  const r = { pista: numero, nombre: club.nombre(), t: v.tiempo, s: v.sectores, c: v.colores, auto: club.auto(), ab: '', vueltas: v.vueltas, roto: Math.round(v.roto), practica: true, ayuda: ayudaDeLaPasada };
+  const r = { pista: numero, nombre: club.nombre(), t: v.tiempo, s: v.sectores, c: v.colores, auto: club.auto(), ab: '', vueltas: v.vueltas, roto: Math.round(v.roto), practica: true, ayuda: ayudaDeLaPasada, serio: serioDeLaPasada };
   const marca = mejorGuardado(), esLaMejor = !mejorRonda || v.tiempo < mejorRonda.r.t, g = grabacion;
   if (esLaMejor) {
     mejorRonda = { r, g };
@@ -526,7 +528,7 @@ function terminar() {
   hud.llamar(false); trabado = false;
   const llego = partida.estado === 'llegada';
   let r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: club.auto(),
-    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada };
+    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada, serio: serioDeLaPasada };
   let mejoro = false, g = grabacion;   // (en las practicas y en los circuitos queda guardada solo la mejor)
   if (T.vuelta && mejorRonda) { r = { ...mejorRonda.r, nombre: club.nombre(), rondas, seRompio: partida.estado === 'abandono' }; g = mejorRonda.g; mejoro = mejoroAlgo; }
   else if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
@@ -609,7 +611,9 @@ const teclas = crearTeclas((tecla) => {
 // --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
 const APLICAR = {
   // (el auto se arma de nuevo, salvo que ya este corriendo: en la largada, mientras dura el tutorial, todavia se puede)
-  ayuda: (v) => { conAyuda = !!v; if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); APLICAR.trazada(gusto('trazada')); },
+  // La ayuda y el modo serio son contrarios: prender uno apaga el otro.
+  ayuda: (v) => { conAyuda = !!v; if (conAyuda && gusto('serio')) { club.gusto('serio', false); conSerio = false; } if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); APLICAR.trazada(gusto('trazada')); },
+  serio: (v) => { conSerio = !!v; if (conSerio && gusto('ayuda')) { club.gusto('ayuda', false); conAyuda = false; APLICAR.trazada(gusto('trazada')); } if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); },
   trazada: (v) => { conTrazada = !!v; if (conTrazada) trazada.usar(refDe(club.auto())); trazada.mostrar(conTrazada && pantalla === 'jugando'); },
   lejos: (v) => camara.alejar(v),
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
@@ -620,7 +624,7 @@ const APLICAR = {
   voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); hud.prendido('voz', conVoz); },
 };
 function ajustar(clave, valor) { club.gusto(clave, valor); APLICAR[clave](valor); menu.pintar(); }
-for (const clave in APLICAR) if (clave !== 'ayuda') APLICAR[clave](gusto(clave));   // (la ayuda ya se tuvo en cuenta al armar el auto)
+for (const clave in APLICAR) if (clave !== 'ayuda' && clave !== 'serio') APLICAR[clave](gusto(clave));   // (la ayuda y el modo serio ya se tuvieron en cuenta al armar el auto)
 // En el celular, si no hay sensor de inclinacion (o se eligio doblar con flechas), aparecen las flechas.
 function pintarVolante() { raiz.classList.toggle('sin-volante', tactil && (hayVolante === false || conFlechas)); encuadrar(); }
 

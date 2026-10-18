@@ -105,7 +105,7 @@ export function crearPartida(T, par) {
         avisar('ronda', ronda);
       }
     }
-    if (!V && p.tiempo > JUEGO.maximo) return abandonar('tiempo');   // (en una vuelta cerrada no hay apuro: se practica lo que se quiera)
+    if (!V && p.tiempo > (T.etapa.maximo || JUEGO.maximo)) return abandonar('tiempo');   // (en una vuelta cerrada no hay apuro: se practica lo que se quiera)
 
     // daño: de cada choque cuenta el golpe mas fuerte. Los de una caida al vacio no cuentan: eso se paga volviendo al camino.
     // (el aviso dice tambien contra que fue y como quedo el auto. El ruido del choque no lo espera: suena en el momento, ver

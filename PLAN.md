@@ -82,12 +82,17 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] La meta se festeja: papelitos de colores desde las esquinas de abajo, el público y una bocina; y el resultado te compara solo con tus amigos (en qué puesto quedaste y a cuánto estás del de adelante y del de atrás; si saliste primero, más papelitos)
 - [x] Los golpes suenan según contra qué: piedra, madera, ramas, alambrado, fardo, chapa, plástico, goma, pared o el piso. Cuanto más roto está el auto, más se nota: el motor tose y raspa, larga vapor y le bailan las chapas sueltas
 - [x] Panel de circuitos reordenado: crear una pista arriba, después las oficiales y al final las de la comunidad con su club y quién la armó; filas compactas y, en la compu, dos columnas
+- [x] Modo "rally serio" en la Configuración (casco): transferencia de peso, cubiertas con pico y caída, círculo de agarre, freno de mano que bloquea, autoblocantes según la tracción e inercia según peso y largo; sin ayudas escondidas. Contrario a la ayuda de manejo; marcado en el link y en la tabla propia. Arcade igual que antes
+- [x] Tramo largo Mina Clavero – Giulio Cesare (19,2 km, 1000 m de desnivel), basado en el del Rally Argentina; los fantasmas graban hasta 30 minutos
 - [x] Garaje: el auto se arma con un motor, un chasis y unas ruedas (cinco de cada uno, 125 combinaciones balanceadas con el piloto automático). Código de partes en el link, la tabla y lo que se comparte; el fantasma muestra el auto de cada uno; dos chasis nuevos dibujados (buggy y camioncito)
 - [x] Para trabajar con Claude: `CLAUDE.md` con las reglas del proyecto, un subagente por área del juego (`.claude/agents/`) y las pruebas en `tools/pruebas/`
 - [x] Los tiempos se guardan solos al terminar, sin compartirlos: el resultado dice si quedó guardado y en qué tabla; sin señal (o si se cierra el juego enseguida) se reintenta solo. Un abandono dice DNF en las tablas, en la portada, en el resultado y en lo que se comparte; también la oficial que quedó cortada porque se cerró el juego
 - [x] Ícono nuevo para el botón de circuitos: un mapa con tres lugares marcados. El de antes (una vuelta cerrada, como una O) no se entendía: la gente no se daba cuenta de que ahí había más pistas
 
 ## Lo que sigue
+
+- Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).
+- El recorrido exacto de Mina Clavero – Giulio Cesare, si se consigue el trazado del mapa (OpenStreetMap estuvo bloqueado).
 
 1. **Más variedad en la pista del día:** anchos que cambian (ruta ancha, camino vecinal, huella angosta), pedazos de asfalto entre casas, puentes; y cornisas más cortas y con pirca en las curvas.
 2. **Tres autos argentinos más** (El Fitito, El Doce y El 504). Cada día se ofrecen tres, que van rotando según el día y la pista.

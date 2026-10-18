@@ -48,7 +48,7 @@ await A.click('[data-panel="circuitos"]');
 await A.waitForTimeout(300);
 ver('A: en los circuitos estan las pistas de la comunidad, todavia vacias, y el boton para armar una', await visible(A, 'armarPista') && await visible(A, 'comunidadVacia'), await texto(A, 'comunidadVacia'));
 const ordenCircuitos = await A.evaluate(() => [...document.querySelectorAll('#panelCircuitos > *')].filter((e) => !e.hidden).map((e) => e.id || e.className.split(' ')[0] || e.tagName.toLowerCase()).join(' > ') + ' | ' + document.querySelectorAll('#circuitos li').length + ' oficiales');
-ver('A: arriba de todo, crear una pista; despues las oficiales y al final las de la comunidad', ordenCircuitos === 'h2 > armarPista > oficiales > con-servidor | 5 oficiales', ordenCircuitos);
+ver('A: arriba de todo, crear una pista; despues las oficiales y al final las de la comunidad', ordenCircuitos === 'h2 > armarPista > oficiales > con-servidor | ' + (1 + (await import('../../src/circuitos.js')).CIRCUITOS.length) + ' oficiales', ordenCircuitos);
 await A.screenshot({ path: 'out/creador-0-circuitos.png' });
 await A.click('#armarPista');
 await A.waitForTimeout(400);

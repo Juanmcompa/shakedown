@@ -3,7 +3,7 @@
 // Los grados van del 1 (la mas cerrada) al 6 (casi recta); "h" es una horquilla y "e", una esquina de 90 grados.
 
 const GRADOS = { 1: 'uno', 2: 'dos', 3: 'tres', 4: 'cuatro', 5: 'cinco', 6: 'seis' };
-const DICHO = { salto: 'salto', vado: 'vado, agua', barro: 'barro', angosto: 'angosto', cornisa: 'cornisa, cuidado', meta: 'meta',
+const DICHO = { salto: 'salto', baden: 'badén', vado: 'vado, agua', barro: 'barro', angosto: 'angosto', cornisa: 'cornisa, cuidado', meta: 'meta',
   puente: 'puente, angosto', cuidado: 'cuidado', adoquin: 'adoquines', asfalto: 'asfalto', ripio: 'ripio', lomo: 'lomo', lajas: 'lajas, despacio', pueblo: 'pueblo' };
 
 // lo que diria el copiloto por una nota

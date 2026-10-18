@@ -68,6 +68,8 @@ export function crearMenu(o) {
   const libre = !!fijo || !!comunidad, borrador = !!(comunidad && comunidad.borrador);
   // el salvavidas que marca un tiempo hecho con la ayuda de manejo
   const conAyuda = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('salvavidas'); img.alt = 'con ayuda de manejo'; img.title = 'Con ayuda de manejo'; return img; };
+  // y el casco, uno hecho en modo "rally serio"
+  const conSerio = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('casco'); img.alt = 'en modo rally serio'; img.title = 'En modo rally serio'; return img; };
   let ultimo = null, linkDe = null, ultimoMejoro = false;   // el ultimo resultado mostrado, la funcion que arma su link y si fue tu mejor tiempo
   // la tabla: de quien se ven los tiempos ('' = todos los que se conocen; si no, el codigo de un club), si esta abierto
   // el formulario para armar un club, y lo ultimo que hay para avisar ahi
@@ -291,6 +293,7 @@ export function crearMenu(o) {
       const quien = crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?'));
       quien.append(crear('small', 'codigo-auto', codigoDe(r.auto)));   // (con que auto corrio: el codigo de sus partes)
       if (r.ayuda) quien.append(conAyuda());
+      else if (r.serio) quien.append(conSerio());
       li.append(crear('span', 'emoji', configDe(r.auto).emoji), quien, crear('span', 'tiempoMarca', marcaDe(r)), cuadritos(r.c));
       // (un DNF no tiene fantasma para correrle: no termino, y si se cerro el juego en el medio, ni siquiera quedo grabado)
       if ((r.codigo || r.id) && !r.ab) {
@@ -602,9 +605,9 @@ export function crearMenu(o) {
         caja.append(s);
       });
       $('finDetalle').textContent = r.ab ? '' : (r.rondas ? (r.rondas === 1 ? 'Diste una vuelta. ' : 'La mejor de ' + r.rondas + ' vueltas. ') + (r.seRompio ? 'Después rompiste el auto. ' : '') : '')
-        + (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : '');
+        + (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : r.serio ? ' En modo rally serio.' : '');
       // despues de una pasada complicada sin ayuda, se la ofrece
-      $('finAyuda').hidden = !!r.ayuda || !!ajustes.leer('ayuda') || !(r.ab === 'roto' || r.vueltas >= 2 || (!r.ab && r.t > ref.total * 1.6));
+      $('finAyuda').hidden = !!r.ayuda || !!r.serio || !!ajustes.leer('ayuda') || !(r.ab === 'roto' || r.vueltas >= 2 || (!r.ab && r.t > ref.total * 1.6));
       $('finAyuda').firstElementChild.textContent = '¿Se complicó?';
       $('probarAyuda').hidden = false;
       $('nombre').value = club.nombre();

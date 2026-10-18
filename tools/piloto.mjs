@@ -4,9 +4,10 @@
 // uso: node tools/piloto.mjs [desde] [cuantas] [auto] [traza]
 //   node tools/piloto.mjs 1 10            las pistas 1 a 10, con todos los pilotos
 //   node tools/piloto.mjs 7 1 kacito t    la pista 7 con el Kacito, contando cada problema
+//   SERIO=1 node tools/piloto.mjs 1 6     todos los pilotos en modo "rally serio" (ver SERIO en config.js)
 import { crearTerreno } from '../src/terrain.js';
 import { generarPista } from '../src/generador.js';
-import { crearAuto } from '../src/vehicle.js';
+import { crearAuto, enSerio } from '../src/vehicle.js';
 import { crearPartida } from '../src/reglas.js';
 import { crearReferencia } from '../src/referencia.js';
 import { AUTOS, REFERENCIA, JUEGO, AYUDA } from '../src/config.js';
@@ -81,19 +82,20 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
 //   ritmo: que parte de la velocidad de referencia se anima a usar.  reaccion: cada cuantos segundos corrige.
 //   teclas: true = todo o nada, como con el teclado.  desvio: cuantos metros se aparta de la trazada.
 //   pie: true = no suelta nunca el acelerador.  ayuda: true = corre con la ayuda de manejo del juego.
+//   serio: true = corre en modo "rally serio" (o para todos: SERIO=1 en el ambiente).
 // En un circuito de vuelta cerrada da "rondas" vueltas (tres si no se dice) y lo que cuenta es la mejor:
 // el tiempo, los colores y los sectores son los de esa; las vueltas al camino y el daño, la suma de todas.
 export function correr(T, par, auto, o) {
   // el piloto se guia por la referencia de SU auto; los colores salen de la referencia comun (par)
   const ref = crearReferencia(T, conf(auto));
-  const P = T.camino, c = crearAuto(T, o.ayuda ? { ...conf(auto), ...AYUDA.auto } : conf(auto)), p = crearPartida(T, par.sectores), rnd = azar(o.semilla || 1);
+  const P = T.camino, c = crearAuto(T, o.ayuda ? { ...conf(auto), ...AYUDA.auto } : o.serio || AMBIENTE.SERIO ? enSerio(conf(auto)) : conf(auto)), p = crearPartida(T, par.sectores), rnd = azar(o.semilla || 1);
   const pide = { x: 0, y: 0, mano: false }, ent = { x: 0, y: 0, mano: false }, problemas = [], m = {}, ayuda = o.ayuda ? crearAyuda(T) : null;
   if (ayuda) ayuda.preparar(conf(auto));
   let t = 0, prox = 0, vmax = 0, golpes = 0, cruzado = 0, fuera = 0;
   p.preparar(c); p.largar();
   const V = T.vuelta, rondas = o.rondas || 3;
   let vueltasAntes = 0, rotoAntes = 0;
-  while (t < (V ? 400 * rondas : 700) && p.estado !== 'llegada' && p.estado !== 'abandono' && !(V && p.rondas.length >= rondas)) {
+  while (t < (V ? 400 * rondas : Math.max(700, (T.etapa.maximo || 0) + 60)) && p.estado !== 'llegada' && p.estado !== 'abandono' && !(V && p.rondas.length >= rondas)) {
     if (p.estado === 'corriendo' && t >= prox) { prox = t + o.reaccion * (0.7 + 0.6 * rnd()); decidir(T, ref, c, p, o, m, rnd, t, pide); }
     if (o.teclas && t > m.hasta && !(t < m.atras)) pide.x = 0;   // solto la tecla
     if (m.volver) { m.volver = false; p.volver(c, 'pedido'); }

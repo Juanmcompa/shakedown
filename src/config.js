@@ -88,6 +88,36 @@ export const REFERENCIA = 'vitarita';
 //   mano, mira: como apunta a la trazada: cuanto volante por cada radian de error, y cuantos metros adelante mira por cada m/s.
 export const AYUDA = { auto: { firme: 0.8, estable: 1.1, alinea: 0.85 }, ritmo: 0.7, frena: 3.6, suave: 2.5, suelta: 0.5, volante: 1, cede: 0.6, mano: 2.6, mira: 0.3 };
 
+// El modo "rally serio" (se prende en la configuracion; es lo contrario de la ayuda de manejo): vale para cualquier auto
+// del garaje. Saca las ayudas escondidas y hace la fisica de las cubiertas mas de verdad (ver vehicle.js). El que sabe
+// llevar el auto de costado va mas rapido; el que no, se cruza. No cambia la pista ni el tiempo de referencia.
+//   auto: lo que cambia de la configuracion de cualquier auto (como AYUDA.auto): sin "estable" (nada frena el giro del
+//         auto sobre si mismo) y casi sin "alinea" (el contravolante lo pone uno). (colaFirme no se usa: ver "cola".)
+//         frenoAdelante: los frenos mas parejos, como en un auto de rally: frenando, la cola se aliviana y el auto rota.
+//   sensible: cuanto pierde la cubierta al cargarse (0 = el agarre crece igual que el peso; 0.1 = con el doble de peso,
+//             agarra un 87% mas). Por eso pasar el peso de un eje al otro (frenando o acelerando) cambia el balance.
+//   pico: cuanto de costado tiene que ir la cubierta para dar todo su agarre, en partes de lo de arcade (deriva x suelto).
+//   caida: pasado el pico, a cuanto cae el agarre de costado [en asfalto, en piso suelto] (1 = no cae).
+//   ancho: en cuanto mas de costado (en picos) termina de caer [asfalto, suelto]. En el ripio la caida es larga y suave:
+//          ahi se puede sostener el derrape con el acelerador y el contravolante.
+//   cola: cuanto mas agarran de costado las de atras (el reglaje del auto: mas = mas estable, menos = mas suelto).
+//   piso: con la rueda patinando, que parte del agarre le queda de costado [acelerando, frenando de mas]. Acelerando
+//         queda bastante (si no, con el teclado, que acelera todo o nada, los autos de traccion trasera serian un trompo);
+//         frenando de mas, poco: la cola bloqueada se suelta.
+//   volante: a velocidad, el volante a fondo lleva las ruedas de adelante hasta su pico de agarre (contado desde hacia
+//            donde va la trompa) por esto. Mas = pasa el pico y el auto "empuja" de trompa.
+//   frenaAlLimite: frenando, las de adelante se usan al limite sin bloquearse (como frena un piloto con el pie): de lo
+//                  que frenan, cuanto se le saca al agarre de costado (1 = todo; menos = dobla mejor frenando).
+//   desliza: el agarre de una rueda bloqueada (freno de mano), que va arrastrandose hacia donde vaya.
+//   autoblocante: cuanto se bloquean los diferenciales (0 = abiertos: la rueda que menos agarra se lleva la fuerza y
+//                 patina; 1 = trabados: la fuerza va a la que mas agarra). En los 4x4 el reparto entre ejes es por agarre.
+//   inercia: la resistencia a girar sobre si mismo sale del peso y de las medidas del auto (el buggy rota rapido, el
+//            camioncito tarda); esto la multiplica.
+export const SERIO = {
+  auto: { estable: 0, alinea: 0.12, colaFirme: 1, frenoAdelante: 0.6 },
+  sensible: 0.1, pico: 0.8, caida: [0.7, 0.8], ancho: [1, 2.4], cola: 1.08, piso: [0.72, 0.4], frenaAlLimite: 0.4, volante: 1, desliza: 0.65, autoblocante: 0.5, inercia: 1,
+};
+
 // El servidor del juego: guarda las pasadas que se comparten (asi el link es corto) y las tablas de los clubes.
 // Es la direccion donde quedo publicado servidor/worker.js (ver servidor/LEEME.md), sin barra al final.
 // Vacio = sin servidor: el juego anda igual, con el link largo, y la tabla se arma con los links que se abren.
@@ -108,7 +138,8 @@ export const FIRMA = { etapa: 'Early Access', aviso: 'App en desarrollo', autor:
 //   lejos: la distancia de la camara, en partes de la normal (0.7 a 1.5).   pedales: su tamaño, igual.
 //   trazada: la linea en el piso que muestra por donde pasar y donde frenar. Mientras nadie la toque acompaña a la
 //            ayuda de manejo: con ayuda se ve (asi se entiende por donde va a ir el auto) y sin ayuda no.
-export const GUSTOS = { ayuda: false, trazada: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, sonido: true, voz: true };
+//   serio: el modo "rally serio" (ver SERIO). Es lo contrario de la ayuda: si se prende uno, se apaga el otro.
+export const GUSTOS = { ayuda: false, serio: false, trazada: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, sonido: true, voz: true };
 export const gradosDeInclinacion = (sensible) => 24 * 2 ** ((55 - sensible) / 55);
 
 // Camaras (tecla C, o el boton de la camara). Lo que va entre corchetes cambia con la velocidad: [despacio, rapido].

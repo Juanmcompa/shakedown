@@ -52,7 +52,7 @@ export function crearCreador(o) {
       caja.append(b);
       return b;
     };
-    for (const id in BIOMAS) opcion($('crAmbiente'), BIOMAS[id].emoji, BIOMAS[id].nombre, () => elegirAmbiente(id)).dataset.valor = id;
+    for (const id in BIOMAS) if (!BIOMAS[id].fijo) opcion($('crAmbiente'), BIOMAS[id].emoji, BIOMAS[id].nombre, () => elegirAmbiente(id)).dataset.valor = id;
     for (const id in CLIMAS) opcion($('crClima'), CLIMAS[id].emoji, CLIMAS[id].nombre, () => { hoja = { ...hoja, c: id }; dice = ''; cambio(); }).dataset.valor = id;
     for (const g of GRUPOS) {
       const caja = $(g.id);

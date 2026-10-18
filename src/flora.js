@@ -42,6 +42,13 @@ const YUYOS = {
     lejos: [['coiron', 4, 0], ['neneo', 1.5, 2], ['arbustoSeco', 0.8, 4]],
     cuanto: [0.5, 0.4, 0.14],
   },
+  // la sierra: paja brava y matas bajas, con muchos bloques de granito sueltos
+  sierra: {
+    cerca: [['coiron', 5, 0], ['mataSeca', 3, 0], ['piedra', 1.8, 1], ['amarillas', 0.5, 3]],
+    medio: [['coiron', 5, 0], ['arbustoSeco', 1.4, 4], ['piedraGrande', 1.8, 1], ['mataSeca', 2.4, 0], ['piedra', 1.4, 1], ['neneo', 0.7, 2]],
+    lejos: [['coiron', 4, 0], ['arbustoSeco', 1, 4], ['piedraGrande', 0.6, 1]],
+    cuanto: [0.5, 0.4, 0.14],
+  },
 };
 
 // Arma la vegetacion y la agrega a la escena. Devuelve las celdas del mapa que quedan debajo de un arbol.
@@ -60,7 +67,7 @@ export function crearFlora(T, escena, esc, liviano) {
     if (o.clase !== 'arbol') continue;
     const r = azar(Math.floor(o.x * 131 + o.z * 71) + 9), z = zona(o.x, o.z);
     if (o.tipo === 'arbusto') {   // un arbusto es un sprite; segun el bioma, uno u otro
-      const donde = T.biomaEn(o.x, o.z), dibujo = donde === 'montana' ? (r() < 0.6 ? 'neneo' : 'arbustoSeco') : donde === 'campo' ? (r() < 0.6 ? 'arbustoClaro' : 'arbustoFlor') : 'arbusto';
+      const donde = T.biomaEn(o.x, o.z), dibujo = donde === 'montana' ? (r() < 0.6 ? 'neneo' : 'arbustoSeco') : donde === 'sierra' ? (r() < 0.25 ? 'neneo' : 'arbustoSeco') : donde === 'campo' ? (r() < 0.6 ? 'arbustoClaro' : 'arbustoFlor') : 'arbusto';
       z.yuyos.poner(dibujo, o.x, o.y - 0.05, o.z, { escala: 1.15 + r() * 0.5, azar: r(), mueve: 0.04 });
       continue;
     }

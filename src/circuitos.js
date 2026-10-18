@@ -19,6 +19,8 @@ export const CIRCUITOS = [
   // vuelta: true = es una vuelta cerrada: no tiene llegada, se dan las vueltas que se quieran y queda la mejor.
   { id: 'practica', numero: 16004, version: 1, vuelta: true, nombre: 'Vuelta del Club', corto: 'Práctica', emoji: '🔁', bioma: 'campo', clima: 'sol', caracter: 'mixta', lugar: '37°46′S 68°12′O',
     detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.', breve: 'Vuelta cerrada: queda la mejor' },
+  { id: 'giulio', numero: 16005, version: 1, maximo: 1500, nombre: 'Mina Clavero – Giulio Cesare', corto: 'Giulio Cesare', emoji: '🏔️', bioma: 'sierra', clima: 'sol', caracter: 'mixta', lugar: '31°43′S 64°58′O',
+    detalle: 'Casi 20 kilómetros de la pampa de altura al pueblo: horquillas arriba, rectas rápidas con saltos, curvas entre el granito, cuestas con pirca, un arroyo y las esquinas de Mina Clavero.', breve: '19 km: de la sierra al pueblo' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
 // Las pistas de la comunidad (las que arma un jugador: ver hoja.js) usan los numeros de 13000 a 15999. Duran dos semanas
@@ -431,7 +433,260 @@ function cerrar(tramos) {
   return tramos;
 }
 
-const ARMAR = { subida, bajada, urbano, practica };
+// ================= MINA CLAVERO - GIULIO CESARE: casi 20 km de la pampa de altura al pueblo =================
+// Un tramo del Rally Argentina (cerro el rally varias veces y fue Power Stage): baja desde lo alto de las Sierras Grandes
+// (la pampa de Achala y Giulio Cesare, granito y pastizal) hasta Mina Clavero, en el valle de Traslasierra (~915 m).
+// Esta armado "a ojo": no es el recorrido real, pero tiene sus ingredientes.
+// Es seis veces mas largo que los otros, y el mapa del juego es una grilla de un metro por celda: para que no crezca sin
+// limite el camino baja en zigzag por la ladera: patas larguisimas (de mas de un kilometro) que van de este a oeste y vuelven,
+// unidas por horquillas, y cada una un poco mas abajo (y mas al sur) que la anterior. Las patas se abren apenas en abanico:
+// pegadas en la horquilla (19 metros) y bien separadas en la otra punta (unos 120). Asi nunca hay dos partes del camino
+// cerca que esten a alturas muy distintas, y el mapa queda de ~1,7 millones de celdas en vez de 10.
+// Cada pata cuenta una parte: el alto de Achala (la largada), la pampa (rectas rapidas, lomas, saltos, un arroyo), la quebrada
+// (curvas encadenadas entre el granito), la cuesta (laderas con pirca), el valle de Traslasierra y el pueblo.
+function giulio() {
+  const T = trazado(), r = azar(16005), { cuadra, esquina } = pueblo(T, r);
+  // por donde va el trazado (y hacia donde mira), para poder pedir "una recta hasta tal lugar del mapa"
+  // (x crece hacia el este y z hacia el sur; la largada mira al norte)
+  let hecho = 0, X = 0, Z = 0, mira = 0;
+  const donde = () => {
+    for (; hecho < T.tramos.length; hecho++) {
+      const t = T.tramos[hecho], m = Math.round(t.largo);
+      for (let j = 0; j < m; j++) { mira += (t.giro || 0) * RAD / m; X += Math.sin(mira); Z -= Math.cos(mira); }
+    }
+    return { x: X, z: Z, mira };
+  };
+  const rec = (largo, mas) => T.recta(largo, mas);
+  const cur = (radio, angulo, mas) => T.curva(radio, angulo, mas);
+  const horq = (angulo, mas) => T.horquilla(angulo, mas);
+  // una recta que llega justo a tal lugar del mapa (x)
+  let numPata = 1;
+  const hastaX = (x, mas) => {
+    const d = donde(), largo = (x - d.x) / Math.sin(d.mira);
+    if (largo < 8) throw new Error('giulio: pata ' + numPata + ': falta lugar para llegar a x=' + x + ' (hay ' + largo.toFixed(0) + ', estaba en x=' + d.x.toFixed(0) + ')');
+    return rec(largo, mas);
+  };
+  // curvas encadenadas: [radio, grados] uno atras de otro (los grados tienen que sumar cero, para seguir en el mismo rumbo)
+  const cadena = (lista, mas) => {
+    if (Math.abs(lista.reduce((s, c) => s + c[1], 0)) > 0.01) throw new Error('giulio: la cadena de curvas no vuelve a su rumbo');
+    lista.forEach(([radio, grados], k) => cur(radio, grados, k === 0 ? mas : null));
+  };
+  // una "ese" que no corre el camino de lado: dobla, dobla para el otro lado el doble y vuelve a su rumbo
+  const ese = (radio, angulo, mas) => cadena([[radio, angulo], [radio, -2 * angulo], [radio, angulo]], mas);
+  // lomas: unas olas en el camino, de 22 metros cada ola
+  const lomas = (n, base, largo = 22) => { for (let k = 0; k < n; k++) { rec(largo, { pendiente: base + 3 }); rec(largo, { pendiente: base - 3.4 }); } };
+  // un salto: la loma que despega y la bajada donde se cae (como el de la Bajada del Portezuelo)
+  const salto = (base, mas) => { const t = rec(40, Object.assign({ nota: { tipo: 'salto' } }, mas)); rec(14, { pendiente: base + 5 }); rec(24, { pendiente: base - 11 }); return t; };
+  // un baden: el camino se hunde unos metros para que pase el agua cuando llueve (empedrado)
+  const baden = (base, mas) => { const t = rec(11, Object.assign({ pendiente: base - 7, suelo: 'roca', nota: { tipo: 'baden' } }, mas)); rec(11, { pendiente: base + 7, suelo: 'roca' }); return t; };
+  // las patas: la que va al este tiene el cerro a la izquierda (al norte); la que vuelve al oeste, a la derecha
+  const cerro = (este, cuanto = 12, cae = 24) => T.ladera(este ? 'izq' : 'der', cuanto, cae);
+  const ESTE = 1370, OESTE = 40;   // hasta donde llega cada pata (donde empieza la horquilla)
+  // la horquilla del extremo: hacia la derecha en el este, hacia la izquierda en el oeste. Giran 175 grados y no 180:
+  // asi la pata que vuelve se va abriendo de a poco y no se pisa con la anterior
+  const punta = (este, mas) => { numPata++; return horq(este ? 175 : -175, mas); };
+  const publicoEn = (este, n) => ({ publico: [[10, (este ? 1 : -1) * (9 / 2 + 8), n]] });
+
+  // ---------- 1. EL ALTO DE ACHALA: la largada, arriba, en la pampa de altura ----------
+  T.fijar({ bioma: 'sierra', ancho: 9.4, suelo: 'ripio', pendiente: -1.5 });
+  const largada = rec(64);
+  largada.publico = [[20, -(9.4 / 2 + 7), 7], [26, 9.4 / 2 + 7.5, 6]];
+  cur(45, 90);
+  rec(100);
+  ese(300, 7);
+  rec(150);
+  lomas(3, -1.5);
+  rec(100);
+  ese(130, 18);
+  rec(110);
+  salto(-1.5).publico = [[28, 9.4 / 2 + 6, 6], [31, -(9.4 / 2 + 7), 5]];
+  hastaX(ESTE);
+  punta(true, publicoEn(true, 6));
+
+  // ---------- 2. LA BAJADA DE ACHALA: la primera cuesta, angosta, con el cerro a un lado y la caida al otro ----------
+  T.fijar({ ancho: 7.2, pendiente: -4.4 });
+  cerro(false, 12, 28);
+  rec(80, { pirca: T.vacio(), nota: { tipo: 'cornisa' } });
+  ese(110, 12, { pirca: T.vacio() });
+  rec(60, { pirca: T.vacio() });
+  ese(80, 18);
+  piedras(rec(100), r, 12, [1]);
+  ese(150, 10);
+  hastaX(OESTE, { pirca: T.vacio() });
+  T.ladera(null);
+  punta(false, publicoEn(false, 5));
+  cerro(true, 12, 28);
+  T.fijar({ pendiente: -4.1 });
+  rec(60, { pirca: T.vacio() });
+  ese(90, 16);
+  rec(60, { pirca: T.vacio() });
+  lajas(rec(54), r, T.vacio());
+  rec(60, { pirca: T.vacio() });
+  ese(120, 12);
+  hastaX(ESTE, { pirca: T.vacio() });
+  T.ladera(null);
+  punta(true);
+  // ---------- 3. LA PAMPA DE ACHALA: lo mas rapido, ancho y en bajada suave ----------
+  T.fijar({ ancho: 9.8, pendiente: -1.8 });
+  rec(250);
+  ese(500, 5);
+  rec(100);
+  lomas(4, -1.8);
+  rec(120);
+  salto(-1.8).publico = [[24, -(9.8 / 2 + 7), 7]];
+  rec(80);
+  ese(140, 16);
+  hastaX(OESTE);
+  punta(false);
+  // un arroyo de altura y un baden
+  T.fijar({ ancho: 9.2, pendiente: -2 });
+  rec(200);
+  ese(200, 8);
+  baden(-2);
+  rec(160);
+  T.vado(0.3);
+  rec(200);
+  lomas(3, -2);
+  hastaX(ESTE);
+  punta(true);
+  // la recta larga, y dos saltos
+  T.fijar({ ancho: 10, pendiente: -2.2 });
+  rec(300);
+  ese(700, 4);
+  rec(160);
+  salto(-2.2).publico = [[26, 10 / 2 + 7, 8], [30, -(10 / 2 + 7), 6]];
+  rec(90);
+  ese(120, 14);
+  rec(40);
+  salto(-2.2);
+  hastaX(OESTE);
+  punta(false);
+  T.fijar({ ancho: 9, pendiente: -2.4 });
+  rec(200);
+  lomas(3, -2.4);
+  rec(200);
+  ese(260, 8);
+  hastaX(ESTE);
+  punta(true);
+  // ---------- 4. LA QUEBRADA: curvas encadenadas entre el granito, un puente y un vado ----------
+  T.fijar({ ancho: 7.4, pendiente: -3.2 });
+  rec(60);
+  ese(90, 20);
+  piedras(rec(50), r, 10, [1]);
+  ese(60, 25, { nota: { tipo: 'cuidado' } });
+  rec(40);
+  ese(100, 15);
+  rec(50);
+  T.ladera(null).puente(10, 4, false, { tope: 12 });
+  rec(60);
+  ese(75, 22);
+  rec(60);
+  T.vado(0.32);
+  rec(60);
+  ese(110, 17);
+  hastaX(OESTE);
+  punta(false);
+  rec(80);
+  ese(95, 20);
+  piedras(rec(80), r, 11, [-1]);
+  baden(-3.4);
+  ese(70, 28, { nota: { tipo: 'cuidado' } });
+  rec(100);
+  ese(130, 14);
+  rec(100);
+  lomas(2, -3.4);
+  hastaX(ESTE);
+  punta(true);
+  // ---------- 5. LA CUESTA: laderas con pirca, bajando fuerte ----------
+  T.fijar({ ancho: 6.4, pendiente: -4.9 });
+  cerro(false, 14, 30);
+  rec(70, { pirca: T.vacio(), nota: { tipo: 'cornisa' } });
+  ese(120, 10, { pirca: T.vacio() });
+  rec(120, { pirca: T.vacio() });
+  ese(85, 20);
+  rec(70, { pirca: T.vacio() });
+  lajas(rec(50), r, T.vacio());
+  rec(90, { pirca: T.vacio() });
+  ese(100, 14);
+  hastaX(OESTE, { pirca: T.vacio() });
+  T.ladera(null);
+  punta(false, publicoEn(false, 6));
+  cerro(true, 14, 30);
+  rec(90, { pirca: T.vacio() });
+  ese(95, 18);
+  rec(100, { pirca: T.vacio() });
+  ese(140, 9, { pirca: T.vacio() });
+  rec(80, { pirca: T.vacio() });
+  ese(70, 25);
+  hastaX(ESTE, { pirca: T.vacio() });
+  T.ladera(null);
+  punta(true);
+  // ---------- 6. LAS GAMAS: la sierra se va abriendo hacia el valle ----------
+  T.fijar({ ancho: 8, pendiente: -3.7 });
+  rec(100);
+  ese(120, 14);
+  rec(100);
+  T.vado(0.3);
+  rec(80);
+  ese(150, 10);
+  baden(-3.7);
+  rec(80);
+  salto(-3.7);
+  hastaX(OESTE);
+  punta(false);
+  // ---------- 7. EL VALLE DE TRASLASIERRA ----------
+  T.fijar({ bioma: 'campo', ancho: 8.4, pendiente: -2.7, suelo: 'tierra' });
+  rec(200);
+  ese(260, 7);
+  lomas(3, -2.7);
+  rec(200);
+  salto(-2.7);
+  hastaX(ESTE);
+  punta(true);
+  T.fijar({ ancho: 7.8, pendiente: -2.1, suelo: 'ripio' });
+  rec(60);
+  cadena([[200, -32], [200, 32]]);
+  rec(60);
+  T.puente(10, 3, true, { tope: 14 });
+  rec(70);
+  // el rio, con sus playas: el camino baja, lo cruza por el lecho y vuelve a subir
+  T.fijar({ ancho: 9 });
+  T.vado(0.34);
+  T.fijar({ ancho: 7.8 });
+  hastaX(760);
+  // ---------- 8. MINA CLAVERO: el rio, la entrada al pueblo y las esquinas ----------
+  // la entrada al pueblo, por la avenida
+  const avenida = { ancho: 9.5, suelo: 'asfalto', lineas: 'ruta' }, empedrado = { suelo: 'adoquin', lineas: null }, deCalle = { ancho: 7, suelo: 'asfalto', lineas: 'calle' };
+  T.fijar(CALLE).fijar({ pendiente: -0.9 }).fijar(avenida);
+  cuadra(130, null, { desde: 8 });
+  T.fijar(deCalle);
+  esquina(-1);
+  cuadra(56, { objetos: [[26, 2.5, 'cajones', 15], [28.5, 2.9, 'tacho', 0], [43, -2.6, 'cubiertas', 0]] });
+  esquina(1);
+  T.fijar(empedrado);
+  cuadra(62, { nota: { tipo: 'adoquin' }, objetos: [[12, 2.7, 'cajones', 10], [14, -2.8, 'tacho', 0], [33, 2.8, 'tacho', 0], [47, -2.7, 'cubiertas', 0]] }, { tipos: [['almacen', 3], ['edificio', 2], ['casita', 1]] });
+  esquina(1);
+  T.fijar(deCalle);
+  cuadra(56, { autos: [[20, 2.45, 0, 17]] });
+  esquina(-1);
+  cuadra(70, { objetos: [[30, 0, 'cono', 0], [33, 0.6, 'cono', 0], [36, 1.2, 'cono', 0]] }, { hasta: 10 });
+  // la plaza: se la rodea por la izquierda
+  T.curva(11, 50, { nota: { tipo: 'cuidado' }, vereda: 2.2 });
+  const plaza = T.curva(15, -190, { casas: [[6, 3.5 + 2.8 + 5.5, 'capilla', 0, 1], [20, 3.5 + 2.8 + 4, 'edificio', 0, 12], [31, 3.5 + 2.8 + 4, 'almacen', 0, 4], [42, 3.5 + 2.8 + 4, 'edificio', 0, 33]] });
+  plaza.objetos = [[25, -15, 'monumento', 0], [10, -8.5, 'banco', 90], [25, -8.5, 'banco', 90], [40, -8.5, 'banco', 90], [17, -10.5, 'cantero', 0], [33, -10.5, 'cantero', 0], [3, -6.2, 'farol', 0], [25, -6.2, 'farol', 0], [47, -6.2, 'farol', 0]];
+  plaza.arboles = [[9, -12.5, 'lenga', 1.1], [18, -13.5, 'alamo', 1], [32, -13.5, 'lenga', 1.2], [41, -12.5, 'alamo', 1]];
+  T.curva(11, 50);
+  cuadra(48, null, { desde: 10 });
+  esquina(1);
+  // la llegada, de vuelta en la avenida
+  T.fijar(avenida);
+  cuadra(40, null, { hasta: 2 });
+  const llegada = rec(92, { plano: 12, vereda: null, pendiente: 0 });
+  llegada.publico = [[52, -(9.5 / 2 + 7), 9], [58, 9.5 / 2 + 7, 9], [78, -(9.5 / 2 + 8), 5]];
+  return T.tramos;
+}
+
+const ARMAR = { subida, bajada, urbano, practica, giulio };
 
 // Arma la etapa de un circuito (lo mismo que devuelve generarPista para un dia).
 export function armarCircuito(numero) {
@@ -439,14 +694,14 @@ export function armarCircuito(numero) {
   if (!c) throw new Error('No existe el circuito ' + numero);
   const tramos = ARMAR[c.id]();
   for (const t of tramos) for (const k in t) if (t[k] === undefined) delete t[k];
-  // los cuatro controles que parten la pista en cinco sectores
+  // los cuatro controles que parten la pista en cinco sectores (un circuito puede traerlos ya puestos, en lugares que elige el)
   let total = 0, hecho = 0, sector = 1;
   for (const t of tramos) total += t.largo;
-  tramos.forEach((t, i) => {
+  if (!tramos.some((t) => t.control)) tramos.forEach((t, i) => {
     hecho += t.largo;
     if (sector <= 4 && i < tramos.length - 2 && hecho >= total * sector / 5 - t.largo / 2) { t.control = true; sector++; }
   });
   // (biomas: los ambientes por los que pasa, en el orden en que aparecen; casi siempre es uno solo)
   const biomas = [...new Set(tramos.map((t) => t.bioma || c.bioma))];
-  return { numero, fijo: c.id, vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1 };
+  return { numero, fijo: c.id, vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1, maximo: c.maximo };
 }

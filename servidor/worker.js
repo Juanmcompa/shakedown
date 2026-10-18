@@ -29,7 +29,7 @@
 //
 // El "codigo" de una pasada es el mismo texto que antes iba entero en el link. Aca se lo lee con el mismo programa
 // que usa el juego (src/fantasma.js): lo que figura en la tabla sale de la pasada grabada, no de lo que diga el que la manda.
-import { leerCodigo, limpiarTexto } from '../src/fantasma.js';
+import { leerCodigo, limpiarTexto, TOPE_MUESTRAS } from '../src/fantasma.js';
 import { esCircuito, esDeLaComunidad, COMUNIDAD } from '../src/circuitos.js';
 import { leerHoja, armarHoja } from '../src/hoja.js';
 import { hoy } from '../src/dia.js';
@@ -169,8 +169,8 @@ async function guardarPasada(env, pedido, de) {
   if (esDeLaComunidad(pista) && !m.practica) falla(400, 'En esa pista no hay pasada oficial.');
   if (!m.ab) {
     if (!(m.t >= 15 && m.t <= 3600)) falla(400, 'Ese tiempo no puede ser.');
-    // el tiempo tiene que coincidir con lo grabado (hay dos muestras por segundo, hasta 1900)
-    if (l.muestras < 1900 && Math.abs((l.muestras - 1) * 0.5 - m.t) > 3) falla(400, 'El tiempo no coincide con la pasada grabada.');
+    // el tiempo tiene que coincidir con lo grabado (hay dos muestras por segundo, hasta TOPE_MUESTRAS)
+    if (l.muestras < TOPE_MUESTRAS && Math.abs((l.muestras - 1) * 0.5 - m.t) > 3) falla(400, 'El tiempo no coincide con la pasada grabada.');
   }
   const jugador = await huella(pedido.llave), practica = m.practica ? 1 : 0, cent = Math.round(m.t * 100);
   const deLaConexion = contador('p:' + de, LIMITES.pasadasPorConexion), deTodos = contador('total', LIMITES.pasadasPorDia);

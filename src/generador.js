@@ -67,6 +67,14 @@ export const BIOMAS = {
     lugares: [['Paso del Zorro', 'Cañadón Hondo', 'Cerro Chato', 'Portezuelo', 'La Cuesta', 'Abra del Viento', 'Piedra Parada', 'El Volcán', 'Mina Vieja', 'Quebrada Seca', 'Los Penitentes', 'Paso del Cóndor'],
       ['Subida a', 'Cornisa de', 'Camino a', 'Cuesta de', 'Huella a', 'Bajada de']],
   },
+  // La sierra de Córdoba (la pampa de altura y las cuestas del Rally Argentina): pastizal pajizo, granito, casi sin árboles y
+  // con bloques enormes sueltos. Solo la usan los circuitos fijos: "fijo" la saca del creador de pistas y de los días.
+  sierra: {
+    nombre: 'Sierra', emoji: '🏔️', ancho: [7.4, 9], suelos: [['ripio', 8], ['roca', 1]], pendiente: [2.4, 8], relieve: 34, fijo: true,
+    arboles: [['arbusto', 8], ['pino', 1]], monte: 0.1, borde: 4, piso: 'pastoSeco', cornisas: true, piedras: 0.06,
+    lugares: [['Pampa de Achala', 'Giulio Cesare', 'Los Gigantes', 'Cerro Champaquí', 'La Cumbrecita', 'Quebrada del Condorito', 'Las Gamas', 'Cuesta del Pinar', 'Pampa de Olaen', 'El Cóndor', 'Tanti Alto', 'La Rinconada'],
+      ['Cuesta de', 'Camino a', 'Subida a', 'Bajada de', 'Huella de', 'Altos de']],
+  },
 };
 
 // --- climas ---

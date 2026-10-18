@@ -1,9 +1,12 @@
 // Fisica del auto: un cuerpo rigido con 4 ruedas, suspension y agarre segun el suelo.
 // No dibuja nada. Los numeros de cada auto estan en config.js.
-import { JUEGO, SUELO } from './config.js';
+import { JUEGO, SUELO, SERIO } from './config.js';
 
 const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
 const N = [0, 1, 0], S = { agarre: 1, freno: 0, pasta: 0, id: 0, agua: 0 };
+
+// La configuracion de un auto en modo "rally serio" (ver SERIO en config.js). Se usa igual que AYUDA.auto.
+export const enSerio = (C) => ({ ...C, ...SERIO.auto, serio: true });
 
 export function crearAuto(terreno, C) {
   const c = {
@@ -18,6 +21,20 @@ export function crearAuto(terreno, C) {
   };
   const cubierta = SUELO.map((s) => C.cubiertas[s.blando >= 0.5 ? 1 : 0]);   // agarre de las cubiertas de este auto en cada suelo
   const deriva = SUELO.map((s) => C.deriva * (s.suelto || 1));                // cuanto de costado hay que ir en cada suelo para agarrar todo
+  // En modo serio (Z), la curva de agarre de costado de cada suelo: hasta el pico agarra cada vez mas; pasado el pico cae
+  // (en el asfalto, corto y mas; en el piso suelto, largo y menos: ahi el derrape se sostiene).
+  const Z = C.serio ? SERIO : null;
+  const pico = [], caida = [], ancho = [];
+  if (Z) for (const s of SUELO) {
+    const suelto = lim(((s.suelto || 1) - 1) / 1.9, 0, 1);
+    pico.push(C.deriva * (1 + ((s.suelto || 1) - 1) * Z.pico));
+    caida.push(Z.caida[0] + (Z.caida[1] - Z.caida[0]) * suelto);
+    ancho.push(Z.ancho[0] + (Z.ancho[1] - Z.ancho[0]) * suelto);
+  }
+  // (serio) cuanto pesa cada rueda con el auto quieto: con eso se mide cuanto se cargo o se alivio
+  const carga0 = C.masa * JUEGO.gravedad / 4, partes = [0, 0, 0, 0];
+  // (serio) la resistencia a girar sobre si mismo sale del peso y del largo y el ancho del auto
+  const inercia = Z ? [C.inercia[0], C.masa * (4 * C.caja[1] * C.caja[1] + 4 * C.caja[0] * C.caja[0]) / 12 * Z.inercia, C.inercia[2]] : C.inercia;
   for (let i = 0; i < 4; i++) {
     c.ruedas.push({ x: (i % 2 ? 1 : -1) * C.trocha, z: (i < 2 ? -1 : 1) * C.ejes + C.centro, delantera: i < 2, empuja: C.traccion[i < 2 ? 0 : 1],
       largo: C.resorteLargo, toca: false, patina: 0, cruza: 0, giro: 0, suelo: 0, carga: 0, tope: 1, vl: 0, p: [0, 0, 0] });
@@ -43,6 +60,43 @@ export function crearAuto(terreno, C) {
     c.adelante[0] = Math.sin(rumbo); c.adelante[1] = 0; c.adelante[2] = -Math.cos(rumbo);
     for (const r of c.ruedas) r.tope = 1;
   };
+
+  // (serio) Lo que hace una rueda a lo largo y de costado: devuelve [fuerza a lo largo, fuerza de costado].
+  // Es como en arcade pero sin ayudas: lo que la rueda usa para acelerar o frenar se lo saca al agarre de costado
+  // (y si patina o se bloquea, de costado casi no agarra); de costado agarra cada vez mas hasta un angulo y despues cae;
+  // y la rueda bloqueada por el freno de mano se arrastra hacia donde vaya, sin preferir ningun lado.
+  const smooth = (x) => x * x * (3 - 2 * x);
+  function serio(r, bloqueada, motor, tope, vl, vs, ly, sy, dt) {
+    const m = C.masa, g = JUEGO.gravedad, mr = m / 4, vd = Math.hypot(vl, vs);
+    if (bloqueada && vd > 0.7) {
+      const f = Math.min(tope * Z.desliza, mr / dt * 0.5 * vd) / vd;
+      return [-vl * f, -vs * f - S.pasta * 0.6 * vs];
+    }
+    let Fl = bloqueada ? 0 : motor;
+    if (c.frenando || bloqueada || (c.gas < 0.02 && Math.abs(vl) < 0.7)) {
+      const cap = C.frenos * m * g / 2 * (bloqueada || !c.frenando ? 0.5 : (r.delantera ? C.frenoAdelante : 1 - C.frenoAdelante) * c.freno);
+      Fl += lim(-mr / dt * 0.5 * vl + mr * g * ly, -cap, cap);
+    } else if (c.gas < 0.02 && r.empuja > 0) {
+      const cap = C.frenoMotor * m * g / 4;
+      Fl -= lim(vl * 280, -cap, cap);
+    }
+    // el circulo de agarre: lo que se usa a lo largo no queda para el costado
+    const pide = Math.abs(Fl);
+    // (Las de adelante, frenando, se llevan como frena un piloto con el pie: al limite, sin bloquearlas. Asi el auto
+    // dobla frenando, y como la cola se aliviana, rota: el teclado frena todo o nada y si no seria imposible.)
+    const gasta = c.frenando && r.delantera ? Z.frenaAlLimite : 1;
+    const piso = Z.piso[c.frenando ? 1 : 0];
+    let queda;
+    if (pide > tope) { if (c.gas > 0.02 && !c.frenando) r.patina = 1 - tope / pide; Fl *= tope / pide; queda = gasta < 1 ? Math.sqrt(1 - gasta * gasta) : piso * Math.sqrt(tope / pide); }
+    else { const u = tope > 0 ? gasta * pide / tope : 0; queda = Math.max(Math.sqrt(1 - u * u), piso); }
+    // de costado: la curva con pico y caida (ver SERIO en config.js)
+    const x = Math.abs(vs) / Math.max(Math.abs(vl), 4) / pico[S.id];
+    const cuanto = x <= 1 ? x * (2 - x) : 1 - (1 - caida[S.id]) * smooth(Math.min(1, (x - 1) / ancho[S.id]));
+    // (las de atras agarran un poco mas de costado: el auto de rally viene armado asi, para que no se vaya de cola solo)
+    const deCostado = r.delantera ? tope : tope * Z.cola;
+    const agarra = Math.min(deCostado * cuanto, mr / dt * C.lateral * Math.abs(vs)), lat = deCostado * queda;
+    return [Fl, lim((vs > 0 ? -agarra : agarra) + mr * g * sy, -lat, lat) - S.pasta * 0.6 * vs];
+  }
 
   // avanza la fisica un paso. ent: { x: volante -1..1, y: acelerador -1..1, mano: freno de mano }
   c.paso = function (ent, dt) {
@@ -75,7 +129,16 @@ export function crearAuto(terreno, C) {
       const ex = v[0] + (w[1] * fz - w[2] * fy) * d, ey = v[1] + (w[2] * fx - w[0] * fz) * d, ez = v[2] + (w[0] * fy - w[1] * fx) * d;
       acomoda = Math.atan2(ex * rx + ey * ry + ez * rz, ex * fx + ey * fy + ez * fz) * C.alinea * Math.min(1, (vf - 2) / 4);
     }
-    c.giroRuedas = lim(c.volante * giroMax + acomoda, -C.giro, C.giro);
+    if (Z && vf > 2) {
+      // En serio, el volante a fondo lleva las ruedas de adelante justo hasta su pico de agarre, contado desde hacia donde
+      // va la trompa (como las manos de un piloto, que sienten donde la rueda deja de doblar). Hacia el lado donde va el
+      // auto llega mas lejos: asi alcanza para contravolantear un derrape. (Despacio, como en arcade: lo que haga falta.)
+      const d = C.ejes - C.centro;   // del centro del auto al eje de adelante
+      const ex = v[0] + (w[1] * fz - w[2] * fy) * d, ey = v[1] + (w[2] * fx - w[0] * fz) * d, ez = v[2] + (w[0] * fy - w[1] * fx) * d;
+      const va = Math.atan2(ex * rx + ey * ry + ez * rz, ex * fx + ey * fy + ez * fz), alPico = pico[c.suelo] * Z.volante;
+      const justo = Math.max(alPico, (c.volante < 0 ? -va : va) + alPico), despacio = lim((6 - vf) / 4, 0, 1);
+      c.giroRuedas = lim(c.volante * Math.min(C.giro, Math.max(justo, giroMax * despacio)) + acomoda, -C.giro, C.giro);
+    } else c.giroRuedas = lim(c.volante * giroMax + acomoda, -C.giro, C.giro);
     let empuje = c.gas * c.sentido * Math.min(C.empuje * m * g, C.potencia / Math.max(Math.abs(vf), 1));
     if (c.sentido < 0) empuje *= vf < -9 ? 0 : C.reversa;
 
@@ -87,6 +150,17 @@ export function crearAuto(terreno, C) {
     const total = C.resorteLargo + C.radio, mr = m / 4;
     let enPiso = 0, patina = 0, aguaMax = 0, agarreTotal = 1e-6;
     for (const r of c.ruedas) agarreTotal += r.tope * r.empuja;   // el motor empuja mas en las ruedas que mas agarran
+    if (Z) {
+      // (serio) los diferenciales: entre los ejes la fuerza va hacia el que mas agarra (como un 4x4 de rally, que no tiene
+      // diferencial en el medio); con el freno de mano tirado, toda adelante (el embrague del freno de mano corta la de atras).
+      // Entre las dos ruedas de un eje, el autoblocante: una parte va pareja (la que agarra menos patina) y otra a la que mas agarra.
+      const R = c.ruedas, eje = [0, 2].map((i) => (c.mano && i === 2 ? 0 : (R[i].tope + R[i + 1].tope) * R[i].empuja));
+      const todo = eje[0] + eje[1] + 1e-6;
+      for (let i = 0; i < 4; i++) {
+        const a = i & 2, par = R[a].tope + R[a + 1].tope;
+        partes[i] = eje[a >> 1] / todo * (Z.autoblocante * (par > 0 ? R[i].tope / par : 0.5) + (1 - Z.autoblocante) * 0.5);
+      }
+    }
     for (const r of c.ruedas) {
       const ax = p[0] + rx * r.x + ux * C.anclaje + bx * r.z, ay = p[1] + ry * r.x + uy * C.anclaje + by * r.z, az = p[2] + rz * r.x + uz * C.anclaje + bz * r.z;
       // se busca el piso bajando desde el anclaje en la direccion de la suspension
@@ -97,7 +171,7 @@ export function crearAuto(terreno, C) {
       }
       r.toca = t < total;
       r.largo = lim(t - C.radio, C.resorteLargo - C.recorrido - 0.08, C.resorteLargo);
-      const parte = r.tope * r.empuja / agarreTotal;
+      const parte = Z ? partes[c.ruedas.indexOf(r)] : r.tope * r.empuja / agarreTotal;
       r.patina = 0; r.cruza = 0; r.carga = 0; r.tope = 0;
       if (!r.toca) { r.giro += r.vl / C.radio * dt; continue; }
       enPiso++;
@@ -125,35 +199,41 @@ export function crearAuto(terreno, C) {
       terreno.suelo(cx, cz, S);
       const vl = vx * lx + vy * ly + vz * lz, vs = vx * sx + vy * sy + vz * sz;
       r.vl = vl;
-      const tope = S.agarre * cubierta[S.id] * Nf;   // lo maximo que la cubierta puede agarrar
+      // lo maximo que la cubierta puede agarrar. (En serio, el agarre crece menos que el peso que lleva encima: la rueda
+      // que se carga gana menos de lo que pierde la que se alivia.)
+      const tope = Z ? S.agarre * cubierta[S.id] * carga0 * Math.pow(Nf / carga0, 1 - Z.sensible) : S.agarre * cubierta[S.id] * Nf;
       r.tope = tope;
 
       // a lo largo: motor, frenos, freno de mano
       const bloqueada = c.mano && !r.delantera;
-      let Fl = bloqueada ? 0 : empuje * parte;
-      if (c.frenando || bloqueada || (c.gas < 0.02 && Math.abs(vl) < 0.7)) {
-        // los frenos de adelante frenan mas que los de atras: asi, frenando y doblando, el auto no se cruza
-        const cap = C.frenos * m * g / 2 * (bloqueada || !c.frenando ? 0.5 : (r.delantera ? C.frenoAdelante : 1 - C.frenoAdelante) * c.freno);
-        Fl += lim(-mr / dt * 0.5 * vl + mr * g * ly, -cap, cap);
-      } else if (c.gas < 0.02 && r.empuja > 0) {
-        const cap = C.frenoMotor * m * g / 4;
-        Fl -= lim(vl * 280, -cap, cap);
+      let Fl, Fq;
+      if (Z) [Fl, Fq] = serio(r, bloqueada, empuje * parte, tope, vl, vs, ly, sy, dt);
+      else {
+        Fl = bloqueada ? 0 : empuje * parte;
+        if (c.frenando || bloqueada || (c.gas < 0.02 && Math.abs(vl) < 0.7)) {
+          // los frenos de adelante frenan mas que los de atras: asi, frenando y doblando, el auto no se cruza
+          const cap = C.frenos * m * g / 2 * (bloqueada || !c.frenando ? 0.5 : (r.delantera ? C.frenoAdelante : 1 - C.frenoAdelante) * c.freno);
+          Fl += lim(-mr / dt * 0.5 * vl + mr * g * ly, -cap, cap);
+        } else if (c.gas < 0.02 && r.empuja > 0) {
+          const cap = C.frenoMotor * m * g / 4;
+          Fl -= lim(vl * 280, -cap, cap);
+        }
+        const pide = Math.abs(Fl);
+        if (pide > tope) { if (c.gas > 0.02 && !c.frenando) r.patina = 1 - tope / pide; Fl *= tope / pide; }
+        // de costado: lo que sobra del agarre despues de acelerar o frenar.
+        // Frenando sobra mas (como con antibloqueo); con el freno de mano, las de atras casi no agarran.
+        const gasta = bloqueada ? 0.96 : c.frenando ? C.patinaje * 0.6 : C.patinaje;
+        let lat = Math.sqrt(Math.max(0, tope * tope - gasta * gasta * Fl * Fl));
+        if (!r.delantera && !bloqueada) lat *= C.colaFirme;
+        // La cubierta agarra de a poco, segun cuanto de costado va la rueda ("cruza": 0.1 = unos 6 grados).
+        // En piso firme llega a su tope enseguida. En piso suelto lo hace en dos etapas: la primera parte del agarre
+        // ("firme") responde igual de rapido, y el resto llega recien yendo bien cruzado. Asi, manejando tranquilo
+        // el auto va por donde se lo apunta; exigido, hay que llevarlo de costado, y avisa mucho antes de irse.
+        const cruza = Math.abs(vs) / Math.max(Math.abs(vl), 4), tarde = deriva[S.id], pronto = C.firme * C.deriva;
+        const cuanto = cruza <= pronto || tarde <= C.deriva ? cruza / C.deriva : C.firme + (1 - C.firme) * (cruza - pronto) / (tarde - pronto);
+        const agarra = Math.min(tope * cuanto, mr / dt * C.lateral * Math.abs(vs));
+        Fq = lim((vs > 0 ? -agarra : agarra) + mr * g * sy, -lat, lat) - S.pasta * 0.6 * vs;
       }
-      const pide = Math.abs(Fl);
-      if (pide > tope) { if (c.gas > 0.02 && !c.frenando) r.patina = 1 - tope / pide; Fl *= tope / pide; }
-      // de costado: lo que sobra del agarre despues de acelerar o frenar.
-      // Frenando sobra mas (como con antibloqueo); con el freno de mano, las de atras casi no agarran.
-      const gasta = bloqueada ? 0.96 : c.frenando ? C.patinaje * 0.6 : C.patinaje;
-      let lat = Math.sqrt(Math.max(0, tope * tope - gasta * gasta * Fl * Fl));
-      if (!r.delantera && !bloqueada) lat *= C.colaFirme;
-      // La cubierta agarra de a poco, segun cuanto de costado va la rueda ("cruza": 0.1 = unos 6 grados).
-      // En piso firme llega a su tope enseguida. En piso suelto lo hace en dos etapas: la primera parte del agarre
-      // ("firme") responde igual de rapido, y el resto llega recien yendo bien cruzado. Asi, manejando tranquilo
-      // el auto va por donde se lo apunta; exigido, hay que llevarlo de costado, y avisa mucho antes de irse.
-      const cruza = Math.abs(vs) / Math.max(Math.abs(vl), 4), tarde = deriva[S.id], pronto = C.firme * C.deriva;
-      const cuanto = cruza <= pronto || tarde <= C.deriva ? cruza / C.deriva : C.firme + (1 - C.firme) * (cruza - pronto) / (tarde - pronto);
-      const agarra = Math.min(tope * cuanto, mr / dt * C.lateral * Math.abs(vs));
-      const Fq = lim((vs > 0 ? -agarra : agarra) + mr * g * sy, -lat, lat) - S.pasta * 0.6 * vs;
       // resistencia a rodar y pasta del barro o del agua
       Fl -= S.freno * Nf * Math.tanh(vl / 0.4) + S.pasta * vl;
 
@@ -232,7 +312,7 @@ export function crearAuto(terreno, C) {
     }
 
     // --- se integra el movimiento ---
-    const I = C.inercia, im = dt / m, frena = 1 - 0.25 * dt;
+    const I = inercia, im = dt / m, frena = 1 - 0.25 * dt;
     if (enPiso > 1 && C.estable > 0) {   // con las ruedas en el piso, el auto se resiste un poco a girar sobre si mismo: perdona los volantazos
       const gira = (w[0] * ux + w[1] * uy + w[2] * uz) * Math.min(1, C.estable * dt);
       w[0] -= ux * gira; w[1] -= uy * gira; w[2] -= uz * gira;
