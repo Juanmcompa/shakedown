@@ -348,7 +348,6 @@ const CHATA = {
     },
   },
 };
-const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA, f1: F1 }; //[cite: 1]
 
 // ================= EL F1 moderno =================
 const F1 = {
@@ -393,6 +392,8 @@ const F1 = {
     },
   },
 };
+// (la lista de modelos va despues de definirlos a todos: si no, el juego no carga)
+const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA, f1: F1 };
 
 // Pinta las vistas y arma la forma de un modelo con una pintura. Se guarda: dos autos iguales comparten todo.
 const hechos = new Map();
