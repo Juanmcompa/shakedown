@@ -322,6 +322,8 @@ Direcciones útiles para probar:
 
 Con Node instalado, desde la carpeta del repo:
 
+- `tools/pruebas/`: las pruebas del juego entero en un navegador sin pantalla (hace falta `npm i playwright sharp`). Cada una dice al principio qué prueba y cómo se corre; las del servidor piden antes `node servidor/local.mjs 8787`. Las usan los subagentes de Claude (ver `CLAUDE.md` y `.claude/agents/`): uno por área del juego, que se llama solo cuando hay que cambiar esa área.
+
 - `node tools/piloto.mjs 1 12`: cinco pilotos de distinto nivel corren las pistas 1 a 12 con cada auto. Dice si llegan, en cuánto, y dónde se salen.
 - `node tools/piloto.mjs 16001 4`: lo mismo en los cuatro circuitos (sus números de pista van del 16001 al 16004). En la vuelta cerrada cada piloto da tres vueltas y cuenta la mejor.
 - `SOLO=novato,ayudado,sinManos node tools/piloto.mjs 1 8`: un piloto que no suelta nunca el acelerador, sin y con la ayuda de manejo; y `sinManos`, que además no toca el volante. Sirve para ver cuánto ayuda. Para probar otros números sin tocar `config.js`: `AYUDA="ritmo=0.74,frena=3.2" SOLO=ayudado node tools/piloto.mjs 1 8`.
