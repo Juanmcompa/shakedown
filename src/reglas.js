@@ -116,7 +116,8 @@ export function crearPartida(T, par) {
     if (cae) golpe = tGolpe = 0;
     if (golpe > JUEGO.golpes.desde && tGolpe === 0) tGolpe = reloj;
     if (tGolpe > 0 && reloj - tGolpe > 0.25) {
-      const suma = (golpe - JUEGO.golpes.desde) * JUEGO.golpes.porMetro;
+      // (cuanto aguanta los golpes depende del chasis: ver "aguante" en partes.js)
+      const suma = (golpe - JUEGO.golpes.desde) * JUEGO.golpes.porMetro / ((c.datos && c.datos.aguante) || 1);
       p.roto = Math.min(100, p.roto + suma);
       avisar('golpe', suma, { contra, roto: p.roto });
       golpe = tGolpe = 0;

@@ -25,7 +25,7 @@ const correr = (pag, piloto, auto, nombre) => pag.evaluate(async ([piloto, auto,
   return s.estado();
 }, [piloto, auto, nombre]);
 const esperarFin = (pag) => pag.waitForFunction(() => !document.getElementById('fin').hidden, null, { timeout: 60000 });
-const tabla = (pag, cual = 'tabla') => pag.evaluate((cual) => [...document.querySelectorAll('#' + cual + ' li')].map((li) => li.querySelector('.quien').textContent + ' ' + li.querySelector('.tiempoMarca').textContent + (li.classList.contains('mio') ? ' (mio)' : '') + (li.querySelector('button') ? ' [fantasma]' : '')), cual);
+const tabla = (pag, cual = 'tabla') => pag.evaluate((cual) => [...document.querySelectorAll('#' + cual + ' li')].map((li) => li.querySelector('.quien').firstChild.textContent + ' ' + li.querySelector('.tiempoMarca').textContent + (li.classList.contains('mio') ? ' (mio)' : '') + (li.querySelector('button') ? ' [fantasma]' : '')), cual);
 const fichas = (pag) => pag.evaluate(() => [...document.querySelectorAll('#clubes button')].map((b) => b.textContent.trim() + (b.classList.contains('elegido') ? '*' : '')));
 const texto = (pag, id) => pag.evaluate((id) => { const el = document.getElementById(id); return el.hidden ? '' : el.textContent; }, id);
 
@@ -65,7 +65,7 @@ ver('A: la oficial se subio sola y tiene codigo corto', /^[0-9A-Za-z]{7}$/.test(
 await A.click('#compartir');
 await A.waitForTimeout(600);
 const [mensajeA, linkA, firmaA, ...sobra] = (await A.evaluate(() => navigator.clipboard.readText())).split('\n');
-ver('A: el mensaje tiene tres renglones y el ultimo es el aviso de Early Access (sin quien hace el juego)', firmaA === '🚧 Early Access · App en desarrollo' && sobra.length === 0 && /^Shakedown #\d+ /.test(mensajeA) && mensajeA.endsWith('🏁'), [mensajeA, firmaA, sobra]);
+ver('A: el mensaje tiene tres renglones y el ultimo es el aviso de Early Access (sin quien hace el juego)', firmaA === '🚧 Early Access · App en desarrollo' && sobra.length === 0 && /^Shakedown #\d+ /.test(mensajeA) && / 🏁 🚙333$/.test(mensajeA), [mensajeA, firmaA, sobra]);
 ver('A: comparte con el link corto', linkA && linkA.endsWith('#r=' + ofA.id), linkA);
 console.log('     ' + mensajeA + ' | ' + linkA + '   (antes: ' + (linkA.length - ofA.id.length + ofA.largo) + ' letras; ahora: ' + linkA.length + ')');
 await A.screenshot({ path: 'out/club-4-fin-a.png' });

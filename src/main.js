@@ -28,6 +28,7 @@ import { crearSonido } from './audio.js';
 import { crearTeclas } from './input.js';
 import { crearHud, tiempoFinal } from './hud.js';
 import { crearPapelitos } from './papelitos.js';
+import { configDe, codigoDe } from './partes.js';
 
 const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
@@ -39,7 +40,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '21';
+const PAGINA = '22';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -192,22 +193,27 @@ await respiro('Preparando el auto…', 4);
 const ayuda = crearAyuda(T);
 // la referencia de cada auto (donde frenar depende del auto): la usan la ayuda de manejo y los colores de la trazada.
 // Se calcula recien cuando hace falta.
-const refs = { [REFERENCIA]: ref }, refDe = (id) => refs[id] || (refs[id] = crearReferencia(T, AUTOS[id]));
+// (id: el codigo del auto armado: ver partes.js)
+const refs = { [codigoDe(REFERENCIA)]: ref }, refDe = (id) => { id = codigoDe(id); return refs[id] || (refs[id] = crearReferencia(T, configDe(id))); };
 let c = null, dibujo = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false, conTrazada = !!gusto('trazada');
+// El auto con el que se corre: el que armaste en el garaje (su codigo de partes, como '431'; ver partes.js).
+// (Lo guardado de antes, 'vitarita' o 'kacito', pasa a ser su codigo.)
 function ponerAuto(id) {
-  if (!AUTOS[id]) id = 'vitarita';
+  id = codigoDe(id);
+  const C = configDe(id);
   if (dibujo) escena.remove(dibujo.grupo);
   club.ponerAuto(id);
-  c = crearAuto(T, conAyuda ? { ...AUTOS[id], ...AYUDA.auto } : AUTOS[id]);
-  if (conAyuda) ayuda.preparar(AUTOS[id], refDe(id));
+  c = crearAuto(T, conAyuda ? { ...C, ...AYUDA.auto } : C);
+  if (conAyuda) ayuda.preparar(C, refDe(id));
   if (conTrazada) trazada.usar(refDe(id));
-  dibujo = crearDibujo(escena, AUTOS[id]);
+  dibujo = crearDibujo(escena, C);
   partida.preparar(c);
   camara.saltar();
 }
 ponerAuto(club.auto());
 const espectros = {};
-const espectroDe = (id) => espectros[id] || (espectros[id] = crearEspectro(escena, T, AUTOS[id] || AUTOS.vitarita));
+// (el fantasma de cada auto armado: con su chasis y sus ruedas)
+const espectroDe = (id) => { id = codigoDe(id); return espectros[id] || (espectros[id] = crearEspectro(escena, T, configDe(id))); };
 
 // --- contra quien se corre ---
 // rival: null o { clave, nombre, t, ab, practica, auto, fantasma }. La clave es la de "claveDe": '*' si es una pasada propia.

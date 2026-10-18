@@ -1,5 +1,6 @@
 // Los autos: cajas con una pintura de pocos pixeles (un pixel = 12,5 cm). El frente mira a -Z.
-// Hay tres modelos: la Vitarita y el Kacito (los que se corren) y la chata (estacionada, de adorno).
+// Hay cinco modelos para correr o de adorno: la Vitarita, el Kacito, el buggy (de arena, con jaula) y el camion (de rally
+// raid, con caja de lona), mas la chata (estacionada, de adorno). Los modelos grandes piden un atlas mas grande ("atlas").
 // El dibujo de cada uno sale de cinco vistas pintadas a mano (de arriba, de abajo, de costado, de frente y de atras):
 // cada caja toma de cada vista los pixeles que le tocan segun donde esta.
 //
@@ -25,6 +26,8 @@ const PINTURAS = {
   vitarita: pintura('#f0b41c', { numero: '92' }),                        //
   kacito: pintura('#8656c8', { numero: '97', franjas: ['#f2c200', '#f4f0e6'] }),   //
   chata: pintura('#e2a21e', { carga: true }),                            //
+  buggy: pintura('#c8302a', { numero: '7', franjas: ['#f4f0e6', '#1e1f23'] }),     // rojo de rally, jaula negra
+  camion: pintura('#e8b81c', { numero: '3', franjas: ['#1e1f23', '#f4f0e6'] }),    // cabina amarilla, lona caqui
   f1: pintura('#e01818', { numero: '1', franjas: ['#ffffff', '#000000'] }), // Nuevo auto F1
 };
 const VELO = 'rgba(226, 240, 255, 0.62)';
@@ -349,6 +352,178 @@ const CHATA = {
   },
 };
 
+// ================= EL BUGGY: de arena, abierto, con jaula antivuelco de cabos, motor atras y aleron =================
+const BUGGY = {
+  W: 18, L: 34, Y0: -6, Y1: 10, rueda: 0.3, atlas: [256, 128], frenos: [[-2, 0.5, 13.1, 2, 1], [2, 0.5, 13.1, 2, 1]],
+  cajas: (q) => {
+    const tubo = { liso: N[1] }, faro = { caras: { nz: '#ffd23a', px: N[1], nx: N[1], py: N[2], ny: N[0], pz: N[1] } };
+    return [
+      [-4, -4, -13, 4, -3, 13, tubo],                                   // chasis tubular
+      [-3, -3, -8, 3, -2, 6, { liso: N[0] }],                           // piso
+      [-4, -3, -14, 4, 0, -8],                                          // trompa
+      [-5, -3, -16, 5, -2, -15, tubo], [-5, -3, -16, -4, 1, -14, tubo], [4, -3, -16, 5, 1, -14, tubo],   // paragolpes de caño
+      [-6, -3, -5, -3, 2, 5], [3, -3, -5, 6, 2, 5],                     // pontones rojos a los lados del piloto
+      [-3, -2, -1, -1, 0, 3, { liso: N[2] }], [1, -2, -1, 3, 0, 3, { liso: N[2] }],        // asientos
+      [-3, 0, 3, -1, 5, 4, { liso: N[2] }], [1, 0, 3, 3, 5, 4, { liso: N[2] }],            // respaldos
+      [-3, 0, -6, 3, 2, -5, { liso: N[1] }], [-1, 1, -4, 1, 3, -3, { liso: N[0] }],        // tablero y volante
+      // jaula: dos caños de techo, travesaños, patas delanteras en escalera y parantes de atras
+      [-6, 9, -5, -5, 10, 6, tubo], [5, 9, -5, 6, 10, 6, tubo], [-6, 9, -5, 6, 10, -4, tubo], [-6, 9, 5, 6, 10, 6, tubo], [-1, 9, -4, 1, 10, 5, tubo],
+      [-6, 2, 5, -5, 9, 6, tubo], [5, 2, 5, 6, 9, 6, tubo],
+      [-6, 2, -9, -5, 4, -8, tubo], [-6, 4, -8, -5, 6, -7, tubo], [-6, 6, -7, -5, 8, -6, tubo], [-6, 8, -6, -5, 9, -5, tubo],
+      [5, 2, -9, 6, 4, -8, tubo], [5, 4, -8, 6, 6, -7, tubo], [5, 6, -7, 6, 8, -6, tubo], [5, 8, -6, 6, 9, -5, tubo],
+      [-6, 4, -3, -5, 5, 5, tubo], [5, 4, -3, 6, 5, 5, tubo],           // barras de puerta
+      [-4, -3, 6, 4, 3, 13, { caras: { px: N[3], nx: N[3], py: N[3], ny: N[0], pz: N[3] } }],   // motor
+      [-2, 3, 8, 2, 4, 13, { liso: N[1] }], [2, -3, 11, 3, -2, 15, { liso: N[4] }],        // multiple y escape
+      [-8, -1, -1, -6, 0, 1, { liso: N[1] }], [6, -1, -1, 8, 0, 1, { liso: N[1] }],        // brazos de la suspension
+      ...(q.rally ? [
+        [-4, 0, -15, -2, 2, -14, faro], [2, 0, -15, 4, 2, -14, faro],   // faros de rally
+        [-3, 3, 13, -2, 7, 14, { liso: N[1] }], [2, 3, 13, 3, 7, 14, { liso: N[1] }],     // soportes del aleron
+        [-8, 7, 14, 8, 8, 17, { liso: N[0] }],                          // aleron
+        [-8, 5, 14, -7, 9, 17, { liso: q.c[2] }], [7, 5, 14, 8, 9, 17, { liso: q.c[2] }],   // laterales del aleron
+      ] : []),
+    ];
+  },
+  vistas: {
+    arriba: ({ A }, q, p) => {
+      const c = q.c;
+      p.fondo(N[1]);
+      A(-4, -14, 8, 6, c[2]); A(-4, -14, 8, 1, c[3]); A(-4, -14, 1, 6, c[3]); A(3, -14, 1, 6, c[1]);   // trompa
+      for (const x of [-6, 3]) { A(x, -5, 3, 10, c[2]); A(x, -5, 3, 1, c[3]); A(x, -5, 1, 10, c[3]); A(x + 2, -5, 1, 10, c[1]); }   // pontones
+      A(-4, 6, 8, 7, N[3]); A(-4, 6, 8, 1, N[4]); for (const z of [8, 10, 12]) A(-3, z, 6, 1, N[2]);   // motor con aletas
+      salpicar(p, 12, (col, a, b) => A(-4 + Math.floor(a * 8), 6 + Math.floor(b * 7), 1, 1, col));
+      if (!q.rally) return;
+      A(-4, -13, 8, 5, BLANCO); cifras(q.numero, (x, y) => A(-3 + x, -12 + y, 1, 1, N[0]), false, true);   // placa con el numero
+    },
+    abajo: ({ B }, q, p) => {
+      p.fondo(N[0]);
+      B(-4, -14, 8, 6, q.c[0]); B(-6, -5, 3, 10, q.c[0]); B(3, -5, 3, 10, q.c[0]);
+      B(-1, -13, 2, 26, N[2]); B(-3, -9, 6, 1, N[3]); B(-3, 9, 6, 1, N[3]); B(2, 4, 1, 12, '#6b4a36');
+      salpicar(p, 20, (col, a, b) => B(-6 + Math.floor(a * 12), -14 + Math.floor(b * 27), 1, 1, col));
+    },
+    costado: ({ L }, q, p, espejo) => {
+      const c = q.c;
+      p.fondo(N[0]);
+      L(-14, -3, 6, 3, c[2]); L(-14, -1, 6, 1, c[3]); L(-14, -3, 6, 1, c[1]);               // trompa
+      L(-5, -3, 10, 5, c[2]); L(-5, 1, 10, 1, c[3]); L(-5, -3, 10, 1, c[1]);                // pontón
+      L(6, -3, 7, 6, N[3]); L(6, 2, 7, 1, N[4]); for (const z of [7, 9, 11]) L(z, 0, 1, 2, N[2]);   // motor con aletas
+      if (q.rally) {
+        L(-4, -2, 8, 4, BLANCO);
+        cifras(q.numero, (x, y) => L(-3 + x, 1 - y, 1, 1, N[0]), espejo, true);
+      }
+      salpicar(p, 12, (col, a, b) => { const z = -14 + Math.floor(a * 27); L(z, -3 + Math.floor(b * 2.5), 1, 1, col); });
+    },
+    frente: ({ F }, q, p) => {
+      const c = q.c;
+      p.fondo(N[0]);
+      F(-6, -3, 2, 5, c[1]); F(4, -3, 2, 5, c[1]);
+      F(-4, -3, 8, 3, c[2]); F(-4, -1, 8, 1, c[3]); F(-2, -2, 4, 1, N[0]);                  // trompa y toma de aire
+      F(-4, -3, 1, 1, q.giro); F(3, -3, 1, 1, q.giro);
+    },
+    atras: ({ T }, q, p) => {
+      const c = q.c;
+      p.fondo(N[0]);
+      T(-6, -3, 2, 5, c[1]); T(4, -3, 2, 5, c[1]);
+      T(-4, -3, 8, 6, N[3]); T(-4, 2, 8, 1, N[4]); T(-3, -1, 6, 1, N[1]);                   // motor
+      T(-3, 0, 2, 1, q.freno); T(1, 0, 2, 1, q.freno);
+    },
+  },
+};
+
+// ================= EL CAMION: de rally raid, cabina amarilla y caja con lona caqui =================
+const LONA = ['#7a7552', '#9a9468', '#b8b186'];
+const CAMION = {
+  W: 18, L: 48, Y0: -5, Y1: 12, rueda: 0.4, atlas: [256, 128], frenos: [[-6, 1, 22.1, 2, 2], [6, 1, 22.1, 2, 2]],
+  cajas: (q) => {
+    const faro = { caras: { nz: '#ffd23a', px: N[1], nx: N[1], py: N[2], ny: N[0], pz: N[1] } };
+    return [
+      [-5, -5, -20, 5, -3, 21, { liso: N[0] }],                         // chasis
+      [-7, -4, -23, 7, -2, -22, { liso: N[2] }],                        // paragolpes de adelante
+      [-7, -4, 22, 7, -2, 23, { liso: N[2] }],                          // paragolpes de atras
+      [-7, -3, -22, 7, 3, -4],                                          // trompa y base de la cabina
+      [-7, 3, -14, 7, 10, -4, { cuña: 3 }],                             // cabina, con el parabrisas tendido
+      [-7, -3, -3, 7, 3, 22],                                           // chasis de la caja, negro con luces
+      [-8, 3, -3, 8, 11, 21], [-6, 11, -3, 6, 12, 21],                  // caja con lona
+      [-9, 2, -18, -6, 3, -10, { liso: N[1] }], [6, 2, -18, 9, 3, -10, { liso: N[1] }],    // guardabarros de adelante
+      [-9, 2, 10, -6, 3, 18, { liso: N[1] }], [6, 2, 10, 9, 3, 18, { liso: N[1] }],        // guardabarros de atras
+      [-9, 5, -11, -7, 6, -10, { liso: N[1] }], [7, 5, -11, 9, 6, -10, { liso: N[1] }],    // espejos
+      [7, 3, -3, 8, 11, -2, { liso: N[3] }],                            // escape vertical, atras de la cabina
+      ...(q.rally ? [
+        [-6, -2, -24, -4, 0, -23, faro], [4, -2, -24, 6, 0, -23, faro],   // faros de rally en el paragolpes
+        [-4, 10, -9, 4, 11, -8, { liso: N[1] }],                        // barra de luces del techo
+      ] : []),
+    ];
+  },
+  vistas: {
+    arriba: ({ A }, q, p) => {
+      const c = q.c, v = q.vidrio, l = LONA;
+      p.fondo(N[1]);
+      A(-7, -22, 14, 8, c[2]); A(-7, -22, 14, 1, c[3]); A(-7, -22, 1, 8, c[3]); A(6, -22, 1, 8, c[1]);   // capot
+      A(-6, -14, 12, 3, v[1]); A(-5, -13, 3, 1, v[3]);                                  // parabrisas
+      A(-7, -11, 14, 7, c[2]); A(-7, -11, 14, 1, c[3]); A(-7, -11, 1, 7, c[3]); A(6, -11, 1, 7, c[1]);   // techo de la cabina
+      A(-8, -3, 16, 24, l[1]); A(-8, -3, 16, 1, l[2]); A(-8, -3, 2, 24, l[2]); A(6, -3, 2, 24, l[0]);   // lona
+      for (const z of [2, 7, 12, 17]) A(-8, z, 16, 1, l[0]);                            // pliegues
+      A(-7, 21, 14, 1, N[1]);
+      salpicar(p, 14, (col, a, b) => A(-8 + Math.floor(a * 16), -3 + Math.floor(b * 24), 1, 1, col));
+      if (!q.rally) return;
+      A(-5, -21, 10, 6, BLANCO); cifras(q.numero, (x, y) => A(-3 + x, -20 + y, 1, 1, N[0]));   // numero en el capot
+    },
+    abajo: ({ B }, q, p) => {
+      p.fondo(N[0]);
+      B(-7, -22, 1, 44, q.c[0]); B(6, -22, 1, 44, q.c[0]);
+      B(-5, -20, 1, 41, N[2]); B(4, -20, 1, 41, N[2]);                                  // largueros
+      B(-6, -14, 12, 1, N[3]); B(-6, 14, 12, 1, N[3]); B(-1, -15, 2, 3, N[4]); B(-1, 13, 2, 3, N[4]);   // ejes y diferenciales
+      B(0, -14, 1, 28, N[4]); for (const z of [-8, 0, 8]) B(-4, z, 8, 1, N[1]);          // cardan y travesaños
+      B(2, -6, 1, 24, '#6b4a36');                                                       // escape
+      salpicar(p, 30, (col, a, b) => B(-7 + Math.floor(a * 14), -22 + Math.floor(b * 44), 1, 1, col));
+    },
+    costado: ({ L }, q, p, espejo) => {
+      const c = q.c, v = q.vidrio, l = LONA;
+      p.fondo(N[0]);
+      L(-20, -5, 41, 2, N[2]);                                                          // chasis
+      L(-22, -3, 18, 6, c[2]); L(-22, 2, 18, 1, c[3]); L(-22, -3, 18, 1, c[1]);         // trompa
+      L(-14, 3, 10, 7, c[2]); L(-12, 9, 8, 1, c[3]);                                    // cabina
+      L(-12, -1, 1, 10, c[1]); L(-5, -1, 1, 10, c[1]); L(-6, 2, 1, 1, N[1]);            // puerta y manija
+      L(-11, 5, 6, 4, v[1]); L(-10, 7, 2, 1, v[3]); L(-9, 6, 2, 1, v[3]);              // ventanilla
+      L(-3, -3, 25, 6, N[1]);                                                           // chasis de la caja
+      for (const z of [-1, 3, 7, 19]) { L(z, -1, 2, 2, '#e8b81c'); L(z, -1, 1, 1, '#f7e08a'); }   // luces de posicion
+      L(-3, 3, 24, 8, l[1]); L(-3, 3, 24, 1, l[0]); L(-3, 10, 24, 1, l[2]); L(-3, 11, 24, 1, l[2]);   // lona
+      for (const z of [2, 8, 14, 20]) L(z, 4, 1, 7, l[0]);                              // pliegues
+      L(-23, -4, 1, 2, N[2]); L(22, -4, 1, 2, N[2]);                                    // paragolpes
+      L(7, 4, 1, 7, N[4]);                                                              // escape vertical
+      L(-18, -3, 10, 5, N[0]); L(9, -3, 10, 5, N[0]);                                   // pasos de rueda
+      L(-22, 2, 2, 1, q.giro);
+      if (q.rally) {
+        L(-22, 0, 17, 1, q.franjas[0]);                                                 // franja sobre el capot
+        L(2, 5, 9, 6, BLANCO); cifras(q.numero, (x, y) => L(3 + x, 9 - y, 1, 1, N[0]), espejo);   // numero en la lona
+      }
+      salpicar(p, 20, (col, a, b) => { const z = -22 + Math.floor(a * 44); L(z, -3 + Math.floor(b * 2.5), 1, 1, col); });
+    },
+    frente: ({ F }, q, p) => {
+      const c = q.c, v = q.vidrio, l = LONA;
+      p.fondo(N[0]);
+      F(-8, 10, 16, 2, l[1]); F(-6, 11, 12, 1, l[2]);                                   // la caja asoma sobre la cabina
+      F(-7, 3, 14, 7, c[2]); F(-7, 9, 14, 1, c[3]);                                     // marco del parabrisas
+      F(-6, 4, 12, 5, v[1]); F(-6, 8, 12, 1, v[0]);
+      for (let k = 0; k < 4; k++) { F(-4 + k, 4 + k, 2, 1, v[3]); F(2 + k, 4 + k, 1, 1, v[2]); }
+      F(-4, 4, 3, 1, N[0]); F(1, 4, 3, 1, N[0]);                                        // limpiaparabrisas
+      F(-7, -2, 14, 5, c[2]); F(-7, 2, 14, 1, c[3]);                                    // trompa
+      F(-5, -1, 10, 3, N[1]); F(-4, 0, 8, 1, N[3]); F(-4, 1, 8, 1, N[2]);               // parrilla
+      F(-7, 0, 2, 2, q.luz); F(5, 0, 2, 2, q.luz); F(-7, -1, 2, 1, q.giro); F(5, -1, 2, 1, q.giro);
+      F(-4, -4, 8, 1, METAL[0]);
+      if (!q.rally) return;
+      for (const x of [-6, 4]) { F(x, -2, 2, 2, '#ffd23a'); F(x + 1, -1, 1, 1, '#fff1a8'); }
+    },
+    atras: ({ T }, q, p) => {
+      const l = LONA;
+      p.fondo(N[0]);
+      T(-8, 3, 16, 8, l[1]); T(-6, 11, 12, 1, l[2]); T(-8, 3, 16, 1, l[0]); T(0, 4, 1, 7, l[0]); T(-8, 10, 16, 1, l[2]);   // lona
+      T(-7, -3, 14, 6, N[1]); T(-7, -3, 14, 1, N[2]);                                   // chasis de la caja
+      T(-7, 1, 2, 2, q.freno); T(5, 1, 2, 2, q.freno); T(-7, 0, 2, 1, q.giro); T(5, 0, 2, 1, q.giro);
+      T(-2, -1, 4, 2, BLANCO);                                                          // patente
+    },
+  },
+};
+
 // ================= EL F1 moderno =================
 const F1 = {
   W: 16, L: 42, Y0: -2, Y1: 5, rueda: 0.35, frenos: [[-4, 1, 18, 2, 1], [4, 1, 18, 2, 1]], 
@@ -393,13 +568,13 @@ const F1 = {
   },
 };
 // (la lista de modelos va despues de definirlos a todos: si no, el juego no carga)
-const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA, f1: F1 };
+const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA, buggy: BUGGY, camion: CAMION, f1: F1 };
 
 // Pinta las vistas y arma la forma de un modelo con una pintura. Se guarda: dos autos iguales comparten todo.
 const hechos = new Map();
 function modelo(id, q) {
   if (hechos.has(q)) return hechos.get(q);
-  const M = MODELOS[id], alto = M.Y1 - M.Y0, atlas = crearAtlas(128, 64, q.rally ? 0.3 : 0.75), s = q.semilla || 3;   // los de rally resaltan; los de calle se funden con el paisaje
+  const M = MODELOS[id], alto = M.Y1 - M.Y0, atlas = crearAtlas(...(M.atlas || [128, 64]), q.rally ? 0.3 : 0.75), s = q.semilla || 3;   // los de rally resaltan; los de calle se funden con el paisaje
   const zona = (w, h, vista, ...mas) => atlas.zona(w, h, (p) => vista(lapices(p, M), q, p, ...mas), s);
   const vistas = {
     py: zona(M.W, M.L, M.vistas.arriba), ny: zona(M.W, M.L, M.vistas.abajo),

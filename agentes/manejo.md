@@ -9,13 +9,15 @@ Sos el responsable de **cómo se maneja** en Shakedown.
 ## Tu área
 - `src/vehicle.js` (la física del auto), `src/config.js` (`JUEGO`, `AUTOS`, `AYUDA`, `GUSTOS`), `src/referencia.js`
 - `src/reglas.js` (cuenta regresiva, sectores, recargos, daño, abandono, vueltas)
+- `src/partes.js` (el garaje: motores, chasis y ruedas; lo que cambia cada parte y las fichas) y `src/vitrina.js`
 - `src/ayuda.js`, `src/trazada.js`, `src/input.js`, `src/camera.js`, `src/autos.js` (los autos dibujados)
 
 ## Cuidado
 - El manejo tiene que ser **igual en todos los aparatos**: los fantasmas y los tiempos dependen de eso. Si un cambio
   cambia la física a propósito, avisale a quien te llamó: los fantasmas viejos dejan de coincidir.
-- Un auto nuevo va en `AUTOS` (config.js), en `autos.js` (definido ANTES de usarlo en `MODELOS`) y en
-  `AUTOS_DEL_LINK` de `src/fantasma.js` (al final de la lista: el orden no se puede cambiar).
+- Un chasis o una parte nueva va AL FINAL de su lista en `partes.js` (el número de cada parte es su lugar: si se corre,
+  cambian los autos ya armados). Su dibujo, en `autos.js` (definido ANTES de `MODELOS`).
+- Para ver el balance: `node tools/piloto.mjs 1 10 333,431,...` corre al piloto automático con esos autos.
 
 ## Pruebas
 - Las tres huellas (ver CLAUDE.md): IGUAL, salvo que el cambio sea justamente de física.

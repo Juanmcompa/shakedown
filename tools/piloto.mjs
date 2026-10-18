@@ -10,6 +10,9 @@ import { crearAuto } from '../src/vehicle.js';
 import { crearPartida } from '../src/reglas.js';
 import { crearReferencia } from '../src/referencia.js';
 import { AUTOS, REFERENCIA, JUEGO, AYUDA } from '../src/config.js';
+import { configDe } from '../src/partes.js';
+// (un auto: 'vitarita', 'kacito' o el codigo de un auto armado, como '431')
+const conf = (auto) => AUTOS[auto] || configDe(auto);
 import { crearAyuda } from '../src/ayuda.js';
 import { azar } from '../src/noise.js';
 
@@ -82,10 +85,10 @@ export function decidir(T, ref, c, p, o, m, rnd, t, ent) {
 // el tiempo, los colores y los sectores son los de esa; las vueltas al camino y el daño, la suma de todas.
 export function correr(T, par, auto, o) {
   // el piloto se guia por la referencia de SU auto; los colores salen de la referencia comun (par)
-  const ref = crearReferencia(T, AUTOS[auto]);
-  const P = T.camino, c = crearAuto(T, o.ayuda ? { ...AUTOS[auto], ...AYUDA.auto } : AUTOS[auto]), p = crearPartida(T, par.sectores), rnd = azar(o.semilla || 1);
+  const ref = crearReferencia(T, conf(auto));
+  const P = T.camino, c = crearAuto(T, o.ayuda ? { ...conf(auto), ...AYUDA.auto } : conf(auto)), p = crearPartida(T, par.sectores), rnd = azar(o.semilla || 1);
   const pide = { x: 0, y: 0, mano: false }, ent = { x: 0, y: 0, mano: false }, problemas = [], m = {}, ayuda = o.ayuda ? crearAyuda(T) : null;
-  if (ayuda) ayuda.preparar(AUTOS[auto]);
+  if (ayuda) ayuda.preparar(conf(auto));
   let t = 0, prox = 0, vmax = 0, golpes = 0, cruzado = 0, fuera = 0;
   p.preparar(c); p.largar();
   const V = T.vuelta, rondas = o.rondas || 3;
@@ -151,7 +154,7 @@ if (typeof process !== 'undefined' && process.argv[1].endsWith('piloto.mjs')) {
     const etapa = generarPista(n), T = crearTerreno(etapa), ref = crearReferencia(T, AUTOS[REFERENCIA]);
     if (!corto) console.log(`\n#${n} ${T.bioma.emoji}${T.clima.emoji} ${etapa.caracter} ${etapa.largo} m | referencia ${reloj(ref.total)} (${ref.sectores.map((s) => s.toFixed(0)).join(' ')}) | media ${(etapa.largo / ref.total * 3.6).toFixed(0)} km/h`);
     const quienes = AMBIENTE.SOLO ? AMBIENTE.SOLO.split(',') : Object.keys(PILOTOS), todos = { ...PILOTOS, ...NOVATOS };
-    for (const auto of soloAuto && AUTOS[soloAuto] ? [soloAuto] : Object.keys(AUTOS)) for (const nombre of quienes) {
+    for (const auto of soloAuto ? soloAuto.split(',') : Object.keys(AUTOS)) for (const nombre of quienes) {
       const pf = todos[nombre];
       if (!pf) continue;
       const r = correr(T, ref, auto, { ...pf, semilla: n * 7 + 1 });

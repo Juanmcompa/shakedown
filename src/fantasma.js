@@ -9,6 +9,7 @@
 // Es la misma informacion, con la misma precision que antes (10 cm y 1,4 grados), en mas o menos la mitad de lugar.
 // No dibuja nada.
 import { versionDe } from './generador.js';
+import { codigoDe } from './partes.js';
 
 const PASO = 0.5;          // segundos entre muestras
 const ESCALA = 10;         // las posiciones se guardan cada 10 cm
@@ -154,8 +155,20 @@ function pasarResultado(io, m, enc, dec, pista, completo) {
   const o = { pista, nombre: limpio(dec.decode(leidas)) || 'Sin nombre' };
   o.practica = !!io.crudo(m.practica ? 1 : 0, 1);
   o.ab = ABANDONOS[io.crudo(Math.max(0, ABANDONOS.indexOf(m.ab || '')), 2)];
-  o.auto = AUTOS_DEL_LINK[io.crudo(Math.max(0, AUTOS_DEL_LINK.indexOf(m.auto)), 3)] || AUTOS_DEL_LINK[0];
-  o.ayuda = !!(io.crudo(m.ayuda ? 1 : 0, 4) & 1);   // (cuatro marcas: la primera es la ayuda de manejo; las otras tres quedan libres)
+  // El auto. Antes era uno de AUTOS_DEL_LINK; ahora es el codigo de sus partes (ver partes.js), que va despues de las
+  // marcas. El numero de AUTOS_DEL_LINK se sigue escribiendo (el mas parecido), para que los links nuevos se lean igual
+  // con un programa viejo; y un link viejo, sin partes, se sigue leyendo: su auto queda con el nombre de antes.
+  const codigo = enc ? codigoDe(m.auto) : '', parecido = codigo[1] === '2' ? 'kacito' : 'vitarita';
+  o.auto = AUTOS_DEL_LINK[io.crudo(Math.max(0, AUTOS_DEL_LINK.indexOf(parecido)), 3)] || AUTOS_DEL_LINK[0];
+  // (cuatro marcas: la primera es la ayuda de manejo; la segunda, que trae las partes del auto; las otras dos quedan libres)
+  const marcas = io.crudo((m.ayuda ? 1 : 0) | (enc ? 2 : 0), 4);
+  o.ayuda = !!(marcas & 1);
+  if (marcas & 2) {   // las partes: cuantas (hasta 7 tipos) y el numero de cada una (de 1 a 16)
+    const n = io.crudo(codigo.length, 3);
+    let s = '';
+    for (let k = 0; k < n; k++) s += (io.crudo(enc ? parseInt(codigo[k], 16) - 1 : 0, 4) + 1).toString(16);
+    o.auto = s;
+  }
   o.t = io.crudo(Math.max(0, Math.min(524287, Math.round((m.t || 0) * 100))), 19) / 100;
   o.c = '';
   for (let k = 0; k < 5; k++) o.c += COLORES[io.crudo(Math.max(0, COLORES.indexOf((m.c || 'nnnnn')[k] || 'n')), 2)];

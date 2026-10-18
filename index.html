@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="21" class="cargando">
+<html lang="es" data-pagina="22" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -226,7 +226,7 @@
   // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -333,7 +333,8 @@
     </section>
   </div>
   <div class="col">
-    <div id="autos" class="autos" role="radiogroup" aria-label="Tu auto"></div>
+    <!-- tu auto: el que armaste en el garaje (ver partes.js). Tocandolo se abre el garaje -->
+    <button id="miAuto" type="button" class="mi-auto"></button>
     <p id="desafio" class="desafio" data-icono="fantasma" data-color="#000000" hidden><span></span></p>
     <p id="avisoAyuda" class="chico" data-icono="salvavidas" hidden> Con ayuda de manejo: sigue la trazada y frena solo.</p>
     <div id="miResultado" class="resultado" hidden></div>
@@ -430,6 +431,20 @@
   </div>
   <!-- Las configuraciones. Cada grupo de botones (data-ajuste) y cada barra (input con data-ajuste) cambia un gusto,
        que se guarda en el aparato. Los que llevan "solo-dedos" se ven solo en el celular. -->
+  <!-- El garaje: se arma el auto con partes (un motor, un chasis y unas ruedas), como en el Mario Kart. Arriba se ve
+       girando; cada parte se cambia con las flechas, y las fichas dicen como queda. Queda guardado para todas las pasadas. -->
+  <div id="panelGaraje" class="garaje" hidden>
+    <h2>Garaje</h2>
+    <canvas id="vitrina" class="vitrina" aria-hidden="true"></canvas>
+    <div class="garaje-auto">
+      <input id="nombreAuto" type="text" maxlength="18" autocomplete="off" spellcheck="false" aria-label="El nombre de tu auto">
+      <b id="codigoAuto" class="codigo-auto" title="El código de tu auto: el número de cada parte"></b>
+    </div>
+    <div id="partes" class="partes"></div>
+    <div id="fichas" class="fichas"></div>
+    <p class="presets"><span class="chico">Armados de fábrica:</span> <span id="autos"></span></p>
+    <p><button id="listoAuto" type="button" class="con-texto fuerte" data-icono="ok" data-color="#000000">Listo</button></p>
+  </div>
   <div id="panelAjustes" hidden>
     <h2>Configuración</h2>
     <div class="ajuste">

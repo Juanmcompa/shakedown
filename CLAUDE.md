@@ -24,7 +24,7 @@ Devuelven un resumen corto: qué cambiaron, qué pruebas corrieron y cómo salie
 
 | Área | Subagente |
 | --- | --- |
-| Cómo se maneja, el daño, las reglas, la cámara, la ayuda y la trazada | `manejo` |
+| Cómo se maneja, el daño, las reglas, la cámara, la ayuda y la trazada; el garaje y sus partes | `manejo` |
 | Cómo se arma la pista del día y los circuitos, el paisaje, el clima y el copiloto | `pistas` |
 | El creador de pistas y las pistas de la comunidad | `creador` |
 | Tablas, clubes, links, guardar tiempos, fantasmas y el servidor | `social` |
@@ -37,8 +37,10 @@ Devuelven un resumen corto: qué cambiaron, qué pruebas corrieron y cómo salie
 - La pista sale de la fecha: una pista nueva por día y **una sola pasada oficial**. Si un cambio hace que la pista de un
   día sea otra, hay que subir `VERSION` en `src/generador.js` (o la `version` del circuito en `src/circuitos.js`).
 - El fantasma del link es fiel: hace exactamente lo que hizo el otro.
-- Primer renglón de lo que se comparte de la pista del día, exacto: `Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁`.
-  Un abandono dice `💥 DNF`.
+- Primer renglón de lo que se comparte de la pista del día, exacto: `Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁 🚙431`
+  (al final, el auto: su chasis y el código de sus partes). Un abandono dice `💥 DNF`.
+- Los autos se arman por partes (`src/partes.js`): ninguna combinación es la mejor para todo. La Vitarita (333) y el
+  Kacito (323) tienen que manejar igual que siempre (las huellas lo controlan). Partes nuevas, siempre al final de su lista.
 - La firma "Desarrollado por Juan M. Comparini" va solo en la portada. Quien armó una pista de la comunidad firma su
   portada y lo que se comparte ("Pista «X» por Y"), no la largada.
 - Menos palabras y más íconos; colores apagados; sponsors en chiste; clubes por invitación.

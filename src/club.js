@@ -12,7 +12,7 @@
 //
 // Ademas: el borrador del creador de pistas (ver creador.js) y las pistas de la comunidad que se conocen en este aparato
 // (las que armaste, las que abriste y las de tus clubes), para poder listarlas y correrlas aunque no haya señal.
-import { limpio } from './fantasma.js';
+import { limpio, limpiarTexto } from './fantasma.js';
 import { esDeLaComunidad, COMUNIDAD } from './circuitos.js';
 
 const CLAVE = 'shakedown';
@@ -93,6 +93,9 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
     esNuevo: () => !(datos.gustos && datos.gustos.tutorial) && !Object.values(datos.dias).some((d) => d.oficial || d.practica),
     auto: () => datos.auto,
     ponerAuto: (a) => { datos.auto = a; guardar(); },
+    // el nombre que le pusiste a tu auto ('' = el de fabrica). Es solo de este aparato: lo que viaja es el codigo.
+    nombreAuto: () => datos.nombreAuto || '',
+    ponerNombreAuto: (n) => { datos.nombreAuto = limpiarTexto(n, 18); guardar(); },
     // --- la pasada oficial: una sola por dia ---
     oficial: () => D.oficial,
     sePuedeOficial: () => pista === hoy && !D.oficial,

@@ -1,7 +1,9 @@
 // Las pantallas que no son manejar: la portada con la pista del dia (o con un circuito fijo, o una pista de la comunidad),
 // la tabla del club, los circuitos y las pistas de la comunidad, las pistas pasadas, la ayuda, la configuracion y el
 // resultado de cada pasada con su boton de compartir.
-import { AUTOS, FIRMA } from './config.js';
+import { FIRMA } from './config.js';
+import { TIPOS, PARTES, PRESETS, FICHAS, codigoDe, partesDe, armarCodigo, parte, configDe, fichas } from './partes.js';
+import { crearVitrina } from './vitrina.js';
 import { BIOMAS, CLIMAS, CARACTER, datosDelDia } from './generador.js';
 import { CIRCUITOS, circuitoDe } from './circuitos.js';
 import { fechaDe } from './dia.js';
@@ -17,7 +19,8 @@ const DNF = 'DNF';
 const marcaDe = (r) => (r.ab ? DNF : tiempoFinal(r.t));
 const crear = (etiqueta, clase, texto) => { const el = document.createElement(etiqueta); if (clase) el.className = clase; if (texto !== undefined) el.textContent = texto; return el; };
 
-// El mensaje para compartir: Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
+// El mensaje para compartir: Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁 🚙431
+// (al final, el auto: el dibujo de su chasis y el codigo de sus partes; ver partes.js)
 // (el de un circuito fijo lleva su nombre en vez del numero: Shakedown · Subida ⛰️ ⏱️ 01:42:85 ...; el de una pista de la
 // comunidad, su nombre firmado por quien la armo: Shakedown · Pista «La Curva del Tero» por Juanma 📝 ⏱️ ...)
 // autor: quien armo la pista de la comunidad (su firma: va en todo lo que se comparte de esa pista)
@@ -27,7 +30,8 @@ export function mensaje(etapa, r, autor) {
   const cuadros = [...(r.c || 'nnnnn')].map((x) => CUADRO[x]).join(' '), fijo = circuitoDe(etapa.numero);
   return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : etapa.comunidad ? 'Shakedown · ' + firmada(etapa.nombre, autor) + ' ' + EMOJI_COMUNIDAD
     : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
-    + (r.ab ? ' 💥 ' + DNF + ' ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
+    + (r.ab ? ' 💥 ' + DNF + ' ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁')
+    + ' ' + configDe(r.auto).emoji + codigoDe(r.auto);   // (con que auto: su chasis y el codigo de sus partes)
 }
 // El renglon que cierra todo lo que se comparte (el resultado y la invitacion a un club), debajo del link:
 //   🚧 Early Access · App en desarrollo
@@ -95,14 +99,68 @@ export function crearMenu(o) {
     caja.append(img, crear('b', '', textoDeNota(n)));
     $('hoja').append(caja);
   }
-  // los autos
-  for (const id in AUTOS) {
-    const b = crear('button', 'auto');
-    b.type = 'button'; b.dataset.auto = id; b.setAttribute('role', 'radio');
-    b.append(crear('span', 'emoji', AUTOS[id].emoji), crear('b', '', AUTOS[id].nombre), crear('small', '', AUTOS[id].detalle));
-    b.addEventListener('click', () => { o.elegirAuto(id); pintar(); });
+  // --- tu auto y el garaje (ver partes.js) ---
+  // En la portada, tu auto: su dibujo, su nombre y su codigo. Tocandolo se abre el garaje, donde se cambia cada parte con
+  // las flechas; el auto de la pista cambia en el momento, y las fichas dicen como queda (lo que mejoro en verde, lo que
+  // empeoro en rojo). Queda guardado para todas las pasadas. El nombre es solo tuyo: lo que viaja es el codigo.
+  const nombreDelAuto = () => club.nombreAuto() || configDe(club.auto()).nombre;
+  function pintarMiAuto() {
+    const codigo = codigoDe(club.auto()), C = configDe(codigo), b = $('miAuto');
+    b.textContent = '';
+    b.append(crear('span', 'emoji', C.emoji), crear('b', '', nombreDelAuto()), crear('span', 'codigo-auto', codigo), crear('small', '', 'Tocá para armarlo en el garaje'));
+    b.setAttribute('aria-label', 'Tu auto: ' + nombreDelAuto() + ', código ' + codigo + '. Abrir el garaje');
+  }
+  $('miAuto').addEventListener('click', () => abrir('garaje'));
+  let vitrina = null, antes = null;
+  const cambiarAuto = (codigo) => { antes = fichas(club.auto()); o.elegirAuto(codigo); pintarGaraje(); pintar(); };
+  for (const id in PRESETS) {
+    const b = crear('button', 'con-texto discreto');
+    b.type = 'button'; b.dataset.auto = id;
+    b.textContent = PRESETS[id].nombre + ' · ' + PRESETS[id].codigo;
+    b.addEventListener('click', () => { club.ponerNombreAuto(''); cambiarAuto(PRESETS[id].codigo); });
     $('autos').append(b);
   }
+  for (const tipo of TIPOS) {
+    const fila = crear('div', 'parte'), menos = crear('button', 'chiquito'), mas = crear('button', 'chiquito');
+    fila.dataset.tipo = tipo;
+    menos.type = mas.type = 'button';
+    menos.dataset.icono = 'izquierda'; mas.dataset.icono = 'derecha';
+    menos.setAttribute('aria-label', 'Otro ' + tipo); mas.setAttribute('aria-label', 'Otro ' + tipo);
+    const mover = (paso) => {
+      const p = partesDe(club.auto()), n = PARTES[tipo].length;
+      p[tipo] = ((p[tipo] - 1 + paso + n) % n) + 1;
+      cambiarAuto(armarCodigo(p));
+    };
+    menos.addEventListener('click', () => mover(-1)); mas.addEventListener('click', () => mover(1));
+    const que = crear('span', 'que'); que.dataset.icono = tipo;
+    fila.append(que, menos, crear('div', 'cual'), mas);
+    $('partes').append(fila);
+  }
+  function pintarGaraje() {
+    const codigo = codigoDe(club.auto()), p = partesDe(codigo), f = fichas(codigo);
+    $('codigoAuto').textContent = codigo;
+    if (document.activeElement !== $('nombreAuto')) $('nombreAuto').value = nombreDelAuto();
+    for (const fila of $('partes').children) {
+      const tipo = fila.dataset.tipo, n = p[tipo], x = parte(tipo, n), cual = fila.querySelector('.cual');
+      cual.textContent = '';
+      const puntos = crear('span', 'puntos');
+      for (let k = 1; k <= PARTES[tipo].length; k++) puntos.append(crear('i', k === n ? 'si' : ''));
+      cual.append(crear('b', '', n + ' · ' + x.nombre), crear('small', '', x.detalle), puntos);
+    }
+    $('fichas').textContent = '';
+    for (const [k, nombre] of FICHAS) {
+      const fila = crear('div', 'ficha'), barra = crear('span', 'barra'), viejo = antes ? antes[k] : f[k];
+      for (let i = 1; i <= 10; i++) barra.append(crear('i', i <= f[k] ? (i > viejo ? 'gano' : 'si') : i <= viejo ? 'perdio' : ''));
+      fila.append(crear('span', '', nombre), barra);
+      $('fichas').append(fila);
+    }
+    antes = null;
+    if (vitrina) vitrina.mostrar(configDe(codigo));
+    ponerIconos($('panelGaraje'));
+  }
+  $('nombreAuto').addEventListener('change', () => { club.ponerNombreAuto($('nombreAuto').value); $('nombreAuto').value = nombreDelAuto(); pintar(); });
+  $('nombreAuto').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('nombreAuto').blur(); });
+  $('listoAuto').addEventListener('click', () => abrir(''));
 
   // En el celular parado, la parte de arriba de la portada se corre con el dedo si no entra (el pie queda fijo):
   // cuando queda algo por ver, el borde del pie lo avisa con una flechita (ver ".hay-mas" en style.css).
@@ -115,7 +173,7 @@ export function crearMenu(o) {
   function pintar() {
     // en un circuito (y en una pista de la comunidad) no hay pasada oficial: lo que cuenta es el mejor tiempo
     const oficial = libre ? club.practica() : club.oficial(), puede = club.sePuedeOficial(), rival = o.rival();
-    for (const b of $('autos').children) { const si = b.dataset.auto === club.auto(); b.classList.toggle('elegido', si); b.setAttribute('aria-checked', si); }
+    pintarMiAuto();
     // contra quien
     $('desafio').hidden = !rival;
     if (rival) $('desafio').querySelector('span').textContent = 'Contra ' + rival.nombre + (rival.ab ? '' : ' · ' + tiempoFinal(rival.t));
@@ -231,8 +289,9 @@ export function crearMenu(o) {
     lista.forEach((r) => {
       const li = crear('li', r.mio ? 'mio' : '');
       const quien = crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?'));
+      quien.append(crear('small', 'codigo-auto', codigoDe(r.auto)));   // (con que auto corrio: el codigo de sus partes)
       if (r.ayuda) quien.append(conAyuda());
-      li.append(crear('span', 'emoji', (AUTOS[r.auto] || AUTOS.vitarita).emoji), quien, crear('span', 'tiempoMarca', marcaDe(r)), cuadritos(r.c));
+      li.append(crear('span', 'emoji', configDe(r.auto).emoji), quien, crear('span', 'tiempoMarca', marcaDe(r)), cuadritos(r.c));
       // (un DNF no tiene fantasma para correrle: no termino, y si se cerro el juego en el medio, ni siquiera quedo grabado)
       if ((r.codigo || r.id) && !r.ab) {
         const clave = o.claveDe(r), es = rival && rival.clave === clave && !!rival.practica === !!r.practica;
@@ -409,6 +468,7 @@ export function crearMenu(o) {
     <p class="con-servidor">${dib('lapiz')} Ahí también están las pistas de la comunidad: las arma la gente en el creador, nota por nota, como las canta el copiloto. Duran dos semanas y se comparten con un link. Si la armás para un club, aparece en el club y la corren todos sus miembros.</p>
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
     <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina.</p>
+    <p>${dib('motor')} Tu auto se arma en el garaje (tocalo en la portada): un motor, un chasis y unas ruedas, cinco de cada uno. Ninguna combinación es la mejor para todo: más motor patina más, el buggy dobla rápido pero se rompe fácil, las ruedas de barro resbalan en el asfalto. Su código (por ejemplo, 431: el 4to motor, el 3er chasis y las primeras ruedas) va en tus links y en la tabla, y tu fantasma es tu auto.</p>
     <p>Los golpes rompen el auto. Si se rompe del todo, abandonás: en la tabla figurás con DNF (no terminó). Lo mismo si cerrás el juego en plena pasada oficial. Las piedras que están pegadas al camino llevan una antorcha roja.</p>
     <p>${dib('fantasma')} En la tabla, el fantasma elige contra quién corrés. Si te mandan un link, corrés contra quien te lo mandó.</p>
     <p class="con-servidor">${dib('podio')} En la tabla también se arman clubes: le ponés un nombre, invitás con un link, y el que lo abre queda adentro. La pasada oficial de cada uno aparece sola en la tabla de todos sus clubes. Es que al terminar, tu tiempo se guarda solo en el servidor del juego, con el nombre que elijas (no se pide ningún otro dato): no hace falta compartirlo.</p>
@@ -452,7 +512,10 @@ export function crearMenu(o) {
 
   // --- paneles ---
   function abrir(cual) {
-    for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelCircuitos', 'circuitos'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes']]) $(id).hidden = nombre !== cual;
+    for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelCircuitos', 'circuitos'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes'], ['panelGaraje', 'garaje']]) $(id).hidden = nombre !== cual;
+    // el garaje: la vitrina dibuja solo mientras esta abierto
+    if (cual === 'garaje') { if (!vitrina) vitrina = crearVitrina($('vitrina')); pintarGaraje(); }
+    if (vitrina) vitrina.prender(cual === 'garaje');
     if (cual === 'pasadas') pintarPasadas();
     if (cual === 'circuitos') { pintarCircuitos(); pintarComunidad(); }
     // en el celular, al abrir la configuracion se prende el sensor (si lo hay) para poder probar la sensibilidad

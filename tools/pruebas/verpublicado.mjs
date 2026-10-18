@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
+const traer = (n) => { const req = createRequire(import.meta.url); try { return req(n); } catch (e) { return req('/opt/npm-tools/node_modules/' + n); } };
 const { chromium } = traer('playwright');
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..'), TIPOS = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json' };
 const PUBLICADO = (await import(RAIZ + '/src/config.js')).SERVIDOR, PUERTO = 8790, SITIO = 'http://juego.test:' + PUERTO, API = 'http://127.0.0.1:8789';

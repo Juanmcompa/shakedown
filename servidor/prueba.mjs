@@ -111,7 +111,7 @@ const t = r.cosa && r.cosa.clubes && r.cosa.clubes[club];
 ver('la tabla del club contesta', r.estado === 200 && t && t.miembros === 3 && t.soy === true, r.cosa);
 if (t) {
   const of = t.tabla.filter((x) => !x.practica), pr = t.tabla.filter((x) => x.practica);
-  ver('estan las dos oficiales', of.length === 2 && of.some((x) => x.nombre === 'Anita' && x.mio && x.t === 131.42 && x.id === idA && x.j === jA) && of.some((x) => x.nombre === 'Beto' && !x.mio && x.auto === 'kacito' && x.ayuda === true && x.c === 'vvavv'), of);
+  ver('estan las dos oficiales (el Kacito llega como su codigo de partes, 323)', of.length === 2 && of.some((x) => x.nombre === 'Anita' && x.mio && x.t === 131.42 && x.id === idA && x.j === jA) && of.some((x) => x.nombre === 'Beto' && !x.mio && x.auto === '323' && x.ayuda === true && x.c === 'vvavv'), of);
   ver('de las practicas, solo la mejor de cada uno', pr.length === 1 && pr[0].t === 117.8 && pr[0].id === idP2, pr);
   ver('dice quien falta correr', JSON.stringify(t.faltan) === JSON.stringify(['Caro']), t.faltan);
 }

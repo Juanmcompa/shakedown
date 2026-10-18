@@ -33,7 +33,7 @@ const correr = (pag, piloto, auto) => pag.evaluate(async ([piloto, auto]) => {
   return s.estado();
 }, [piloto, auto]);
 const esperarFin = (pag) => pag.waitForFunction(() => !document.getElementById('fin').hidden, null, { timeout: 60000 });
-const tabla = (pag, cual = 'tabla') => pag.evaluate((cual) => [...document.querySelectorAll('#' + cual + ' li')].map((li) => li.querySelector('.quien').textContent + ' ' + li.querySelector('.tiempoMarca').textContent + (li.classList.contains('mio') ? ' (mio)' : '')), cual);
+const tabla = (pag, cual = 'tabla') => pag.evaluate((cual) => [...document.querySelectorAll('#' + cual + ' li')].map((li) => li.querySelector('.quien').firstChild.textContent + ' ' + li.querySelector('.tiempoMarca').textContent + (li.classList.contains('mio') ? ' (mio)' : '')), cual);
 const cargada = (pag) => pag.waitForFunction(() => window.shakedown && !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
 // la pista de prueba: curvas de todo tipo, rectas, cosas del camino y del costado
 const PISTA = ['r2', 'd4', 'ge', 'r1', 'i3', 'sa', 'r2', 'd5', 'pu', 'i2', 'r3', 'cn', 'd4', 'r2', 'i5', 'va', 'r2', 'pb', 'fa', 'd3', 'r1'];
@@ -142,7 +142,7 @@ ver('A: corre su pista y el tiempo se sube', finA.estado === 'llegada' && await 
 await A.click('#compartir');
 await A.waitForTimeout(600);
 const resA = (await A.evaluate(() => navigator.clipboard.readText())).split('\n');
-ver('A: el resultado se comparte con la pista firmada y su link corto', /^Shakedown · Pista «La Curva del Tero» por Juanma 📝 ⏱️ \d\d:\d\d:\d\d .* 🏁$/.test(resA[0]) && /#r=[0-9A-Za-z]{7}$/.test(resA[1]), resA);
+ver('A: el resultado se comparte con la pista firmada y su link corto', /^Shakedown · Pista «La Curva del Tero» por Juanma 📝 ⏱️ \d\d:\d\d:\d\d .* 🏁 🚗323$/.test(resA[0]) && /#r=[0-9A-Za-z]{7}$/.test(resA[1]), resA);
 console.log('     ' + resA.join(' | '));
 await A.screenshot({ path: 'out/creador-9-fin-a.png' });
 

@@ -43,7 +43,7 @@ const cargada = (pag) => pag.waitForFunction(() => window.shakedown && !document
 const texto = (pag, id) => pag.evaluate((id) => { const el = document.getElementById(id); return !el || el.hidden ? '' : el.textContent.trim(); }, id);
 const guardado = (pag) => texto(pag, 'finGuardado');
 const esperarGuardado = (pag, re, ms = 20000) => pag.waitForFunction((re) => { const el = document.getElementById('finGuardado'); return el && !el.hidden && new RegExp(re).test(el.textContent); }, re.source, { timeout: ms }).then(() => true).catch(() => false);
-const tabla = (pag) => pag.evaluate(() => [...document.querySelectorAll('#tabla li')].map((li) => li.querySelector('.quien').textContent + ' ' + li.querySelector('.tiempoMarca').textContent + (li.classList.contains('mio') ? ' (mio)' : '') + (li.querySelector('button') ? ' [fantasma]' : '')));
+const tabla = (pag) => pag.evaluate(() => [...document.querySelectorAll('#tabla li')].map((li) => li.querySelector('.quien').firstChild.textContent + ' ' + li.querySelector('.tiempoMarca').textContent + (li.classList.contains('mio') ? ' (mio)' : '') + (li.querySelector('button') ? ' [fantasma]' : '')));
 // corta (o devuelve) la señal con el servidor, solo para las pasadas
 const sinSenal = async (pag, si) => { if (si) await pag.route('**/pasadas', (r) => r.abort('internetdisconnected')); else await pag.unroute('**/pasadas'); };
 const dormir = (j) => j.pag.goto('about:blank');   // (para que no le quite graficos a la que se esta probando)

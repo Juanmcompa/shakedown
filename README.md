@@ -11,18 +11,18 @@ Rally diario. Cada medianoche hay una pista nueva, la misma para todos, y una so
 El resultado se comparte así, con un link que lleva tu pasada y, al final, el aviso de que el juego está en desarrollo:
 
 ```
-Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
+Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁 🚙333
 https://juanmcompa.github.io/shakedown/#r=k7Qx2Mp
 🚧 Early Access · App en desarrollo
 ```
 
-Si rompiste el auto, en vez del tiempo dice DNF (no terminó, como en las planillas de rally): `Shakedown #42 🌧️🌲 💥 DNF 🟩 🟨 ⬛ ⬛ ⬛`.
+Si rompiste el auto, en vez del tiempo dice DNF (no terminó, como en las planillas de rally): `Shakedown #42 🌧️🌲 💥 DNF 🟩 🟨 ⬛ ⬛ ⬛ 🚙333`. Al final va siempre el auto: el dibujo de su chasis y el código de sus partes (ver "El garaje").
 
 ## La historia
 
 Un club clandestino de puristas del rally, cansados de los circuitos cerrados, busca caminos olvidados. Cada medianoche, el organizador anónimo publica en un foro cerrado las coordenadas y las notas del copiloto del desafío del día: un sendero forestal embarrado, una ruta rural castigada por la lluvia o un paso de montaña de ripio.
 
-No hay vueltas de reconocimiento. Sos vos, tu lectura del terreno y un auto noventero contra el cronómetro: una Vitara del 92 levantada ("La Vitarita") o un Ka con chapón cubrecárter ("El Kacito").
+No hay vueltas de reconocimiento. Sos vos, tu lectura del terreno y un auto noventero contra el cronómetro: una Vitara del 92 levantada ("La Vitarita"), un Ka con chapón cubrecárter ("El Kacito"), o lo que armes en el garaje.
 
 Hay una sola pasada oficial antes de que caigan las autoridades y clausuren el trazado. Al final del día los tiempos se comparan en la tabla del club.
 
@@ -48,6 +48,7 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 - **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
 - **La meta.** Al cruzarla salen papelitos, como en la cancha, y grita el público. En el resultado, debajo del tiempo, se ve cómo quedaste contra tus amigos: el puesto («2º de 6») y a cuánto del de adelante y del de atrás. Si quedaste primero va en amarillo y salen más papelitos. En una práctica dice dónde habrías quedado. (Los amigos son los de la tabla: los de los links que abriste y los de tus clubes.)
 - **Los golpes suenan.** Cada cosa suena a lo suyo: una piedra, el alambrado, un árbol, un fardo, un cono, la chapa de un auto tirado, una caída al vacío. Y el auto suena cada vez más roto: la chapa cruje más, algo suelto tintinea, el motor falla y, al final, pierde vapor.
+- **Tu auto, armado por partes.** En el garaje se elige un motor, un chasis y unas ruedas, como en el Mario Kart: 125 combinaciones, y ninguna es la mejor para todo (ver "El garaje").
 - **Pistas pasadas.** Se pueden correr las de los últimos 60 días, como práctica.
 - **Circuitos fijos.** Además de la pista del día hay cuatro recorridos que no cambian nunca, para correr las veces que se quiera. Queda guardado el mejor tiempo de cada uno y se comparte igual que el del día. Uno es una vuelta cerrada para practicar: no tiene llegada, se dan las vueltas que se quiera.
 - **Clubes de amigos.** Con un link de invitación se arma un grupo con tabla propia: la pasada oficial de cada uno aparece sola, con su nombre y su tiempo (ver "Correr contra amigos").
@@ -80,6 +81,22 @@ Shakedown · Urbano 🏘️ ⏱️ 01:30:42 🟩 🟩 🟩 🟩 🟩 🏁
 ```
 
 **La Vuelta del Club no tiene llegada.** Se larga unos metros antes de la raya y el reloj arranca al cruzarla. Cada vez que se la vuelve a cruzar se cierra una vuelta: aparece su tiempo, el reloj y los cuadraditos empiezan de nuevo y el auto queda arreglado. La mejor vuelta queda guardada y pasa a ser el fantasma contra el que se corre. Para terminar se sale con `Esc` (o con la X en el celular) y se ve el resultado de la mejor vuelta, que es la que se comparte.
+
+## El garaje
+
+Se abre tocando tu auto en la portada. El auto se arma con tres partes, cada una con cinco opciones, y se ve girando arriba mientras lo armás. Queda guardado para todas las pasadas, con el nombre que le pongas.
+
+| Parte | Las cinco, de la 1 a la 5 | Qué cambian |
+| --- | --- | --- |
+| Motor | Cuatro chico, Dieciséis válvulas, El de fábrica, Turbo, V8 | Más motor acelera y llega más rápido, pero pesa más y patina más |
+| Chasis | Buggy, Rally, Cuatro por cuatro, Chata, Camioncito | El peso, el tamaño, la suspensión, cuánto dobla y cuánto aguanta los golpes (el buggy se rompe fácil; el camioncito aguanta todo) |
+| Ruedas | Lisas, Mixtas, Todo terreno, Taco de ripio, Patonas de barro | Las lisas agarran en el asfalto y resbalan en el barro; las patonas, al revés |
+
+- **El código.** Cada auto tiene un código con el número de cada parte, en ese orden: `431` es el 4to motor, el 3er chasis y las primeras ruedas. El más alto es `555`. El nombre es solo tuyo; lo que viaja es el código: va en los links (así el fantasma de tu pasada es tu auto), en la tabla al lado de tu nombre y al final de lo que se comparte.
+- **Las fichas.** Cinco barras, de 1 a 10: velocidad, aceleración, manejo, agarre y aguante. Al cambiar una parte, lo que mejora se ve en verde y lo que empeora en rojo.
+- **Ninguna combinación es la mejor.** Con el piloto automático, en 13 pistas, cada combinación termina entre un 1% más rápido y un 5% más lento que la Vitarita en promedio, y cada una gana en alguna pista: depende del suelo, de las curvas y de cuánto hay para chocar.
+- **La Vitarita (`333`) y el Kacito (`323`)** son dos combinaciones armadas de fábrica (motor y ruedas del medio, cada uno con su chasis): manejan exactamente igual que antes, y los links viejos los siguen mostrando.
+- **Para sumar partes**, ver `src/partes.js`: una parte nueva va al final de su lista (hasta 15 por tipo) y un tipo nuevo (por ejemplo, paragolpes) al final de `TIPOS`. Los códigos viejos siguen valiendo.
 
 ## Pistas de la comunidad
 
@@ -231,6 +248,8 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Cuánto duran las pistas de la comunidad y cuántas puede tener cada uno (`COMUNIDAD`) | `src/circuitos.js` |
 | Cómo suena cada golpe: de qué material es cada cosa (`MATERIAL`), cada sonido, el público de la meta y cómo suena un auto roto | `src/audio.js` |
 | Los papelitos de la meta: colores, tamaño y cómo caen | `src/papelitos.js` |
+| Las partes del garaje (motores, chasis y ruedas), lo que cambia cada una y las fichas (`PARTES`, `PRESETS`, `CUENTAS`) | `src/partes.js` |
+| Cómo se ve cada chasis | `src/autos.js` (los modelos `buggy`, `kacito`, `vitarita`, `chata` y `camion`) |
 | Lo que dice el resultado al compararte con tus amigos | `src/menu.js` (`pintarContra`) |
 | Qué se guarda solo al terminar y cada cuánto se vuelve a probar si no hubo señal (`guardarYa`, `sincronizar`, `reintentarLuego`); lo que dice el resultado sobre si quedó guardado (`guardado`) | `src/main.js`, `src/menu.js` |
 | El panel de circuitos: el orden de sus partes y cómo es cada fila (`pintarCircuitos`, `pintarPistas`); el detalle corto de cada circuito (`breve`) | `index.html` (`#panelCircuitos`), `src/menu.js`, `src/circuitos.js` |
@@ -299,6 +318,8 @@ Ya pasó: el archivo que dibuja los carteles de la pista se llamaba `publicidad.
 | `src/huellas.js`, `src/fx.js` | Las huellas en el piso y la pintura de las calles; el polvo que queda flotando y el barro y el agua que saltan de las ruedas |
 | `src/camera.js`, `src/audio.js`, `src/input.js`, `src/noise.js` | Cámaras, sonido (el motor, los golpes, un auto roto, la meta), mandos y ruido para el relieve |
 | `src/papelitos.js` | Los papelitos de la meta |
+| `src/partes.js` | El garaje: las partes, cómo se combinan y las fichas de cada auto |
+| `src/vitrina.js` | El auto girando en el garaje |
 | `vendor/` | Three.js (la biblioteca 3D) y las tipografías |
 | `tools/` | Pruebas sin gráficos (opcionales) |
 
