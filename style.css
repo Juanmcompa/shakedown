@@ -287,6 +287,10 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 3p
 .social input { width: 9.5em; padding: 8px 10px; border: 0; border-radius: 5px; font: 600 16px/1.2 var(--texto); color: #000; background: #fff; }
 .social input:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; }
 #compartido { flex-basis: 100%; min-height: 1.35em; font-size: 14px; overflow-wrap: anywhere; }
+/* si tu tiempo quedo guardado (y en que tabla): un renglon chico debajo del nombre; guardado, con un tilde verde */
+.fin-guardado { flex-basis: 100%; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 14px; opacity: .8; }
+.fin-guardado.listo { opacity: .95; }
+.fin-guardado .icono { width: 16px; height: 16px; vertical-align: 0; }
 .ranking { width: min(30rem, 100%); text-align: left; }
 #fin .botones { justify-content: center; }
 /* en el celular, los botones del resultado quedan pegados abajo, a la vista, aunque la tabla sea larga */

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="20" class="cargando">
+<html lang="es" data-pagina="21" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -34,6 +34,7 @@
   //   R = un archivo del juego no bajo (dice cual)          E = fallo el programa (dice en que archivo y en que renglon)
   //   P = fallo algo que el programa estaba esperando       V = el navegador es muy viejo para el juego
   //   G = el aparato no puede con los graficos 3D           T = tarda demasiado (pero sigue cargando)
+  //   A = sigue llegando la pagina anterior (recien publicada una version nueva: ver "la pagina vieja" en main.js)
   // y un numero: en que paso de la carga estaba. 0 = el programa todavia no habia arrancado; del 1 al 6, los de main.js:
   //   1 buscar la pasada del link   2 armar la pista   3 el paisaje   4 el auto   5 ultimos ajustes   6 el primer cuadro
   // Ejemplo: "R0 · carteleria.js (sin respuesta)" = ese archivo no bajo: lo frena un bloqueador, o no hay conexion.
@@ -547,6 +548,8 @@
     <label for="nombre">Tu nombre</label>
     <input id="nombre" type="text" maxlength="14" autocomplete="nickname" autocapitalize="words" spellcheck="false">
     <button id="compartir" class="segundo" data-icono="compartir" data-color="#000000" aria-label="Compartir"><span class="rotulo">Compartir</span></button>
+    <!-- si tu tiempo quedo guardado y en que tabla se ve (se guarda solo al terminar: no hace falta compartirlo) -->
+    <p id="finGuardado" class="fin-guardado" role="status" hidden></p>
     <p id="compartido" role="status"></p>
   </div>
   <div class="ranking" id="finRanking" hidden>

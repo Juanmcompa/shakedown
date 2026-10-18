@@ -12,6 +12,9 @@ import { EQUIPO, retrato } from './equipo.js';
 const $ = (id) => document.getElementById(id);
 const CUADRO = { v: '🟩', a: '🟨', r: '🟥', n: '⬛' };
 const ABANDONO = { roto: 'Rompiste el auto', tiempo: 'Se acabó el tiempo', cerrado: 'Cerraste el juego en plena pasada' };
+// El tiempo de un resultado. Un abandono dice DNF, como en las planillas de rally ("did not finish": no termino).
+const DNF = 'DNF';
+const marcaDe = (r) => (r.ab ? DNF : tiempoFinal(r.t));
 const crear = (etiqueta, clase, texto) => { const el = document.createElement(etiqueta); if (clase) el.className = clase; if (texto !== undefined) el.textContent = texto; return el; };
 
 // El mensaje para compartir: Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁
@@ -24,7 +27,7 @@ export function mensaje(etapa, r, autor) {
   const cuadros = [...(r.c || 'nnnnn')].map((x) => CUADRO[x]).join(' '), fijo = circuitoDe(etapa.numero);
   return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : etapa.comunidad ? 'Shakedown · ' + firmada(etapa.nombre, autor) + ' ' + EMOJI_COMUNIDAD
     : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
-    + (r.ab ? ' 💥 abandono ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
+    + (r.ab ? ' 💥 ' + DNF + ' ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁');
 }
 // El renglon que cierra todo lo que se comparte (el resultado y la invitacion a un club), debajo del link:
 //   🚧 Early Access · App en desarrollo
@@ -121,7 +124,7 @@ export function crearMenu(o) {
     mio.hidden = !oficial || !!oficial.corriendo;
     if (!mio.hidden) {
       mio.textContent = '';
-      mio.append(crear('span', 'chico', T.vuelta ? 'Tu mejor vuelta' : libre ? 'Tu mejor tiempo' : 'Tu pasada oficial'), crear('b', 'tiempo', oficial.ab ? 'Abandono' : tiempoFinal(oficial.t)), cuadritos(oficial.c));
+      mio.append(crear('span', 'chico', T.vuelta ? 'Tu mejor vuelta' : libre ? 'Tu mejor tiempo' : 'Tu pasada oficial'), crear('b', 'tiempo', marcaDe(oficial)), cuadritos(oficial.c));
     }
     $('avisoAyuda').hidden = !ajustes.leer('ayuda');
     pintarAjustes();
@@ -229,8 +232,9 @@ export function crearMenu(o) {
       const li = crear('li', r.mio ? 'mio' : '');
       const quien = crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?'));
       if (r.ayuda) quien.append(conAyuda());
-      li.append(crear('span', 'emoji', (AUTOS[r.auto] || AUTOS.vitarita).emoji), quien, crear('span', 'tiempoMarca', r.ab ? 'abandono' : tiempoFinal(r.t)), cuadritos(r.c));
-      if (r.codigo || r.id) {
+      li.append(crear('span', 'emoji', (AUTOS[r.auto] || AUTOS.vitarita).emoji), quien, crear('span', 'tiempoMarca', marcaDe(r)), cuadritos(r.c));
+      // (un DNF no tiene fantasma para correrle: no termino, y si se cerro el juego en el medio, ni siquiera quedo grabado)
+      if ((r.codigo || r.id) && !r.ab) {
         const clave = o.claveDe(r), es = rival && rival.clave === clave && !!rival.practica === !!r.practica;
         // el fantasma: amarillo si es contra quien se corre
         const b = crear('button', 'chiquito' + (es ? ' elegido' : ''));
@@ -260,7 +264,7 @@ export function crearMenu(o) {
       const a = crear('a', aca ? 'aca' : '');
       a.href = direccion;
       a.append(crear('span', 'emoji', emoji), crear('b', '', nombre), crear('small', '', detalle));
-      if (res) a.append(crear('span', 'tiempoMarca', res.ab ? 'abandono' : tiempoFinal(res.t)), cuadritos(res.c));
+      if (res) a.append(crear('span', 'tiempoMarca', marcaDe(res)), cuadritos(res.c));
       const li = crear('li');
       li.append(a);
       ol.append(li);
@@ -317,7 +321,7 @@ export function crearMenu(o) {
         detalle.append([mia ? 'por vos' : p.autor ? 'por ' + p.autor : '', quedan(p.vence)].filter(Boolean).join(' · '));
       }
       a.append(crear('span', 'emoji', EMOJI_COMUNIDAD), crear('b', '', p.nombre), detalle);
-      if (res) a.append(crear('span', 'tiempoMarca', res.ab ? 'abandono' : tiempoFinal(res.t)), cuadritos(res.c));
+      if (res) a.append(crear('span', 'tiempoMarca', marcaDe(res)), cuadritos(res.c));
       const li = crear('li');
       li.append(a);
       if (mia && o.borrarPista) {
@@ -353,12 +357,12 @@ export function crearMenu(o) {
   // --- pistas pasadas ---
   function pintarPasadas() {
     const ol = $('pasadas');
-    if (ol.children.length) return;
+    ol.textContent = '';
     for (let n = hoy; n >= Math.max(1, hoy - 60); n--) {
       const d = datosDelDia(n), res = club.resumen(n), a = crear('a', n === numero ? 'aca' : '');
       a.href = n === hoy ? location.pathname : location.pathname + '?p=' + n;
       a.append(crear('b', '', '#' + n), crear('span', 'emoji', CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji), crear('span', 'quien', d.nombre), crear('small', '', n === hoy ? 'hoy' : fechaDe(n)));
-      if (res.oficial) a.append(crear('span', 'tiempoMarca', res.oficial.ab ? 'abandono' : tiempoFinal(res.oficial.t)), cuadritos(res.oficial.c));
+      if (res.oficial) a.append(crear('span', 'tiempoMarca', marcaDe(res.oficial)), cuadritos(res.oficial.c));
       else a.append(crear('span', 'tiempoMarca', res.practica ? '🔧 ' + tiempoFinal(res.practica.t) : '—'), crear('span'));
       const li = crear('li');
       li.append(a);
@@ -405,9 +409,9 @@ export function crearMenu(o) {
     <p class="con-servidor">${dib('lapiz')} Ahí también están las pistas de la comunidad: las arma la gente en el creador, nota por nota, como las canta el copiloto. Duran dos semanas y se comparten con un link. Si la armás para un club, aparece en el club y la corren todos sus miembros.</p>
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
     <p>Los números de las notas van del 1 (curva muy cerrada) al 6 (casi recta). H es una horquilla y 90, una esquina.</p>
-    <p>Los golpes rompen el auto. Si se rompe del todo, es abandono. Las piedras que están pegadas al camino llevan una antorcha roja.</p>
+    <p>Los golpes rompen el auto. Si se rompe del todo, abandonás: en la tabla figurás con DNF (no terminó). Lo mismo si cerrás el juego en plena pasada oficial. Las piedras que están pegadas al camino llevan una antorcha roja.</p>
     <p>${dib('fantasma')} En la tabla, el fantasma elige contra quién corrés. Si te mandan un link, corrés contra quien te lo mandó.</p>
-    <p class="con-servidor">${dib('podio')} En la tabla también se arman clubes: le ponés un nombre, invitás con un link, y el que lo abre queda adentro. La pasada oficial de cada uno aparece sola en la tabla de todos sus clubes. Para eso, tu tiempo se guarda en el servidor del juego con el nombre que elijas; no se pide ningún otro dato.</p>
+    <p class="con-servidor">${dib('podio')} En la tabla también se arman clubes: le ponés un nombre, invitás con un link, y el que lo abre queda adentro. La pasada oficial de cada uno aparece sola en la tabla de todos sus clubes. Es que al terminar, tu tiempo se guarda solo en el servidor del juego, con el nombre que elijas (no se pide ningún otro dato): no hace falta compartirlo.</p>
     <p>${dib('ajustes')} En la configuración se cambian la distancia de la cámara y, en el celular, la sensibilidad al inclinar y el tamaño de los pedales.</p>
     <p>${dib('trazada')} Ahí también se prende la trazada: una línea pintada en el camino que muestra por dónde pasar. Está <b class="verde">verde</b> donde podés acelerar, <b class="amarillo">amarilla</b> donde venís justo y <b class="rojo">roja</b> donde venís pasado: cuando el rojo llega al auto, hay que frenar.</p>
     <p>${dib('salvavidas')} Si recién arrancás, prendé la ayuda de manejo: el auto sigue solo la trazada, frena antes de las curvas y se cruza menos. Vos acelerás y corregís con el volante. Es más lento, pero llegás.</p>`;
@@ -524,7 +528,7 @@ export function crearMenu(o) {
       $('finTipo').textContent = (fijo ? 'Circuito · ' : borrador ? 'Borrador · ' : comunidad ? 'Pista de la comunidad · ' : (r.practica ? 'Práctica' : 'Pasada oficial') + ' · #' + numero + ' ') + etapa.nombre + (mejoro ? (T.vuelta ? ' · ¡tu mejor vuelta!' : ' · ¡tu mejor tiempo!') : '');
       $('finTitulo').textContent = r.ab ? ABANDONO[r.ab] || 'Abandono' : '';
       $('finTitulo').hidden = !r.ab;
-      $('finGrande').textContent = r.ab ? 'Abandono' : tiempoFinal(r.t);
+      $('finGrande').textContent = marcaDe(r);
       $('finGrande').classList.toggle('abandono', !!r.ab);
       // los cinco sectores, cada uno con su tiempo y cuanto mas (o menos) que la referencia
       const caja = $('finCuadros');
@@ -542,6 +546,7 @@ export function crearMenu(o) {
       $('probarAyuda').hidden = false;
       $('nombre').value = club.nombre();
       $('compartido').textContent = '';
+      $('finGuardado').hidden = true;   // (main.js dice enseguida si se esta guardando: ver "guardado")
       $('social').hidden = borrador;   // (el borrador no se comparte: todavia no existe para los demas)
       const tabla = libre ? club.practicas() : club.tabla();
       $('finRanking').hidden = tabla.length < 2;
@@ -556,6 +561,26 @@ export function crearMenu(o) {
       return contra;
     },
     cerrarFin: () => { $('fin').hidden = true; ultimo = null; },
+    // Si el resultado que esta en pantalla quedo guardado en el servidor, y en que tabla se ve. estado: 'subiendo', 'listo',
+    // 'pendiente' (no hubo señal: se guarda solo cuando vuelva) o '' / 'no' (no se dice nada: no va a ninguna tabla, o el
+    // servidor no lo quiso). Sin club, tu tiempo queda guardado pero tus amigos lo ven si se lo compartis.
+    guardado: (estado) => {
+      const el = $('finGuardado');
+      el.hidden = !ultimo || !estado || estado === 'no';
+      if (el.hidden) return;
+      const clubes = club.clubes(), sinNombre = !club.nombre();
+      el.textContent = '';
+      el.classList.toggle('listo', estado === 'listo');
+      if (estado === 'listo') { const i = crear('span'); i.dataset.icono = 'ok'; el.append(i); }
+      el.append(estado === 'subiendo' ? 'Guardando tu tiempo…'
+        : estado === 'pendiente' ? 'Sin conexión: tu tiempo se guarda solo cuando vuelva.'
+        : (comunidad || clubes.length) && sinNombre ? 'Guardado. Poné tu nombre para que figure en la tabla.'
+        : comunidad ? 'Guardado en la tabla de la pista.'
+        : clubes.length === 1 ? 'Guardado en la tabla de «' + clubes[0].nombre + '».'
+        : clubes.length ? 'Guardado en las tablas de tus clubes.'
+        : 'Guardado. Compartilo para que lo vean tus amigos.');
+      ponerIconos(el);
+    },
     // dice algo en la portada, abajo del boton de largar (queda hasta que se cierre el juego)
     decir: (texto) => { o.aviso = texto; pintar(); },
     // abre la tabla en un club, con un aviso (por ejemplo, al entrar por una invitacion)

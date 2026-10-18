@@ -267,6 +267,17 @@ export function crearGrabacion(T) {
   };
 }
 
+// Una pasada sin recorrido: un abandono que no llego a grabarse (se cerro el juego en plena oficial). Es un codigo como
+// cualquier otro, con cero muestras: el servidor lo acepta porque es un abandono (no hay tiempo que comparar con lo
+// grabado), y en las tablas figura como DNF, sin fantasma.
+export function codigoSinVuelta(m) {
+  const w = crearEscritor(), enc = new TextEncoder(), dec = new TextDecoder();
+  w.crudo(versionDe(m.pista) & 63, 6); w.crudo(m.pista & 16383, 14);
+  pasarResultado(w, m, enc, dec, m.pista, true);
+  w.crudo(0, 4); w.crudo(0, 11);   // (ningun otro resultado, y ninguna muestra)
+  return 'd' + aTexto(w.fin());
+}
+
 // --- lectura de un codigo ---
 // Devuelve { marca: el resultado, tabla: los otros resultados que traia, version: con que version del generador se corrio,
 //            tieneVuelta, muestras: cuantas trae (dos por segundo),

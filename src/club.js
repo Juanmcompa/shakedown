@@ -102,7 +102,7 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
     practica: () => D.practica,
     anotarPractica: (r) => { if (r.ab || (D.practica && D.practica.t <= r.t)) return false; D.practica = { ...r, nombre: datos.nombre, practica: true }; guardar(); return true; },
     // le agrega el codigo del link (con el fantasma) a un resultado propio, cuando termina de armarse
-    ponerCodigo: (r, codigo) => { for (const x of propios(D)) if (esElMismo(x, r)) x.codigo = codigo; guardar(); },
+    ponerCodigo: (r, codigo, numero = pista) => { const d = datos.dias[numero]; if (d) for (const x of propios(d)) if (esElMismo(x, r)) x.codigo = codigo; guardar(); },
 
     // --- el servidor (ver nube.js) ---
     // La llave de este aparato: se inventa la primera vez que hace falta y no se muestra nunca. Es lo que le dice al
@@ -122,6 +122,16 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
       for (const n in datos.dias) {
         const numero = Number(n);
         if (numero > hoy - RECIENTES && numero !== COMUNIDAD.borrador) for (const r of propios(datos.dias[n])) if (r.codigo && !r.id && !r.noSube) lista.push({ numero, r: { ...r } });
+      }
+      return lista;
+    },
+    // Las oficiales que quedaron como abandono porque se cerro el juego en plena pasada: no llegaron a grabarse, asi que
+    // todavia no tienen codigo (main.js les arma uno sin recorrido, para subirlas: en las tablas dicen DNF). [{ numero, r }]
+    abandonosSinCodigo: () => {
+      const lista = [];
+      for (const n in datos.dias) {
+        const o = datos.dias[n].oficial, numero = Number(n);
+        if (numero > hoy - RECIENTES && o && o.ab === 'cerrado' && !o.codigo && !o.id && !o.noSube) lista.push({ numero, r: { ...o } });
       }
       return lista;
     },

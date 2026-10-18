@@ -16,6 +16,8 @@ https://juanmcompa.github.io/shakedown/#r=k7Qx2Mp
 🚧 Early Access · App en desarrollo
 ```
 
+Si rompiste el auto, en vez del tiempo dice DNF (no terminó, como en las planillas de rally): `Shakedown #42 🌧️🌲 💥 DNF 🟩 🟨 ⬛ ⬛ ⬛`.
+
 ## La historia
 
 Un club clandestino de puristas del rally, cansados de los circuitos cerrados, busca caminos olvidados. Cada medianoche, el organizador anónimo publica en un foro cerrado las coordenadas y las notas del copiloto del desafío del día: un sendero forestal embarrado, una ruta rural castigada por la lluvia o un paso de montaña de ripio.
@@ -42,7 +44,7 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 - **La pista sale de la fecha.** El número del día genera todo: el recorrido, el lugar (bosque, campo o montaña), el clima (seco, lluvia, niebla o atardecer) y las notas del copiloto. La #1 es la del 10 de octubre de 2026. El día cambia a la medianoche de Argentina.
 - **Pasadas cortas.** Entre dos y tres minutos, en cinco sectores.
 - **Una pasada oficial por día.** Después se puede practicar todo lo que se quiera, pero no cuenta para la tabla.
-- **Rally puro.** No hay nafta ni rescates. Si te salís o volcás, volvés al camino con 8 segundos de recargo. Si rompés el auto, es abandono.
+- **Rally puro.** No hay nafta ni rescates. Si te salís o volcás, volvés al camino con 8 segundos de recargo. Si rompés el auto, abandonás: en la tabla figurás con DNF (no terminó). Lo mismo si cerrás el juego en plena pasada oficial.
 - **Los cuadraditos** comparan cada sector contra un tiempo de referencia: 🟩 hasta 1,3 veces la referencia, 🟨 hasta 1,6 veces, 🟥 más que eso. Si hubo que volver al camino en el sector, es 🟥.
 - **La meta.** Al cruzarla salen papelitos, como en la cancha, y grita el público. En el resultado, debajo del tiempo, se ve cómo quedaste contra tus amigos: el puesto («2º de 6») y a cuánto del de adelante y del de atrás. Si quedaste primero va en amarillo y salen más papelitos. En una práctica dice dónde habrías quedado. (Los amigos son los de la tabla: los de los links que abriste y los de tus clubes.)
 - **Los golpes suenan.** Cada cosa suena a lo suyo: una piedra, el alambrado, un árbol, un fardo, un cono, la chapa de un auto tirado, una caída al vacío. Y el auto suena cada vez más roto: la chapa cruje más, algo suelto tintinea, el motor falla y, al final, pierde vapor.
@@ -121,7 +123,8 @@ Un píxel de estos dibujos mide 12,5 cm, igual que los de los autos.
 
 ## Correr contra amigos: links y clubes
 
-- Al terminar, poné tu nombre y compartí. En la compu se copia el mensaje con el link; en el celular se abre el menú de compartir.
+- **Tu tiempo se guarda solo al terminar: no hace falta compartirlo.** Se guarda lo que va a una tabla: la pasada oficial (también si abandonaste: figura DNF) y tu mejor tiempo en los circuitos y en las pistas de la comunidad. Debajo de tu nombre, el resultado dice si quedó guardado y en qué tabla se ve. Si no hay señal, se guarda solo cuando vuelva (o la próxima vez que abras el juego). Si cerraste el juego en plena pasada oficial, ese DNF también se guarda.
+- Tus amigos ven tu tiempo solos si están en un club con vos, o si es una pista de la comunidad (tiene su tabla). Si no, compartilo: poné tu nombre y tocá compartir. En la compu se copia el mensaje con el link; en el celular se abre el menú de compartir.
 - El mensaje tiene tres renglones: el resultado, el link y el aviso (`🚧 Early Access · App en desarrollo`). La invitación a un club cierra con el mismo renglón. Al pegar el link, la vista previa también lo dice: en el título, en la descripción y en la imagen. Quién hace el juego no va en lo que se comparte: se ve solo en la portada.
 - Quien abre tu link te ve en su tabla y **corre su pasada oficial contra tu fantasma**, que hace exactamente lo que hiciste vos.
 - Sin link de nadie, la oficial se corre solo. En las prácticas, el fantasma es tu mejor pasada.
@@ -229,6 +232,7 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Cómo suena cada golpe: de qué material es cada cosa (`MATERIAL`), cada sonido, el público de la meta y cómo suena un auto roto | `src/audio.js` |
 | Los papelitos de la meta: colores, tamaño y cómo caen | `src/papelitos.js` |
 | Lo que dice el resultado al compararte con tus amigos | `src/menu.js` (`pintarContra`) |
+| Qué se guarda solo al terminar y cada cuánto se vuelve a probar si no hubo señal (`guardarYa`, `sincronizar`, `reintentarLuego`); lo que dice el resultado sobre si quedó guardado (`guardado`) | `src/main.js`, `src/menu.js` |
 | El panel de circuitos: el orden de sus partes y cómo es cada fila (`pintarCircuitos`, `pintarPistas`); el detalle corto de cada circuito (`breve`) | `index.html` (`#panelCircuitos`), `src/menu.js`, `src/circuitos.js` |
 | Los personajes: nombres, roles y cuáles hay (`EQUIPO`); sus retratos | `src/equipo.js`, `personajes/` |
 | La trazada: sus colores, el tamaño de las rayitas y desde qué velocidad avisa (`RITMO`, `FRENADA`, `JUSTO`) | `src/trazada.js` |

@@ -6,7 +6,8 @@
 // base: la direccion del servidor ('' = no hay). Devuelve:
 //   hay                    true si hay servidor configurado
 //   conLlave(f)            f() devuelve la llave de este aparato (ver club.js): va en todo lo que se escribe
-//   subir(codigo, espera)  guarda una pasada. Promesa de: el codigo corto; '' si el servidor no la quiso; null si no se pudo (se puede reintentar)
+//   subir(codigo, espera)  guarda una pasada. Promesa de: el codigo corto; '' si el servidor no la quiso (o es de un formato
+//                          viejo, que no se sube); null si no se pudo (sin servidor o sin señal: se puede reintentar)
 //   pasada(id)             trae una pasada por su codigo corto. Promesa de { codigo, j } o null
 //   crearClub(nombre, apodo), entrar(codigo, apodo), salir(codigo), verClub(codigo)    promesa de lo que conteste el servidor, { error } o null
 //   tablas(pista, version, codigos)    promesa de { codigo: { nombre, miembros, soy, tabla, faltan, pistas } o null (el club ya no existe) } o null
@@ -21,7 +22,9 @@ export function crearNube(base) {
   const subidas = new Map(), traidas = new Map();
 
   // Un pedido. Devuelve lo que contesto el servidor; { error, estado } si dijo que no; null si no se pudo llegar.
-  async function pedir(metodo, ruta, cuerpo, ms = 8000) {
+  // sigue: que el pedido siga aunque se cierre la pagina (al subir una pasada: si se cierra el juego apenas termina la
+  // pasada, igual llega; ver "keepalive" en fetch).
+  async function pedir(metodo, ruta, cuerpo, ms = 8000, sigue = false) {
     if (!base) return null;
     // Si tarda mas de "ms", se corta. Pero si el aparato estuvo trabado (armando la pista, dibujando el primer cuadro)
     // el reloj puede sonar con la respuesta ya llegada y esperando su turno: en ese caso se le da un momento mas.
@@ -31,7 +34,7 @@ export function crearNube(base) {
     reloj = setTimeout(cortar, ms);
     try {
       // (el cuerpo va como texto comun: asi el navegador no hace una consulta previa antes de cada pedido)
-      const r = await fetch(base + ruta, { method: metodo, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo), headers: cuerpo === undefined ? undefined : { 'content-type': 'text/plain' }, signal: corte.signal, cache: 'no-store' });
+      const r = await fetch(base + ruta, { method: metodo, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo), headers: cuerpo === undefined ? undefined : { 'content-type': 'text/plain' }, signal: corte.signal, cache: 'no-store', keepalive: sigue });
       const cosa = await r.json().catch(() => null);
       if (!cosa && corte.signal.aborted) return null;   // (se corto mientras llegaba la respuesta: es "no se pudo llegar")
       return r.ok && cosa ? cosa : { error: (cosa && cosa.error) || 'El servidor no pudo.', estado: r.status };
@@ -61,9 +64,10 @@ export function crearNube(base) {
     // Guarda una pasada (su codigo: el texto del link largo). La misma pasada no se sube dos veces.
     // espera: cuanto se aguanta la respuesta ACA (el pedido sigue igual: si llega tarde, la proxima vez ya esta).
     subir: (codigo, espera = 8000) => {
-      if (!base || typeof codigo !== 'string' || codigo[0] !== 'd') return Promise.resolve(null);
+      if (!base) return Promise.resolve(null);
+      if (typeof codigo !== 'string' || codigo[0] !== 'd') return Promise.resolve('');   // (formato viejo: el servidor no lo lee)
       if (!subidas.has(codigo)) {
-        subidas.set(codigo, pedir('POST', '/pasadas', { llave: llave(), codigo }).then((r) => {
+        subidas.set(codigo, pedir('POST', '/pasadas', { llave: llave(), codigo }, 8000, true).then((r) => {
           if (r && r.id) return r.id;
           // no la quiere: no tiene sentido insistir (salvo que sea por ahora: muchos pedidos, o un reloj adelantado)
           if (r && r.estado >= 400 && r.estado < 500 && r.estado !== 429 && r.estado !== 425) return '';

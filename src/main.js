@@ -11,7 +11,7 @@ import { crearAuto } from './vehicle.js';
 import { crearPartida } from './reglas.js';
 import { crearAyuda } from './ayuda.js';
 import { crearCopiloto } from './copiloto.js';
-import { crearGrabacion, leerCodigo, crearFantasma } from './fantasma.js';
+import { crearGrabacion, leerCodigo, crearFantasma, codigoSinVuelta } from './fantasma.js';
 import { crearClub, guardado } from './club.js';
 import { crearNube } from './nube.js';
 import { crearMenu } from './menu.js';
@@ -39,7 +39,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '20';
+const PAGINA = '21';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -253,11 +253,56 @@ async function acortar(r, codigo) {
   if (id !== null) club.ponerId(r, id);
   return id || r.id || codigo;
 }
-// Lo que se corrio sin conexion (o antes de entrar a un club) se sube cuando se puede: asi figura en las tablas.
-async function sincronizar() {
-  if (!nube.hay || !club.clubes().length) return;
-  for (const { numero: n, r } of club.sinSubir().slice(0, 8)) await subir(r, r.codigo, n);
+// --- guardar las pasadas sin que haya que compartirlas ---
+// Lo que cuenta se sube solo al terminar (ver "terminar"): la oficial, tambien si fue un abandono (en las tablas dice DNF),
+// y el mejor tiempo de las practicas, los circuitos y las pistas de la comunidad. Si no se pudo (sin señal, o el servidor
+// tardo), queda pendiente y se vuelve a probar solo: cada tanto, al volver la señal, al volver al juego y la proxima vez
+// que se abra. Tambien se sube la oficial que quedo como abandono porque se cerro el juego en plena pasada: como no llego
+// a grabarse, va sin recorrido (y sin fantasma). Asi en la tabla de los clubes figura DNF, y no "todavia no corrio".
+// En el resultado se ve como va (ver "guardado" en menu.js): solo de lo que va a una tabla, y si hay servidor.
+let mostrado = null;   // el resultado que esta en pantalla, si es de los que se cuentan: { n, r }
+const elMismo = (a, b) => Math.abs(a.t - b.t) < 0.005 && !!a.practica === !!b.practica && (a.ab || '') === (b.ab || '');
+function avisarGuardado(n, r, estado) {
+  if (mostrado && mostrado.n === n && elMismo(mostrado.r, r)) menu.guardado(estado);
 }
+// Sube lo que se acaba de correr (o lo mismo con otro nombre, si se lo cambio en el resultado)
+async function guardarYa(r, codigo) {
+  avisarGuardado(numero, r, 'subiendo');
+  const id = await subir(r, codigo);
+  avisarGuardado(numero, r, id === null ? 'pendiente' : id ? 'listo' : 'no');
+  if (id === null) reintentarLuego(); else tablasDeLosClubes(true);
+}
+// Sube lo que haya quedado pendiente, de a uno (si uno no llega, no se insiste con los demas: es que no hay señal).
+// Devuelve una promesa de cuantos quedaron sin subir.
+let sincronizando = null;
+function sincronizar() {
+  if (!nube.hay) return Promise.resolve(0);
+  return sincronizando || (sincronizando = (async () => {
+    for (const { numero: n, r } of club.abandonosSinCodigo()) club.ponerCodigo(r, codigoSinVuelta({ ...r, pista: n }), n);
+    const lista = club.sinSubir().slice(0, 8);
+    let quedan = lista.length;
+    for (const { numero: n, r } of lista) {
+      const id = await subir(r, r.codigo, n);
+      if (id === null) break;
+      quedan--;
+      avisarGuardado(n, r, id ? 'listo' : 'no');
+    }
+    return quedan;
+  })().finally(() => { sincronizando = null; }));
+}
+// Si no se pudo subir, se vuelve a probar en un rato: cada vez esperando un poco mas (de 15 segundos a 5 minutos), mientras
+// quede algo pendiente y el juego este a la vista. (Al volver la señal o al volver al juego se prueba enseguida.)
+let reintento = 0, demora = 15000;
+function reintentarLuego() {
+  clearTimeout(reintento);
+  reintento = setTimeout(async () => {
+    if (document.hidden) return;   // (al volver al juego se prueba: ver "visibilitychange")
+    if (pantalla === 'jugando') { reintentarLuego(); return; }   // (mientras se corre, no: despues)
+    const quedan = await sincronizar();
+    if (quedan) { demora = Math.min(300000, demora * 2); reintentarLuego(); } else { demora = 15000; tablasDeLosClubes(true); }
+  }, demora);
+}
+const alVolver = async () => { demora = 15000; const quedan = await sincronizar(); if (quedan) reintentarLuego(); tablasDeLosClubes(false); };
 // Las tablas de mis clubes en esta pista. Lo ultimo que dijo el servidor de cada club queda en "deLosClubes"
 // ({ codigo: { miembros, faltan: [apodos de los que todavia no corrieron], pistas: [las pistas del club] } }); los tiempos,
 // en el club (club.js). En una pista de la comunidad se pide ademas su tabla: la de todos los que la corrieron.
@@ -415,7 +460,7 @@ function largar(conTutorial) {
   hud.sello(!explicar);   // (el cartel de "en desarrollo" y la firma acompaña a la cuenta regresiva: con el tutorial, espera)
   hud.ronda(T.vuelta ? 0 : -1, mejorGuardado());
   encuadrar();
-  menu.cerrarFin();
+  menu.cerrarFin(); mostrado = null;
   menu.portada(false);
   for (const id in espectros) espectros[id].ocultar();
   sonido.iniciar();
@@ -480,15 +525,19 @@ function terminar() {
   if (T.vuelta && mejorRonda) { r = { ...mejorRonda.r, nombre: club.nombre(), rondas, seRompio: partida.estado === 'abandono' }; g = mejorRonda.g; mejoro = mejoroAlgo; }
   else if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
   // el link se arma con el nombre que haya en ese momento (si lo cambia, se arma de nuevo)
-  // Lo que cuenta (la oficial, o un mejor tiempo) se sube enseguida al servidor: asi el link sale corto y el tiempo
-  // aparece en las tablas de los clubes. Una practica cualquiera se sube recien si se la comparte.
+  // Lo que cuenta (la oficial, tambien un abandono, o un mejor tiempo) se guarda solo en el servidor, enseguida: asi el
+  // tiempo aparece en las tablas sin tener que compartirlo, y el link sale corto. Una practica que no mejoro tu tiempo no
+  // cambia ninguna tabla: se sube recien si se la comparte (para que el link sea corto).
   const cuenta = !r.practica || mejoro;
+  // (en el resultado se dice si quedo guardado y donde: de lo que va a una tabla, que es la oficial o, en lo libre, tu mejor
+  // tiempo. Las practicas de la pista del dia no van a la tabla)
+  mostrado = cuenta && seSube && nube.hay && (!r.practica || libre) ? { n: numero, r } : null;
   let hecho = { nombre: null, codigo: null };
   const armarLink = async () => {
     if (hecho.nombre !== club.nombre()) {
       hecho = { nombre: club.nombre(), codigo: await g.codigo({ ...r, nombre: club.nombre() }, conocidos()) };
       club.ponerCodigo(r, hecho.codigo);
-      if (cuenta) subir(r, hecho.codigo).then(() => tablasDeLosClubes(true));
+      if (cuenta) guardarYa(r, hecho.codigo);
     }
     return hecho.codigo;
   };
@@ -499,6 +548,7 @@ function terminar() {
   hud.mostrar(false);
   // Como quedo contra los de la tabla (lo dice el resultado). Si quedo primero (y cuenta), otra tanda de papelitos.
   const contra = menu.fin(r, armarLink, mejoro);
+  menu.guardado(mostrado ? 'subiendo' : '');
   if (llego && contra.puesto === 1 && contra.cuenta) setTimeout(() => papelitos.tirar(120, 1.1), 300);
 }
 
@@ -512,7 +562,7 @@ function aLaPortada() {
   fx.cortar(); camara.saltar();
   trazada.mostrar(false);
   hud.mostrar(false);
-  menu.cerrarFin();
+  menu.cerrarFin(); mostrado = null;
   menu.portada(true);
 }
 
@@ -697,14 +747,16 @@ if (invitacion) {
     if (r.error && !r.estado) { await new Promise((sigue) => setTimeout(sigue, 2500)); r = await entrarAlClub(invitacion[1]); }
     if (r.error) menu.decir('No pude sumarte al club. ' + r.error); else menu.verClub(r.codigo, 'Ya estás en «' + r.nombre + '».');
   });
-} else yaAnda.then(sincronizar).then(() => tablasDeLosClubes(true));
+} else yaAnda.then(sincronizar).then((quedan) => { if (quedan) reintentarLuego(); tablasDeLosClubes(true); });
 // recien publicada una pista de la comunidad: se avisa, y se ofrece compartirla
 if (location.hash === '#publicada' && comunidad && !comunidad.borrador) {
   quedarseEn(numero);
   menu.decir('¡Publicada! Compartila con el botón: dura dos semanas.');
 }
 // Al volver al juego (por ejemplo, despues de pasar la invitacion por WhatsApp) se piden de nuevo las tablas.
-document.addEventListener('visibilitychange', () => { if (!document.hidden && pantalla !== 'jugando') tablasDeLosClubes(false); });
+// (y se sube lo que haya quedado pendiente). Lo mismo al volver la señal.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && pantalla !== 'jugando') alVolver(); });
+window.addEventListener('online', () => { if (pantalla !== 'jugando') alVolver(); else reintentarLuego(); });
 
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
