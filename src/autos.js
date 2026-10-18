@@ -22,9 +22,10 @@ const pintura = (base, mas) => Object.assign({
   luz: '#fff4c2', giro: '#ff9a2e', freno: '#e0322a', rally: true, carga: false, oxido: 0, velo: null, numero: '', franjas: ['#1fb5a6', '#e0409a'],
 }, mas);
 const PINTURAS = {
-  vitarita: pintura('#f0b41c', { numero: '92' }),                        // amarillo de rally, con las franjas noventosas
-  kacito: pintura('#8656c8', { numero: '97', franjas: ['#f2c200', '#f4f0e6'] }),   // violeta, con plasticos grises
-  chata: pintura('#e2a21e', { carga: true }),
+  vitarita: pintura('#f0b41c', { numero: '92' }),                        //
+  kacito: pintura('#8656c8', { numero: '97', franjas: ['#f2c200', '#f4f0e6'] }),   //
+  chata: pintura('#e2a21e', { carga: true }),                            //
+  f1: pintura('#e01818', { numero: '1', franjas: ['#ffffff', '#000000'] }), // Nuevo auto F1
 };
 const VELO = 'rgba(226, 240, 255, 0.62)';
 // autos del publico, estacionados: colores de calle, sin numeros ni faros de rally
@@ -347,7 +348,51 @@ const CHATA = {
     },
   },
 };
-const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA };
+const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA, f1: F1 }; //[cite: 1]
+
+// ================= EL F1 moderno =================
+const F1 = {
+  W: 16, L: 42, Y0: -2, Y1: 5, rueda: 0.35, frenos: [[-4, 1, 18, 2, 1], [4, 1, 18, 2, 1]], 
+  cajas: (q) => [
+    [-2, -2, -21, 2, -1, -15],                 // Trompa
+    [-7, -2, -20, 7, -1, -17],                 // Alerón delantero
+    [-5, -2, -8, 5, 1, 10],                    // Pontones laterales (chasis)
+    [-2, 1, -5, 2, 3, 5, { cuña: 2 }],         // Cockpit y protección del piloto[cite: 1]
+    [-2, 1, 12, 2, 4, 19, { cuñaAtras: 2 }],   // Cubierta del motor[cite: 1]
+    [-6, 2, 18, 6, 5, 20],                     // Alerón trasero
+  ],
+  vistas: {
+    arriba: ({ A }, q, p) => {
+      const c = q.c;
+      p.fondo(N[1]); // Color de fondo por defecto[cite: 1]
+      A(-7, -20, 14, 3, c[2]); // Alerón delantero usando el tercer tono de carrocería[cite: 1]
+      A(-2, -21, 4, 13, c[1]); // Trompa
+      A(-5, -8, 10, 18, c[2]); // Pontones
+      // Usa las funciones de pintar píxeles para agregar detalles
+    },
+    abajo: ({ B }, q, p) => {
+      p.fondo(N[0]); // Fondo plano aerodinámico[cite: 1]
+      B(-2, -21, 4, 40, METAL[0]); // Superficie inferior metálica[cite: 1]
+    },
+    costado: ({ L }, q, p, espejo) => {
+      const c = q.c;
+      p.fondo(N[0]); //[cite: 1]
+      L(-21, -2, 6, 1, c[1]); // Trompa lateral
+      L(-8, -2, 18, 3, c[2]); // Pontones laterales
+      L(18, 2, 2, 3, c[3]);   // Alerón trasero lateral
+    },
+    frente: ({ F }, q, p) => {
+      const c = q.c;
+      p.fondo(N[0]); //[cite: 1]
+      F(-7, -2, 14, 1, c[2]); // Alerón delantero
+    },
+    atras: ({ T }, q, p) => {
+      const c = q.c;
+      p.fondo(N[0]); //[cite: 1]
+      T(-6, 2, 12, 3, c[2]); // Alerón trasero
+    },
+  },
+};
 
 // Pinta las vistas y arma la forma de un modelo con una pintura. Se guarda: dos autos iguales comparten todo.
 const hechos = new Map();
