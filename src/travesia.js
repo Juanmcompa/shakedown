@@ -49,16 +49,17 @@ export function crearPiloto() {
     if (atras > 0) { atras -= dt; ent.y = -1; ent.x = -lado; ent.mano = false; return; }
     if (Math.abs(v) < 0.8) corrida += dt; else corrida = 0;
     if (corrida > 1.6) { atras = 1.4; lado = Math.sign(ent.x) || 1; corrida = 0; }
-    // la linea con mas lugar: se prueban desvios a los costados y se elige el que deja mas lejos de las piedras
-    const adelante = 8 + Math.max(0, v) * 1.1;
+    // la linea con mas lugar: se prueban desvios a los costados (sin salirse del camino, que es angosto) y se elige el que deja mas
+    // lejos de las piedras y de los autos rotos
+    const adelante = 8 + Math.max(0, v) * 1.1, medio = Math.max(0.6, P.W[indice] / 2 - 0.9);
     let mejor = 0, costoMejor = 1e9;
-    for (let off = -4; off <= 4; off += 1) {
-      let costo = Math.abs(off) * 0.25 + Math.abs(off - lado) * 0.05;
+    for (let off = -medio; off <= medio + 0.01; off += Math.max(0.35, medio / 4)) {
+      let costo = Math.abs(off) * 0.4 + Math.abs(off - lado) * 0.1;
       for (let u = 4; u <= adelante + 22; u += 4) {
         const i = Math.min(P.n - 1, indice + Math.round(u));
         const x = P.X[i] - P.HZ[i] * off, z = P.Z[i] + P.HX[i] * off, lista = T.cosasCerca(x, z);
         if (!lista) continue;
-        for (const o of lista) { const d = Math.hypot(o.x - x, o.z - z) - o.r; if (d < 3.4) costo += (3.4 - d) * 9 / (1 + u * 0.06); }
+        for (const o of lista) { const d = Math.hypot(o.x - x, o.z - z) - o.r; if (d < 2.3) costo += (2.3 - d) * 9 / (1 + u * 0.06); }
       }
       if (costo < costoMejor) { costoMejor = costo; mejor = off; }
     }
@@ -73,7 +74,8 @@ export function crearPiloto() {
     const k = Math.min(P.n - 1, indice + 34);
     let giro = Math.atan2(P.HX[k], -P.HZ[k]) - Math.atan2(P.HX[indice], -P.HZ[indice]);
     giro = Math.abs(Math.atan2(Math.sin(giro), Math.cos(giro)));
-    const quiero = Math.max(9, 24 - giro * 11 - costoMejor * 0.4);
+    // (en un camino angosto no hay margen: mas despacio en las curvas y cerca de lo que esquiva)
+    const quiero = Math.max(8, 20 - giro * 13 - costoMejor * 0.7);
     ent.y = v > quiero + 2 ? -0.4 : v > quiero ? 0 : 1;
     ent.mano = false;
   };
@@ -82,6 +84,7 @@ export function crearPiloto() {
 // ------------------------------------------------------------------------------------------------------------------
 // o: lo que el juego le presta al modo
 //   render, post, liviano, club, sonido, hud, teclas, raiz
+//   festejo(): la gente de la largada grita (el juego tira unos papelitos)
 //   portada(si): muestra o esconde la portada.   mandos(): prende los mandos del celular.
 //   voz(): si el copiloto habla.   camara(): el id de la camara que se eligio.
 //   record(km): se hizo un record nuevo (el juego lo manda al servidor).   amigos(): los records de los amigos y el propio, de mayor a
@@ -454,7 +457,12 @@ export function crearModoTravesia(o) {
       cuenta -= dt;
       const n = Math.ceil(cuenta);
       if (n > 0 && n !== cuentaDicha) { cuentaDicha = n; hud.grande(String(n), 0.95, 'cuenta'); }
-      if (cuenta <= 0) { fase = 'corriendo'; c.impacto = 0; hud.grande('¡YA!', 0.9, 'ya'); }
+      if (cuenta <= 0) {
+        fase = 'corriendo'; c.impacto = 0; hud.grande('¡YA!', 0.9, 'ya');
+        // al salir, grita la gente de la largada (y salen unos papelitos, si estan los efectos)
+        sonido.meta();
+        if (o.festejo) o.festejo();
+      }
     }
     let m = QUIETO;
     if (fase === 'corriendo') {
@@ -508,6 +516,8 @@ export function crearModoTravesia(o) {
     T.asegurar(indice);
     pasarNotas();
     mundo.mantener(c.pos[0], c.pos[2], g.rumbo, true);   // todo el terreno de alrededor, antes de largar
+    mundo.fiesta.poner(T);                               // el festival de la largada (con el terreno ya armado, las alturas salen al toque)
+    mundo.fiesta.efectos(o.efectos ? o.efectos() : true);
     fx.cortar(); fx.limpiar(); dibujo.actualizar(c, 0, false);
     camara.saltar();
     pintarActivas(); pintarVidrio();
@@ -588,6 +598,7 @@ export function crearModoTravesia(o) {
     camara.seguir(c, dt);
     if (c.rompio.length) c.rompio.length = 0;
     mundo.animar(t);
+    mundo.fiesta.animar(c, indice, dt, t);   // la gente festeja y se corre; las chapas del vallado caen si se las lleva puestas
     mundo.mirar(camara, c, render.domElement.width, render.domElement.height);
     sonido.actualizar(c, fase === 'afuera' ? 0 : e.roto, dt);
     camara.cam.getWorldDirection(HACIA);
@@ -621,7 +632,7 @@ export function crearModoTravesia(o) {
     encuadrar: (a, b, l) => camara.encuadrar(a, b, l),
     alejar: (v) => camara.alejar(v),
     voz: (si) => { if (copiloto) copiloto.voz(si); },
-    efectos: (si) => fx.prender(si),
+    efectos: (si) => { fx.prender(si); mundo.fiesta.efectos(si); },
     // --- para probar desde la consola (solo en una copia local, ver main.js) ---
     prueba: {
       guia,

@@ -43,7 +43,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '27';
+const PAGINA = '28';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -653,6 +653,7 @@ const travesia = crearModoTravesia({
   voz: () => conVoz,
   camara: () => club.gusto('camara'),
   efectos: () => conEfectos,
+  festejo: () => { if (conEfectos) papelitos.tirar(50, 0.75); },   // (la gente de la largada; los papelitos de la meta)
   // el record nuevo se manda solo; la tabla de los amigos se trae del servidor al terminar
   record: () => { subirTravesia().then((ok) => { if (!ok) reintentarLuego(); }); },
   amigos: () => club.travesiaTabla(),

@@ -13,6 +13,19 @@ import { LUCES, PISO, AGUA } from './world.js';
 import { RADIOS_DE_PIEDRA, altoDePiedra } from './travesiaterreno.js';
 import { crearDibujosDeTravesia, FORMACIONES, PIXEL_FORMACION } from './travesiaflora.js';
 import { crearHuellasDeTravesia } from './travesiahuellas.js';
+import { crearFiestaDeTravesia } from './travesiafiesta.js';
+import { armarRoto } from './autos.js';
+
+// la rueda y la caja de herramientas que quedan tiradas junto a un auto roto: dos formas sueltas que comparten todos
+let tiradas = null;
+const cosasTiradas = () => tiradas || (tiradas = (() => {
+  const mat = (color) => estilo(new THREE.MeshLambertMaterial({ color }));
+  const goma = mat(0x1d1d20), llanta = mat(0x8d9096), chapa = mat(0xb9442e), asa = mat(0x26262a);
+  return {
+    cuerpoRueda: new THREE.CylinderGeometry(0.38, 0.38, 0.26, 10), llantaRueda: new THREE.CylinderGeometry(0.2, 0.2, 0.28, 8),
+    cuerpoCaja: new THREE.BoxGeometry(0.76, 0.3, 0.44), asaCaja: new THREE.BoxGeometry(0.34, 0.07, 0.07), goma, llanta, chapa, asa,
+  };
+})());
 
 const lim01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const par = (v) => Math.max(2, Math.round(v / 2) * 2);   // medida par, en pixeles
@@ -134,6 +147,30 @@ export function crearMundoTravesia(escena, liviano) {
       }
     }
 
+    // los autos rotos del camino (y la rueda o la caja de herramientas que tienen tirada al lado)
+    for (const o of t.restos) {
+      if (o.resto === 'auto') {
+        const { grupo: g, alto: sube } = armarRoto(o.n);
+        NORMAL.set(-(T.altura(o.x + 1, o.z) - T.altura(o.x - 1, o.z)) / 2, 1, -(T.altura(o.x, o.z + 1) - T.altura(o.x, o.z - 1)) / 2).normalize();
+        // apoyado en la ladera, mirando hacia donde quedo, y caido de un costado (una rueda hundida) y un poco de trompa
+        g.quaternion.setFromUnitVectors(ARRIBA, NORMAL).multiply(Q2.setFromAxisAngle(ARRIBA, -o.rumbo)).multiply(Q.setFromEuler(new THREE.Euler(o.pitch, 0, o.roll)));
+        g.position.set(o.x, o.y + sube - 0.1, o.z);
+        grupo.add(g);
+      } else {
+        const c = cosasTiradas(), pieza = new THREE.Group();
+        if (o.resto === 'rueda') {
+          pieza.add(new THREE.Mesh(c.cuerpoRueda, c.goma), new THREE.Mesh(c.llantaRueda, c.llanta));
+          pieza.position.set(o.x, o.y + 0.16, o.z); pieza.rotation.set((o.rumbo % 1 - 0.5) * 0.3, o.rumbo, (o.rumbo * 3 % 1 - 0.5) * 0.3);
+        } else {
+          const asa = new THREE.Mesh(c.asaCaja, c.asa); asa.position.y = 0.18;
+          pieza.add(new THREE.Mesh(c.cuerpoCaja, c.chapa), asa);
+          pieza.position.set(o.x, o.y + 0.14, o.z); pieza.rotation.y = -o.rumbo;
+        }
+        for (const m of pieza.children) { m.castShadow = true; m.receiveShadow = true; }
+        grupo.add(pieza);
+      }
+    }
+
     // las formaciones de roca grandes del fondo: torres, hongos, mesas y agujas, hechas de bloques de piedra
     if (t.formaciones.length) {
       const lote = crearLote();
@@ -247,8 +284,9 @@ export function crearMundoTravesia(escena, liviano) {
   }
   function quitarFalsa(k) { escena.remove(falsas[k]); falsas.splice(k, 1); }   // (la forma se comparte: no se libera)
 
+  const fiesta = crearFiestaDeTravesia(escena, liviano);
   return {
-    huellas, luz, estadistica, mantener,
+    huellas, luz, estadistica, mantener, fiesta,
     falsas: { poner: ponerFalsa, quitar: quitarFalsa, lista: falsas, vaciar: () => { while (falsas.length) quitarFalsa(0); } },
     usar: (nuevo) => { T = nuevo; },
     vivos: () => vivos.size,
@@ -279,6 +317,6 @@ export function crearMundoTravesia(escena, liviano) {
     },
     animar: (t) => { ambiente.tiempo.value = t; },
     // tira todo (al salir de la Travesia)
-    vaciar: () => { for (const k of [...vivos.keys()]) soltar(k); pendientes.length = 0; while (falsas.length) quitarFalsa(0); },
+    vaciar: () => { for (const k of [...vivos.keys()]) soltar(k); pendientes.length = 0; while (falsas.length) quitarFalsa(0); fiesta.quitar(); },
   };
 }

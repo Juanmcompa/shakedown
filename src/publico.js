@@ -81,5 +81,6 @@ export function crearPublico(T, escena, clima, luz) {
     }
     if (cambio) { base.needsUpdate = true; dato.needsUpdate = true; }
   }
-  return { animar, cuantos: gente.length };
+  // (humo: el de las parrillas, para poder apagarlo con el ajuste "efectos")
+  return { animar, cuantos: gente.length, humo };
 }

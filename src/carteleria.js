@@ -73,7 +73,7 @@ export function lugaresDePublicidad(T, arcos = [], sponsors = SPONSORS) {
   if (L) fila(T.salida.i - 38, T.salida.i + 26, 4, [T.salida.i]);
   else {
     fila(T.largada.i - 2, T.salida.i + 26, 4, [T.salida.i]);
-    fila(T.meta.i - 38, T.meta.i + 10, 4, [T.meta.i]);
+    if (T.meta) fila(T.meta.i - 38, T.meta.i + 10, 4, [T.meta.i]);   // (sin meta: el festival de la Travesia, que solo tiene largada)
   }
 
   // --- chapas: contra cada cinta del publico, mirando al camino ---

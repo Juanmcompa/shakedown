@@ -671,6 +671,44 @@ export function armarEstacionado(n) {
   return { grupo: armarAuto(medidas, deCalle(n)).grupo, alto: medidas.radio - medidas.alto };
 }
 
+// --- autos tirados (rotos, oxidados, abandonados en el camino) y autos de los equipos, para la Travesia ---
+// Misma forma que los de rally, con otra pintura: cada uno con su propia (asi el barro del auto que se maneja no los mancha).
+// El orden de estas listas es el de MEDIDAS_ROTOS y MEDIDAS_EQUIPOS en travesiaterreno.js (que guarda cuanto ocupa cada uno).
+const MEDIDAS_VARIOS = {
+  chata: { ...CHATA.medidas, modelo: 'chata' },
+  vitarita: { modelo: 'vitarita', radio: 0.37, trocha: 0.72, ejes: 1.1, alto: -0.34 },
+  kacito: { modelo: 'kacito', radio: 0.29, trocha: 0.7, ejes: 1.22, alto: -0.25 },
+  buggy: { modelo: 'buggy', radio: 0.36, trocha: 0.82, ejes: 1.15, alto: -0.59 },
+  camion: { modelo: 'camion', radio: 0.46, trocha: 0.86, ejes: 1.7, alto: -0.37 },
+};
+const ROTOS = [   // [modelo, color, como queda]
+  ['chata', '#b5503a', { rally: false, oxido: 0.7, semilla: 41 }],
+  ['camion', '#a99a62', { numero: '3', oxido: 0.75, semilla: 42 }],
+  ['buggy', '#c8302a', { numero: '7', oxido: 0.6, semilla: 43 }],
+  ['kacito', '#8656c8', { numero: '97', franjas: ['#f2c200', '#f4f0e6'], oxido: 0.55, semilla: 44 }],
+  ['vitarita', '#f0b41c', { numero: '92', oxido: 0.65, semilla: 45 }],
+  ['chata', '#d8d2c2', { rally: false, oxido: 0.8, semilla: 46 }],
+];
+const EQUIPOS = [
+  ['vitarita', '#2f6fb3', { numero: '14', franjas: ['#f4f0e6', '#d8402f'], semilla: 51 }],
+  ['buggy', '#f4f0e6', { numero: '21', franjas: ['#2f6fb3', '#d8402f'], semilla: 52 }],
+  ['camion', '#f4f0e6', { numero: '300', franjas: ['#d8402f', '#1e1f23'], semilla: 53 }],   // el camion de asistencia
+  ['kacito', '#3f9150', { numero: '8', franjas: ['#f2c200', '#f4f0e6'], semilla: 54 }],
+  ['chata', '#d8402f', { rally: false, semilla: 55 }],
+  ['vitarita', '#f07f1e', { numero: '33', franjas: ['#1e1f23', '#f4f0e6'], semilla: 56 }],
+];
+const variados = new Map();
+function deLista(lista, n) {
+  const k = n % lista.length, clave = lista === ROTOS ? 'r' + k : 'e' + k;
+  if (!variados.has(clave)) { const [id, base, mas] = lista[k]; variados.set(clave, { id, q: pintura(base, mas) }); }
+  const { id, q } = variados.get(clave), M = MEDIDAS_VARIOS[id];
+  return { grupo: armarAuto(M, q).grupo, alto: M.radio - M.alto };
+}
+// un auto tirado y herrumbrado (el grupo y a que altura va su centro)
+export const armarRoto = (n) => deLista(ROTOS, n);
+// un auto o camion de un equipo, limpio, estacionado en el festival de la largada
+export const armarDeEquipo = (n) => deLista(EQUIPOS, n);
+
 // --- el barro en la carrocería: a medida que anda por lo blando o por agua, se van pintando manchas de abajo hacia arriba ---
 // Se pinta sobre el mismo lienzo del auto (sin materiales ni objetos nuevos) y se avisa a la placa de video unas pocas veces por segundo.
 const MANCHA = { barro: ['#5a2f1b', '#6e3a22', '#4a2616', '#7d4a2c'], tierra: ['#8a5636', '#a06a44', '#74472b'], ripio: ['#a8946e', '#bba682', '#8f7d5c'], pasto: ['#6b6a3c', '#7d7c4a', '#58572f'], agua: ['#6e5a45', '#7d6a54', '#5c4a38'] };

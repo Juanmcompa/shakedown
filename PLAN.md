@@ -93,6 +93,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Circuitos en categorías: Pista del día, Oficiales, Reales (tramos de verdad), Aventura (la Travesía) y Comunidad al final. La Travesía se entra desde ahí, siempre en rally serio y con la trazada prendida
 - [x] Travesía de supervivencia: solo problemas (32 averías), más barro, ríos, pedregales y médanos, y estética de desierto (arena ocre, acacias, torres de roca, sol bajo, polvareda grande, rodadas en la arena)
 - [x] Travesía con amigos: link sin pista (`#t=nombre.km`), récords de clubes y links guardados en el servidor (tabla `travesias`), tabla en Aventura y al terminar, y guía de la primera vez con los personajes
+- [x] Travesía más exigente: camino angosto de un solo auto, arena suelta afuera que frena, autos rotos para esquivar y largada de festival con público (prueba `vertravesiafiesta`)
 
 ## Lo que sigue
 
