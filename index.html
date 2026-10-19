@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="25" class="cargando">
+<html lang="es" data-pagina="26" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -226,7 +226,7 @@
   // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'cartas'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'cartas'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -237,6 +237,7 @@
 <canvas id="lienzo"></canvas>
 <!-- Travesia: el vidrio roto, sobre el juego y debajo del tablero -->
 <div id="vidrio" class="vidrio" aria-hidden="true" hidden></div>
+<div id="arenaOjos" class="arena-ojos" aria-hidden="true" hidden></div>
 
 <!-- lo que se ve mientras se corre -->
 <div id="hud" hidden>

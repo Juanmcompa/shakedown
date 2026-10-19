@@ -25,6 +25,8 @@ export const SUELOS = {
   // no los usan. La arena agarra poco y frena (pasta); el fesh-fesh es arena en polvo: casi no agarra y se come el auto.
   arena:   { id: 12, nombre: 'Arena',   agarre: 0.5,  suelto: 3.3, freno: 0.09,  pasta: 26, rugoso: [0.07, 4],    blando: 1,   polvo: 1.1,  color: 0xd9bd86 },
   feshfesh: { id: 13, nombre: 'Fesh-fesh', agarre: 0.34, suelto: 3.6, freno: 0.12, pasta: 105, rugoso: [0.03, 5],  blando: 1,   polvo: 1.5,  color: 0xe8d6ab },
+  // piedras negras sueltas sobre tierra oscura: agarra poco y traquetea (Travesia)
+  pedregal: { id: 14, nombre: 'Pedregal', agarre: 0.6, suelto: 2.6, freno: 0.06, pasta: 6, rugoso: [0.12, 1.6], blando: 0.1, polvo: 0.7, color: 0x3b332e },
 };
 export const SUELO = Object.values(SUELOS); // lista ordenada por id
 

@@ -4,7 +4,7 @@
 
 const GRADOS = { 1: 'uno', 2: 'dos', 3: 'tres', 4: 'cuatro', 5: 'cinco', 6: 'seis' };
 const DICHO = { salto: 'salto', baden: 'badén', vado: 'vado, agua', barro: 'barro', angosto: 'angosto', cornisa: 'cornisa, cuidado', meta: 'meta',
-  puente: 'puente, angosto', cuidado: 'cuidado', adoquin: 'adoquines', asfalto: 'asfalto', ripio: 'ripio', lomo: 'lomo', lajas: 'lajas, despacio', pueblo: 'pueblo', duna: 'duna, con envión', fesh: 'fesh fesh' };
+  puente: 'puente, angosto', cuidado: 'cuidado', adoquin: 'adoquines', asfalto: 'asfalto', ripio: 'ripio', lomo: 'lomo', lajas: 'lajas, despacio', pueblo: 'pueblo', duna: 'duna, con envión', fesh: 'fesh fesh', pedregal: 'piedras sueltas, despacio', surcos: 'huellas hondas', duda: '' };
 
 // lo que diria el copiloto por una nota
 export function decir(n) {
@@ -57,6 +57,8 @@ export function crearCopiloto(T) {
         if (falta > -5) hablar(decir(notas[k]), true);
       }
     },
+    // (Travesia: notas voladas) saca las notas que todavia no se cantaron entre esos dos metros del camino
+    callar: (desde, hasta) => { for (let k = notas.length - 1; k > dicha; k--) if (notas[k].i >= desde && notas[k].i < hasta) notas.splice(k, 1); },
     reiniciar: () => { dicha = -1; if (window.speechSynthesis) speechSynthesis.cancel(); },
     // prende o apaga la voz. Hay que llamarlo desde un toque o una tecla (los navegadores no dejan hablar antes).
     voz: (si) => {

@@ -84,7 +84,7 @@ export function crearHud() {
     },
     // las notas del copiloto: la que viene (grande, con los metros que faltan) y la siguiente
     notas: (lista, indice) => {
-      const clave = lista.map((n) => n.i).join(',');
+      const clave = lista.map((n) => n.i + n.tipo[0]).join(',');   // (la letra: una nota que cambia de dibujo en el mismo lugar, como el "?" del roadbook manchado, se vuelve a armar)
       if (clave !== notasPuestas) {
         notasPuestas = clave;
         $('notas').textContent = '';

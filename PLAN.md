@@ -91,11 +91,12 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Efectos de manejo: humo o tierra al frenar y derrapar (del color del suelo), barro que se acumula en la carrocería (todos los modelos), huellas que se marcan más con las pasadas, ráfagas de viento en las plantas y hojas que vuelan
 - [x] Travesía: modo infinito que sale distinto en cada largada, con suelos nuevos (arena y fesh-fesh), médanos y ríos. Cartas cada 2 km (18 para empezar: averías, mejoras y mezclas), fin por daño, por quedarse parado o por batería, récord en el aparato y mensaje para compartir
 - [x] Circuitos en categorías: Pista del día, Oficiales, Reales (tramos de verdad), Aventura (la Travesía) y Comunidad al final. La Travesía se entra desde ahí, siempre en rally serio y con la trazada prendida
+- [x] Travesía de supervivencia: solo problemas (32 averías), más barro, ríos, pedregales y médanos, y estética de desierto (arena ocre, acacias, torres de roca, sol bajo, polvareda grande, rodadas en la arena)
 
 ## Lo que sigue
 
 - Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).
-- Travesía: huellas en la arena, médanos que se noten más desde la cámara, más paisaje, sonido de arena, más cartas (el resto de la lista de averías) y ajustar la dificultad probando en celulares.
+- Travesía: puestos de asistencia cada 10 km para arreglar averías con las cartas buenas (ya están guardadas en `ARREGLOS`, fuera del sorteo), sonido de arena, y ajustar la dificultad probando en celulares.
 - Faros y luces de freno que se noten más al atardecer y con niebla.
 - El recorrido exacto de Mina Clavero – Giulio Cesare, si se consigue el trazado del mapa (OpenStreetMap estuvo bloqueado).
 

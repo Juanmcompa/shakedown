@@ -6,7 +6,7 @@ const RAD = Math.PI / 180;
 
 export function crearCamara(T) {
   const cam = new THREE.PerspectiveCamera(30, 1, 2, 900);
-  const e = { modo: 0, rumbo: 0, dist: 60, alto: 60, fov: 30, x: 0, y: 0, z: 0, listo: false, cerca: 1, chica: 0, parada: false, lejos: 1, ancha: 1, adelante: 1, baja: 0, tiembla: 0, apuro: 0 };
+  const e = { modo: 0, rumbo: 0, dist: 60, alto: 60, fov: 30, x: 0, y: 0, z: 0, listo: false, cerca: 1, chica: 0, parada: false, lejos: 1, ancha: 1, adelante: 1, baja: 0, tiembla: 0, vibra: 0, apuro: 0 };
   // La parte de la pantalla donde tiene que quedar el auto, para que no lo tapen los controles (fracciones de pantalla):
   // nunca mas abajo que "abajo", ni mas arriba que "arriba", ni mas cerca de los costados que "lados".
   const zona = { abajo: 0.16, arriba: 0.2, lados: 0.22 };
@@ -66,6 +66,9 @@ export function crearCamara(T) {
       cam.position.x += (Math.random() - 0.5) * e.tiembla; cam.position.z += (Math.random() - 0.5) * e.tiembla;
       e.tiembla *= Math.exp(-dt * 9);
     }
+    if (e.vibra > 0.005) {   // vibracion continua (la Travesia: escape libre, rueda desbalanceada), siempre un poco
+      cam.position.x += (Math.random() - 0.5) * e.vibra; cam.position.y += (Math.random() - 0.5) * e.vibra * 0.6; cam.position.z += (Math.random() - 0.5) * e.vibra;
+    }
     cam.position.y = Math.max(cam.position.y, T.altura(cam.position.x, cam.position.z) + 2.5);
     if (cam.fov !== e.fov) { cam.fov = e.fov; cam.updateProjectionMatrix(); }
     cam.lookAt(e.x, e.y, e.z);
@@ -98,6 +101,8 @@ export function crearCamara(T) {
       return CAMARAS[e.modo];
     },
     saltar: () => { e.listo = false; },
+    // vibracion que dura hasta que se la apaga (0): cuanto, en metros de temblor
+    vibrar: (cuanto) => { e.vibra = quieta ? 0 : cuanto; },
     sacudir: (cuanto) => { if (!quieta) e.tiembla = Math.min(1.6, 0.3 + cuanto / 25); },
   };
 }

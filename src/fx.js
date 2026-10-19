@@ -16,6 +16,11 @@ const POLVOS = {
   arena: ['#c9ae7a', '#dcc592', '#ecdbb2'],   // (la Travesia: va al final para no mover los dibujos de antes en el atlas)
 };
 const POLVO_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.tierra.id]: 'tierra', [SUELOS.pasto.id]: 'pasto', [SUELOS.arena.id]: 'arena', [SUELOS.feshfesh.id]: 'arena' };   // el resto, gris
+// la polvareda grande de la Travesia (opcion "grande" de crearEfectos): nubes de hasta 5 m de lado, que quedan flotando atras del auto.
+// Mismo estilo (pocos pixeles, a 8 por metro) pero con edades mas grandes, y solo en los colores de la arena, la tierra y el ripio.
+const EDADES_G = [[30, 1.1], [36, 0.9], [42, 0.66], [48, 0.4]];
+const POLVOS_G = { arena: ['#d49a58', '#e8b574', '#f6d29c'], ripio: ['#cda06a', '#e2bb86', '#f2d6a6'], tierra: ['#b07a4c', '#cb9768', '#e0b88a'] };
+const POLVO_G_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.arena.id]: 'arena', [SUELOS.feshfesh.id]: 'arena', [SUELOS.pedregal.id]: 'tierra', [SUELOS.tierra.id]: 'tierra' };
 const TRAMA = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 function nube(p, lado, tupida, tonos) {
   const c = (lado - 1) / 2;
@@ -31,7 +36,10 @@ function nube(p, lado, tupida, tonos) {
 
 // seco: de 0 (llueve: no hay polvo) a 1.  viento: hacia donde se lo lleva, en m/s [x, z].
 // liviano: celular o tablet (menos hojas y menos humo).
-export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liviano = false) {
+// opciones.grande: la polvareda grande (ver arriba). Sin esa opcion no cambia nada de lo de siempre.
+export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liviano = false, opciones = {}) {
+  const grande = !!opciones.grande;
+  let escalaGrande = 1;   // que tan grande sale la polvareda grande (depende de la camara: de lejos, mas grande)
   // el ajuste "efectos": apagado, no hay humo de frenada, hojas, ni huellas que se oscurecen o se ensanchan
   let activo = true;
   // por rueda: si venia tocando el piso, cuanto barro lleva pegado (lo va dejando en lo que pisa despues) y cuanto falta para la proxima nube
@@ -55,12 +63,14 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liv
   }
 
   // --- nubes de polvo ---
-  const atlas = crearAtlas(256, 128), zonas = {};
+  const atlas = grande ? crearAtlas(512, 256) : crearAtlas(256, 128), zonas = {}, zonasG = {};
   for (const nombre in POLVOS) zonas[nombre] = [0, 1].map((variante) => EDADES.map(([lado, tupida], k) => atlas.zona(lado, lado, (p) => nube(p, lado, tupida, POLVOS[nombre]), 5 + variante * 13 + k)));
+  if (grande) for (const nombre in POLVOS_G) zonasG[nombre] = [0, 1].map((variante) => EDADES_G.map(([lado, tupida], k) => atlas.zona(lado, lado, (p) => nube(p, lado, tupida, POLVOS_G[nombre]), 105 + variante * 13 + k)));
   const textura = atlas.textura();
   textura.generateMipmaps = false; textura.minFilter = THREE.NearestFilter;
-  const NN = 240, N = new Float32Array(NN * 9);   // x, y, z, vx, vy, vz, edad, vida, (libre)
+  const NN = grande ? (liviano ? 150 : 300) : 240, N = new Float32Array(NN * 9);   // x, y, z, vx, vy, vz, edad, vida, escala
   const quienes = new Array(NN).fill(null);       // de cada nube: las zonas de sus cuatro edades
+  const esGrande = new Array(NN).fill(false);     // y si es de la polvareda grande
   const g = new THREE.InstancedBufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0], 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
@@ -76,8 +86,16 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liv
   let sigNube = 0;
   function polvo(x, y, z, vx, vz, suelo, grande) {
     const o = sigNube * 9, lista = zonas[POLVO_DE[suelo] || 'gris'];
-    N[o] = x; N[o + 1] = y; N[o + 2] = z; N[o + 3] = vx; N[o + 4] = 0.5 + az() * 0.5; N[o + 5] = vz; N[o + 6] = 0; N[o + 7] = (3 + az() * 1.8) * (grande ? 1.2 : 1);
-    quienes[sigNube] = lista[az() < 0.5 ? 0 : 1];
+    N[o] = x; N[o + 1] = y; N[o + 2] = z; N[o + 3] = vx; N[o + 4] = 0.5 + az() * 0.5; N[o + 5] = vz; N[o + 6] = 0; N[o + 7] = (3 + az() * 1.8) * (grande ? 1.2 : 1); N[o + 8] = 1;
+    quienes[sigNube] = lista[az() < 0.5 ? 0 : 1]; esGrande[sigNube] = false;
+    sigNube = (sigNube + 1) % NN;
+  }
+  // una nube de la polvareda grande: sube y se queda flotando varios segundos mientras el viento la corre
+  function polvoGrande(x, y, z, vx, vz, suelo, fuerza) {
+    const o = sigNube * 9, lista = zonasG[POLVO_G_DE[suelo] || 'tierra'];
+    N[o] = x; N[o + 1] = y; N[o + 2] = z; N[o + 3] = vx; N[o + 4] = 1.8 + az() * 1.4; N[o + 5] = vz; N[o + 6] = 0;
+    N[o + 7] = (5 + az() * 3.5) * (liviano ? 0.75 : 1); N[o + 8] = (0.75 + az() * 0.4) * (0.8 + 0.3 * fuerza) * escalaGrande;
+    quienes[sigNube] = lista[az() < 0.5 ? 0 : 1]; esGrande[sigNube] = true;
     sigNube = (sigNube + 1) % NN;
   }
 
@@ -120,7 +138,19 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liv
       // polvo: una nube cada tantos metros, mas seguido cuanto mas rapido va y cuanto mas resbala la rueda.
       // Lo levantan sobre todo las ruedas de atras; en el asfalto solo hay humo de goma si se va muy cruzado.
       const levanta = mojado ? 0 : seco * (s.polvo * (0.4 + Math.min(1, vh / 16) * 0.6 + resbala * 1.3) + (s.blando === 0 ? Math.max(0, resbala - 0.45) * 1.6 : 0) + traba * 1.2) * (r.delantera ? 0.45 + traba * 0.4 : 1);
-      if (w.toca && paso < 3 && levanta > 0.02 && vh > 2.5) {
+      // polvareda grande (solo con los efectos prendidos): la sueltan las ruedas de atras, mas espaciada y mas grande
+      const enorme = grande && activo && !!POLVO_G_DE[r.suelo] && !mojado;
+      if (enorme) {
+        if (w.toca && paso < 3 && vh > 3 && !r.delantera) {
+          w.grande = (w.grande || 0) - paso * (0.45 + Math.min(1, vh / 14) * 0.55 + resbala * 0.6) * s.polvo;
+          if (w.grande <= 0) {
+            w.grande = (1.8 + az() * 1.3) * (liviano ? 1.8 : 1);
+            polvoGrande(r.p[0] - f[0] * 2.4 + (az() - 0.5) * 1.2, r.p[1] + 0.3, r.p[2] - f[2] * 2.4 + (az() - 0.5) * 1.2, c.vel[0] * 0.2 + d[0] * (az() - 0.5) * 7, c.vel[2] * 0.2 + d[2] * (az() - 0.5) * 7, r.suelo, Math.min(1, vh / 22 + resbala));
+          }
+        }
+      }
+      const chico = !enorme || (r.delantera && az() < 0.1);   // (con la polvareda grande, las de adelante casi no sueltan nubes chicas)
+      if (chico && w.toca && paso < 3 && levanta > 0.02 && vh > 2.5) {
         w.falta -= paso * levanta;
         if (w.falta <= 0) {
           w.falta = 1.1 + az() * 0.7;
@@ -162,9 +192,9 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liv
       N[o + 6] += dt;
       const u = N[o + 6] / N[o + 7];
       if (u >= 1) { quienes[i] = null; aTam.array[i * 2] = aTam.array[i * 2 + 1] = 0; continue; }
-      N[o + 3] *= frena; N[o + 5] *= frena; N[o + 4] += (0.22 - N[o + 4]) * Math.min(1, dt * 1.5);
+      N[o + 3] *= frena; N[o + 5] *= frena; N[o + 4] += ((grande ? 0.6 : 0.22) - N[o + 4]) * Math.min(1, dt * 1.5);
       N[o] += (N[o + 3] + viento[0]) * dt; N[o + 1] += N[o + 4] * dt; N[o + 2] += (N[o + 5] + viento[1]) * dt;
-      const z = q[u < 0.12 ? 0 : u < 0.36 ? 1 : u < 0.68 ? 2 : 3], lado = z.w / 8;
+      const z = q[u < 0.12 ? 0 : u < 0.36 ? 1 : u < 0.68 ? 2 : 3], lado = z.w / 8 * (N[o + 8] || 1);
       aBase.array[i * 3] = N[o]; aBase.array[i * 3 + 1] = N[o + 1] - lado * 0.3; aBase.array[i * 3 + 2] = N[o + 2];
       aTam.array[i * 2] = aTam.array[i * 2 + 1] = lado;
       aUv.array[i * 4] = z.x / atlas.ancho; aUv.array[i * 4 + 1] = z.y / atlas.alto; aUv.array[i * 4 + 2] = z.w / atlas.ancho; aUv.array[i * 4 + 3] = z.h / atlas.alto;
@@ -176,5 +206,5 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liv
   function cortar() { rueda.forEach((w) => { w.toca = false; w.barro = 0; }); huellas.cortar(); }
   // al largar de nuevo: no queda polvo de la pasada anterior
   function limpiar() { quienes.fill(null); aTam.array.fill(0); aTam.needsUpdate = true; for (let i = 0; i < NP; i++) D[i * NE + 6] = 0; }
-  return { actualizar, cortar, limpiar, prender: (v) => { activo = !!v; } };
+  return { actualizar, cortar, limpiar, prender: (v) => { activo = !!v; }, escala: (v) => { escalaGrande = v; }, nubes: () => quienes.filter(Boolean).length, nubesGrandes: () => quienes.filter((q, i) => q && esGrande[i]).length };
 }

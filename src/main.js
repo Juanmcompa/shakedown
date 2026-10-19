@@ -42,7 +42,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '25';
+const PAGINA = '26';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -621,6 +621,7 @@ const travesia = crearModoTravesia({
   mandos: () => { if (!tactil && teclas.esTactil()) mandosDeCelular(); },
   voz: () => conVoz,
   camara: () => club.gusto('camara'),
+  efectos: () => conEfectos,
 });
 
 // --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
@@ -634,7 +635,7 @@ const APLICAR = {
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
   pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
-  efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
+  efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); travesia.efectos(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
   sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
   voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); travesia.voz(conVoz); hud.prendido('voz', conVoz); },
 };

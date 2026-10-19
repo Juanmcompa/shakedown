@@ -1,5 +1,5 @@
-// La Travesia: un modo aparte de la pista del dia. Un camino infinito y cada vez peor (medanos, rios, fesh-fesh, piedras),
-// con cartas: cada tantos km el auto se frena y se elige 1 de 3, buenas, malas o de las dos. No es justo, y cada vez que
+// La Travesia: un modo aparte de la pista del dia. Un camino infinito y cada vez peor (medanos, barro, rios, fesh-fesh, piedras negras),
+// con cartas: cada tantos km el auto se frena y se elige 1 de 3 problemas, el menos malo. No es justo, y cada vez que
 // se larga sale algo distinto. Gana el que llega mas lejos.
 //
 // Este archivo es el modo: las reglas de la corrida, el ciclo de cada cuadro y las pantallas propias (las cartas, el resultado).
@@ -9,7 +9,7 @@
 // Fin de la corrida: el auto se rompe (daño al maximo) o se queda parado mucho rato. No hay limite de tiempo.
 // Salirse del camino: se vuelve como siempre, pero en vez de recargo de tiempo suma daño.
 import * as THREE from '../vendor/three.module.js';
-import { JUEGO, TRAVESIA, SUELO } from './config.js';
+import { JUEGO, TRAVESIA, SUELO, SUELOS } from './config.js';
 import { crearTerrenoTravesia } from './travesiaterreno.js';
 import { crearMundoTravesia } from './travesiamundo.js';
 import { crearAuto, enSerio } from './vehicle.js';
@@ -19,12 +19,17 @@ import { crearCamara } from './camera.js';
 import { crearEfectos } from './fx.js';
 import { crearCopiloto } from './copiloto.js';
 import { configDe } from './partes.js';
-import { estadoInicial, sortear, aplicar, mecanicoLoco, cartaDe } from './cartas.js';
+import { estadoInicial, sortear, aplicar, mecanicoLoco, cartaDe, CARTAS, PROBLEMAS, ARREGLOS } from './cartas.js';
 import { icono } from './iconos.js';
 
 const $ = (id) => document.getElementById(id);
 const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
 const QUIETO = { x: 0, y: 0, mano: true };
+const suave = (t) => { t = lim(t, 0, 1); return t * t * (3 - 2 * t); };
+const ARENOSOS = [SUELOS.arena.id, SUELOS.feshfesh.id];
+// "a mucha velocidad" y "a alta velocidad" de las cartas, como parte de la velocidad maxima del auto de turno
+// (la Vitarita llega a unos 97 km/h: los 100 y 120 de otros autos serian imposibles de alcanzar)
+const RAPIDO = 0.82, MUY_RAPIDO = 0.9;
 const coma = (km) => km.toFixed(1).replace('.', ',');
 const CLAVE_RECORD = 'travesiaKm';
 const MOTIVOS = { roto: ['dano', 'El auto no aguantó más'], quieto: ['cono', 'Te quedaste parado'], bateria: ['bateria', 'Se acabó la batería'] };
@@ -85,6 +90,9 @@ export function crearModoTravesia(o) {
   let indice = 0, mejor = 0, lejos = 0, resto = 0, reloj = 0, cuenta = 0, tEspera = 0, motivoFin = '', proximaCarta = TRAVESIA.kmPorCarta;
   let golpe = 0, contra = '', tGolpe = 0, tVolcado = 0, tFuera = 0, tSinAvance = 0, mejorAntes = 0, tFondo = 0, calor = 0, armada = false, volvio = 0, vistas = 0;
   let cola = [], gasEfectivo = 0, mano = [], restaurarNiebla = null;
+  // las averias de las cartas que llevan cuenta propia
+  let tApagado = 0, frenadas = [], frenando = false, sinFreno = false, invierte = 0, proxInsol = 10, tFalsa = 3, tInstr = 0, numInstr = 0, tAceite = 0, avisoParado = false;
+  let callados = [];   // rangos de metros del camino sin notas del copiloto ("notas voladas")
   const ent = { x: 0, y: 0, mano: false }, manda = { x: 0, y: 0, mano: false };
   const piloto = crearPiloto(), depuracion = { piloto: false, invulnerable: false };
 
@@ -93,8 +101,8 @@ export function crearModoTravesia(o) {
   const mundo = crearMundoTravesia(escena, liviano);
   const trazada = crearTrazadaTravesia(escena);   // la linea pintada en el camino: en este modo arranca siempre prendida (la T la apaga)
   const camara = crearCamara({ altura: (x, z) => (T ? T.altura(x, z) : 0) });
-  const huellasVacias = { marcar() {}, soltar() {}, subir() {}, cortar() {}, limpiar() {}, pintar() {} };   // (en la arena no quedan huellas)
-  const fx = crearEfectos(escena, huellasVacias, 1, [0.6, 0.3], liviano);
+  // (las huellas las lleva cada pedazo de terreno: ver travesiahuellas.js; y el polvo es la polvareda grande, que queda flotando)
+  const fx = crearEfectos(escena, mundo.huellas, 1, [0.6, 0.3], liviano, { grande: true });
 
   // ---------------------------------------------------------------- el record, en este aparato
   const record = () => { try { return Number(club.gusto(CLAVE_RECORD)) || 0; } catch (x) { return 0; } };
@@ -116,6 +124,9 @@ export function crearModoTravesia(o) {
     const v = $('vidrio');
     v.hidden = !e || e.vidrio < 0;
     if (!v.hidden) v.dataset.parte = String(e.vidrio);
+    // lo que se ve en la cabina: la arena en los ojos (bordes oscuros) y la tormenta de polvo (se va el tablero)
+    $('arenaOjos').hidden = !e || !e.arenaOjos;
+    raiz.classList.toggle('sin-tablero', !!e && e.polvoCabina);
   }
   // el dibujo del vidrio roto: un manchon lechoso con grietas que salen de una esquina (unos pocos pixeles, ampliados)
   function dibujarVidrio() {
@@ -161,12 +172,18 @@ export function crearModoTravesia(o) {
     fase = 'cartas';
     hud.llamar(false); hud.grande(''); hud.aviso('');
   }
+  // lo que hay que poner al dia cuando el auto suma una carta
+  function despuesDeCarta() {
+    // notas voladas: los proximos 2 km, sin notas (las que ya estaban armadas por delante se sacan)
+    while (e.voladas > 0) { e.voladas--; const r = { desde: indice, hasta: indice + 2000 }; callados.push(r); copiloto.callar(r.desde, r.hasta); }
+    pintarActivas(); pintarVidrio(); marearNotas();
+  }
   function elegir(n) {
     if (fase !== 'cartas' || !mano[n]) return false;
     const k = mano[n];
     aplicar(e, k, rnd);
     $('cartas').hidden = true;
-    pintarActivas(); pintarVidrio(); marearNotas();
+    despuesDeCarta();
     hud.aviso(k.nombre, 2.2, k.icono);
     mano = [];
     fase = 'corriendo';
@@ -229,6 +246,7 @@ export function crearModoTravesia(o) {
   function pasarNotas() {
     while (vistas < T.notas.length) {
       const n = { ...T.notas[vistas++] };
+      if (callados.some((q) => n.i >= q.desde && n.i < q.hasta)) continue;
       n.real = n.lado; ponerLado(n);
       copiloto.notas.push(n);
     }
@@ -237,9 +255,10 @@ export function crearModoTravesia(o) {
 
   // ajusta el auto a lo que dicen las cartas (cada cuadro: asi las cartas se suman y se sacan solas)
   function ajustarAuto() {
-    const duro = SUELO[c.suelo] && SUELO[c.suelo].blando < 0.5;
-    C.potencia = base.potencia * e.potencia * (calor > 0 ? 0.42 : 1) * (e.lisos && duro ? 1.73 : 1);   // (1,2 de velocidad pide 1,73 de potencia: la velocidad sube con la raiz cubica)
-    C.empuje = base.empuje * e.empuje * (calor > 0 ? 0.55 : 1);
+    const duro = SUELO[c.suelo] && SUELO[c.suelo].blando < 0.5, arenoso = ARENOSOS.includes(c.suelo), v = Math.max(0, c.velocidad);
+    C.potencia = base.potencia * e.potencia * (calor > 0 ? 0.42 : 1) * (e.lisos && duro ? 1.73 : 1) * (e.filtro && arenoso ? 0.8 : 1);   // (1,2 de velocidad pide 1,73 de potencia: la velocidad sube con la raiz cubica)
+    // embrague quemado: de parado, el empuje es un tercio, y se va normalizando hasta los 9 m/s
+    C.empuje = base.empuje * e.empuje * (calor > 0 ? 0.55 : 1) * (e.embrague ? 0.34 + 0.66 * Math.min(1, v / 9) : 1);
     C.frenos = base.frenos * e.frenos;
     C.alturaLateral = Math.min(0.97, base.alturaLateral * e.vuelca);
   }
@@ -251,8 +270,16 @@ export function crearModoTravesia(o) {
     else if (blando >= 0.5) s.agarre *= 0.8;
   }
   function filtrarEntrada(dt) {
-    const x = lim(ent.x + e.sesgo, -1, 1);
-    let y = ent.y;
+    const rel = vTope > 0 ? Math.max(0, c.velocidad) / vTope : 0;
+    let x = ent.x, y = ent.y;
+    // direccion hidraulica muerta: a alta velocidad el volante dobla la mitad
+    if (e.direccion) x *= 1 - 0.5 * suave((rel - 0.4) / 0.4);
+    // golpe de calor: de a ratos, 2 segundos con la direccion al reves
+    if (e.insolacion) {
+      if (invierte > 0) { invierte -= dt; x = -x; }
+      else if ((proxInsol -= dt) <= 0) { invierte = 2; proxInsol = 9 + rnd() * 12; hud.aviso('Golpe de calor', 2, 'termometro'); }
+    }
+    x = lim(x + e.sesgo, -1, 1);   // (el eje torcido y el pinchazo)
     // bujias empastadas: el acelerador responde tarde (el freno, no)
     if (e.retrasoGas > 0) {
       cola.push([reloj, Math.max(0, ent.y)]);
@@ -267,6 +294,20 @@ export function crearModoTravesia(o) {
       if (tFondo > 3 && calor <= 0) { calor = 5; tFondo = 0; hud.aviso('Recalentado', 2, 'termometro'); }
     }
     if (calor > 0) calor -= dt;
+    // correa floja: a mucha velocidad, de golpe se apaga el motor un segundo
+    if (e.correa) {
+      if (tApagado > 0) { tApagado -= dt; y = Math.min(y, 0); }
+      else if (rel > RAPIDO - 0.1 && rnd() < dt * 0.3) { tApagado = 1; hud.aviso('Motor apagado', 1.2, 'motor'); }
+    }
+    // liquido de frenos hirviendo: dos frenadas fuertes en 5 s y la tercera no frena (hasta que se suelta el pedal)
+    if (e.hierve) {
+      if (ent.y < -0.3 && c.velocidad > 6 && !frenando) {
+        frenando = true;
+        frenadas = frenadas.filter((t) => reloj - t < 5);
+        if (frenadas.length >= 2) { sinFreno = true; frenadas.length = 0; hud.aviso('Frenos hirviendo', 1.8, 'termometro'); } else frenadas.push(reloj);
+      } else if (frenando && ent.y > -0.1) { frenando = false; sinFreno = false; }
+      if (sinFreno && y < 0) y = 0;
+    }
     manda.x = x; manda.y = y; manda.mano = e.mano && ent.mano;
     return manda;
   }
@@ -310,7 +351,7 @@ export function crearModoTravesia(o) {
       if (!depuracion.invulnerable) e.roto = Math.min(100, e.roto + suma);
       camara.sacudir(golpe);
       const dijo = mecanicoLoco(e, golpe, rnd);
-      if (dijo) { hud.aviso(dijo, 2.6, 'llave'); pintarActivas(); pintarVidrio(); marearNotas(); }
+      if (dijo) { hud.aviso(dijo, 2.6, 'llave'); despuesDeCarta(); }
       golpe = tGolpe = 0;
       if (e.roto >= 100) return terminar('roto');
     } else if (tGolpe === 0) golpe = 0;
@@ -321,8 +362,8 @@ export function crearModoTravesia(o) {
     if (tVolcado > 2) return volver('vuelco');
     // parado mucho rato: se termina. Si se puede avanzar un poco mas, se sigue.
     if (mejor > mejorAntes + 1.5) { mejorAntes = mejor; tSinAvance = 0; } else tSinAvance += dt;
-    if (tSinAvance > 3.5) hud.aviso('Parado: ' + Math.max(0, Math.ceil(TRAVESIA.quieto - tSinAvance)) + ' s', 0, 'cono');
-    else if (tSinAvance === 0 || tSinAvance < 0.2) hud.aviso('');
+    if (tSinAvance > 3.5) { hud.aviso('Parado: ' + Math.max(0, Math.ceil(TRAVESIA.quieto - tSinAvance)) + ' s', 0, 'cono'); avisoParado = true; }
+    else if (avisoParado) { hud.aviso(''); avisoParado = false; }   // (solo se saca el cartel de "parado": los otros avisos duran lo suyo)
     hud.llamar(tSinAvance > 3.5);
     if (tSinAvance > TRAVESIA.quieto && !depuracion.invulnerable) return terminar('quieto');
     // bateria agotada: si el auto llega a 0 km/h, se termino
@@ -330,8 +371,29 @@ export function crearModoTravesia(o) {
       if (c.velocidad > 3) armada = true;
       else if (armada && Math.abs(c.velocidad) < 0.3 && !depuracion.invulnerable) return terminar('bateria');
     }
+    // sin lubricante: a mucha velocidad el motor se daña de a poco
+    if (e.aceite && c.velocidad > vTope * RAPIDO && !depuracion.invulnerable) {
+      e.roto = Math.min(100, e.roto + dt * 0.7);
+      if ((tAceite -= dt) <= 0) { tAceite = 5; hud.aviso('Motor sin lubricante', 1.6, 'tacho'); }
+      if (e.roto >= 100) return terminar('roto');
+    }
     // una carta cada tantos km
     if (mejorKm() >= proximaCarta) { proximaCarta += TRAVESIA.kmPorCarta; mostrarCartas(); }
+  }
+
+  // alucinaciones: de a una, aparecen piedras falsas por delante (no se chocan) y se van al tocarlas o cuando quedan atras
+  function alucinar(dt) {
+    const lista = mundo.falsas.lista;
+    if (e.alucina && fase === 'corriendo' && (tFalsa -= dt) <= 0 && lista.length < 4) {
+      tFalsa = 2.2 + rnd() * 3;
+      const P = T.camino, i = Math.min(P.n - 1, indice + 28 + Math.floor(rnd() * 32)), lado = (rnd() * 2 - 1) * (P.W[i] / 2 - 1);
+      const x = P.X[i] - P.HZ[i] * lado, z = P.Z[i] + P.HX[i] * lado;
+      mundo.falsas.poner(x, T.altura(x, z), z);
+    }
+    for (let k = lista.length - 1; k >= 0; k--) {
+      const f = lista[k].position, dx = f.x - c.pos[0], dz = f.z - c.pos[2];
+      if (Math.hypot(dx, dz) < 2.4 || dx * c.adelante[0] + dz * c.adelante[2] < -14) mundo.falsas.quitar(k);
+    }
   }
 
   // todo lo que pasa en un cuadro menos dibujar (tambien lo usan las pruebas)
@@ -352,7 +414,7 @@ export function crearModoTravesia(o) {
     }
     resto += dt;
     while (resto >= JUEGO.paso) { c.paso(m, JUEGO.paso); resto -= JUEGO.paso; }
-    if (fase === 'corriendo') { sonido.toque(c.contra, c.impacto, e.roto); reglas(dt); }
+    if (fase === 'corriendo') { sonido.toque(c.contra, c.impacto, e.roto); reglas(dt); alucinar(dt); }
     else if (fase === 'espera') { indice = T.indice(c.pos[0], c.pos[2], indice); if ((tEspera -= dt) <= 0) mostrarFin(); }
     // el camino se arma por delante y se tira lo de atras
     T.asegurar(indice);
@@ -366,7 +428,7 @@ export function crearModoTravesia(o) {
     const semilla = (Math.random() * 4294967295) >>> 0;
     rnd = Math.random;
     $('travesiaFin').hidden = true; $('cartas').hidden = true;
-    mundo.vaciar();
+    mundo.vaciar();   // (tambien tira las piedras falsas y las huellas)
     T = crearTerrenoTravesia(semilla);
     T.ajuste = ajusteDeSuelo;
     mundo.usar(T);
@@ -375,8 +437,8 @@ export function crearModoTravesia(o) {
     const codigo = club.auto();
     // siempre en "rally serio" (ver SERIO en config.js), sin ayuda de manejo, diga lo que diga el gusto guardado
     C = enSerio({ ...configDe(codigo) });
-    base = { potencia: C.potencia, empuje: C.empuje, frenos: C.frenos, alturaLateral: C.alturaLateral };
-    vTope = Math.cbrt(base.potencia / base.aire) * 1.0;
+    base = { potencia: C.potencia, empuje: C.empuje, frenos: C.frenos, alturaLateral: C.alturaLateral, aire: C.aire };
+    vTope = Math.cbrt(base.potencia / base.aire);   // (la velocidad a la que se frena la potencia contra el aire, sin cuestas)
     c = crearAuto(T, C);
     if (!dibujo || codigoDibujo !== codigo) {
       if (dibujo) escena.remove(dibujo.grupo);
@@ -388,6 +450,7 @@ export function crearModoTravesia(o) {
     copiloto.voz(o.voz());
     indice = 0; mejor = mejorAntes = 8; resto = 0; reloj = 0; motivoFin = ''; proximaCarta = TRAVESIA.kmPorCarta;
     tGolpe = golpe = tVolcado = tFuera = tSinAvance = tFondo = calor = 0; armada = false; cola = []; gasEfectivo = 0; mano = [];
+    tApagado = invierte = tInstr = tAceite = 0; frenadas = []; frenando = sinFreno = avisoParado = false; proxInsol = 8 + rnd() * 8; tFalsa = 3; callados = [];
     const g = T.largada;
     c.poner(g.x, g.z, g.rumbo);
     indice = g.i;
@@ -417,6 +480,7 @@ export function crearModoTravesia(o) {
     const costo = document.querySelector('.redondo.volver .costo');
     if (costo) { textoCosto = costo.textContent; costo.textContent = '+' + TRAVESIA.danoAlVolver; }
     restaurarNiebla = mundo.activar();
+    fx.prender(o.efectos ? o.efectos() : true);   // (el ajuste "efectos": sin el, no hay polvareda grande ni huellas que se oscurecen)
     { const id = o.camara(); if (id) camara.cambiar(id); }
     nuevaCorrida();
   }
@@ -425,8 +489,9 @@ export function crearModoTravesia(o) {
     if (!activa) return;
     activa = false; fase = 'afuera';
     trazada.mostrar(false);
-    $('travesiaFin').hidden = true; $('cartas').hidden = true; $('vidrio').hidden = true; $('cartasActivas').hidden = true;
-    raiz.classList.remove('travesia');
+    $('travesiaFin').hidden = true; $('cartas').hidden = true; $('vidrio').hidden = true; $('arenaOjos').hidden = true; $('cartasActivas').hidden = true;
+    raiz.classList.remove('travesia', 'sin-tablero');
+    camara.vibrar(0);
     raiz.classList.toggle('practica', previaPractica);
     const costo = document.querySelector('.redondo.volver .costo');
     if (costo) costo.textContent = textoCosto;
@@ -449,14 +514,24 @@ export function crearModoTravesia(o) {
     if ((c.velocidad < -0.5) !== paraAtras) { paraAtras = !paraAtras; raiz.classList.toggle('marcha-atras', paraAtras); }
     // el tablero: en vez del reloj, los km
     if (fase !== 'fin') {
-      hud.actualizar(c, { tiempo: 0, roto: e.roto }, dt);
+      // paranoia: la barra de daño muestra mas de lo que hay
+      hud.actualizar(c, { tiempo: 0, roto: e.paranoia ? Math.min(100, e.roto * 1.35 + 14) : e.roto }, dt);
       $('reloj').textContent = coma(mejorKm()) + ' km';
+      // instrumental loco: el velocimetro marca numeros al azar
+      if (e.instrumental) { if ((tInstr -= dt) <= 0) { tInstr = 0.12; numInstr = Math.floor(rnd() * 181); } $('vel').textContent = String(numInstr); }
       hud.volante(teclas.volante());
-      hud.notas(copiloto.proximas(indice, c.velocidad), indice);
-      if (fase === 'corriendo') copiloto.paso(indice, c.velocidad);
+      // roadbook manchado: la flecha de la proxima curva es un "?"
+      let notas = copiloto.proximas(indice, c.velocidad);
+      if (e.roadbook && notas.length && notas[0].tipo === 'curva') notas = [{ ...notas[0], tipo: 'duda' }, ...notas.slice(1)];
+      hud.notas(notas, indice);
+      // intercomunicador con estatica: el copiloto canta 1,5 s tarde (como si el auto estuviera 1,5 s atras). Pánico: a mucha velocidad se calla.
+      if (fase === 'corriendo' && !(e.panico && c.velocidad > vTope * MUY_RAPIDO)) copiloto.paso(indice - (e.estatica ? Math.round(Math.max(0, c.velocidad) * 1.5) : 0), c.velocidad);
     }
     dibujo.actualizar(c, dt, true);
     fx.actualizar(c, dt);
+    // escape libre: la pantalla tiembla siempre un poco. Rueda desbalanceada: tiembla mas cuanto mas rapido se va.
+    fx.escala(camara.modo().id === 'atras' ? 0.4 : camara.modo().id === 'arriba' ? 1.35 : 1.0);   // (la polvareda se hace mas grande cuanto mas lejos esta la camara)
+    camara.vibrar(e && fase !== 'cartas' ? Math.max(e.escape ? 0.11 : 0, e.desbalance ? 0.42 * suave((c.velocidad / vTope - 0.5) / 0.4) : 0) : 0);
     camara.seguir(c, dt);
     if (c.rompio.length) c.rompio.length = 0;
     mundo.animar(t);
@@ -491,6 +566,7 @@ export function crearModoTravesia(o) {
     encuadrar: (a, b, l) => camara.encuadrar(a, b, l),
     alejar: (v) => camara.alejar(v),
     voz: (si) => { if (copiloto) copiloto.voz(si); },
+    efectos: (si) => fx.prender(si),
     // --- para probar desde la consola (solo en una copia local, ver main.js) ---
     prueba: {
       estado: () => ({ activa, fase, km: mejorKm(), indice, mejor, roto: e && e.roto, cartas: e && e.cartas.slice(), mano: mano.map((k) => k.id), motivo: motivoFin, velocidad: c && c.velocidad, record: record(),
@@ -503,6 +579,7 @@ export function crearModoTravesia(o) {
         for (let s = 0; s < seg; s += dt) {
           actualizar(dt);
           if (!T) break;
+          if (o2.efectos && c) { fx.escala(camara.modo().id === 'atras' ? 0.4 : camara.modo().id === 'arriba' ? 1.35 : 1.0); fx.actualizar(c, dt); camara.seguir(c, dt); }   // (con "efectos: true" tambien corren el polvo y las huellas, que sino solo andan al dibujar)
           // (para probar) si el piloto se queda trabado en un pozo y no puede morir, se lo apoya unos metros mas adelante
           if (depuracion.invulnerable && fase === 'corriendo' && tSinAvance > 6) { apoyar(Math.round(mejor) + 25); mejor += 25; mejorAntes = mejor; T.asegurar(indice); }
           if ((sigue += dt) >= 0.25) { sigue = 0; mundo.mantener(c.pos[0], c.pos[2], Math.atan2(T.camino.HX[indice], -T.camino.HZ[indice]), true); }
@@ -512,6 +589,11 @@ export function crearModoTravesia(o) {
         if (T) { dibujo.actualizar(c, 0, false); camara.seguir(c, 0.05); }
       },
       elegir, mostrarFin, terminar,
+      // un cuadro completo (lo que se ve y el tablero), y lo que el auto manda al motor segun las cartas, para probar las averias de a una
+      cuadro: (dt = 1 / 30) => cuadro(dt, reloj),
+      filtrar: (x, y, dt) => { ent.x = x; ent.y = y; ent.mano = false; reloj += dt; const m = filtrarEntrada(dt); return { x: m.x, y: m.y }; },
+      cartas: { CARTAS, PROBLEMAS, ARREGLOS, sortear, estadoInicial },
+      proxima: (km) => { proximaCarta = km; },   // (para probar) en que km sale la proxima carta
       saltarA: (km) => {
         // (para probar) pone el auto km metros mas adelante sobre el camino
         T.asegurar(Math.round(km * 1000));
@@ -520,9 +602,9 @@ export function crearModoTravesia(o) {
         T.asegurar(i); T.podar(i); pasarNotas();
         mundo.mantener(c.pos[0], c.pos[2], 0, true);
       },
-      dar: (id) => { aplicar(e, cartaDe(id), rnd); pintarActivas(); pintarVidrio(); marearNotas(); },
+      dar: (id) => { aplicar(e, cartaDe(id), rnd); despuesDeCarta(); },
       trazada, serio: () => !!(c && c.datos.serio), depuracion, T: () => T, c: () => c, e: () => e, mundo, camara, escena, copiloto: () => copiloto, fx,
-      vTope: () => vTope,
+      vTope: (v) => { if (v !== undefined) vTope = v; return vTope; },   // (para probar) la velocidad maxima de referencia: se puede cambiar para probar "a mucha velocidad"
     },
   };
 }

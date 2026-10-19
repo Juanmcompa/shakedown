@@ -691,6 +691,11 @@ html.travesia #cuadros, html.travesia #rival, html.travesia #ronda, html.travesi
 .cartas-activas .icono[data-tipo="mala"] { box-shadow: inset 0 0 0 1.5px #c0553f; }
 .cartas-activas .icono[data-tipo="buena"] { box-shadow: inset 0 0 0 1.5px #5cc070; }
 .cartas-activas .icono[data-tipo="mezcla"] { box-shadow: inset 0 0 0 1.5px var(--amarillo); }
+.cartas-activas .icono[data-tipo="arreglo"] { box-shadow: inset 0 0 0 1.5px #5cc070; }
+/* arena en los ojos: los bordes de la pantalla, oscuros y de color tierra */
+.arena-ojos { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 46%, rgba(34, 22, 10, 0) 38%, rgba(34, 22, 10, .55) 64%, rgba(20, 12, 5, .92) 100%); }
+/* tormenta de polvo en cabina: el tablero (velocidad y daño) desaparece */
+html.sin-tablero .placa.marcha { visibility: hidden; }
 /* elegir una carta: tres grandes, para tocar con el pulgar */
 .cartas-pantalla { position: fixed; inset: 0; z-index: 20; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 14px; padding: 20px; background: rgba(8, 9, 10, .8); text-align: center; }
 .cartas-pantalla h2 { font: 800 clamp(30px, 6vw, 48px)/1 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
@@ -699,6 +704,7 @@ html.travesia #cuadros, html.travesia #rival, html.travesia #ronda, html.travesi
 .carta.mala { box-shadow: inset 0 0 0 3px #c0553f; }
 .carta.buena { box-shadow: inset 0 0 0 3px #5cc070; }
 .carta.mezcla { box-shadow: inset 0 0 0 3px var(--amarillo); }
+.carta.arreglo { box-shadow: inset 0 0 0 3px #5cc070; }
 .carta .icono { width: clamp(56px, 11vw, 92px); height: clamp(56px, 11vw, 92px); }
 .carta b { font: 800 clamp(20px, 3.2vw, 27px)/1.05 var(--titulos); }
 .carta .carta-texto { font: 600 clamp(14px, 2.2vw, 17px)/1.25 var(--texto); opacity: .9; }

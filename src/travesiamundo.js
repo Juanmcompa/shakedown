@@ -2,7 +2,7 @@
 // la lleva travesiaterreno.js), las piedras, las matas secas, el agua de los arroyos y la luz del desierto.
 // Usa las mismas herramientas que world.js (el piso de pixeles, el agua, los dibujos de piedras y de plantas).
 import * as THREE from '../vendor/three.module.js';
-import { TRAVESIA } from './config.js';
+import { TRAVESIA, SUELOS } from './config.js';
 import { glslPixel } from './pixel.js';
 import { crearRuido } from './noise.js';
 import { texturaDePisos, crearEscenografia } from './arte.js';
@@ -11,10 +11,23 @@ import { crearLote } from './pixel.js';
 import { crearLoteDeSprites } from './sprites.js';
 import { LUCES, PISO, AGUA } from './world.js';
 import { RADIOS_DE_PIEDRA, altoDePiedra } from './travesiaterreno.js';
+import { crearDibujosDeTravesia, FORMACIONES, PIXEL_FORMACION } from './travesiaflora.js';
+import { crearHuellasDeTravesia } from './travesiahuellas.js';
 
+const lim01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const par = (v) => Math.max(2, Math.round(v / 2) * 2);   // medida par, en pixeles
-// la luz del desierto: la del sol, con una bruma de arena mas cerrada
-const LUZ = { ...LUCES.sol, bruma: [0xe7d3ad, 78, 262], cielo: [0xe2dcf0, 0x9a8470, 1.35] };
+// la luz del desierto: un sol bajo de atardecer (las sombras salen largas y los medanos quedan con un lado al sol y otro a oscuras),
+// con una bruma calida que se va comiendo todo lo lejano
+const LUZ = { ...LUCES.sol, sol: [0xffc994, 2.75, [-0.82, 0.34, -0.3]], bruma: [0xe6bb8f, 58, 250], cielo: [0xdccbc4, 0x9a7656, 1.0], sombra: 0.82 };
+// el piso, igual que el de las pistas pero con un tinte mas: en la capa azul del mapa viene cuanto mira cada lugar al sol, y el piso se ve
+// calido y claro de ese lado y frio y oscuro del otro (en las pistas esa capa no se usa si no hay manchones, y aca nunca los hay)
+const PISO_T = { cabeza: PISO.cabeza, cuerpo: PISO.cuerpo.replace('diffuseColor.rgb = piso;', `
+    // el ripio del camino, mas calido (con la luz baja se le va el color)
+    if (capa == ${SUELOS.ripio.id}.0) piso *= vec3(1.1, 0.99, 0.82);
+    else if (capa == ${SUELOS.barro.id}.0 || capa == ${SUELOS.pantano.id}.0) piso *= vec3(1.4, 1.12, 0.92);   // el barro, mas claro y rojizo (si no se confunde con el pedregal)
+    float luzMed = dato.b;
+    piso *= luzMed < 0.5 ? mix(vec3(0.6, 0.5, 0.52), vec3(1.0), luzMed * 2.0) : mix(vec3(1.0), vec3(1.2, 1.07, 0.86), (luzMed - 0.5) * 2.0);
+    diffuseColor.rgb = piso;`) };
 // las medidas (en pixeles) de los dos bloques de cada piedra, como en utileria.js
 const medidas = (r) => {
   const w = par(r * 7.6), d = par(r * 6.4), h = Math.max(2, Math.round(r * altoDePiedra(r) * 4.6));
@@ -30,13 +43,16 @@ export function crearMundoTravesia(escena, liviano) {
   const esc = crearEscenografia();
   // se preparan todos los dibujos de piedra antes de armar la textura: despues ya no se pueden sumar
   for (const r of RADIOS_DE_PIEDRA) { const m = medidas(r); esc.piedra(m.w, m.d); esc.canto(m.h + 2); esc.piedra(m.w2, m.d2); esc.canto(m.h2 + 2); }
+  // las formaciones de roca grandes: se preparan igual sus dibujos (de cada parte, el techo y el costado)
+  for (const parte of FORMACIONES.flat(1).filter((q) => Array.isArray(q))) esc.piedra(parte[0], parte[1]), esc.canto(parte[2] + 2);
   const pisos = texturaDePisos(['pastoSeco']);
   const dibujo = esc.atlas.textura();
   const mPiedra = estilo(new THREE.MeshLambertMaterial({ map: dibujo }));
-  const V = new THREE.Vector3(), ARRIBA = new THREE.Vector3(0, 1, 0), M2 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), NORMAL = new THREE.Vector3(), P4 = new THREE.Vector3(0.25, 0.25, 0.25);
-  // (sin huellas en la arena: el piso pide un mapa, y alcanza uno vacio)
-  const sinHuellas = new THREE.DataTexture(new Uint8Array(512 * 512), 512, 512, THREE.RedFormat, THREE.UnsignedByteType);
-  sinHuellas.unpackAlignment = 1; sinHuellas.needsUpdate = true;
+  const mPiedraNegra = estilo(new THREE.MeshLambertMaterial({ map: dibujo, color: 0x6a5c52 }));      // la misma piedra, pero negra
+  const mFormacion = estilo(new THREE.MeshLambertMaterial({ map: dibujo, color: 0xe6aa78 }));       // y la de las formaciones, ocre rojiza
+  const dibujosFlora = crearDibujosDeTravesia();
+  const huellas = crearHuellasDeTravesia();
+  const V = new THREE.Vector3(), ARRIBA = new THREE.Vector3(0, 1, 0), M2 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), NORMAL = new THREE.Vector3(), P4 = new THREE.Vector3(0.25, 0.25, 0.25), PF = new THREE.Vector3();
   const ruidoDeTono = crearRuido(99);
 
   // --- la luz: cielo + sol con sombras que siguen a la camara (igual que en world.js) ---
@@ -54,6 +70,7 @@ export function crearMundoTravesia(escena, liviano) {
   escena.add(sol, sol.target);
   const ejeX = new THREE.Vector3().crossVectors(ARRIBA, haciaElSol).normalize(), ejeY = new THREE.Vector3().crossVectors(haciaElSol, ejeX);
   const paso = 2 * R / lado, D = new THREE.Vector3();
+  const sunN = haciaElSol.clone();   // (ya normalizado) para saber cuanto mira al sol cada lugar del piso
 
   // --- los pedazos ---
   const vivos = new Map(), pendientes = [];   // vivos: clave -> { t, grupo, cosas: lo que hay que liberar }; pendientes: con datos, sin dibujar
@@ -76,7 +93,8 @@ export function crearMundoTravesia(escena, liviano) {
       nor[o] = V.x; nor[o + 1] = V.y; nor[o + 2] = V.z;
       mapa[k * 4] = t.S[k];
       mapa[k * 4 + 1] = Math.round(ruidoDeTono.n2((t.x0 + i) * 0.045, (t.z0 + j) * 0.045) * 255);
-      mapa[k * 4 + 2] = Math.round(ruidoDeTono.capas((t.x0 + i) * 0.021 + 40, (t.z0 + j) * 0.021 - 17, 3) * 127 + 128);
+      // cuanto mira al sol: 0,5 = como el piso plano; mas = de frente al sol (lado claro del medano); menos = de espaldas (la sombra)
+      mapa[k * 4 + 2] = Math.round(lim01(0.5 + (V.dot(sunN) - sunN.y) * 2.5) * 255);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -86,8 +104,8 @@ export function crearMundoTravesia(escena, liviano) {
     const tMapa = new THREE.DataTexture(mapa, NV, NV, THREE.RGBAFormat, THREE.UnsignedByteType);
     tMapa.needsUpdate = true;
     const campo = { value: new THREE.Vector4(t.x0, t.z0, NV, NV) };
-    const mPiso = estilo(new THREE.MeshLambertMaterial(), { clave: 'piso', sombras: true, cabeza: PISO.cabeza, cuerpo: PISO.cuerpo,
-      datos: { uMapa: { value: tMapa }, uPisos: { value: pisos }, uHuellas: { value: sinHuellas }, uCampo: campo, uMojado: { value: 0 } } });
+    const mPiso = estilo(new THREE.MeshLambertMaterial(), { clave: 'pisoT', sombras: true, cabeza: PISO_T.cabeza, cuerpo: PISO_T.cuerpo,
+      datos: { uMapa: { value: tMapa }, uPisos: { value: pisos }, uHuellas: { value: huellas.registrar(t) }, uCampo: campo, uMojado: { value: 0 } } });
     const piso = new THREE.Mesh(g, mPiso);
     piso.receiveShadow = true; piso.castShadow = true;
     grupo.add(piso);
@@ -95,26 +113,45 @@ export function crearMundoTravesia(escena, liviano) {
 
     // las piedras: un bloque acostado sobre la ladera y otro mas chico apoyado al lado (como en utileria.js)
     if (t.rocas.length) {
-      const fijos = crearLote();
+      const fijos = crearLote(), negras = crearLote();
       for (const o of t.rocas) {
         const rnd = (() => { let a = Math.floor(o.x * 131 + o.z * 71) + 9; return () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; }; })();
         const m = medidas(o.r);
         NORMAL.set(-(T.altura(o.x + 1, o.z) - T.altura(o.x - 1, o.z)) / 2, 1, -(T.altura(o.x, o.z + 1) - T.altura(o.x, o.z - 1)) / 2).normalize();
         Q.setFromUnitVectors(ARRIBA, NORMAL);
         M2.compose(V.set(o.x, o.y, o.z), Q.multiply(Q2.setFromAxisAngle(ARRIBA, o.vuelta || 0)), P4);
-        fijos.bloque(M2, [-m.w / 2, -2, -m.d / 2, m.w / 2, m.h, m.d / 2], { arriba: esc.piedra(m.w, m.d), lados: esc.canto(m.h + 2), abajo: null }, rnd);
+        const lote = o.negra ? negras : fijos;
+        lote.bloque(M2, [-m.w / 2, -2, -m.d / 2, m.w / 2, m.h, m.d / 2], { arriba: esc.piedra(m.w, m.d), lados: esc.canto(m.h + 2), abajo: null }, rnd);
         const cx = Math.round((rnd() < 0.5 ? -1 : 1) * m.w * 0.45), cz = Math.round((rnd() - 0.5) * m.d * 0.6);
-        fijos.bloque(M2, [cx - m.w2 / 2, -2, cz - m.d2 / 2, cx + m.w2 / 2, m.h2, cz + m.d2 / 2], { arriba: esc.piedra(m.w2, m.d2), lados: esc.canto(m.h2 + 2), abajo: null }, rnd);
+        lote.bloque(M2, [cx - m.w2 / 2, -2, cz - m.d2 / 2, cx + m.w2 / 2, m.h2, cz + m.d2 / 2], { arriba: esc.piedra(m.w2, m.d2), lados: esc.canto(m.h2 + 2), abajo: null }, rnd);
       }
-      const gp = fijos.geometria(esc.atlas), mesh = new THREE.Mesh(gp, mPiedra);
-      mesh.castShadow = true; mesh.receiveShadow = true;
-      grupo.add(mesh);
-      liberar.push(gp);
+      for (const [lote, material] of [[fijos, mPiedra], [negras, mPiedraNegra]]) {
+        if (lote.vacio()) continue;
+        const gp = lote.geometria(esc.atlas), mesh = new THREE.Mesh(gp, material);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        grupo.add(mesh);
+        liberar.push(gp);
+      }
+    }
+
+    // las formaciones de roca grandes del fondo: torres, hongos, mesas y agujas, hechas de bloques de piedra
+    if (t.formaciones.length) {
+      const lote = crearLote();
+      for (const f of t.formaciones) {
+        const rnd = (() => { let a = Math.floor(f.x * 131 + f.z * 71) + 5; return () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; }; })();
+        const es = PIXEL_FORMACION * f.escala;
+        M2.compose(V.set(f.x, f.y, f.z), Q.setFromAxisAngle(ARRIBA, f.giro), PF.set(es, es, es));
+        for (const [w, d, h, dx, dz, yb] of FORMACIONES[f.tipo]) lote.bloque(M2, [dx - w / 2, yb === 0 ? -10 : yb, dz - d / 2, dx + w / 2, yb + h, dz + d / 2], { arriba: esc.piedra(w, d), lados: esc.canto(h + 2), abajo: null }, rnd);
+      }
+      const gf = lote.geometria(esc.atlas), malla = new THREE.Mesh(gf, mFormacion);
+      malla.receiveShadow = true;
+      grupo.add(malla);
+      liberar.push(gf);
     }
 
     // las matas secas y las piedritas
     if (t.decor.length) {
-      const lote = crearLoteDeSprites();
+      const lote = crearLoteDeSprites(dibujosFlora);
       for (const d of t.decor) lote.poner(d.nombre, d.x, d.y, d.z, { escala: d.escala, azar: d.azar, mueve: d.mueve });
       const mesh = lote.malla(!liviano);
       grupo.add(mesh);
@@ -151,6 +188,7 @@ export function crearMundoTravesia(escena, liviano) {
     const v = vivos.get(k);
     escena.remove(v.grupo);
     for (const x of v.liberar) if (x && x.dispose) x.dispose();
+    huellas.liberar(v.t);
     T.soltarTile(v.t);
     vivos.delete(k);
     estadistica.dibujados--;
@@ -193,8 +231,25 @@ export function crearMundoTravesia(escena, liviano) {
     return hechos;
   }
 
+  // --- las alucinaciones: piedras que no existen. Se ven como las de verdad pero no se chocan, y desaparecen al tocarlas ---
+  const falsas = [];
+  let geoFalsa = null;
+  function ponerFalsa(x, y, z) {
+    if (!geoFalsa) {
+      const m = medidas(1.35), lote = crearLote();
+      lote.bloque(new THREE.Matrix4().makeScale(0.25, 0.25, 0.25), [-m.w / 2, -2, -m.d / 2, m.w / 2, m.h, m.d / 2], { arriba: esc.piedra(m.w, m.d), lados: esc.canto(m.h + 2), abajo: null }, null);
+      geoFalsa = lote.geometria(esc.atlas);
+    }
+    const m = new THREE.Mesh(geoFalsa, mPiedra);
+    m.position.set(x, y, z); m.rotation.y = Math.random() * 6.28; m.castShadow = true; m.receiveShadow = true;
+    escena.add(m);
+    falsas.push(m);
+  }
+  function quitarFalsa(k) { escena.remove(falsas[k]); falsas.splice(k, 1); }   // (la forma se comparte: no se libera)
+
   return {
-    luz, estadistica, mantener,
+    huellas, luz, estadistica, mantener,
+    falsas: { poner: ponerFalsa, quitar: quitarFalsa, lista: falsas, vaciar: () => { while (falsas.length) quitarFalsa(0); } },
     usar: (nuevo) => { T = nuevo; },
     vivos: () => vivos.size,
     // el ambiente del juego es compartido con la pista del dia: al entrar en la Travesia se prepara, y al salir se deja como estaba
@@ -224,6 +279,6 @@ export function crearMundoTravesia(escena, liviano) {
     },
     animar: (t) => { ambiente.tiempo.value = t; },
     // tira todo (al salir de la Travesia)
-    vaciar: () => { for (const k of [...vivos.keys()]) soltar(k); pendientes.length = 0; },
+    vaciar: () => { for (const k of [...vivos.keys()]) soltar(k); pendientes.length = 0; while (falsas.length) quitarFalsa(0); },
   };
 }
