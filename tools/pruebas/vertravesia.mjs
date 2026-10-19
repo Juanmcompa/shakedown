@@ -17,22 +17,35 @@ async function probar(nombre, ancho, alto, contexto) {
   const P = a.pag;
   await P.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
   await P.evaluate(() => { try { localStorage.removeItem('shakedown-x'); } catch (e) { /* nada */ } window.shakedown.club.gusto('travesiaKm', 0); });
-  ver('la portada tiene el boton de la Travesia, con icono y sin texto largo', await P.evaluate(() => { const b = document.getElementById('travesia'); return !!b && !b.disabled && !!b.querySelector('img') && b.innerText.trim().length < 12; }));
+  ver('la portada ya no tiene el boton suelto de la Travesia', await P.evaluate(() => !document.getElementById('travesia')));
+  // se entra desde los circuitos, en la categoria Aventura
+  await P.evaluate(() => { window.shakedown.ajustar('trazada', false); window.shakedown.ajustar('serio', false); });   // (en los gustos, apagados)
+  await P.click('[data-panel="circuitos"]');
+  await P.waitForTimeout(300);
+  ver('en los circuitos, la categoria Aventura tiene la Travesia', await P.evaluate(() => { const a = document.querySelector('#catAventura a'); return !!a && /Travesía/.test(a.textContent) && a.getBoundingClientRect().height > 20; }));
   await P.screenshot({ path: 'out/travesia-' + nombre + '-0-portada.png' });
-  await P.click('#travesia');
+  await P.click('#catAventura a');
   await P.waitForFunction(() => window.shakedown.travesia.estado().activa, null, { timeout: 90000 });
   let e = await est(P);
   ver('entra en la Travesia', e.activa && e.fase === 'cuenta', e);
+  ver('la trazada arranca prendida (aunque en los gustos este apagada) y el gusto guardado no cambia', await P.evaluate(() => window.shakedown.travesia.trazada.visible()) && await P.evaluate(() => window.shakedown.gusto('trazada')) === false, await P.evaluate(() => window.shakedown.gusto('trazada')));
+  ver('siempre en rally serio, y sin ayuda de manejo', await P.evaluate(() => window.shakedown.travesia.serio() && !window.shakedown.gusto('ayuda')), await P.evaluate(() => [window.shakedown.travesia.serio(), window.shakedown.gusto('serio')]));
   ver('la portada se va y aparece el tablero', !(await visible(P, 'portada')) && (await visible(P, 'hud')));
   // la cuenta regresiva
   await P.evaluate(() => window.shakedown.travesia.avanzar(3.3));
   e = await est(P);
   ver('despues de la cuenta, corre', e.fase === 'corriendo', e);
+  await P.keyboard.press('KeyT');
+  ver('la T apaga la trazada durante la corrida', !(await P.evaluate(() => window.shakedown.travesia.trazada.visible())));
+  await P.keyboard.press('KeyT');
+  ver('y la vuelve a prender', await P.evaluate(() => window.shakedown.travesia.trazada.visible()));
   const arma0 = e.armados, solt0 = e.soltados;
   await P.evaluate(() => window.shakedown.travesia.avanzar(25, { piloto: true }));
   await P.waitForTimeout(600);
   await P.screenshot({ path: 'out/travesia-' + nombre + '-1-corriendo.png' });
   e = await est(P);
+  ver('las rayitas de la trazada se pintan por delante del camino (' + (await P.evaluate(() => window.shakedown.travesia.trazada.puestas(window.shakedown.travesia.estado().indice))) + ')', await P.evaluate(() => window.shakedown.travesia.trazada.puestas(window.shakedown.travesia.estado().indice)) > 60);
+  await P.screenshot({ path: 'out/travesia-trazada.png' });
   ver('el auto avanza solo con el piloto (' + Math.round(e.mejor - 8) + ' m)', e.mejor > 150, e);
   ver('el tablero muestra los km (no el tiempo)', await P.evaluate(() => /km$/.test(document.getElementById('reloj').textContent)), await P.evaluate(() => document.getElementById('reloj').textContent));
 
@@ -56,7 +69,7 @@ async function probar(nombre, ancho, alto, contexto) {
   const antesE = JSON.parse(ida.e0);
   delete antesE.cartas;
   ver('elegir una carta la suma al auto y se sigue', e.cartas.length === 1 && e.cartas[0] === ida.sale && e.fase === 'corriendo', { e, sale: ida.sale });
-  ver('y el estado del auto cambio (' + ida.sale + ')', JSON.stringify(cambios.estado) !== JSON.stringify(antesE) || cambios.datos !== ida.ant.potencia || cambios.frenos !== ida.ant.frenos, cambios);
+  ver('y el estado del auto cambio (' + ida.sale + ')', ida.sale === 'soldadura' /* arregla el daño: sin daño no cambia nada */ || JSON.stringify(cambios.estado) !== JSON.stringify(antesE) || cambios.datos !== ida.ant.potencia || cambios.frenos !== ida.ant.frenos, cambios);
   ver('el tablero muestra la carta junto a los iconos', await P.evaluate(() => document.querySelectorAll('#cartasActivas .icono').length === 1 && !document.getElementById('cartasActivas').hidden));
   ver('la siguiente carta es a los 4 km', (await est(P)).proxima === 4);
 

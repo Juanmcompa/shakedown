@@ -562,10 +562,17 @@ button.chiquito.tacho.seguro .icono { opacity: 1; }
    usa las mismas filas. --- */
 /* (el titulo, del alto de la cruz: asi el boton de crear queda debajo de ella y no se tocan) */
 .panel-circuitos > h2 { min-height: 48px; display: flex; align-items: center; }
-.panel-circuitos .crear-pista { justify-content: center; padding: 11px 18px 12px 14px; font-size: 21px; }
-.panel-circuitos .crear-pista > .icono { width: 28px; height: 28px; }
+.panel-circuitos .crear-pista { justify-content: center; justify-self: start; padding: 8px 16px 9px 12px; font-size: 18px; }
+.panel-circuitos .crear-pista > .icono { width: 24px; height: 24px; }
 .panel-circuitos h3 { margin-top: 2px; }
 .oficiales, .panel-circuitos .comunidad { display: grid; gap: 8px; align-content: start; }
+/* las categorias: un titulo corto con su icono y un color apagado; las filas llevan una tira del mismo color */
+.oficiales { gap: 14px; }
+.cat { display: grid; gap: 6px; align-content: start; --tono: #9aa7b4; }
+.cat > h3, .cat h3 { display: flex; align-items: center; gap: 8px; margin: 0; font: 700 17px/1.1 var(--titulos); letter-spacing: .06em; text-transform: uppercase; color: var(--tono); }
+.cat h3 > .icono { width: 18px; height: 18px; }
+.cat .circuitos a { border-left: 3px solid var(--tono); }
+.cat-hoy { --tono: #d9b84a; } .cat-oficiales { --tono: #9aa7b4; } .cat-reales { --tono: #8fb58a; } .cat-aventura { --tono: #e0c27c; } .cat-comunidad { --tono: #a99bc4; }
 .circuitos.compactos { gap: 5px; }
 .circuitos.compactos a { grid-template-columns: 2em minmax(0, 1fr) auto; gap: 1px 10px; padding: 7px 10px 8px; }
 .circuitos.compactos .emoji { font-size: 21px; }

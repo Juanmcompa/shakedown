@@ -9,6 +9,7 @@ const RAD = Math.PI / 180;
 // version: hay que subirla cada vez que se toca el recorrido de ese circuito (o algo del terreno que lo cambie). Con eso,
 // los tiempos y los fantasmas guardados de la version anterior se descartan solos: eran de otro camino.
 // detalle: lo que dice la portada del circuito. breve: lo que dice su renglon en la lista de circuitos.
+// real: true = esta basado en un tramo de verdad (se agrupa aparte en el panel de circuitos); no cambia la pista.
 export const CIRCUITOS = [
   { id: 'subida', numero: 16001, version: 1, nombre: 'Subida a Mina Vieja', corto: 'Subida', emoji: '⛰️', bioma: 'montana', clima: 'sol', caracter: 'tecnica', lugar: '38°51′S 70°58′O',
     detalle: 'Angosta y empinada, con puentes y lajas. No hay velocidad: es pura técnica.', breve: 'Montaña angosta: pura técnica' },
@@ -19,7 +20,7 @@ export const CIRCUITOS = [
   // vuelta: true = es una vuelta cerrada: no tiene llegada, se dan las vueltas que se quieran y queda la mejor.
   { id: 'practica', numero: 16004, version: 1, vuelta: true, nombre: 'Vuelta del Club', corto: 'Práctica', emoji: '🔁', bioma: 'campo', clima: 'sol', caracter: 'mixta', lugar: '37°46′S 68°12′O',
     detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.', breve: 'Vuelta cerrada: queda la mejor' },
-  { id: 'giulio', numero: 16005, version: 1, maximo: 1500, nombre: 'Mina Clavero – Giulio Cesare', corto: 'Giulio Cesare', emoji: '🏔️', bioma: 'sierra', clima: 'sol', caracter: 'mixta', lugar: '31°43′S 64°58′O',
+  { id: 'giulio', numero: 16005, version: 1, real: true, maximo: 1500, nombre: 'Mina Clavero – Giulio Cesare', corto: 'Giulio Cesare', emoji: '🏔️', bioma: 'sierra', clima: 'sol', caracter: 'mixta', lugar: '31°43′S 64°58′O',
     detalle: 'Casi 20 kilómetros de la pampa de altura al pueblo: horquillas arriba, rectas rápidas con saltos, curvas entre el granito, cuestas con pirca, un arroyo y las esquinas de Mina Clavero.', breve: '19 km: de la sierra al pueblo' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);

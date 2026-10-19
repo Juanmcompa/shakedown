@@ -12,7 +12,8 @@ import * as THREE from '../vendor/three.module.js';
 import { JUEGO, TRAVESIA, SUELO } from './config.js';
 import { crearTerrenoTravesia } from './travesiaterreno.js';
 import { crearMundoTravesia } from './travesiamundo.js';
-import { crearAuto } from './vehicle.js';
+import { crearAuto, enSerio } from './vehicle.js';
+import { crearTrazadaTravesia } from './travesiatrazada.js';
 import { crearDibujo } from './autos.js';
 import { crearCamara } from './camera.js';
 import { crearEfectos } from './fx.js';
@@ -90,6 +91,7 @@ export function crearModoTravesia(o) {
   // lo que no cambia de una corrida a otra: la escena, el mundo, la camara y los efectos se arman la primera vez
   const escena = new THREE.Scene();
   const mundo = crearMundoTravesia(escena, liviano);
+  const trazada = crearTrazadaTravesia(escena);   // la linea pintada en el camino: en este modo arranca siempre prendida (la T la apaga)
   const camara = crearCamara({ altura: (x, z) => (T ? T.altura(x, z) : 0) });
   const huellasVacias = { marcar() {}, soltar() {}, subir() {}, cortar() {}, limpiar() {}, pintar() {} };   // (en la arena no quedan huellas)
   const fx = crearEfectos(escena, huellasVacias, 1, [0.6, 0.3], liviano);
@@ -356,6 +358,7 @@ export function crearModoTravesia(o) {
     T.asegurar(indice);
     T.podar(indice);
     pasarNotas();
+    trazada.actualizar(T, indice);
   }
   let cuentaDicha = 0;
 
@@ -370,7 +373,8 @@ export function crearModoTravesia(o) {
     e = estadoInicial();
     // el auto que se eligio en el garaje (una copia: las cartas le cambian numeros)
     const codigo = club.auto();
-    C = { ...configDe(codigo) };
+    // siempre en "rally serio" (ver SERIO en config.js), sin ayuda de manejo, diga lo que diga el gusto guardado
+    C = enSerio({ ...configDe(codigo) });
     base = { potencia: C.potencia, empuje: C.empuje, frenos: C.frenos, alturaLateral: C.alturaLateral };
     vTope = Math.cbrt(base.potencia / base.aire) * 1.0;
     c = crearAuto(T, C);
@@ -387,6 +391,7 @@ export function crearModoTravesia(o) {
     const g = T.largada;
     c.poner(g.x, g.z, g.rumbo);
     indice = g.i;
+    trazada.reiniciar();
     T.asegurar(indice);
     pasarNotas();
     mundo.mantener(c.pos[0], c.pos[2], g.rumbo, true);   // todo el terreno de alrededor, antes de largar
@@ -406,6 +411,7 @@ export function crearModoTravesia(o) {
     o.mandos();
     o.portada(false);
     activa = true;
+    trazada.mostrar(true);   // arranca prendida aunque en los gustos este apagada (y sin tocar ese gusto)
     previaPractica = raiz.classList.contains('practica');
     raiz.classList.add('travesia', 'practica');
     const costo = document.querySelector('.redondo.volver .costo');
@@ -418,6 +424,7 @@ export function crearModoTravesia(o) {
   function salir() {
     if (!activa) return;
     activa = false; fase = 'afuera';
+    trazada.mostrar(false);
     $('travesiaFin').hidden = true; $('cartas').hidden = true; $('vidrio').hidden = true; $('cartasActivas').hidden = true;
     raiz.classList.remove('travesia');
     raiz.classList.toggle('practica', previaPractica);
@@ -470,6 +477,7 @@ export function crearModoTravesia(o) {
     }
     if (code === 'Escape') { salir(); return true; }
     if (code === 'KeyR') { if (fase === 'corriendo') volver('pedido'); return true; }
+    if (code === 'KeyT') { trazada.mostrar(!trazada.visible()); hud.aviso(trazada.visible() ? 'Trazada' : 'Sin trazada', 1.2); return true; }
     if (code === 'KeyC') { const m = camara.cambiar(); club.gusto('camara', m.id); hud.camara(m.id); hud.aviso(m.nombre, 1.2); return true; }
     if (code === 'Enter') { if (fase === 'fin' && !['BUTTON', 'INPUT', 'A'].includes(document.activeElement.tagName)) nuevaCorrida(); return fase === 'fin'; }
     return false;
@@ -513,7 +521,7 @@ export function crearModoTravesia(o) {
         mundo.mantener(c.pos[0], c.pos[2], 0, true);
       },
       dar: (id) => { aplicar(e, cartaDe(id), rnd); pintarActivas(); pintarVidrio(); marearNotas(); },
-      depuracion, T: () => T, c: () => c, e: () => e, mundo, camara, escena, copiloto: () => copiloto, fx,
+      trazada, serio: () => !!(c && c.datos.serio), depuracion, T: () => T, c: () => c, e: () => e, mundo, camara, escena, copiloto: () => copiloto, fx,
       vTope: () => vTope,
     },
   };

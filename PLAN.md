@@ -90,6 +90,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Ícono nuevo para el botón de circuitos: un mapa con tres lugares marcados. El de antes (una vuelta cerrada, como una O) no se entendía: la gente no se daba cuenta de que ahí había más pistas
 - [x] Efectos de manejo: humo o tierra al frenar y derrapar (del color del suelo), barro que se acumula en la carrocería (todos los modelos), huellas que se marcan más con las pasadas, ráfagas de viento en las plantas y hojas que vuelan
 - [x] Travesía: modo infinito que sale distinto en cada largada, con suelos nuevos (arena y fesh-fesh), médanos y ríos. Cartas cada 2 km (18 para empezar: averías, mejoras y mezclas), fin por daño, por quedarse parado o por batería, récord en el aparato y mensaje para compartir
+- [x] Circuitos en categorías: Pista del día, Oficiales, Reales (tramos de verdad), Aventura (la Travesía) y Comunidad al final. La Travesía se entra desde ahí, siempre en rally serio y con la trazada prendida
 
 ## Lo que sigue
 

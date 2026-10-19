@@ -42,7 +42,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '24';
+const PAGINA = '25';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -402,6 +402,8 @@ const menu = crearMenu({
   // (devuelve una promesa de false si no se pudo traer el fantasma del servidor)
   elegirRival: (clave, deLaPractica) => { club.elegirRival(clave ? clave + (deLaPractica ? '|p' : '') : '-'); return cargarRival(); },
   acortar,
+  // la Travesia, desde la categoria Aventura de los circuitos
+  travesia: () => { if (pantalla !== 'jugando') travesia.entrar(); },
   // los clubes (solo si hay servidor): crear, salir, y lo ultimo que se sabe de cada uno
   // (renombrar: con el nombre nuevo se figura en los clubes aunque todavia no se haya corrido)
   clubes: nube.hay ? {
@@ -743,7 +745,6 @@ function cuadro(ahora) {
 
 window.addEventListener('resize', medir);
 $('largar').addEventListener('click', largar);
-$('travesia').addEventListener('click', () => { if (pantalla !== 'jugando') travesia.entrar(); });
 $('otra').addEventListener('click', largar);
 $('salir').addEventListener('click', aLaPortada);
 medir();
@@ -755,7 +756,7 @@ try {
   if (render.extensions.has('KHR_parallel_shader_compile')) await Promise.race([render.compileAsync(escena, camara.cam), new Promise((sigue) => setTimeout(sigue, 8000))]);
   else render.compile(escena, camara.cam);
 } catch (e) { /* no pasa nada */ }
-$('largar').disabled = false; $('travesia').disabled = false;
+$('largar').disabled = false;
 if (window.cargaPaso) window.cargaPaso(6, 'El primer cuadro');
 requestAnimationFrame(cuadro);
 

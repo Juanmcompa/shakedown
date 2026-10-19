@@ -317,23 +317,29 @@ export function crearMenu(o) {
     ponerIconos(ol);
   }
 
-  // --- los circuitos fijos: cada uno con tu mejor tiempo; arriba de todo, la vuelta a la pista de hoy ---
-  // (cada fila: el dibujo, el nombre y un renglon de detalle; a la derecha, tu tiempo. Asi entran todas en la pantalla)
+  // --- los circuitos, en categorias (cada una con su titulo corto en index.html): la pista de hoy, los oficiales, los reales
+  // (los que siguen un tramo de verdad: `real` en circuitos.js), la aventura (la Travesia, con su record en km) y, aparte y
+  // al final, la comunidad. Cada fila: el dibujo, el nombre y un renglon de detalle; a la derecha, tu tiempo.
   function pintarCircuitos() {
-    const ol = $('circuitos');
-    ol.textContent = '';
-    const fila = (direccion, aca, emoji, nombre, detalle, res) => {
+    const fila = (ol, direccion, aca, emoji, nombre, detalle, res, alTocar) => {
       const a = crear('a', aca ? 'aca' : '');
       a.href = direccion;
+      if (alTocar) a.addEventListener('click', (ev) => { ev.preventDefault(); alTocar(); });
       a.append(crear('span', 'emoji', emoji), crear('b', '', nombre), crear('small', '', detalle));
       if (res) a.append(crear('span', 'tiempoMarca', marcaDe(res)), cuadritos(res.c));
       const li = crear('li');
       li.append(a);
       ol.append(li);
     };
+    for (const id of ['catHoy', 'circuitos', 'catReales', 'catAventura']) $(id).textContent = '';
     const d = datosDelDia(hoy), deHoy = club.resumen(hoy);
-    fila(location.pathname, esHoy, '🏁', 'La pista de hoy · #' + hoy, CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji + ' ' + d.nombre, deHoy.oficial);
-    for (const c of CIRCUITOS) fila(location.pathname + '?c=' + c.id, c.numero === numero, c.emoji, c.nombre, c.breve || c.detalle, club.resumen(c.numero).practica);
+    fila($('catHoy'), location.pathname, esHoy, '🏁', 'Hoy · #' + hoy, CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji + ' ' + d.nombre, deHoy.oficial);
+    for (const c of CIRCUITOS) fila($(c.real ? 'catReales' : 'circuitos'), location.pathname + '?c=' + c.id, c.numero === numero, c.emoji, c.corto || c.nombre, c.breve || c.detalle, club.resumen(c.numero).practica);
+    // la Travesia no es una pista: se entra con un toque y su marca son los km del record, no un tiempo
+    const km = Number(club.gusto('travesiaKm')) || 0, a = $('catAventura');
+    fila(a, '#travesia', false, '🏜️', 'Travesía', 'Sin fin, cada vez peor', null, o.travesia);
+    if (km > 0) a.querySelector('a').append(crear('span', 'tiempoMarca', String(Math.round(km * 10) / 10).replace('.', ',') + ' km'));
+    ponerIconos($('panelCircuitos'));
   }
 
   // --- el resultado contra los de la tabla (tus amigos: los de los links que abriste y los de tus clubes; en una pista de la
