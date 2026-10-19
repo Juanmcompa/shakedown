@@ -43,7 +43,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '28';
+const PAGINA = '29';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -417,11 +417,16 @@ const creador = crearCreador({
   // recien publicada: se abre la pista, con su link (el aviso de "publicada" lo da la portada)
   publicada: (p) => { location.href = conServidor(location.pathname + '?pista=' + p.numero + '-' + p.version + '#publicada'); },
   renombrar: () => { if (nube.hay) for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); },
-  alCerrar: () => { if (pantalla !== 'jugando') $('largar').focus({ preventScroll: true }); },
+  alCerrar: () => { if (pantalla !== 'jugando') menu.enfocar(); },
 });
 
 const menu = crearMenu({
   T, club, hoy: HOY, ref, copiloto, comunidad,
+  // si la direccion pide algo (un link de un amigo, un circuito, una pista de la comunidad, un dia pasado), el inicio abre en la card de eso
+  deLink: !!(enlace || fijo || deLaComunidad || esBorrador || vale(pedida)),
+  // correr desde una card: la pista pedida (n). Si ya esta cargada, empieza; si no, se carga esa pista y arranca sola ("#largar").
+  // dir: la direccion de la pista, si la card la conoce (las pistas de la comunidad)
+  correr: (n, dir) => correr(n, dir),
   ajustes: { leer: gusto, poner: (clave, valor) => ajustar(clave, valor), probar: () => teclas.probarSensor() },
   aviso: avisoDeLaPista || (linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.'
     : linkCaido ? 'No pude traer la pasada de tu amigo. Revisá la conexión y abrí el link de nuevo.' : ''),
@@ -452,7 +457,7 @@ const menu = crearMenu({
   borrarPista,
 });
 
-let pantalla = 'portada';   // portada, jugando o fin
+let pantalla = 'portada';   // portada (el inicio con las cards), jugando o fin
 let modo = 'practica';      // oficial o practica
 let antes = performance.now(), resto = 0, reloj3d = 0, tactil = false, grabacion = null, tFin = 0, avisado = '', trabado = false, paraAtras = false;
 // En un circuito de vuelta cerrada: cuantas rondas se cerraron en esta salida y cual fue la mejor
@@ -475,6 +480,14 @@ function mandosDeCelular() {
   pintarVolante();
   if (raiz.requestFullscreen) raiz.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
+}
+
+// Correr una pista desde el inicio. Las pistas no se cambian en caliente (el terreno se arma una vez): si la que se pidio no es la
+// que esta cargada, se abre su direccion con "#largar" y al terminar de cargar empieza sola, como si se hubiera tocado de nuevo.
+function correr(n, dir) {
+  if (pantalla === 'jugando') return;
+  if (n === numero) { largar(); return; }
+  location.href = dir ? dir + '#largar' : conServidor(direccionDe(n) + '#largar');
 }
 
 // conTutorial: true para que el equipo explique la pantalla antes de largar (si no se dice, lo explica igual la primera
@@ -636,7 +649,10 @@ function atender(e) {
 const teclas = crearTeclas((tecla) => {
   if (travesia.activa() && travesia.tecla(tecla)) return;
   if (creador.abierto()) { if (tecla === 'Escape') creador.cerrar(); return; }   // (con el creador abierto, las teclas son del creador)
-  if (tecla === 'Enter') { if (pantalla !== 'jugando' && !['BUTTON', 'INPUT', 'A'].includes(document.activeElement.tagName)) largar(); }
+  if (tecla === 'Enter') {
+    if (pantalla === 'jugando' || ['BUTTON', 'INPUT', 'A'].includes(document.activeElement.tagName)) return;
+    if (pantalla === 'portada') menu.principal(); else largar();   // (en el inicio, el boton de la card del medio)
+  }
   else if (tecla === 'KeyR') { if (pantalla === 'jugando') partida.volver(c, 'pedido'); }
   else if (tecla === 'Escape') aLaPortada();
   else if (tecla === 'KeyC') { const m = camara.cambiar(); club.gusto('camara', m.id); hud.camara(m.id); hud.aviso(m.nombre, 1.2); }
@@ -778,12 +794,15 @@ function cuadro(ahora) {
   camara.cam.getWorldDirection(HACIA);
   post.dibujar(escena, camara.cam, AL_AUTO.set(c.pos[0], c.pos[1], c.pos[2]).sub(camara.cam.position).dot(HACIA));
   // con el primer cuadro dibujado, se va el cartel de carga y aparece la portada
-  if (cargando) { cargando = false; raiz.classList.remove('cargando'); menu.pintar(); $('largar').focus({ preventScroll: true }); }
+  if (cargando) { cargando = false; raiz.classList.remove('cargando'); menu.pintar(); menu.acomodar(); menu.enfocar(); if (arrancar) { arrancar = false; largar(); } }
 }
 
 window.addEventListener('resize', medir);
-$('largar').addEventListener('click', largar);
-$('otra').addEventListener('click', largar);
+// Venimos de tocar una card de otra pista ("#largar"): al aparecer el primer cuadro empieza sola la pasada. (En un iPhone el permiso del
+// sensor de inclinacion solo se puede pedir con un toque: ahi se queda en el inicio, con la card de esa pista, a un toque de largar.)
+let arrancar = location.hash === '#largar' && !(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function' && teclas.esTactil());
+if (location.hash === '#largar') quedarseEn(numero);
+$('otra').addEventListener('click', largar);   // (los botones de correr del inicio los maneja menu.js: ver "correr")
 $('salir').addEventListener('click', aLaPortada);
 medir();
 await cargarRival();
@@ -794,7 +813,7 @@ try {
   if (render.extensions.has('KHR_parallel_shader_compile')) await Promise.race([render.compileAsync(escena, camara.cam), new Promise((sigue) => setTimeout(sigue, 8000))]);
   else render.compile(escena, camara.cam);
 } catch (e) { /* no pasa nada */ }
-$('largar').disabled = false;
+menu.listo();
 if (window.cargaPaso) window.cargaPaso(6, 'El primer cuadro');
 requestAnimationFrame(cuadro);
 
@@ -821,6 +840,7 @@ if (deLaTravesia) {
   club.anotarAmigoTravesia(deLaTravesia);
   quedarseEn(numero);
   menu.pintar();
+  menu.verCard('travesia');   // (el inicio abre en la Travesia, con su aviso y el boton para largar)
   $('cartelTvTexto').textContent = deLaTravesia.nombre + ' llegó a ' + deLaTravesia.km.toFixed(1).replace('.', ',') + ' km en la Travesía';
   $('cartelTv').hidden = false;
   $('cartelTvIr').addEventListener('click', () => { $('cartelTv').hidden = true; if (pantalla !== 'jugando') travesia.entrar(); });

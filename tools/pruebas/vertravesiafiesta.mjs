@@ -4,7 +4,7 @@
 // gente, carpas, autos estacionados y marcas de mentira, que se apague con el ajuste "efectos" y que se acabe a los ~400 m.
 // uso: node tools/pruebas/vertravesiafiesta.mjs          (una pantalla de compu y un celular parado)
 // Capturas: out/travesia-largada.png, travesia-angosto.png, travesia-roto.png y travesia-largada-celu.png
-import { abrir } from './ver.mjs';
+import { abrir, irACard, largarDesdeHome } from './ver.mjs';
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
 
@@ -15,9 +15,7 @@ async function entrar(nombre, ancho, alto, contexto) {
   const P = a.pag;
   await P.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
   await P.evaluate(() => { try { localStorage.removeItem('shakedown-x'); } catch (e) { /* nada */ } window.shakedown.club.gusto('travesiaKm', 0); });
-  await P.click('[data-panel="circuitos"]');
-  await P.waitForTimeout(300);
-  await P.click('#catAventura a');
+  await largarDesdeHome(P, 'travesia');
   await P.waitForFunction(() => window.shakedown.travesia.estado().activa, null, { timeout: 90000 });
   return { a, P };
 }

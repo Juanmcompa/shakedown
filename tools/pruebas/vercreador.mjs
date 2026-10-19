@@ -4,7 +4,7 @@
 //   al club, la ve en la lista del club.
 // uso: node tools/pruebas/vercreador.mjs [http://127.0.0.1:8787] [parte]   (antes: node servidor/local.mjs 8787)
 //   parte: 'mirar' saca solo las capturas del creador (compu y celular) sin publicar nada
-import { abrir } from './ver.mjs';
+import { abrir, irACard } from './ver.mjs';
 const API = process.argv[2] || 'http://127.0.0.1:8787', PARTE = process.argv[3] || 'todo';
 const permisos = { permissions: ['clipboard-read', 'clipboard-write'] };
 const celular = { ...permisos, hasTouch: true, isMobile: true, deviceScaleFactor: 2 };
@@ -44,13 +44,10 @@ if (!a.cargo) { console.log('A NO CARGO\n' + a.errores.join('\n')); process.exit
 let A = a.pag;
 await cargada(A);
 await A.evaluate(() => window.shakedown.club.ponerNombre('Juanma'));
-await A.click('[data-panel="circuitos"]');
-await A.waitForTimeout(300);
-ver('A: en los circuitos estan las pistas de la comunidad, todavia vacias, y el boton para armar una', await visible(A, 'armarPista') && await visible(A, 'comunidadVacia'), await texto(A, 'comunidadVacia'));
-const ordenCircuitos = await A.evaluate(() => [...document.querySelectorAll('#panelCircuitos > *')].filter((e) => !e.hidden).map((e) => e.id || e.className.split(' ')[0] || e.tagName.toLowerCase()).join(' > ') + ' | ' + document.querySelectorAll('#panelCircuitos .oficiales li').length + ' filas');
-ver('A: los circuitos van en categorias: el que quiere crear una pista la encuentra en Comunidad, que queda al final', ordenCircuitos === 'h2 > oficiales > con-servidor | ' + (2 + (await import('../../src/circuitos.js')).CIRCUITOS.length) + ' filas', ordenCircuitos);
-const titulosCat = await A.evaluate(() => [...document.querySelectorAll('#panelCircuitos h3')].map((h) => h.textContent.trim()).join(' > '));
-ver('A: las categorias, en orden: pista del dia, oficiales, reales, aventura y comunidad', titulosCat === 'Pista del día > Oficiales > Reales > Aventura > Comunidad', titulosCat);
+await irACard(A, 'comunidad');
+ver('A: en la card de la comunidad estan las pistas, todavia vacias, y el boton para armar una', await visible(A, 'armarPista') && await visible(A, 'comunidadVacia'), await texto(A, 'comunidadVacia'));
+const ordenCards = await A.evaluate(() => [...document.querySelectorAll('.card')].map((c) => c.dataset.card).join(' > '));
+ver('A: las cards, en orden: pista del dia, circuitos, reales, travesia, tutorial y comunidad (al final)', ordenCards === 'hoy > oficiales > reales > travesia > tutorial > comunidad', ordenCards);
 ver('A: Mina Clavero esta en los reales y los oficiales no la repiten', await A.evaluate(() => /Giulio/.test(document.getElementById('catReales').textContent) && !/Giulio/.test(document.getElementById('circuitos').textContent)));
 await A.screenshot({ path: 'out/creador-0-circuitos.png' });
 await A.click('#armarPista');
@@ -106,7 +103,7 @@ if (PARTE === 'mirar') {
 await A.click('#crProbar');
 await A.waitForURL(/pista=borrador/, { timeout: 90000 });
 await cargada(A);
-ver('A: el borrador se abre como una pista mas', (await texto(A, 'pistaFecha')) === 'Borrador' && (await texto(A, 'pistaNumero')) === '📝' && await visible(A, 'editarPista'), [await texto(A, 'pistaNumero'), await texto(A, 'pistaFecha'), await texto(A, 'pistaNombre')]);
+ver('A: el borrador se abre como una pista mas: el inicio abre en la comunidad, con "Tu borrador" y el boton de seguir armando', /Tu borrador/.test(await texto(A, 'comunidad')) && await visible(A, 'editarPista') && (await A.evaluate(() => document.getElementById('home').dataset.card)) === 'comunidad', [await texto(A, 'comunidad'), await A.evaluate(() => document.getElementById('home').dataset.card)]);
 ver('A: en el borrador no se comparte', !(await visible(A, 'compartirPortada')));
 await A.screenshot({ path: 'out/creador-6-borrador.png' });
 const finB = await correr(A, 'bueno', 'vitarita');
@@ -129,7 +126,8 @@ await A.click('#crPublicar');
 await A.waitForURL(/pista=\d{5}-\d+/, { timeout: 90000 });
 await cargada(A);
 const urlA = A.url(), [, numero, version] = /pista=(\d{5})-(\d+)/.exec(urlA);
-ver('A: publicada, se abre la pista', (await texto(A, 'pistaNombre')) === 'La Curva del Tero' && (await texto(A, 'pistaFecha')) === 'Hecha por Juanma' && /quedan 14 días/.test(await texto(A, 'pistaLugar')), [await texto(A, 'pistaFecha'), await texto(A, 'pistaLugar'), urlA]);
+const filaA = await A.evaluate(() => { const a = document.querySelector('#comunidad a.aca'); return a ? a.innerText.replace(/\s+/g, ' ') : ''; });
+ver('A: publicada, se abre la pista (en la card de la comunidad, su fila)', /La Curva del Tero/.test(filaA) && /por vos/.test(filaA) && /quedan 14 días/.test(filaA), [filaA, urlA]);
 ver('A: y avisa que esta publicada', /Publicada/.test(await texto(A, 'queEs')), await texto(A, 'queEs'));
 ver('A: el borrador se borro', await A.evaluate(() => !window.shakedown.club.borrador()));
 await A.screenshot({ path: 'out/creador-8-publicada.png' });
@@ -154,7 +152,8 @@ const b = await abrir({ ancho: 390, alto: 844, ruta: '?servidor=' + encodeURICom
 if (!b.cargo) { console.log('B NO CARGO\n' + b.errores.join('\n')); process.exit(1); }
 const B = b.pag;
 await cargada(B);
-ver('B: abre la pista de A, con quien la hizo en la portada', (await texto(B, 'pistaNombre')) === 'La Curva del Tero' && (await texto(B, 'pistaFecha')) === 'Hecha por Juanma', [await texto(B, 'pistaNombre'), await texto(B, 'pistaFecha')]);
+const filaB = await B.evaluate(() => { const a = document.querySelector('#comunidad a.aca'); return a ? a.innerText.replace(/\s+/g, ' ') : ''; });
+ver('B: abre la pista de A: el inicio abre en la comunidad, con quien la hizo', /La Curva del Tero/.test(filaB) && /por Juanma/.test(filaB), filaB);
 await B.screenshot({ path: 'out/creador-10-celular-portada.png' });
 await B.evaluate(() => window.shakedown.club.ponerNombre('Beto'));
 const finB2 = await correr(B, 'bueno', 'vitarita');
@@ -181,12 +180,10 @@ await A.waitForTimeout(400);
 const ta = await tabla(A);
 ver('A: en su tabla aparece B, y el mismo una sola vez', ta.length === 2 && ta.filter((x) => x.startsWith('Juanma')).length === 1 && ta.some((x) => x.startsWith('Beto')), ta);
 await A.click('#cerrarPanel');
-// en los circuitos de A, su pista
-await A.click('[data-panel="circuitos"]');
-await A.waitForTimeout(300);
+// en la card de la comunidad de A, su pista
+await irACard(A, 'comunidad');
 const listaA = await A.evaluate(() => [...document.querySelectorAll('#comunidad a')].map((x) => x.textContent));
 ver('A: su pista esta en la lista de la comunidad, con su tiempo', listaA.length === 1 && /La Curva del Tero/.test(listaA[0]) && /por vos/.test(listaA[0]) && /\d\d:\d\d:\d\d/.test(listaA[0]), listaA);
-await A.click('#cerrarPanel');
 
 // ---------- A arma un club y le publica una pista; B entra al club y la ve ----------
 await A.click('[data-panel="tabla"]');
@@ -209,7 +206,7 @@ await A.click('#crPublicar');
 await A.waitForURL((u) => u.href !== antesDePublicar && /pista=\d{5}-\d+/.test(u.href), { timeout: 90000 });
 await cargada(A);
 const [, numeroClub] = /pista=(\d{5})-(\d+)/.exec(A.url());
-ver('A: la pista del club dice de que club es', /Los Tercos/.test(await texto(A, 'pistaDetalle')), await texto(A, 'pistaDetalle'));
+ver('A: la pista del club dice de que club es', /Los Tercos/.test(await A.evaluate(() => { const a = document.querySelector('#comunidad a.aca'); return a ? a.innerText : ''; })), await texto(A, 'comunidad'));
 await A.click('[data-panel="tabla"]');
 await A.waitForTimeout(300);
 await A.click('#clubes button:nth-child(2)');
@@ -229,16 +226,14 @@ const deB = await B2.evaluate(() => [...document.querySelectorAll('#clubPistasLi
 ver('B: al entrar al club ve sus pistas', deB.length === 1 && /Subida del Club/.test(deB[0]) && deB[0].includes('?pista=' + numeroClub + '-'), deB);
 await B2.screenshot({ path: 'out/creador-14-celular-club.png' });
 await B2.click('#cerrarPanel');
-await B2.click('[data-panel="circuitos"]');
-await B2.waitForTimeout(300);
+await irACard(B2, 'comunidad', true);
 const listaB = await B2.evaluate(() => [...document.querySelectorAll('#comunidad a')].map((x) => (x.querySelector('.marca-club') ? '[' + x.querySelector('.marca-club').textContent + '] ' : '') + x.textContent));
 ver('B: en sus circuitos estan las dos pistas: la que abrio por link y la del club (con la marca del club y quien la armo)', listaB.length === 2 && listaB.some((x) => /^\[Los Tercos\] .*Subida del Club.*por Juanma/.test(x)) && listaB.some((x) => /^📝La Curva del Tero.*por Juanma/.test(x)), listaB);
 await B2.screenshot({ path: 'out/creador-15-celular-circuitos.png' });
 
 // ---------- borrar: cada uno borra las suyas (desde la lista o desde el creador) ----------
 await A.click('#cerrarPanel').catch(() => {});
-await A.click('[data-panel="circuitos"]');
-await A.waitForTimeout(300);
+await irACard(A, 'comunidad');
 const tachos = await A.evaluate(() => [...document.querySelectorAll('#comunidad li')].map((li) => li.querySelector('b').textContent + (li.querySelector('button.tacho') ? ' [tacho]' : '')));
 ver('A: sus dos pistas tienen el tacho', tachos.length === 2 && tachos.every((x) => x.endsWith('[tacho]')), tachos);
 const tachoDe = (nombre) => A.evaluate((nombre) => [...document.querySelectorAll('#comunidad li')].find((li) => li.querySelector('b').textContent === nombre).querySelector('button.tacho').click(), nombre);

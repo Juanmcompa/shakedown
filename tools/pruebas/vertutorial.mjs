@@ -1,7 +1,7 @@
 // El tutorial de la primera vez: lo abre como alguien nuevo, saca una captura de cada paso y revisa que el auto espere,
 // que se pueda saltar, cerrar y volver a ver, y que a quien ya jugo no se le muestre.
 // uso: node tools/pruebas/vertutorial.mjs [pc|cel|celh|sensor|todo] [capturas]
-import { abrir } from './ver.mjs';
+import { abrir, irACard, largarDesdeHome } from './ver.mjs';
 const cual = process.argv[2] || 'todo', conFotos = process.argv.includes('capturas') || cual !== 'todo';
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
@@ -28,7 +28,8 @@ async function recorrer(nombre, forma, sensor) {
   await pag.emulateMedia({ reducedMotion: 'reduce' });   // (sin placa de video hay un cuadro por segundo: la luz no llegaria a moverse antes de la captura)
   ver(nombre + ': alguien nuevo', await pag.evaluate(() => window.shakedown.club.esNuevo()));
   const dedos = !!(forma.contexto && forma.contexto.hasTouch), tocar = (sel) => (dedos ? pag.tap(sel) : pag.click(sel));
-  await tocar('#largar');
+  ver(nombre + ': alguien nuevo: el inicio abre en la mision tutorial', await pag.evaluate(() => document.getElementById('home').dataset.card === 'tutorial'));
+  await tocar('#largarTutorial');
   if (sensor) await pag.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 20, gamma: 3 })));
   await pag.waitForTimeout(900);
   let e = await estado(pag);
@@ -63,7 +64,7 @@ if (cual === 'sensor' || cual === 'todo') await recorrer('sensor', FORMAS.cel, t
 if (cual === 'todo' || cual === 'otros') {
   // --- saltar, cerrar, teclas, volver a verlo, y el que ya jugo ---
   const j = await abrir({ ...FORMAS.pc, nuevo: true }), pag = j.pag;
-  await pag.click('#largar');
+  await pag.click('#largarTutorial');
   await pag.waitForTimeout(600);
   await pag.keyboard.press('KeyC');   // (una tecla del juego: con el tutorial abierto no tiene que hacer nada)
   await pag.keyboard.press('ArrowRight');
@@ -78,13 +79,13 @@ if (cual === 'todo' || cual === 'otros') {
   await pag.waitForTimeout(500);
   e = await estado(pag);
   ver('Esc cierra y vuelve a la portada, sin gastar la oficial ni darlo por visto', !e.abierto && e.pantalla === 'portada' && e.nuevo && await pag.evaluate(() => window.shakedown.club.sePuedeOficial() && !document.getElementById('portada').hidden), e);
-  await pag.click('#largar');
+  await pag.click('#largarTutorial');
   await pag.waitForTimeout(600);
   ver('la proxima vez se abre de nuevo', (await estado(pag)).abierto);
   await pag.click('#tutCerrar');
   await pag.waitForTimeout(400);
   ver('la X tambien cierra', !(await estado(pag)).abierto && (await estado(pag)).pantalla === 'portada');
-  await pag.click('#largar');
+  await pag.click('#largarTutorial');
   await pag.waitForTimeout(600);
   await pag.click('#tutSaltar');
   await pag.waitForTimeout(600);

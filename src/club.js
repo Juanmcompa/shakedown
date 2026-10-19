@@ -251,6 +251,15 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
       if (D.oficial && !D.oficial.corriendo) lista.push({ ...D.oficial, mio: true });
       return lista.sort(mejor);
     },
+    // la tabla de oficiales de otra pista guardada en el aparato (por ejemplo la de hoy, cuando se esta mirando un circuito): sin
+    // crear nada. Es lo mismo que "tabla" pero de la pista n.
+    tablaDe: (n) => {
+      const d = datos.dias[n];
+      if (!d) return [];
+      const lista = d.club.filter((r) => !r.practica).map((r) => ({ ...r }));
+      if (d.oficial && !d.oficial.corriendo) lista.push({ ...d.oficial, mio: true });
+      return lista.sort(mejor);
+    },
     practicas: (deClub) => {
       const lista = D.club.filter((r) => r.practica).filter(deEse(deClub)).map((r) => ({ ...r }));
       if (D.practica) lista.push({ ...D.practica, mio: true });

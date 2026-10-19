@@ -94,9 +94,11 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Travesía de supervivencia: solo problemas (32 averías), más barro, ríos, pedregales y médanos, y estética de desierto (arena ocre, acacias, torres de roca, sol bajo, polvareda grande, rodadas en la arena)
 - [x] Travesía con amigos: link sin pista (`#t=nombre.km`), récords de clubes y links guardados en el servidor (tabla `travesias`), tabla en Aventura y al terminar, y guía de la primera vez con los personajes
 - [x] Travesía más exigente: camino angosto de un solo auto, arena suelta afuera que frena, autos rotos para esquivar y largada de festival con público (prueba `vertravesiafiesta`)
+- [x] Inicio con cards deslizables por modo (`src/home.js`): ya no se entra directo a la carrera, sale el panel Circuitos, "Volver" lleva al inicio y los links abren en su card
 
 ## Lo que sigue
 
+- Que la card de la pista del día pida al servidor las tablas de hoy aunque esté cargado un circuito (ahora muestra lo último guardado en el aparato).
 - Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).
 - Travesía: puestos de asistencia cada 10 km para arreglar averías con las cartas buenas (ya están guardadas en `ARREGLOS`, fuera del sorteo), sonido de arena, y ajustar la dificultad probando en celulares.
 - Faros y luces de freno que se noten más al atardecer y con niebla.

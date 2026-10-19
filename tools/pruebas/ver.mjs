@@ -11,6 +11,8 @@
 //   limpio      saca los carteles del medio          auto=kacito    elige el auto (antes de largar)
 //   movil       como un celular (va primero)         sensor         con sensor de inclinacion (antes de largar)
 //   toca=#id    toca un elemento                     aprieta=.clase deja apretado un boton
+// (el juego abre en el inicio, con las cards: 'largar' larga la pista de hoy. Las ayudas largarDesdeHome, irACard y deslizar,
+//  exportadas mas abajo, sirven para las pruebas que van por las cards como quien juega.)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -56,6 +58,48 @@ export async function abrir(opciones = {}) {
   await pag.goto(base + final, opciones.sinEsperar ? { waitUntil: 'commit' } : undefined);
   const cargo = opciones.sinEsperar ? false : await pag.waitForFunction(() => window.shakedown, null, { timeout: opciones.espera || 60000 }).then(() => true).catch(() => false);
   return { srv, nav, ctx, pag, errores, base, cargo, ms: Date.now() - t0, cerrar: async () => { await nav.close(); srv.close(); } };
+}
+
+// --- el inicio (las cards): ayudas para las pruebas que antes largaban desde la portada ---
+// El numero de pista de cada circuito, y en que card esta cada modo.
+export const PISTA_DE = { hoy: null, subida: 16001, bajada: 16002, urbano: 16003, practica: 16004, giulio: 16005 };
+export const CARD_DE = { hoy: 'hoy', subida: 'oficiales', bajada: 'oficiales', urbano: 'oficiales', practica: 'oficiales', giulio: 'reales', travesia: 'travesia', tutorial: 'tutorial', comunidad: 'comunidad' };
+const BOTON_DE = { hoy: '#largar', travesia: '#largarTravesia', tutorial: '#largarTutorial' };
+// espera a que la fila de cards termine de moverse: la card marcada ya esta al medio (no depende de cuantos cuadros por segundo haya)
+export const quieta = async (pag) => {
+  await pag.waitForFunction(() => { const p = document.getElementById('homePista'), c = document.querySelector('.card.aca'); return !!c && p.clientWidth > 0 && Math.abs(p.scrollLeft - (c.offsetLeft - (p.clientWidth - c.offsetWidth) / 2)) < 2; }, null, { timeout: 60000 });
+  await pag.waitForTimeout(150);
+};
+// Pone una card al medio tocando su puntito (clave: hoy, oficiales, reales, travesia, tutorial, comunidad). dedos: con el dedo.
+export async function irACard(pag, clave, dedos) {
+  if (await pag.evaluate(() => document.getElementById('home').dataset.card) === clave) return;
+  const punto = '#homePuntos [data-punto="' + clave + '"]';
+  await (dedos ? pag.tap(punto) : pag.click(punto));
+  await pag.waitForFunction((c) => document.getElementById('home').dataset.card === c, clave, { timeout: 15000 });
+  await quieta(pag);
+}
+// Larga un modo desde el inicio, como lo haria quien juega: va a su card y toca su boton. modo: hoy, subida, bajada, urbano,
+// practica, giulio, travesia o tutorial. Si hace falta cargar otra pista, el juego se recarga y arranca solo: aca se espera a que
+// este corriendo (salvo travesia y tutorial: de esos se ocupa quien llama).
+export async function largarDesdeHome(pag, modo, { dedos = false } = {}) {
+  await irACard(pag, CARD_DE[modo], dedos);
+  const boton = BOTON_DE[modo] || '[data-largar="c"][data-n="' + PISTA_DE[modo] + '"]';
+  await (dedos ? pag.tap(boton) : pag.click(boton));
+  if (modo === 'travesia' || modo === 'tutorial') return;
+  await pag.waitForFunction((n) => window.shakedown && window.shakedown.estado().pantalla === 'jugando' && (n === null || window.shakedown.estado().pista === n), PISTA_DE[modo], { timeout: 120000 });
+}
+// Desliza la fila de cards con el dedo (dx negativo: hacia la izquierda, y aparece la card siguiente): toques de verdad, con
+// el dedo apoyado, moviendose de a poco y levantandose (Chromium). Espera a que la fila quede quieta.
+export async function deslizar(pag, dx) {
+  const cdp = await pag.context().newCDPSession(pag), caja = await pag.locator('#homePista').boundingBox();
+  const y = Math.round(caja.y + caja.height * 0.3), x0 = Math.round(caja.x + caja.width / 2 - dx / 2);
+  const toca = (tipo, x) => cdp.send('Input.dispatchTouchEvent', { type: tipo, touchPoints: tipo === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+  await toca('touchStart', x0);
+  for (let k = 1; k <= 12; k++) { await toca('touchMove', Math.round(x0 + (dx * k) / 12)); await pag.waitForTimeout(50); }
+  await toca('touchEnd', Math.round(x0 + dx));
+  await cdp.detach();
+  await pag.waitForTimeout(500);
+  await quieta(pag);
 }
 
 if (process.argv[1].endsWith('ver.mjs')) {

@@ -4,7 +4,7 @@
 // que cada averia nueva haga lo suyo (en la pantalla grande), y que al terminar salgan los km y el record. Lo hace en una pantalla de compu (1280x720) y en un celular parado (390x844).
 // uso: node tools/pruebas/vertravesia.mjs [km]      (km: cuanto recorrer en cada pantalla, por defecto 4,5)
 // Dejan capturas en out/travesia-*.png. Con graficos por software todo es lento: se usa shakedown.travesia.avanzar(segundos).
-import { abrir } from './ver.mjs';
+import { abrir, irACard, largarDesdeHome } from './ver.mjs';
 const KM = Number(process.argv[2]) || 4.5;
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
@@ -206,13 +206,12 @@ async function probar(nombre, ancho, alto, contexto) {
   await P.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
   await P.evaluate(() => { try { localStorage.removeItem('shakedown-x'); } catch (e) { /* nada */ } window.shakedown.club.gusto('travesiaKm', 0); });
   ver('la portada ya no tiene el boton suelto de la Travesia', await P.evaluate(() => !document.getElementById('travesia')));
-  // se entra desde los circuitos, en la categoria Aventura
+  // se entra desde el inicio, en la card de la Travesia
   await P.evaluate(() => { window.shakedown.ajustar('trazada', false); window.shakedown.ajustar('serio', false); });   // (en los gustos, apagados)
-  await P.click('[data-panel="circuitos"]');
-  await P.waitForTimeout(300);
-  ver('en los circuitos, la categoria Aventura tiene la Travesia', await P.evaluate(() => { const a = document.querySelector('#catAventura a'); return !!a && /Travesía/.test(a.textContent) && a.getBoundingClientRect().height > 20; }));
+  await irACard(P, 'travesia', !!(contexto && contexto.hasTouch));
+  ver('en el inicio, la card de la Travesia tiene su boton para largar', await P.evaluate(() => { const b = document.getElementById('largarTravesia'); return !!b && /Largar/.test(b.textContent) && b.getBoundingClientRect().height > 20; }));
   await P.screenshot({ path: 'out/travesia-' + nombre + '-0-portada.png' });
-  await P.click('#catAventura a');
+  await P.click('#largarTravesia');
   await P.waitForFunction(() => window.shakedown.travesia.estado().activa, null, { timeout: 90000 });
   let e = await est(P);
   ver('entra en la Travesia', e.activa && e.fase === 'cuenta', e);

@@ -41,6 +41,7 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 
 ## Cómo es
 
+- **El inicio.** El juego abre en un inicio con cards grandes que se deslizan (con el dedo, las flechas del teclado o los puntitos), una por modo: pista del día, circuitos, reales, Travesía, misión tutorial y comunidad. Cada card muestra tus tiempos y los de tus amigos, y su botón larga ese modo. Al terminar, "Volver" trae de nuevo al inicio. Los links de un amigo abren en la card que corresponde. La primera vez abre en la misión tutorial.
 - **La pista sale de la fecha.** El número del día genera todo: el recorrido, el lugar (bosque, campo o montaña), el clima (seco, lluvia, niebla o atardecer) y las notas del copiloto. La #1 es la del 10 de octubre de 2026. El día cambia a la medianoche de Argentina.
 - **Pasadas cortas.** Entre dos y tres minutos, en cinco sectores.
 - **Una pasada oficial por día.** Después se puede practicar todo lo que se quiera, pero no cuenta para la tabla.

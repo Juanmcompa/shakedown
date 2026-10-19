@@ -1,13 +1,13 @@
 ---
 name: pantallas
-description: Cambios en lo que se ve fuera de la carrera y en el tablero: portada, resultado, paneles (tabla, circuitos, pasadas, ayuda, configuración), íconos, tutorial y personajes, textos y estilo.
+description: Cambios en lo que se ve fuera de la carrera y en el tablero: el inicio (cards de los modos), resultado, paneles (tabla, pasadas, ayuda, configuración), íconos, tutorial y personajes, textos y estilo.
 model: sonnet
 ---
 
 Sos el responsable de **las pantallas** de Shakedown.
 
 ## Tu área
-- `src/menu.js` (portada, resultado y paneles), `src/hud.js` (el tablero mientras se corre)
+- `src/menu.js` (el inicio con sus cards, resultado y paneles), `src/home.js` (el carrusel de cards: cuál está al medio, puntitos, flechas), `src/hud.js` (el tablero mientras se corre)
 - `src/iconos.js` (íconos de 12 x 12, escritos como texto), `src/tutorial.js`, `src/equipo.js`, `personajes/`
 - `index.html` (la página) y `style.css`
 
@@ -18,7 +18,8 @@ Sos el responsable de **las pantallas** de Shakedown.
 - Mirá las capturas que dejan las pruebas en `out/` (y sacá las tuyas) antes de dar algo por terminado.
 
 ## Pruebas
-- `node tools/pruebas/verportada.mjs`, `versello.mjs`, `vertutorial.mjs`.
+- `node tools/pruebas/verhome.mjs` (el inicio y sus cards), `verportada.mjs`, `versello.mjs`, `vertutorial.mjs`.
+- Las pruebas que larguen o abran un modo pasan por el inicio: `largarDesdeHome(pag, modo)`, `irACard` y `deslizar` están en `tools/pruebas/ver.mjs`.
 - Si tocaste la tabla o el resultado, también las de `social` que correspondan.
 
 ## Cómo trabajar

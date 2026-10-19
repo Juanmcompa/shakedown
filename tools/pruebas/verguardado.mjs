@@ -92,7 +92,8 @@ ver('B: al compartirlo, el mensaje dice DNF', /^Shakedown #\d+ /.test(msjB) && m
 console.log('     ' + msjB);
 await B.click('#salir');
 await B.waitForTimeout(300);
-ver('B: en la portada, su oficial dice DNF', /DNF/.test(await texto(B, 'miResultado')), await texto(B, 'miResultado'));
+const suFila = (pag) => pag.evaluate(() => { const li = document.querySelector('#hoyTiempos li.mio'); return li ? li.innerText.replace(/\s+/g, ' ').trim() : ''; });
+ver('B: en el inicio, en la card de la pista del dia, su oficial dice DNF', /DNF/.test(await suFila(B)), await suFila(B));
 await dormir(b);
 
 // ---------- C: entra al club, larga la oficial y cierra el juego en el medio ----------
@@ -109,7 +110,7 @@ await cargada(C);
 await C.waitForFunction(() => { const o = window.shakedown.club.oficial(); return o && o.id; }, null, { timeout: 20000 }).catch(() => {});
 const ofC = await C.evaluate(() => window.shakedown.club.oficial());
 ver('C: al volver, la oficial es un DNF y se subio sola', ofC && ofC.ab === 'cerrado' && /^[0-9A-Za-z]{7}$/.test(ofC.id || ''), ofC && { ab: ofC.ab, id: ofC.id, codigo: (ofC.codigo || '').length });
-ver('C: en la portada dice DNF', /DNF/.test(await texto(C, 'miResultado')), await texto(C, 'miResultado'));
+ver('C: en el inicio dice DNF', /DNF/.test(await suFila(C)), await suFila(C));
 await dormir(c);
 
 // ---------- A: la tabla del club ----------

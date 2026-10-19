@@ -1,6 +1,6 @@
 // El cartel de la largada ("Early Access" y la firma) y la firma en lo que se comparte.
 // uso: node tools/pruebas/versello.mjs [pc|cel|celh|flechas|todo] [capturas]
-import { abrir } from './ver.mjs';
+import { abrir, irACard, largarDesdeHome } from './ver.mjs';
 const cual = process.argv[2] || 'todo', conFotos = process.argv.includes('capturas') || cual !== 'todo';
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
@@ -30,7 +30,7 @@ async function recorrer(nombre, forma, o = {}) {
   const pag = j.pag, tactil = !!(forma.contexto && forma.contexto.hasTouch);
   await pag.emulateMedia({ reducedMotion: 'reduce' });
   for (let k = 0; k < (o.cam || 0); k++) await pag.keyboard.press('KeyC');
-  if (tactil) await pag.tap('#largar'); else await pag.click('#largar');
+  await largarDesdeHome(pag, o.ruta ? 'practica' : 'hoy', { dedos: tactil });   // (por el inicio, como quien juega)
   if (o.sensor) await pag.evaluate(() => { setInterval(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 20, gamma: 3 })), 100); });
   await pag.waitForTimeout(tactil ? 2600 : 500);   // (en el celular tarda un momento en saberse si hay sensor)
   if (o.cam) await pag.evaluate(async () => {
@@ -96,7 +96,7 @@ if (cual === 'todo' || cual === 'tutorial') {
   // alguien nuevo: mientras el equipo explica, el cartel no esta; aparece cuando arranca la cuenta regresiva
   const j = await abrir({ ...FORMAS.pc, nuevo: true }), pag = j.pag;
   await pag.emulateMedia({ reducedMotion: 'reduce' });
-  await pag.click('#largar');
+  await largarDesdeHome(pag, 'hoy');   // (alguien nuevo: el inicio abre en la mision tutorial; larga la pista del dia y se abre el tutorial)
   await pag.waitForTimeout(900);
   let e = await estado(pag);
   ver('tutorial: mientras el equipo explica, el cartel no se ve', e.partida === 'previa' && !e.visible && await pag.evaluate(() => !document.getElementById('tutorial').hidden), e);

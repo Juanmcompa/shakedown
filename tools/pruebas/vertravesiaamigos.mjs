@@ -4,7 +4,7 @@
 // Hace falta un servidor de prueba LIMPIO:  node servidor/local.mjs 8787   (y al terminar:  pkill -f 'servidor/[l]ocal.mjs')
 // uso: node tools/pruebas/vertravesiaamigos.mjs
 // Capturas en out/: travesia-tutorial-1.png y -2.png (compu), travesia-tutorial-celu.png, travesia-link.png, travesia-tabla.png
-import { abrir } from './ver.mjs';
+import { abrir, irACard, largarDesdeHome } from './ver.mjs';
 const SERVIDOR = 'http://127.0.0.1:8787';
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
@@ -65,10 +65,9 @@ let enlace = '', codigoClub = '', kmA = 0;
   ver('desde "Como se juega" se vuelve a ver', g.abierta && g.paso === 0 && (await est(P)).fase === 'afuera', g);
   await P.keyboard.press('Escape');
   ver('Escape la saltea', !(await guia(P)).abierta);
-  await P.evaluate(() => document.getElementById('irCircuitos').click());
-  await P.waitForTimeout(300);
-  await P.click('.tv-guia button');
-  ver('desde la Aventura tambien se vuelve a ver', (await guia(P)).abierta);
+  await irACard(P, 'travesia', await P.evaluate(() => matchMedia('(pointer: coarse)').matches));
+  await P.click('#verGuiaTravesiaCard');
+  ver('desde la card de la Travesia tambien se vuelve a ver', (await guia(P)).abierta);
   await P.click('#guiaSaltar');
   ver('"Saltar" la cierra', !(await guia(P)).abierta);
 
@@ -125,12 +124,9 @@ let enlace = '', codigoClub = '', kmA = 0;
   // A figura en la tabla (por el link: sin servidor para el club todavia)
   let tabla = await P.evaluate(() => window.shakedown.club.travesiaTabla());
   ver('A queda como amigo en la tabla de la Travesia (por el link)', tabla.length === 1 && tabla[0].nombre === 'Ana' && Math.abs(tabla[0].km - kmA) < 0.006 && tabla[0].link === true, tabla);
-  await P.evaluate(() => document.getElementById('irCircuitos').click());
-  await P.waitForTimeout(400);
-  const resumen = await P.evaluate(() => { const li = document.querySelector('#catAventura .tv-amigos'); return li ? li.textContent : ''; });
-  ver('en Circuitos > Aventura se ve el record de A', /Ana/.test(resumen) && /12,3/.test(resumen), resumen);
+  const resumen = await P.evaluate(() => document.getElementById('catAventura').innerText.replace(/\s+/g, ' '));
+  ver('en el inicio (card de la Travesia) se ve el record de A', await P.evaluate(() => document.getElementById('home').dataset.card) === 'travesia' && /Ana/.test(resumen) && /12,3/.test(resumen), resumen);
   await P.screenshot({ path: 'out/travesia-aventura.png' });
-  await P.evaluate(() => document.getElementById('cerrarPanel').click());
   // B se suma al club de A (como si hubiera abierto su invitacion): los km de A llegan del servidor, con su numero de corredor
   const dela = await P.evaluate(async (codigo) => { const s = window.shakedown; s.club.ponerNombre('Beto'); const r = await s.nube.entrar(codigo, 'Beto'); s.club.ponerClub({ codigo: r.codigo, nombre: r.nombre }); await s.recordesDeLosClubes(true); return s.club.travesiaTabla(); }, codigoClub);
   ver('con el club, los km de A vienen del servidor (con su numero) y no se repite', dela.length === 1 && dela[0].nombre === 'Ana' && dela[0].km === kmA && !!dela[0].j && dela[0].de && dela[0].de.length === 1, dela);
