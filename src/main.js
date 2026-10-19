@@ -31,6 +31,7 @@ import { crearHud, tiempoFinal } from './hud.js';
 import { crearPapelitos } from './papelitos.js';
 import { configDe, codigoDe } from './partes.js';
 import { crearModoTravesia } from './travesia.js';
+import { leerEnlaceTravesia } from './travesiaenlace.js';
 
 const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
@@ -42,7 +43,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '26';
+const PAGINA = '27';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -291,7 +292,7 @@ function sincronizar() {
   return sincronizando || (sincronizando = (async () => {
     for (const { numero: n, r } of club.abandonosSinCodigo()) club.ponerCodigo(r, codigoSinVuelta({ ...r, pista: n }), n);
     const lista = club.sinSubir().slice(0, 8);
-    let quedan = lista.length;
+    let quedan = lista.length + ((await subirTravesia()) ? 0 : 1);   // (el record de la Travesia tambien, si quedo pendiente)
     for (const { numero: n, r } of lista) {
       const id = await subir(r, r.codigo, n);
       if (id === null) break;
@@ -300,6 +301,33 @@ function sincronizar() {
     }
     return quedan;
   })().finally(() => { sincronizando = null; }));
+}
+// --- la Travesia: su record de km (ver travesia.js) ---
+// Se manda solo al terminar, y solo si supera el anterior (el servidor tambien lo revisa). Si no se pudo (sin señal, o todavia
+// no hay nombre), queda pendiente: "travesiaSubido" son los km que el servidor ya tiene. No lleva pista ni fantasma.
+const recordeSinSubir = () => { const km = Number(club.gusto('travesiaKm')) || 0; return km > 0 && km > (Number(club.gusto('travesiaSubido')) || 0) && !!club.nombre(); };
+let subiendoTravesia = null;
+// Devuelve una promesa de true si no queda nada pendiente, y de false si hay que volver a probar.
+function subirTravesia() {
+  if (!nube.hay || !recordeSinSubir()) return Promise.resolve(true);
+  return subiendoTravesia || (subiendoTravesia = (async () => {
+    const km = Number(club.gusto('travesiaKm')), r = await nube.travesia(club.nombre(), km, codigoDe(club.auto()));
+    if (r === null || r.estado === 429 || r.estado === 425 || r.estado >= 500) return false;
+    club.gusto('travesiaSubido', km);   // (llego, o el servidor no lo quiere: no se insiste)
+    recordesDeLosClubes(true);
+    return true;
+  })().finally(() => { subiendoTravesia = null; }));
+}
+// Los records de la Travesia de la gente de mis clubes (quedan en el club, ver club.js)
+let ultimaTravesia = -1e9;
+async function recordesDeLosClubes(ya) {
+  const mios = club.clubes();
+  if (!nube.hay || !mios.length || (!ya && performance.now() - ultimaTravesia < 15000)) return;
+  ultimaTravesia = performance.now();
+  const t = await nube.travesias(mios.map((x) => x.codigo));
+  if (!t) return;
+  for (const { codigo } of mios) if (t[codigo]) club.anotarTravesiaDelClub(codigo, t[codigo].tabla);
+  menu.pintar();
 }
 // Si no se pudo subir, se vuelve a probar en un rato: cada vez esperando un poco mas (de 15 segundos a 5 minutos), mientras
 // quede algo pendiente y el juego este a la vista. (Al volver la señal o al volver al juego se prueba enseguida.)
@@ -320,6 +348,7 @@ const alVolver = async () => { demora = 15000; const quedan = await sincronizar(
 const deLosClubes = {};
 let ultimaTabla = -1e9;
 async function tablasDeLosClubes(ya) {
+  recordesDeLosClubes(ya);   // (y los records de la Travesia, que van aparte)
   const mios = club.clubes(), deLaPista = !!comunidad && !comunidad.borrador;
   if (!nube.hay || (!mios.length && !deLaPista) || (!ya && performance.now() - ultimaTabla < 15000)) return;
   ultimaTabla = performance.now();
@@ -404,6 +433,8 @@ const menu = crearMenu({
   acortar,
   // la Travesia, desde la categoria Aventura de los circuitos
   travesia: () => { if (pantalla !== 'jugando') travesia.entrar(); },
+  // la guia de la Travesia, para volver a verla (desde "Como se juega" y desde la Aventura)
+  guiaTravesia: () => travesia.verGuia(),
   // los clubes (solo si hay servidor): crear, salir, y lo ultimo que se sabe de cada uno
   // (renombrar: con el nombre nuevo se figura en los clubes aunque todavia no se haya corrido)
   clubes: nube.hay ? {
@@ -622,6 +653,11 @@ const travesia = crearModoTravesia({
   voz: () => conVoz,
   camara: () => club.gusto('camara'),
   efectos: () => conEfectos,
+  // el record nuevo se manda solo; la tabla de los amigos se trae del servidor al terminar
+  record: () => { subirTravesia().then((ok) => { if (!ok) reintentarLuego(); }); },
+  amigos: () => club.travesiaTabla(),
+  refrescar: async () => { await subirTravesia(); await recordesDeLosClubes(true); },
+  renombrar: () => { if (!nube.hay) return; for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); subirTravesia().then((ok) => { if (!ok) reintentarLuego(); }); },
 });
 
 // --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
@@ -777,6 +813,18 @@ if (invitacion) {
     if (r.error) menu.decir('No pude sumarte al club. ' + r.error); else menu.verClub(r.codigo, 'Ya estás en «' + r.nombre + '».');
   });
 } else yaAnda.then(sincronizar).then((quedan) => { if (quedan) reintentarLuego(); tablasDeLosClubes(true); });
+// El link de un amigo de la Travesia ("#t=Ana.2347"): no lleva pista ni fantasma, solo quien es y cuantos km hizo. Se lo suma a
+// la tabla de la Travesia y se avisa, con el boton para ir al modo.
+const deLaTravesia = leerEnlaceTravesia(location.hash);
+if (deLaTravesia) {
+  club.anotarAmigoTravesia(deLaTravesia);
+  quedarseEn(numero);
+  menu.pintar();
+  $('cartelTvTexto').textContent = deLaTravesia.nombre + ' llegó a ' + deLaTravesia.km.toFixed(1).replace('.', ',') + ' km en la Travesía';
+  $('cartelTv').hidden = false;
+  $('cartelTvIr').addEventListener('click', () => { $('cartelTv').hidden = true; if (pantalla !== 'jugando') travesia.entrar(); });
+  $('cartelTvCerrar').addEventListener('click', () => { $('cartelTv').hidden = true; });
+}
 // recien publicada una pista de la comunidad: se avisa, y se ofrece compartirla
 if (location.hash === '#publicada' && comunidad && !comunidad.borrador) {
   quedarseEn(numero);
@@ -790,7 +838,7 @@ window.addEventListener('online', () => { if (pantalla !== 'jugando') alVolver()
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
 if (enCasa) window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial, creador, comunidad, sonido, papelitos,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, recordesDeLosClubes, subirTravesia, tutorial, creador, comunidad, sonido, papelitos,
   auto: () => c,
   travesia: travesia.prueba, entrarTravesia: () => travesia.entrar(),
   dibujo: () => dibujo,

@@ -18,9 +18,11 @@ import { crearDibujo } from './autos.js';
 import { crearCamara } from './camera.js';
 import { crearEfectos } from './fx.js';
 import { crearCopiloto } from './copiloto.js';
-import { configDe } from './partes.js';
+import { configDe, codigoDe } from './partes.js';
 import { estadoInicial, sortear, aplicar, mecanicoLoco, cartaDe, CARTAS, PROBLEMAS, ARREGLOS } from './cartas.js';
 import { icono } from './iconos.js';
+import { crearGuiaTravesia } from './travesiaguia.js';
+import { enlaceDeTravesia } from './travesiaenlace.js';
 
 const $ = (id) => document.getElementById(id);
 const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -82,10 +84,12 @@ export function crearPiloto() {
 //   render, post, liviano, club, sonido, hud, teclas, raiz
 //   portada(si): muestra o esconde la portada.   mandos(): prende los mandos del celular.
 //   voz(): si el copiloto habla.   camara(): el id de la camara que se eligio.
+//   record(km): se hizo un record nuevo (el juego lo manda al servidor).   amigos(): los records de los amigos y el propio, de mayor a
+//   menor (ver travesiaTabla en club.js).   refrescar(): promesa de traer los records de los clubes.   renombrar(): se cambio el nombre.
 // ------------------------------------------------------------------------------------------------------------------
 export function crearModoTravesia(o) {
   const { render, post, liviano, club, sonido, hud, teclas, raiz } = o;
-  let activa = false, fase = 'afuera';   // afuera, cuenta, corriendo, cartas, espera (el auto se rompio: un instante antes del resultado) y fin
+  let activa = false, fase = 'afuera';   // afuera, guia (la explicacion de la primera vez), cuenta, corriendo, cartas, espera (el auto se rompio: un instante antes del resultado) y fin
   let T = null, c = null, C = null, base = null, e = null, dibujo = null, codigoDibujo = '', copiloto = null, rnd = Math.random;
   let indice = 0, mejor = 0, lejos = 0, resto = 0, reloj = 0, cuenta = 0, tEspera = 0, motivoFin = '', proximaCarta = TRAVESIA.kmPorCarta;
   let golpe = 0, contra = '', tGolpe = 0, tVolcado = 0, tFuera = 0, tSinAvance = 0, mejorAntes = 0, tFondo = 0, calor = 0, armada = false, volvio = 0, vistas = 0;
@@ -107,6 +111,18 @@ export function crearModoTravesia(o) {
   // ---------------------------------------------------------------- el record, en este aparato
   const record = () => { try { return Number(club.gusto(CLAVE_RECORD)) || 0; } catch (x) { return 0; } };
   const guardarRecord = (km) => { try { club.gusto(CLAVE_RECORD, Math.round(km * 100) / 100); } catch (x) { /* sin memoria: no pasa nada */ } };
+
+  // ---------------------------------------------------------------- la guia de la primera vez
+  // Se abre sola al entrar la primera vez (con la corrida lista y la cuenta regresiva esperando); despues se puede volver a ver
+  // desde "Como se juega" y desde la categoria Aventura (ahi no hay nada en pausa: se abre sobre los paneles).
+  const CLAVE_GUIA = 'travesiaGuia';
+  const vistaLaGuia = () => { try { return !!club.gusto(CLAVE_GUIA); } catch (x) { return false; } };
+  const guia = crearGuiaTravesia({
+    alCerrar: () => {
+      try { club.gusto(CLAVE_GUIA, 1); } catch (x) { /* sin memoria: se vuelve a mostrar */ }
+      if (fase === 'guia') { fase = 'cuenta'; cuenta = JUEGO.cuenta; cuentaDicha = 0; }
+    },
+  });
 
   // ---------------------------------------------------------------- las pantallas propias
   function pintarActivas() {
@@ -195,7 +211,7 @@ export function crearModoTravesia(o) {
     fase = 'fin';
     hud.mostrar(false); hud.llamar(false); hud.aviso(''); hud.grande('');
     const km = mejorKm(), antes = record(), nuevo = km > antes && km > 0;
-    if (nuevo) guardarRecord(km);
+    if (nuevo) { guardarRecord(km); if (o.record) o.record(km); }
     const [ico, texto] = MOTIVOS[motivoFin] || MOTIVOS.roto;
     $('tfMotivo').textContent = texto;
     $('tfMotivo').dataset.icono = ico;
@@ -212,19 +228,45 @@ export function crearModoTravesia(o) {
       caja.append(img);
     }
     $('tfCompartido').textContent = '';
+    $('tfNombre').value = club.nombre();
+    pintarAmigos();
+    if (o.refrescar) Promise.resolve(o.refrescar()).then(() => { if (fase === 'fin') pintarAmigos(); }).catch(() => {});
     $('travesiaFin').hidden = false; $('cartasActivas').hidden = true;
     $('tfOtra').focus({ preventScroll: true });
+  }
+  // La tabla de records de los amigos (y el propio): los primeros, y el propio si queda mas abajo. Sin fantasma: cada camino es distinto.
+  const MUESTRA = 6;
+  function pintarAmigos() {
+    const lista = o.amigos ? o.amigos() : [], ol = $('tfTabla');
+    ol.textContent = '';
+    $('tfAmigos').hidden = !lista.some((x) => !x.mio);
+    if ($('tfAmigos').hidden) return;
+    lista.forEach((r, k) => {
+      if (k >= MUESTRA && !(r.mio)) return;
+      const li = document.createElement('li'), puesto = document.createElement('span'), auto = document.createElement('span'), quien = document.createElement('span'), km = document.createElement('b');
+      if (r.mio) li.className = 'mio';
+      puesto.className = 'puesto'; puesto.textContent = String(k + 1);
+      auto.className = 'emoji'; auto.textContent = configDe(r.auto).emoji;
+      quien.className = 'quien'; quien.textContent = r.nombre || (r.mio ? 'Vos' : '?');
+      const cod = document.createElement('small'); cod.className = 'codigo-auto'; cod.textContent = codigoDe(r.auto); quien.append(cod);
+      km.textContent = coma(r.km) + ' km';
+      li.append(puesto, auto, quien, km);
+      ol.append(li);
+    });
   }
   // Shakedown Travesía 🏜️ 23,4 km 🃏11 💥   y abajo, las cartas juntadas como emojis
   function textoParaCompartir() {
     const km = mejorKm(), fin = FINALES[motivoFin] || '💥';
     const lineas = ['Shakedown Travesía 🏜️ ' + coma(km) + ' km 🃏' + e.cartas.length + ' ' + fin];
     if (e.cartas.length) lineas.push(e.cartas.map((id) => cartaDe(id).emoji).join(''));
-    lineas.push(location.origin + location.pathname);
+    // el link solo dice quien es y cuantos km: sin pista ni fantasma (el camino es distinto cada vez)
+    lineas.push(location.origin + location.pathname + enlaceDeTravesia(club.nombre(), Math.max(km, record())));
     return lineas.join('\n');
   }
   async function compartir() {
-    const texto = textoParaCompartir(), salida = $('tfCompartido');
+    const salida = $('tfCompartido');
+    if (!club.nombre()) { $('tfNombre').focus(); salida.textContent = 'Poné tu nombre para compartir.'; return; }
+    const texto = textoParaCompartir();
     try {
       if (navigator.share && window.matchMedia('(pointer: coarse)').matches) { await navigator.share({ text: texto }); return; }
       await navigator.clipboard.writeText(texto);
@@ -236,6 +278,14 @@ export function crearModoTravesia(o) {
   }
   $('tfOtra').addEventListener('click', () => nuevaCorrida());
   $('tfCompartir').addEventListener('click', compartir);
+  // el nombre se puede poner (o cambiar) aca mismo; si ya hay un record, se manda de nuevo al servidor con el nombre
+  $('tfNombre').addEventListener('change', () => {
+    club.ponerNombre($('tfNombre').value);
+    $('tfNombre').value = club.nombre(); $('tfCompartido').textContent = '';
+    if (o.renombrar) o.renombrar();
+    pintarAmigos();
+  });
+  $('tfNombre').addEventListener('keydown', (ev) => { ev.stopPropagation(); if (ev.key === 'Enter') $('tfNombre').blur(); });
   $('tfSalir').addEventListener('click', () => salir());
 
   // ---------------------------------------------------------------- una corrida
@@ -398,7 +448,7 @@ export function crearModoTravesia(o) {
 
   // todo lo que pasa en un cuadro menos dibujar (tambien lo usan las pruebas)
   function actualizar(dt) {
-    if (fase === 'cartas' || fase === 'fin' || fase === 'afuera') return;
+    if (fase === 'cartas' || fase === 'fin' || fase === 'afuera' || fase === 'guia') return;
     reloj += dt;
     if (fase === 'cuenta') {
       cuenta -= dt;
@@ -483,12 +533,15 @@ export function crearModoTravesia(o) {
     fx.prender(o.efectos ? o.efectos() : true);   // (el ajuste "efectos": sin el, no hay polvareda grande ni huellas que se oscurecen)
     { const id = o.camara(); if (id) camara.cambiar(id); }
     nuevaCorrida();
+    // la primera vez: la guia, con la cuenta regresiva esperando
+    if (!vistaLaGuia()) { fase = 'guia'; guia.abrir(); }
   }
   let previaPractica = false, textoCosto = '+8';
   function salir() {
     if (!activa) return;
     activa = false; fase = 'afuera';
     trazada.mostrar(false);
+    guia.cerrar();
     $('travesiaFin').hidden = true; $('cartas').hidden = true; $('vidrio').hidden = true; $('arenaOjos').hidden = true; $('cartasActivas').hidden = true;
     raiz.classList.remove('travesia', 'sin-tablero');
     camara.vibrar(0);
@@ -561,6 +614,8 @@ export function crearModoTravesia(o) {
   return {
     activa: () => activa,
     entrar, salir, cuadro, tecla, nuevaCorrida,
+    // la guia, para verla de nuevo (desde "Como se juega" o la Aventura)
+    verGuia: () => guia.abrir(),
     // la pantalla cambio de tamaño / de zona libre / de distancia / de voz (los mismos ajustes de la camara de la pista)
     medir: (w, h) => camara.pantalla(w, h),
     encuadrar: (a, b, l) => camara.encuadrar(a, b, l),
@@ -569,6 +624,7 @@ export function crearModoTravesia(o) {
     efectos: (si) => fx.prender(si),
     // --- para probar desde la consola (solo en una copia local, ver main.js) ---
     prueba: {
+      guia,
       estado: () => ({ activa, fase, km: mejorKm(), indice, mejor, roto: e && e.roto, cartas: e && e.cartas.slice(), mano: mano.map((k) => k.id), motivo: motivoFin, velocidad: c && c.velocidad, record: record(),
         memoria: T && T.memoria(), dibujados: mundo.vivos(), armados: T && T.estadistica.armados, soltados: T && T.estadistica.soltados, tSinAvance, proxima: proximaCarta }),
       avanzar: (seg, o2 = {}) => {

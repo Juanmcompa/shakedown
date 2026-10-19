@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="26" class="cargando">
+<html lang="es" data-pagina="27" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -226,7 +226,7 @@
   // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'cartas'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'cartas', 'travesiaguia', 'travesiaenlace'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -308,6 +308,12 @@
 
 <!-- la portada: la pista del dia, el auto y el boton de largar -->
 <main id="portada">
+  <!-- Travesia: el aviso de un link ("Ana llego a 23,4 km"), con el boton para ir al modo -->
+  <div id="cartelTv" class="cartel-tv" role="status" hidden>
+    <p id="cartelTvTexto"></p>
+    <button id="cartelTvIr" type="button" class="con-texto fuerte" data-icono="duna" data-color="#000000">Ir a la Travesía</button>
+    <button id="cartelTvCerrar" type="button" class="tut-cerrar" data-icono="cerrar" aria-label="Cerrar el aviso"></button>
+  </div>
   <div class="arriba">
   <div class="col">
     <!-- la marca -->
@@ -433,6 +439,7 @@
     <div id="equipo" class="equipo"></div>
     <h2>Cómo se juega</h2>
     <p><button id="verTutorial" type="button" class="con-texto" data-icono="bandera" data-color="#000000">Que te lo explique el equipo</button></p>
+    <p><button id="verGuiaTravesia" type="button" class="con-texto" data-icono="duna" data-color="#000000">Cómo se juega la Travesía</button></p>
     <div id="comoSeJuega"></div>
   </div>
   <!-- Las configuraciones. Cada grupo de botones (data-ajuste) y cada barra (input con data-ajuste) cambia un gusto,
@@ -600,6 +607,12 @@
   <p class="tf-unidad">km</p>
   <p id="tfRecord" class="tf-record"></p>
   <div id="tfCartas" class="tf-cartas"></div>
+  <!-- los records de los amigos en la Travesia (los de tus clubes y los de los links que abriste): sin fantasma, el camino es distinto cada vez -->
+  <section id="tfAmigos" class="tf-amigos" aria-label="Récords de tus amigos" hidden>
+    <h3 data-icono="podio" data-color="#e0c27c">Récords</h3>
+    <ol id="tfTabla" class="tf-tabla"></ol>
+  </section>
+  <p class="tf-nombre"><label for="tfNombre">Tu nombre</label> <input id="tfNombre" type="text" maxlength="14" autocomplete="nickname" autocapitalize="words" spellcheck="false"></p>
   <div class="botones">
     <button id="tfOtra" data-icono="bandera" data-color="#000000" aria-label="Otra travesía"><span class="rotulo">Otra</span></button>
     <button id="tfCompartir" class="segundo" data-icono="compartir" data-color="#000000" aria-label="Compartir"><span class="rotulo">Compartir</span></button>
@@ -607,6 +620,22 @@
   </div>
   <p id="tfCompartido" role="status"></p>
 </section>
+
+<!-- Travesia: la guia de la primera vez (ver travesiaguia.js). Un personaje del equipo, iconos y pocas palabras. -->
+<div id="guiaTv" class="guia-tv" hidden>
+  <section class="tut-tarjeta" role="dialog" aria-modal="true" aria-labelledby="guiaNombre" aria-describedby="guiaTexto">
+    <img id="guiaRetrato" class="tut-retrato" alt="" width="431" height="458" decoding="async" draggable="false">
+    <button id="guiaCerrar" type="button" class="tut-cerrar" data-icono="cerrar" aria-label="Cerrar la guía"></button>
+    <p class="tut-quien"><b id="guiaNombre"></b><span id="guiaRol"></span></p>
+    <div id="guiaIconos" class="guia-iconos" aria-hidden="true"></div>
+    <div id="guiaTexto" class="tut-texto" aria-live="polite"></div>
+    <div class="tut-pie">
+      <button id="guiaSaltar" type="button" class="con-texto discreto">Saltar</button>
+      <span id="guiaPuntos" class="tut-puntos" aria-hidden="true"></span>
+      <span id="guiaBotones" class="tut-botones"></span>
+    </div>
+  </section>
+</div>
 
 <!-- los papelitos de la meta (ver papelitos.js): encima de todo, sin tapar los toques -->
 <canvas id="papelitos" class="papelitos" aria-hidden="true" hidden></canvas>

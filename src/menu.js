@@ -339,6 +339,26 @@ export function crearMenu(o) {
     const km = Number(club.gusto('travesiaKm')) || 0, a = $('catAventura');
     fila(a, '#travesia', false, '🏜️', 'Travesía', 'Sin fin, cada vez peor', null, o.travesia);
     if (km > 0) a.querySelector('a').append(crear('span', 'tiempoMarca', String(Math.round(km * 10) / 10).replace('.', ',') + ' km'));
+    // los records de los amigos en la Travesia (los de tus clubes y los de los links que abriste): los tres primeros, y tu puesto
+    // si quedaste mas abajo. Sin fantasma: el camino es distinto cada vez.
+    const records = club.travesiaTabla(), mio = records.findIndex((x) => x.mio);
+    if (records.some((x) => !x.mio)) {
+      const li = crear('li', 'tv-amigos');
+      records.slice(0, 3).forEach((x, k) => {
+        const p = crear('span', 'tv-puesto' + (x.mio ? ' mio' : ''));
+        p.append(crear('i', '', String(k + 1)), crear('span', '', x.mio ? 'Vos' : x.nombre || '?'), crear('b', '', x.km.toFixed(1).replace('.', ',')));
+        li.append(p);
+      });
+      if (mio > 2) li.append(crear('span', 'tv-puesto mio', 'Vos · ' + (mio + 1) + 'º de ' + records.length));
+      li.title = 'Récords de la Travesía';
+      a.append(li);
+    }
+    // la guia de la Travesia, para volver a verla
+    const guia = crear('li', 'tv-guia'), verGuia = crear('button', 'con-texto discreto', 'Cómo se juega la Travesía');
+    verGuia.type = 'button';
+    verGuia.addEventListener('click', () => o.guiaTravesia && o.guiaTravesia());
+    guia.append(verGuia);
+    a.append(guia);
     ponerIconos($('panelCircuitos'));
   }
 
@@ -453,6 +473,8 @@ export function crearMenu(o) {
   }
   // (el tutorial se puede volver a ver cuando se quiera: cierra el panel y arranca en la largada)
   $('verTutorial').addEventListener('click', () => { abrir(''); o.tutorial(); });
+  // lo mismo con la guia de la Travesia
+  $('verGuiaTravesia').addEventListener('click', () => { abrir(''); if (o.guiaTravesia) o.guiaTravesia(); });
   const dib = (nombre, color) => '<span data-icono="' + nombre + '"' + (color ? ' data-color="' + color + '"' : '') + '></span>';
   $('comoSeJuega').innerHTML = `
     <dl class="teclas teclado">

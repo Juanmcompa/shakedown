@@ -21,6 +21,10 @@
 //                                                               410 si ya vencio (duran dos semanas) o si la borraron.
 //   POST /pistas/<numero>/borrar   { llave }                    borra una pista (solo la puede borrar quien la armo): se
 //                                                               libera su lugar y se borran sus tiempos. Devuelve { borrada }.
+//   POST /travesia                 { llave, nombre, km, auto }   guarda el mejor record de km de la Travesia (el modo sin fin).
+//                                                               Solo cuenta si supera el que ya tenia. Devuelve { km, nuevo }.
+//   POST /travesias                { llave, clubes: [codigos] }  el record de cada miembro de esos clubes, de mayor a menor.
+//                                                               Sin fantasma ni pista: la Travesia sale distinta cada vez.
 //
 // No hay cuentas ni contraseñas. Cada aparato inventa una "llave" larga al azar y la manda cuando escribe algo; aca se
 // guarda solo su huella (no la llave), que hace de numero de corredor. Nadie mas la conoce, asi que nadie puede subir
@@ -48,6 +52,9 @@ export const LIMITES = {
   miembrosPorClub: 100,
   clubesPorPedido: 30,        // cuantas tablas se pueden pedir de una vez
   guardaDias: 120,            // las pasadas mas viejas se borran solas
+  travesiasPorConexion: 600,  // por dia: records de la Travesia que se pueden mandar desde una misma conexion
+  travesiasPorDia: 20000,     // por dia, entre todos
+  kmMaximo: 1000,             // un record de la Travesia mayor a esto no es creible (hoy se llega a unas decenas de km)
   largoDelCodigo: 6000,       // letras, como mucho, de una pasada (una de dos minutos lleva unas 600; la mas larga posible, 4.500)
   // las pistas de la comunidad (las que arma un jugador en el creador)
   pistasPorConexion: 40,      // por dia: cuantas se pueden publicar desde una misma conexion
@@ -86,6 +93,9 @@ const ESQUEMA = [
     creador TEXT NOT NULL, club TEXT NOT NULL DEFAULT '', hoja TEXT NOT NULL, creado INTEGER NOT NULL, vence INTEGER NOT NULL)`,
   'CREATE INDEX IF NOT EXISTS pistas_del_club ON pistas (club, vence)',
   'CREATE INDEX IF NOT EXISTS pistas_de ON pistas (creador, vence)',
+  // El record de la Travesia: una fila por corredor, con su mejor marca en km (la Travesia no tiene pista fija ni fantasma:
+  // cada corrida sale distinta). Es una tabla aparte, y nueva: la base que ya esta publicada la gana sola, sin migracion.
+  `CREATE TABLE IF NOT EXISTS travesias (jugador TEXT PRIMARY KEY, nombre TEXT NOT NULL, km REAL NOT NULL, auto TEXT NOT NULL DEFAULT '', creado INTEGER NOT NULL)`,
 ];
 const crearTablas = (DB) => DB.batch(ESQUEMA.map((s) => DB.prepare(s)));
 // Las tablas se crean solas: si un pedido falla porque todavia no existen (la base es nueva), se crean y se lo repite.
@@ -330,6 +340,54 @@ async function tablas(env, pedido) {
   return salida;
 }
 
+// --- la Travesia: el mejor record de km de cada uno ---
+// Solo entra si supera el que ya tenia ese corredor (el nombre, en cambio, se pone al dia siempre). Los km tienen que ser
+// creibles (de 0 a kmMaximo) y se guardan con dos decimales; el auto es el codigo de sus partes (como en una pasada).
+async function guardarTravesia(env, pedido, de) {
+  const DB = env.DB, nombre = limpiar(pedido.nombre, 14), km = Math.round(Number(pedido.km) * 100) / 100;
+  if (!esLlave(pedido.llave)) falla(400, 'Falta la llave.');
+  if (!nombre) falla(400, 'Poné tu nombre para guardar el récord.');
+  if (typeof pedido.km !== 'number' || !Number.isFinite(km) || !(km > 0 && km <= LIMITES.kmMaximo)) falla(400, 'Esos kilómetros no pueden ser.');
+  const auto = typeof pedido.auto === 'string' && /^[0-9A-Za-z]{1,12}$/.test(pedido.auto) ? pedido.auto : '';
+  const jugador = await huella(pedido.llave), t = ahora();
+  const deLaConexion = contador('t:' + de, LIMITES.travesiasPorConexion), deTodos = contador('travesias', LIMITES.travesiasPorDia);
+  const r = await DB.batch([
+    deLaConexion.anotar(DB),
+    deTodos.anotar(DB),
+    // entra si no se paso ningun tope; si ya tenia un record, solo lo pisa uno mayor
+    DB.prepare(`INSERT INTO travesias (jugador, nombre, km, auto, creado) SELECT ?1, ?2, ?3, ?4, ?5 WHERE ${ENTRA('?6', '?7')} AND ${ENTRA('?8', '?9')}
+      ON CONFLICT (jugador) DO UPDATE SET nombre = excluded.nombre, km = excluded.km, auto = excluded.auto, creado = excluded.creado WHERE excluded.km > travesias.km
+      RETURNING km`).bind(jugador, nombre, km, auto, t, deLaConexion.clave, deLaConexion.tope, deTodos.clave, deTodos.tope),
+    // el nombre se pone al dia aunque no haya record nuevo, y en sus clubes figura con el apodo de ahora
+    DB.prepare('UPDATE travesias SET nombre = ?2 WHERE jugador = ?1 AND nombre <> ?2').bind(jugador, nombre),
+    DB.prepare('SELECT km FROM travesias WHERE jugador = ?1').bind(jugador),
+  ]);
+  const fila = r[2].results[0], guardado = r[4].results[0];
+  if (fila) return { km: fila.km, nuevo: true };
+  if (deLaConexion.sePaso(r[0])) falla(429, 'Desde esta conexión ya se mandaron muchos récords hoy.');
+  if (deTodos.sePaso(r[1])) falla(429, 'Hoy el servidor ya no recibe más récords.');
+  return { km: guardado ? guardado.km : km, nuevo: false };   // (ya tenia uno mejor o igual)
+}
+// La tabla de la Travesia de cada club: el record de cada miembro. "mio" marca el del que pregunta.
+async function tablasTravesia(env, pedido) {
+  const DB = env.DB, codigos = [...new Set(Array.isArray(pedido.clubes) ? pedido.clubes : [])].filter(esCodigoCorto).slice(0, LIMITES.clubesPorPedido);
+  const yo = esLlave(pedido.llave) ? await huella(pedido.llave) : '';
+  const salida = { clubes: {} };
+  if (!codigos.length) return salida;
+  const pedidos = [];
+  for (const codigo of codigos) {
+    pedidos.push(DB.prepare(`SELECT nombre, ${CUANTOS} AS miembros FROM clubes WHERE codigo = ?1`).bind(codigo));
+    pedidos.push(DB.prepare(`SELECT t.jugador, COALESCE(NULLIF(m.nombre, ''), t.nombre) AS nombre, t.km, t.auto
+      FROM miembros m JOIN travesias t ON t.jugador = m.jugador WHERE m.club = ?1 ORDER BY t.km DESC LIMIT ?2`).bind(codigo, LIMITES.miembrosPorClub));
+  }
+  const r = await DB.batch(pedidos);
+  codigos.forEach((codigo, k) => {
+    const club = r[k * 2].results[0];
+    salida.clubes[codigo] = club ? { nombre: club.nombre, tabla: r[k * 2 + 1].results.map((x) => ({ j: x.jugador, nombre: x.nombre, km: x.km, auto: x.auto, ...(x.jugador === yo ? { mio: true } : {}) })) } : null;   // null: el club ya no existe
+  });
+  return salida;
+}
+
 // --- las pistas de la comunidad ---
 // Publica una pista. Su numero se elige al azar entre los libres (los que nunca se usaron o cuya pista ya vencio).
 // Entra si no se paso ningun tope y, si es para un club, si el que la publica esta en ese club.
@@ -484,6 +542,8 @@ export default {
       else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'entrar') hacer = () => entrarAlClub(env, partes[1], cuerpo, de);
       else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'salir') hacer = () => salirDelClub(env, partes[1], cuerpo);
       else if (donde === 'tablas' && metodo === 'POST' && partes.length === 1) hacer = () => tablas(env, cuerpo);
+      else if (donde === 'travesia' && metodo === 'POST' && partes.length === 1) hacer = () => guardarTravesia(env, cuerpo, de);
+      else if (donde === 'travesias' && metodo === 'POST' && partes.length === 1) hacer = () => tablasTravesia(env, cuerpo);
       else if (donde === 'pistas' && metodo === 'POST' && partes.length === 1) hacer = () => crearPista(env, cuerpo, de);
       else if (donde === 'pistas' && metodo === 'GET' && partes.length === 2) hacer = () => traerPista(env, partes[1]);
       else if (donde === 'pistas' && metodo === 'POST' && partes.length === 3 && partes[2] === 'borrar') hacer = () => borrarPista(env, partes[1], cuerpo);

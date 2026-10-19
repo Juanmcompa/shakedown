@@ -36,9 +36,9 @@ export async function abrir(opciones = {}) {
   const nav = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
   const ctx = await nav.newContext({ viewport: { width: opciones.ancho || 1280, height: opciones.alto || 720 }, ...(opciones.contexto || {}) });
   // dia: hace de cuenta que hoy es el dia de esa pista (corre el reloj de la pagina)
-  // Las pruebas son de alguien que ya vio el tutorial de la primera vez (si no, al largar se abre y el auto no arranca).
+  // Las pruebas son de alguien que ya vio el tutorial de la primera vez y la guia de la Travesia (si no, se abren y el auto no arranca).
   // Con "nuevo: true" queda como alguien que entra por primera vez.
-  if (!opciones.nuevo) await ctx.addInitScript(() => { try { if (!localStorage.getItem('shakedown')) localStorage.setItem('shakedown', JSON.stringify({ gustos: { tutorial: 1 } })); } catch (e) { /* sin memoria */ } });
+  if (!opciones.nuevo) await ctx.addInitScript(() => { try { if (!localStorage.getItem('shakedown')) localStorage.setItem('shakedown', JSON.stringify({ gustos: { tutorial: 1, travesiaGuia: 1 } })); } catch (e) { /* sin memoria */ } });
   if (opciones.dia) await ctx.addInitScript((dias) => { const ahora = Date.now, corre = dias * 86400000; Date.now = () => ahora() + corre; }, opciones.dia - 1);
   const pag = await ctx.newPage();
   // (con varios navegadores a la vez y graficos por software, una captura o una recarga pueden tardar mas de 30 s)

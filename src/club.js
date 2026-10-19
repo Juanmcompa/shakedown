@@ -10,6 +10,10 @@
 // y link: true si llego por un link que abriste.
 // (En una pista de la comunidad, la tabla de todos los que la corrieron llega como la de un club mas, con el codigo '#'.)
 //
+// La Travesia (el modo sin fin) tiene su record en km (el gusto "travesiaKm") y, aparte, los de los amigos: { nombre, km, auto,
+// j (su numero de corredor, si lo sabe el servidor), de: [clubes tuyos en los que figura], link: true si llego por un link }.
+// No tienen pista ni fantasma: la Travesia sale distinta cada vez.
+//
 // Ademas: el borrador del creador de pistas (ver creador.js) y las pistas de la comunidad que se conocen en este aparato
 // (las que armaste, las que abriste y las de tus clubes), para poder listarlas y correrlas aunque no haya señal.
 import { limpio, limpiarTexto } from './fantasma.js';
@@ -21,6 +25,7 @@ const GUARDA_AMIGOS = 60;      // dias: despues, de cada pista quedan solo los t
 const GUARDA_DEL_CLUB = 14;    // dias: lo que se sabe solo por un club se guarda menos (al abrir esa pista se le pide de nuevo al servidor)
 const CABEN = 80;              // de lo que llego por link, cuantos tiempos se guardan por pista (y otros tantos de practica)
 const RECIENTES = 7;           // dias: los tiempos propios de estos dias se suben al servidor si todavia no estan
+const AMIGOS_KM = 80;          // de lo que llego por link en la Travesia, cuantos records se guardan (los de los clubes quedan todos)
 const CONOCIDAS = 60;          // pistas de la comunidad que se recuerdan, como mucho (si hay mas, se olvidan las que vencen antes)
 const ahora = () => Math.floor(Date.now() / 1000);
 
@@ -56,6 +61,14 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
   }
   const dia = (n) => datos.dias[n] || (datos.dias[n] = { oficial: null, practica: null, club: [], rival: '', v: versionDe(Number(n)) });
   const D = dia(pista);
+  // los records de la Travesia de los amigos (ver arriba)
+  if (!Array.isArray(datos.travesiaAmigos)) datos.travesiaAmigos = [];
+  const seQuedaKm = (x) => x.link || (x.de && x.de.length > 0);
+  // de lo que llego solo por link quedan los mejores; lo de los clubes queda todo (el servidor ya limita cuanta gente entra)
+  const ordenarKm = () => {
+    let sueltos = 0;
+    datos.travesiaAmigos = datos.travesiaAmigos.filter(seQuedaKm).sort((a, b) => b.km - a.km).filter((x) => (x.de && x.de.length > 0) || ++sueltos <= AMIGOS_KM);
+  };
   // si quedo una pasada oficial empezada y sin terminar (se cerro el juego en el medio), es un abandono
   for (const n in datos.dias) {
     const d = datos.dias[n], o = d.oficial;
@@ -145,10 +158,43 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
       if (ya) ya.nombre = c.nombre; else lista.push({ codigo: c.codigo, nombre: c.nombre });
       guardar();
     },
+    // --- la Travesia: los records de los amigos ---
+    // La tabla: los amigos y el record propio (marcado con "mio"), de mayor a menor. Sin record propio, solo los amigos.
+    travesiaTabla: () => {
+      const lista = datos.travesiaAmigos.filter((x) => x.km > 0).map((x) => ({ ...x }));
+      const mio = Number(datos.gustos && datos.gustos.travesiaKm) || 0;
+      if (mio > 0) lista.push({ nombre: datos.nombre || 'Vos', km: mio, auto: datos.auto, mio: true });
+      return lista.sort((a, b) => b.km - a.km);
+    },
+    // Alguien que llego por un link ("#t=nombre.km"): { nombre, km, auto }. Si ya se lo conocia por un club, manda el servidor.
+    anotarAmigoTravesia: (r) => {
+      const nombre = limpio(r.nombre), km = Math.round(Number(r.km) * 100) / 100;
+      if (!nombre || !(km > 0 && km <= 1000) || nombre === datos.nombre) return false;   // (si es mi nombre, es mi propio link)
+      const lista = datos.travesiaAmigos, viejo = lista.find((x) => x.nombre === nombre);
+      if (viejo) { viejo.link = true; if (!viejo.j && km > viejo.km) viejo.km = km; }
+      else lista.push({ nombre, km, auto: r.auto || '', link: true });
+      ordenarKm(); guardar();
+      return true;
+    },
+    // La tabla de la Travesia de un club, como la manda el servidor: se mezcla con lo que ya habia.
+    anotarTravesiaDelClub: (codigo, tabla) => {
+      const lista = datos.travesiaAmigos;
+      for (const x of lista) if (x.de) x.de = x.de.filter((c) => c !== codigo);
+      for (const r of tabla) {
+        if (r.mio || !r.j || !(r.km > 0)) continue;   // (lo propio ya esta aca)
+        let v = lista.find((x) => x.j === r.j) || lista.find((x) => !x.j && x.nombre === r.nombre);
+        if (!v) { v = {}; lista.push(v); }
+        Object.assign(v, { nombre: r.nombre, km: r.km, auto: r.auto || '', j: r.j });
+        v.de = [...new Set([...(v.de || []), codigo])];
+      }
+      ordenarKm(); guardar();
+    },
     // al salir de un club, de las tablas se va la gente que solo se conocia por ese club (y de la lista, sus pistas: salvo
     // las que armaste vos o abriste, que se pueden seguir corriendo con el link)
     sacarClub: (codigo) => {
       datos.clubes = (datos.clubes || []).filter((x) => x.codigo !== codigo);
+      for (const x of datos.travesiaAmigos) if (x.de) x.de = x.de.filter((c) => c !== codigo);
+      ordenarKm();
       for (const n in datos.dias) {
         const d = datos.dias[n];
         for (const r of d.club) if (r.de) r.de = r.de.filter((c) => c !== codigo);

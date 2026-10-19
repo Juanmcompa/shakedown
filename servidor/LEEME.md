@@ -60,6 +60,8 @@ Con el servidor de prueba andando, abrir el juego local con `?servidor=http://12
 
 De cada pasada: el apodo, el tiempo, los colores de los sectores, el auto, si usó ayuda de manejo y el recorrido grabado. Es lo mismo que viaja en un link largo (que incluye hasta diez tiempos de otros que a ese jugador le llegaron por link; los de sus clubes, no). De cada club: su nombre, quiénes están y el apodo de cada uno (el último que usó: si se lo cambia, cambia en la tabla).
 
+Del récord de la Travesía (el modo sin fin): una sola fila por corredor, con su número de corredor, su apodo, el mejor récord en km (de 0 a 1.000) y el código de su auto. Nada de pista ni de recorrido: en la Travesía el camino sale distinto cada vez, así que no hay fantasma. Solo se pisa con un récord mayor. Esa tabla es nueva: en la base que ya está publicada se crea sola la primera vez que el servidor se despierta con este cambio (igual que las demás), sin migración y sin tocar lo que ya hay.
+
 No hay cuentas, mails ni contraseñas. Cada aparato inventa una llave larga al azar; el servidor guarda solo su huella, que hace de número de corredor. Como nadie más conoce la llave, nadie puede subir tiempos a nombre de otro. La contra: el mismo jugador en dos aparatos son dos corredores.
 
 No guarda direcciones de internet. Para los topes cuenta los pedidos de cada conexión, pero de la conexión anota solo tres letras de una huella, que comparten miles de direcciones distintas, y las borra a los dos días. (Aparte, Cloudflare lleva su propio registro de visitas, como cualquier servicio de internet.)
@@ -80,7 +82,7 @@ Una pista de la comunidad se arma acá también antes de guardarla (armar el cam
 
 No revisa que la pasada se haya manejado de verdad. Alguien que sepa programar puede fabricar una, o mentir desde qué página viene. Alcanza para clubes de amigos; no para un ranking con premios: para eso haría falta que el servidor repita cada pasada con el mismo motor del juego, y cuentas de usuario.
 
-Los topes están arriba de todo en `worker.js` (`LIMITES`). Por día y desde una misma conexión: 3.000 pasadas, 60 clubes nuevos, 600 ingresos a clubes y 40 pistas publicadas. Entre todos: 12.000 pasadas y 1.500 pistas por día. Además, 30 clubes por corredor, 100 corredores por club, 5 pistas vigentes por corredor (si quiere otra, borra una) y 30 por club. Los topes por conexión son holgados a propósito: un colegio con el mismo wifi, o mucha gente de la misma compañía de celular, salen a internet con la misma dirección.
+Los topes están arriba de todo en `worker.js` (`LIMITES`). Por día y desde una misma conexión: 3.000 pasadas, 60 clubes nuevos, 600 ingresos a clubes, 40 pistas publicadas y 600 récords de la Travesía. Entre todos: 12.000 pasadas, 1.500 pistas y 20.000 récords de la Travesía por día. Además, 30 clubes por corredor, 100 corredores por club, 5 pistas vigentes por corredor (si quiere otra, borra una) y 30 por club. Los topes por conexión son holgados a propósito: un colegio con el mismo wifi, o mucha gente de la misma compañía de celular, salen a internet con la misma dirección.
 
 ## Mirar o borrar datos
 
@@ -122,6 +124,8 @@ Todo va y viene como JSON.
 | `POST /clubes/<codigo>/entrar` | `{ llave, apodo }` | lo mismo |
 | `POST /clubes/<codigo>/salir` | `{ llave }` | `{ listo: true }` |
 | `POST /tablas` | `{ llave, pista, version, clubes: [códigos] }` | de cada club: nombre, cuántos son, la tabla, quiénes faltan correr y sus pistas vigentes |
+| `POST /travesia` | `{ llave, nombre, km, auto }` | guarda el récord de km de la Travesía si supera el anterior: `{ km, nuevo }` |
+| `POST /travesias` | `{ llave, clubes: [códigos] }` | de cada club: su nombre y el récord de cada miembro (`{ j, nombre, km, auto, mio }`), de mayor a menor; `null` si el club ya no existe |
 | `POST /pistas` | `{ llave, nombre, apodo, club, hoja }` | publica una pista de la comunidad: `{ numero, version, nombre, autor, club, vence }` |
 | `GET /pistas/<numero>` | | `{ numero, version, nombre, autor, club, clubNombre, hoja, vence, tabla }`: la pista y el mejor tiempo de cada uno. 410 si venció o la borraron |
 | `POST /pistas/<numero>/borrar` | `{ llave }` | `{ borrada: true }` (solo quien la armó) |

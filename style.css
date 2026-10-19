@@ -729,4 +729,39 @@ html.sin-tablero .placa.marcha { visibility: hidden; }
 .tf-cartas { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; max-width: 30rem; }
 .tf-cartas .icono { width: 34px; height: 34px; padding: 4px; border-radius: 6px; background: rgba(255, 255, 255, .08); }
 .travesia-fin .botones { justify-content: center; margin-top: 6px; }
+/* los records de los amigos en la Travesia (sin fantasma): una tabla chica en el resultado */
+.tf-amigos { width: min(26rem, 100%); display: grid; gap: 4px; text-align: left; }
+.tf-amigos h3 { display: flex; align-items: center; gap: 6px; font: 700 15px/1 var(--titulos); text-transform: uppercase; letter-spacing: .06em; opacity: .85; }
+.tf-amigos h3 .icono { width: 16px; height: 16px; }
+.tf-tabla { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.tf-tabla li { display: grid; grid-template-columns: 1.4em auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 10px; background: rgba(255, 255, 255, .08); font-size: 16px; }
+.tf-tabla li.mio { box-shadow: inset 3px 0 0 var(--amarillo); background: rgba(242, 194, 0, .12); }
+.tf-tabla .puesto { font: 700 17px/1 var(--titulos); }
+.tf-tabla .quien { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tf-tabla .quien .codigo-auto { margin-left: 6px; font-size: 12px; opacity: .85; vertical-align: 1px; }
+.tf-tabla b { font: 800 19px/1 var(--titulos); font-variant-numeric: tabular-nums; color: var(--amarillo); }
+.tf-nombre { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
+.tf-nombre input { width: 9em; padding: 5px 8px; font: 600 16px/1.2 var(--texto); color: #fff; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .3); border-radius: 4px; }
+@media (max-height: 760px) { .tf-tabla li { padding: 3px 10px; font-size: 15px; } .tf-km { font-size: clamp(54px, 13vw, 100px); } }
+/* en Circuitos > Aventura: los tres primeros de la Travesia, en una linea, y el boton de la guia */
+.circuitos li.tv-amigos { display: flex; flex-wrap: wrap; gap: 3px 12px; padding: 5px 10px 6px; background: rgba(255, 255, 255, .05); font-size: 14px; }
+.tv-puesto { display: inline-flex; align-items: baseline; gap: 5px; }
+.tv-puesto i { font: 700 13px/1 var(--titulos); font-style: normal; opacity: .65; }
+.tv-puesto b { font: 800 16px/1 var(--titulos); color: var(--amarillo); }
+.tv-puesto.mio > span { color: #fff; box-shadow: inset 0 -2px 0 var(--amarillo); }
+.circuitos li.tv-guia { text-align: right; }
+.circuitos li.tv-guia button { padding: 4px 8px 5px; font-size: 14px; }
+/* el aviso de un link de la Travesia: arriba, con el boton para ir al modo */
+.cartel-tv { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 12; width: min(30rem, 100vw - var(--mi) - var(--md)); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; padding: 10px 40px 10px 14px; background: #15171b; border-radius: 10px; box-shadow: inset 0 0 0 2px var(--amarillo), 0 10px 30px rgba(0, 0, 0, .55); }
+.cartel-tv p { font: 700 20px/1.15 var(--titulos); }
+.cartel-tv .con-texto { padding: 8px 12px 9px; font-size: 17px; }
+body:has(#panel:not([hidden])) .cartel-tv { visibility: hidden; }   /* (con un panel abierto, el aviso espera) */
+@media (max-width: 420px) { .cartel-tv { grid-template-columns: 1fr; } .cartel-tv .con-texto { justify-self: start; } }
+/* la guia de la Travesia: la misma tarjeta del tutorial, en el medio de la pantalla */
+.guia-tv { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 72px var(--md) 24px var(--mi); background: rgba(6, 7, 8, .78); overflow-y: auto; }
+.guia-tv .tut-tarjeta { position: relative; left: auto; top: auto; }
+.guia-iconos { display: flex; flex-wrap: wrap; gap: 8px; }
+.guia-iconos .icono { width: 54px; height: 54px; padding: 8px; border-radius: 8px; background: rgba(255, 255, 255, .09); }
+@media (max-width: 600px) { .guia-tv { place-items: center; } .guia-iconos .icono { width: 48px; height: 48px; padding: 7px; } }
+@media (max-height: 480px) { .guia-tv { padding-top: 24px; } .guia-iconos .icono { width: 40px; height: 40px; padding: 5px; } }
 #tfCompartido { min-height: 1.35em; font-size: 14px; overflow-wrap: anywhere; max-width: 32rem; }

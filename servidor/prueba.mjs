@@ -245,6 +245,86 @@ if (!BASE) {
   LIMITES.pistasPorConexion = topes.pistasPorConexion;
 }
 
+// --- la Travesia: el record de km de cada uno, y la tabla de los clubes (sin pista ni fantasma) ---
+{
+  const tv = (llaveDe, cuerpo, cabeza) => pedir('POST', '/travesia', { llave: llaveDe, ...cuerpo }, cabeza);
+  r = await tv(LA, { nombre: 'Ana', km: 23.456, auto: '431' });
+  ver('guarda el record de la Travesia', r.estado === 200 && r.cosa.nuevo === true && r.cosa.km === 23.46, r);
+  r = await tv(LA, { nombre: 'Ana', km: 10, auto: '431' });
+  ver('un record peor no pisa al mejor', r.estado === 200 && r.cosa.nuevo === false && r.cosa.km === 23.46, r);
+  r = await tv(LA, { nombre: 'Ana', km: 23.46, auto: '431' });
+  ver('uno igual tampoco cuenta como nuevo', r.estado === 200 && r.cosa.nuevo === false && r.cosa.km === 23.46, r);
+  r = await tv(LA, { nombre: 'Ana', km: 31.2, auto: '323' });
+  ver('uno mayor si lo pisa (y cambia el auto)', r.estado === 200 && r.cosa.nuevo === true && r.cosa.km === 31.2, r);
+  r = await tv(LB, { nombre: 'Beto', km: 12.5, auto: '333' });
+  ver('otro corredor tiene su propio record', r.estado === 200 && r.cosa.km === 12.5, r);
+  r = await tv(LC, { nombre: 'Caro', km: 40, auto: 'x-<b>' });
+  ver('un auto con letras raras se guarda vacio, sin romper nada', r.estado === 200 && r.cosa.km === 40, r);
+  // lo que no se acepta
+  const malos = [[{ nombre: 'Ana', km: 0 }, 'cero km'], [{ nombre: 'Ana', km: -5 }, 'km negativos'], [{ nombre: 'Ana', km: 1000.5 }, 'mas de mil km'], [{ nombre: 'Ana', km: '30' }, 'km como texto'],
+    [{ nombre: 'Ana', km: null }, 'km vacios'], [{ nombre: 'Ana' }, 'sin km'], [{ nombre: '', km: 5 }, 'sin nombre'], [{ nombre: '‏\u0007  ', km: 5 }, 'un nombre de puras marcas invisibles']];
+  for (const [c, que] of malos) { r = await tv(LA, c); ver('no acepta ' + que, r.estado === 400, r); }
+  r = await tv(LA, { nombre: 'Ana', km: 1000 });
+  ver('mil km justos si son validos (pero no pisan a 31,2)', r.estado === 200 && r.cosa.nuevo === true && r.cosa.km === 1000, r);
+  await tv(LA, { nombre: 'Ana', km: 31.2 });   // (no pisa: sigue en 1000. Se arma otro corredor para lo que sigue)
+  r = await pedir('POST', '/travesia', { nombre: 'Ana', km: 5 });
+  ver('sin llave no guarda', r.estado === 400, r);
+  r = await pedir('POST', '/travesia', { llave: 'corta', nombre: 'Ana', km: 5 });
+  ver('con una llave mal formada no guarda', r.estado === 400, r);
+  r = await pedir('POST', '/travesia', { llave: LA, nombre: 'Ana', km: 5 }, { origin: 'https://otro.sitio' });
+  ver('desde otra pagina no deja escribir', BASE && !/\/\/(localhost|127\.0\.0\.1)[:/]/.test(BASE + '/') ? true : r.estado === 403, r);
+  r = await pedir('POST', '/travesia', { llave: llave('k') + sufijo, nombre: '  <i>Kiko</i>‏  de la\u0007 duna largisima', km: 3 });
+  ver('el nombre se limpia como en lo demas (14 letras, sin marcas invisibles)', r.estado === 200, r);
+  // las tablas de los clubes: A, B y C estan en el club de arriba
+  r = await pedir('POST', '/travesias', { llave: LB, clubes: [club, 'noexiste1', 'no es codigo'] });
+  const tb = r.cosa && r.cosa.clubes && r.cosa.clubes[club];
+  ver('la tabla de la Travesia del club sale de mayor a menor, con los km de cada uno', r.estado === 200 && tb && tb.tabla.length >= 2 && tb.tabla.every((x, k, a) => !k || a[k - 1].km >= x.km), r);
+  ver('lleva nombre, km y auto de cada uno, y marca el record propio', tb && tb.tabla.some((x) => x.nombre === 'Beto' && x.km === 12.5 && x.auto === '333' && x.mio === true) && tb.tabla.filter((x) => x.mio).length === 1, tb);
+  ver('y no lleva ni la llave ni nada de fantasma o pista', tb && tb.tabla.every((x) => Object.keys(x).every((k) => ['j', 'nombre', 'km', 'auto', 'mio'].includes(k))), tb);
+  ver('un club que no existe vuelve como null', r.cosa && r.cosa.clubes.noexiste1 === null && !('no es codigo' in r.cosa.clubes), r);
+  ver('el record de Ana (la mejor marca) figura con su apodo de club', tb && tb.tabla.some((x) => x.nombre === 'Anita' && x.km === 1000), tb && tb.tabla);
+  // el nombre cambia en el club aunque no haya record nuevo
+  await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Betito' });
+  r = await pedir('POST', '/travesias', { llave: LA, clubes: [club] });
+  ver('si alguien cambia su apodo en el club, la tabla de la Travesia lo muestra', r.cosa.clubes[club].tabla.some((x) => x.nombre === 'Betito' && x.km === 12.5), r.cosa.clubes[club].tabla);
+  await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Beto' });
+  r = await pedir('POST', '/travesias', { llave: llave('q') + sufijo, clubes: [club] });
+  ver('mirar la tabla sin estar en el club anda, y nada es "mio"', r.estado === 200 && r.cosa.clubes[club].tabla.every((x) => !x.mio), r);
+  r = await pedir('POST', '/travesias', { clubes: 'no es lista' });
+  ver('pedir tablas con un pedido raro da una salida vacia', r.estado === 200 && Object.keys(r.cosa.clubes).length === 0, r);
+  // con la gente que sale del club, sus km dejan de figurar ahi
+  await pedir('POST', '/clubes/' + club + '/salir', { llave: LC });
+  r = await pedir('POST', '/travesias', { llave: LA, clubes: [club] });
+  ver('quien sale del club ya no figura en su tabla de la Travesia', !r.cosa.clubes[club].tabla.some((x) => x.nombre === 'Caro'), r.cosa.clubes[club].tabla);
+  await pedir('POST', '/clubes/' + club + '/entrar', { llave: LC, apodo: 'Caro' });
+  // las tablas viejas siguen andando igual: la Travesia no toca la tabla de pasadas
+  r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: 1, clubes: [club] });
+  ver('la tabla de la pista del dia sigue como siempre', r.estado === 200 && r.cosa.clubes[club] && Array.isArray(r.cosa.clubes[club].tabla), r.estado);
+  // la base que ya estaba publicada gana la tabla sola, sin migracion (solo con el programa directo: ahi se ve la base)
+  if (!BASE) {
+    await env.DB.exec('DROP TABLE travesias');
+    r = await tv(LA, { nombre: 'Ana', km: 7 });
+    ver('si la tabla todavia no existe (base vieja), se crea sola y guarda', r.estado === 200 && r.cosa.km === 7, r);
+    r = await pedir('POST', '/travesias', { llave: LA, clubes: [club] });
+    ver('y la tabla de clubes tambien contesta', r.estado === 200 && r.cosa.clubes[club] && r.cosa.clubes[club].tabla.length === 1, r);
+    // (la forma de la base: una fila por corredor, con el km y la fecha)
+    const col = (await env.DB.prepare("SELECT name FROM pragma_table_info('travesias')").all()).results.map((x) => x.name).sort().join();
+    ver('la tabla guarda solo corredor, nombre, km, auto y fecha (nada mas de la gente)', col === 'auto,creado,jugador,km,nombre', col);
+  }
+}
+if (!BASE) {
+  const topesT = { ...LIMITES };
+  LIMITES.travesiasPorConexion = 2;
+  const estT = [];
+  for (let k = 0; k < 4; k++) estT.push((await pedir('POST', '/travesia', { llave: llave('u') + sufijo + k, nombre: 'Lim' + k, km: 5 + k }, { 'cf-connecting-ip': '5.5.5.5' })).estado);
+  ver('frena a la conexion que manda demasiados records', estT.join() === '200,200,429,429', estT);
+  ver('pero no frena a otra conexion', (await pedir('POST', '/travesia', { llave: llave('u') + sufijo + 9, nombre: 'Otro', km: 9 }, { 'cf-connecting-ip': '5.5.5.6' })).estado === 200);
+  LIMITES.travesiasPorConexion = topesT.travesiasPorConexion;
+  LIMITES.travesiasPorDia = 0;
+  ver('con el cupo del dia agotado no recibe mas', (await pedir('POST', '/travesia', { llave: llave('u') + sufijo + 8, nombre: 'Tarde', km: 9 }, { 'cf-connecting-ip': '5.5.5.7' })).estado === 429);
+  LIMITES.travesiasPorDia = topesT.travesiasPorDia;
+}
+
 // --- quien puede usarlo desde un navegador ---
 r = await pedir('GET', '/', undefined, { origin: 'https://juanmcompa.github.io' });
 ver('el juego publicado puede', r.cabeza.get('access-control-allow-origin') === 'https://juanmcompa.github.io', r.cabeza.get('access-control-allow-origin'));

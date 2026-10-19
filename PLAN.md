@@ -92,6 +92,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Travesía: modo infinito que sale distinto en cada largada, con suelos nuevos (arena y fesh-fesh), médanos y ríos. Cartas cada 2 km (18 para empezar: averías, mejoras y mezclas), fin por daño, por quedarse parado o por batería, récord en el aparato y mensaje para compartir
 - [x] Circuitos en categorías: Pista del día, Oficiales, Reales (tramos de verdad), Aventura (la Travesía) y Comunidad al final. La Travesía se entra desde ahí, siempre en rally serio y con la trazada prendida
 - [x] Travesía de supervivencia: solo problemas (32 averías), más barro, ríos, pedregales y médanos, y estética de desierto (arena ocre, acacias, torres de roca, sol bajo, polvareda grande, rodadas en la arena)
+- [x] Travesía con amigos: link sin pista (`#t=nombre.km`), récords de clubes y links guardados en el servidor (tabla `travesias`), tabla en Aventura y al terminar, y guía de la primera vez con los personajes
 
 ## Lo que sigue
 

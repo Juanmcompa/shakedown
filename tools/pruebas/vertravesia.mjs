@@ -295,7 +295,12 @@ async function probar(nombre, ancho, alto, contexto) {
   ver('y las cartas que se juntaron', fin.cartas === e.cartas.length, fin);
   await P.screenshot({ path: 'out/travesia-' + nombre + '-5-fin.png' });
   ver('el record queda guardado en el aparato', (await est(P)).record >= KM - 0.1, await est(P));
-  // compartir
+  // compartir: sin nombre no se comparte (pide el nombre); con nombre, el link lleva solo quien es y cuantos km
+  await P.evaluate(async () => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true }); document.getElementById('tfCompartir').click(); await new Promise((r) => setTimeout(r, 150)); });
+  ver('sin nombre, compartir lo pide', /nombre/i.test(await P.evaluate(() => document.getElementById('tfCompartido').textContent)));
+  await P.fill('#tfNombre', 'Ana Maria');
+  await P.press('#tfNombre', 'Enter');
+  ver('el nombre se puede poner en el resultado', await P.evaluate(() => window.shakedown.club.nombre()) === 'Ana Maria');
   const texto = await P.evaluate(async () => {
     let dicho = '';
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { dicho = t; } }, configurable: true });
@@ -305,6 +310,8 @@ async function probar(nombre, ancho, alto, contexto) {
   });
   ver('compartir arma el mensaje "Shakedown Travesía 🏜️ km 🃏n"', /^Shakedown Travesía 🏜️ \d+,\d km 🃏\d+ \S+\n/.test(texto), texto);
   console.log('    ' + texto.split('\n').slice(0, 2).join(' | '));
+  const km100 = Math.round((await est(P)).record * 100);
+  ver('y el ultimo renglon es un link generico: solo quien y cuantos km (#t=Nombre.km), sin pista ni fantasma', texto.split('\n').pop().endsWith('#t=Ana%20Maria.' + km100) && !/#r=|\?p=|\?c=/.test(texto), texto.split('\n').pop());
 
   // otra corrida: no tapa el record con uno peor
   await P.click('#tfOtra');
