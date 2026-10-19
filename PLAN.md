@@ -88,10 +88,12 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Para trabajar con Claude: `CLAUDE.md` con las reglas del proyecto, un subagente por área del juego (`.claude/agents/`) y las pruebas en `tools/pruebas/`
 - [x] Los tiempos se guardan solos al terminar, sin compartirlos: el resultado dice si quedó guardado y en qué tabla; sin señal (o si se cierra el juego enseguida) se reintenta solo. Un abandono dice DNF en las tablas, en la portada, en el resultado y en lo que se comparte; también la oficial que quedó cortada porque se cerró el juego
 - [x] Ícono nuevo para el botón de circuitos: un mapa con tres lugares marcados. El de antes (una vuelta cerrada, como una O) no se entendía: la gente no se daba cuenta de que ahí había más pistas
+- [x] Efectos de manejo: humo o tierra al frenar y derrapar (del color del suelo), barro que se acumula en la carrocería (todos los modelos), huellas que se marcan más con las pasadas, ráfagas de viento en las plantas y hojas que vuelan
 
 ## Lo que sigue
 
 - Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).
+- Faros y luces de freno que se noten más al atardecer y con niebla.
 - El recorrido exacto de Mina Clavero – Giulio Cesare, si se consigue el trazado del mapa (OpenStreetMap estuvo bloqueado).
 
 1. **Más variedad en la pista del día:** anchos que cambian (ruta ancha, camino vecinal, huella angosta), pedazos de asfalto entre casas, puentes; y cornisas más cortas y con pirca en las curvas.

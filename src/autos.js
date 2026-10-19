@@ -8,6 +8,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { crearAtlas, crearLote, textura, tono } from './pixel.js';
 import { conEstilo } from './material.js';
+import { SUELO, SUELOS } from './config.js';
 
 const PX = 8;   // pixeles por metro
 const N = ['#131316', '#1e1f23', '#2c2e33', '#44474e', '#676b73'];   // negros y grises, de oscuro a claro
@@ -607,7 +608,11 @@ function modelo(id, q) {
     }
     if (q.velo) { x.fillStyle = q.velo; x.fillRect(0, 0, atlas.ancho, atlas.alto); }
   }
-  const hecho = { atlas, geo: lote.geometria(atlas), mat: new THREE.MeshLambertMaterial({ map: atlas.textura() }), M };
+  // una copia del dibujo limpio: al largar de nuevo, el auto vuelve a estar sin barro
+  const limpio = document.createElement('canvas');
+  limpio.width = atlas.ancho; limpio.height = atlas.alto;
+  limpio.getContext('2d').drawImage(atlas.lienzo, 0, 0);
+  const hecho = { atlas, geo: lote.geometria(atlas), mat: new THREE.MeshLambertMaterial({ map: atlas.textura() }), M, vistas, limpio, alto };
   hechos.set(q, hecho);
   return hecho;
 }
@@ -641,7 +646,7 @@ function piezasDeRueda(radio, ancho) {
 // Arma un auto. C: sus medidas (de config.js; "modelo" dice cual es). q: la pintura (por defecto, la de rally de ese modelo).
 export function armarAuto(C, q) {
   const id = MODELOS[C.modelo] ? C.modelo : 'vitarita';
-  const grupo = new THREE.Group(), { geo, mat, M } = modelo(id, q || PINTURAS[id]), r = piezasDeRueda(C.radio, M.rueda);
+  const grupo = new THREE.Group(), modeloHecho = modelo(id, q || PINTURAS[id]), { geo, mat, M } = modeloHecho, r = piezasDeRueda(C.radio, M.rueda);
   const cuerpo = new THREE.Mesh(geo, mat);
   cuerpo.castShadow = true;
   cuerpo.position.z = C.centro || 0;   // el modelo esta centrado entre los ejes; el centro de masa queda un poco mas adelante
@@ -656,7 +661,7 @@ export function armarAuto(C, q) {
     grupo.add(pivote);
     ruedas.push({ pivote, rueda: goma });
   }
-  return { grupo: conEstilo(grupo), ruedas, cuerpo };
+  return { grupo: conEstilo(grupo), ruedas, cuerpo, hecho: modeloHecho };
 }
 
 // Un auto del publico, estacionado: cualquiera de los tres modelos, en un color de calle. Devuelve el grupo y a que altura va su centro.
@@ -666,10 +671,54 @@ export function armarEstacionado(n) {
   return { grupo: armarAuto(medidas, deCalle(n)).grupo, alto: medidas.radio - medidas.alto };
 }
 
+// --- el barro en la carrocería: a medida que anda por lo blando o por agua, se van pintando manchas de abajo hacia arriba ---
+// Se pinta sobre el mismo lienzo del auto (sin materiales ni objetos nuevos) y se avisa a la placa de video unas pocas veces por segundo.
+const MANCHA = { barro: ['#5a2f1b', '#6e3a22', '#4a2616', '#7d4a2c'], tierra: ['#8a5636', '#a06a44', '#74472b'], ripio: ['#a8946e', '#bba682', '#8f7d5c'], pasto: ['#6b6a3c', '#7d7c4a', '#58572f'], agua: ['#6e5a45', '#7d6a54', '#5c4a38'] };
+function ensuciador(h) {
+  const x = h.atlas.lienzo.getContext('2d'), zonas = ['px', 'nx', 'nz', 'pz', 'py'].map((k) => h.vistas[k]);
+  const PESO = [3, 3, 1.5, 1.5, 4], TOTAL = zonas.reduce((a, z, i) => a + z.w * z.h * 0.2 * (PESO[i] / 3), 0);   // cuantos pixeles de mancha tiene el auto totalmente sucio
+  let nivel = 0, pintado = 0, sin = 0, a = 12345;
+  const azar = () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296);
+  function limpiar() {
+    nivel = pintado = sin = 0;
+    x.clearRect(0, 0, h.atlas.ancho, h.atlas.alto); x.drawImage(h.limpio, 0, 0);
+    h.atlas.textura().needsUpdate = true;
+  }
+  function sumar(c, dt) {
+    // cuanto se ensucia segun lo que pisa cada rueda (el barro, mucho; el agua y la tierra, menos) y la velocidad
+    const vh = Math.hypot(c.vel[0], c.vel[2]), rapido = Math.min(1, vh / 8);
+    let gana = 0, clase = 'barro';
+    for (const r of c.ruedas) {
+      if (!r.toca) continue;
+      const s = SUELO[r.suelo], g = s.blando >= 0.9 ? (c.agua > 0.05 ? 0.7 : 1.4) : c.agua > 0.05 ? 0.6 : s.id === SUELOS.tierra.id ? 0.35 : s.id === SUELOS.pasto.id ? 0.12 : s.id === SUELOS.ripio.id ? 0.15 : 0;
+      if (g > 0) { gana += g; clase = c.agua > 0.05 ? 'agua' : s.id === SUELOS.tierra.id ? 'tierra' : s.id === SUELOS.pasto.id ? 'pasto' : s.id === SUELOS.ripio.id ? 'ripio' : 'barro'; }
+    }
+    nivel = Math.min(1, nivel + gana * rapido * dt * 0.02);
+    sin += dt;
+    if (sin < 0.25 || nivel * TOTAL - pintado < 1) return;   // como mucho 4 veces por segundo
+    sin = 0;
+    const paleta = MANCHA[clase], cuantos = Math.min(40, Math.floor(nivel * TOTAL - pintado));
+    for (let n = 0; n < cuantos; n++) {
+      let t = azar() * 13, i = 0;
+      while (i < 4 && (t -= PESO[i]) > 0) i++;
+      const z = zonas[i], arriba = i === 4;
+      // de abajo hacia arriba: cuanto mas sucio, mas alto llegan; la mayoria queda cerca del piso
+      const techo = arriba ? 1 : 0.18 + 0.5 * nivel, yy = arriba ? Math.floor(azar() * z.h) : z.h - 1 - Math.floor(azar() * azar() * z.h * techo);
+      x.fillStyle = paleta[Math.floor(azar() * paleta.length)];
+      x.fillRect(z.x + Math.floor(azar() * z.w), z.y + yy, azar() < 0.25 ? 2 : 1, 1);
+    }
+    pintado += cuantos;
+    h.atlas.textura().needsUpdate = true;
+  }
+  return { sumar, limpiar };
+}
+
 const mFreno = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 0.22, 0.12) });   // tan fuerte que deja resplandor
 export function crearDibujo(escena, C) {
-  const { grupo, ruedas } = armarAuto(C), M = MODELOS[C.modelo] || VITARITA;
+  const { grupo, ruedas, hecho } = armarAuto(C), M = MODELOS[C.modelo] || VITARITA;
   escena.add(grupo);
+  const suciedad = ensuciador(hecho);
+  suciedad.limpiar();
   // las luces de freno: dos chapitas rojas en la cola, que se prenden al frenar
   const frenos = new THREE.Group();
   for (const [x, y, z, w, h] of M.frenos || []) {
@@ -680,7 +729,8 @@ export function crearDibujo(escena, C) {
   frenos.visible = false;
   grupo.add(frenos);
 
-  function actualizar(c) {
+  function actualizar(c, dt = 0, sucia = false) {
+    if (sucia) suciedad.sumar(c, dt);
     grupo.position.fromArray(c.pos);
     grupo.quaternion.fromArray(c.q);
     c.ruedas.forEach((r, i) => {
@@ -690,7 +740,7 @@ export function crearDibujo(escena, C) {
     });
     frenos.visible = c.frenando;
   }
-  return { grupo, actualizar };
+  return { grupo, actualizar, limpiar: suciedad.limpiar };
 }
 
 // El fantasma del rival: su auto, translucido y sin sombra, con su nombre arriba.

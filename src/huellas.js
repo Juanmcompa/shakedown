@@ -47,10 +47,15 @@ export function crearHuellas(T, render) {
     textura.needsUpdate = true;
   }
 
-  function punto(x, y, v) {
+  // suma: si el pixel ya tenia una huella (otra pasada), se oscurece un poco mas, sin pasar de TOPE
+  const TOPE = 200;
+  function punto(x, y, v, suma = 0) {
     if (x < 0 || y < 0 || x >= W || y >= H) return;
     const k = y * W + x;
-    if (datos[k] >= v) return;
+    if (datos[k] >= v) {
+      if (!suma || datos[k] === 0 || datos[k] >= TOPE) return;
+      v = Math.min(TOPE, datos[k] + suma);
+    }
     datos[k] = v;
     if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
   }
@@ -58,7 +63,7 @@ export function crearHuellas(T, render) {
   return {
     textura, pintar,
     // marca el paso de la rueda i por el punto (x, z) del mundo. fuerza: de 0 a 1.
-    marcar: (i, x, z, fuerza) => {
+    marcar: (i, x, z, fuerza, suma = 0, ancho = false) => {
       const px = Math.floor(x * 4) - X0, py = Math.floor(z * 4) - Z0, v = Math.min(HUELLA_MAXIMA, Math.round(fuerza * 255)), u = ultimo[i];
       if (!u) { ultimo[i] = [px, py]; if (v > 0) punto(px, py, v); return; }
       if (u[0] === px && u[1] === py) { if (v > 0) punto(px, py, v); return; }
@@ -71,7 +76,8 @@ export function crearHuellas(T, render) {
           const e2 = 2 * err;
           if (e2 > -dy) { err -= dy; ax += sx; }
           if (e2 < dx) { err += dx; ay += sy; }
-          punto(ax, ay, v);
+          punto(ax, ay, v, suma);
+          if (ancho) punto(dx >= dy ? ax : ax + sx, dx >= dy ? ay + sy : ay, Math.round(v * 0.8));   // surco doble al derrapar
         }
       }
       u[0] = px; u[1] = py;

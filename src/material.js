@@ -13,6 +13,7 @@ export const ambiente = {
   camDer: { value: new THREE.Vector3(1, 0, 0) },              // hacia donde queda la derecha de la camara
   camAlto: { value: new THREE.Vector3(0, 1, 0) },             // el "arriba" de los sprites (inclinado hacia la camara)
   camMira: { value: new THREE.Vector3(0, 0, -1) },            // hacia donde mira la camara, sobre el piso
+  rafaga: { value: 0 },                                       // cuanto arrecia el viento en rafagas sobre las plantas (0 = solo el vaiven suave)
 };
 
 const CALADA = `
@@ -44,7 +45,7 @@ const SPRITE_CABEZA = `
   attribute vec2 aTam;
   attribute vec4 aUv, aDato;
   uniform vec3 uCamDer, uCamAlto, uCamMira;
-  uniform float uTiempoV;`;
+  uniform float uTiempoV, uRafaga;`;
 const SPRITE_FORMA = `
   vec3 transformed = aBase + uCamDer * (position.x * aTam.x) + uCamAlto * (position.y * aTam.y);
   float cuadroSprite = 0.0;
@@ -57,7 +58,9 @@ const SPRITE_FORMA = `
     transformed.y += festeja * abs(sin(pulso * 6.2832)) * 0.22 * aDato.y;
   } else {
     // plantas: la punta se mueve con el viento
-    transformed += uCamDer * (sin(uTiempoV * 1.7 + aDato.x * 40.0) * aDato.y * position.y * position.y);
+    // (las rafagas son una ola que cruza el campo: en un momento las plantas de un lado se doblan mas que las del otro)
+    float rafaga = pow(0.5 + 0.5 * sin(uTiempoV * 0.7 + (aBase.x * 0.8 + aBase.z * 0.5) * 0.11), 3.0);
+    transformed += uCamDer * (sin(uTiempoV * 1.7 + aDato.x * 40.0) * aDato.y * (1.0 + uRafaga * rafaga * 2.2) * position.y * position.y);
   }`;
 
 // Le agrega a un material lo comun a todo el mundo. Opciones:
@@ -67,7 +70,7 @@ const SPRITE_FORMA = `
 export function estilo(mat, o = {}) {
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uBajo: ambiente.bajo, uHueco: ambiente.hueco, uTiempo: ambiente.tiempo, uTiempoV: ambiente.tiempo, uCentro: ambiente.centro, uNiebla: ambiente.niebla,
-      uCamDer: ambiente.camDer, uCamAlto: ambiente.camAlto, uCamMira: ambiente.camMira }, o.datos);
+      uCamDer: ambiente.camDer, uCamAlto: ambiente.camAlto, uCamMira: ambiente.camMira, uRafaga: ambiente.rafaga }, o.datos);
     let v = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMundo;' + (o.sprite ? SPRITE_CABEZA : ''));
     if (o.sprite) {
       // (la forma se calcula al principio, donde van las coordenadas del dibujo, porque de ella sale que cuadro se muestra)

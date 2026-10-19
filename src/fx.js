@@ -29,22 +29,25 @@ function nube(p, lado, tupida, tonos) {
 }
 
 // seco: de 0 (llueve: no hay polvo) a 1.  viento: hacia donde se lo lleva, en m/s [x, z].
-export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3]) {
+// liviano: celular o tablet (menos hojas y menos humo).
+export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liviano = false) {
+  // el ajuste "efectos": apagado, no hay humo de frenada, hojas, ni huellas que se oscurecen o se ensanchan
+  let activo = true;
   // por rueda: si venia tocando el piso, cuanto barro lleva pegado (lo va dejando en lo que pisa despues) y cuanto falta para la proxima nube
   const rueda = [0, 1, 2, 3].map(() => ({ toca: false, barro: 0, x: 0, z: 0, falta: 0 }));
   const az = Math.random;
 
   // --- cubitos que saltan: barro y agua ---
-  const NP = 220, M = new THREE.Matrix4(), tmp = new THREE.Color();
+  const NP = 220, NE = 9, M = new THREE.Matrix4(), tmp = new THREE.Color();
   const motas = new THREE.InstancedMesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshLambertMaterial({ map: granito() }), NP);
   motas.frustumCulled = false;
-  const D = new Float32Array(NP * 8);   // x, y, z, vx, vy, vz, vida, tamano
+  const D = new Float32Array(NP * NE);   // x, y, z, vx, vy, vz, vida, tamano, gravedad
   for (let i = 0; i < NP; i++) { motas.setMatrixAt(i, M.makeScale(0, 0, 0)); motas.setColorAt(i, tmp); }
   escena.add(motas);
   let sig = 0;
-  function mota(x, y, z, vx, vy, vz, vida, tam, color, brillo) {
-    const o = sig * 8;
-    D[o] = x; D[o + 1] = y; D[o + 2] = z; D[o + 3] = vx; D[o + 4] = vy; D[o + 5] = vz; D[o + 6] = vida; D[o + 7] = tam;
+  function mota(x, y, z, vx, vy, vz, vida, tam, color, brillo, grav = 13) {
+    const o = sig * NE;
+    D[o] = x; D[o + 1] = y; D[o + 2] = z; D[o + 3] = vx; D[o + 4] = vy; D[o + 5] = vz; D[o + 6] = vida; D[o + 7] = tam; D[o + 8] = grav;
     motas.setColorAt(sig, tmp.setHex(color).multiplyScalar(brillo));
     motas.instanceColor.needsUpdate = true;
     sig = (sig + 1) % NP;
@@ -77,13 +80,32 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3]) {
     sigNube = (sigNube + 1) % NN;
   }
 
+  // --- hojas y pastitos: vuelan al pasar el auto rapido por el borde del camino ---
+  const HOJAS = { [SUELOS.pasto.id]: [0x6f8f45, 0x8a9a4a, 0xb0a050, 0x587a3a], [SUELOS.tierra.id]: [0x9a7a40, 0xa88b52, 0x7d6a3a], [SUELOS.ripio.id]: [0x9a7a40, 0xa88b52, 0x8a8a52] };
+  let debenHojas = 0;
+  function hojas(c, dt, vh) {
+    const paleta = HOJAS[c.suelo];
+    if (!paleta || vh < 6) return;
+    debenHojas += (vh - 6) / 14 * (liviano ? 2.5 : 5) * dt;
+    const d = c.derecha, f = c.adelante, p = c.ruedas[0].p;
+    while (debenHojas >= 1) {
+      debenHojas--;
+      const lado = az() < 0.5 ? -1 : 1, cerca = 1.6 + az() * 2.2, adel = (az() - 0.5) * 5;
+      mota(c.pos[0] + d[0] * lado * cerca + f[0] * adel, p[1] + 0.15, c.pos[2] + d[2] * lado * cerca + f[2] * adel,
+        c.vel[0] * 0.12 + d[0] * lado * 0.8 + viento[0] * 0.7, 1.4 + az() * 1.8, c.vel[2] * 0.12 + d[2] * lado * 0.8 + viento[1] * 0.7,
+        1.3 + az() * 0.7, 1, paleta[Math.floor(az() * paleta.length)], 0.85 + az() * 0.3, 1.8);
+    }
+  }
+
   function actualizar(c, dt) {
     const f = c.adelante, d = c.derecha, vh = Math.hypot(c.vel[0], c.vel[2]);
     c.ruedas.forEach((r, i) => {
       const w = rueda[i], s = SUELO[r.suelo];
       if (!r.toca) { if (w.toca) huellas.soltar(i); w.toca = false; return; }
       const vel = Math.abs(r.vl), mojado = c.agua > 0.05;
-      const resbala = Math.min(1, r.patina + r.cruza * 2.2);   // cuanto patina o va de costado esta rueda (0 a 1)
+      // traba: cuanto humea la rueda por frenar fuerte o por el freno de mano (solo lo ve quien tiene los efectos prendidos)
+      const traba = activo ? Math.min(1, (c.frenando && vh > 3 ? Math.min(1, (vh - 3) / 10) * c.freno * (r.delantera ? 0.75 : 1) : 0) + (c.mano && !r.delantera && vh > 3 ? Math.min(1, vh / 8) : 0)) : 0;
+      const resbala = Math.min(1, Math.max(r.patina + r.cruza * 2.2, traba * 0.85));   // cuanto patina o va de costado esta rueda (0 a 1)
       // el barro se pega a la cubierta y se va soltando en los metros siguientes (en el agua se lava)
       const paso = Math.hypot(r.p[0] - w.x, r.p[2] - w.z);
       w.x = r.p[0]; w.z = r.p[2];
@@ -91,11 +113,12 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3]) {
       if (s.blando >= 1) w.barro = 1;
       // huella: siempre que el piso sea blando, y bien marcada cuando la rueda resbala (hasta en el asfalto deja la goma)
       const fuerza = mojado ? 0 : Math.min(1, Math.max(s.blando * (0.7 + resbala * 0.6), w.barro * 0.5, resbala * 0.8));
-      huellas.marcar(i, r.p[0], r.p[2], fuerza < 0.12 ? 0 : fuerza);
+      // donde el piso es blando, cada pasada de mas oscurece la marca; al derrapar el surco se ensancha
+      huellas.marcar(i, r.p[0], r.p[2], fuerza < 0.12 ? 0 : fuerza, activo && s.blando >= 0.3 ? Math.round(18 + s.blando * 40) : 0, activo && resbala > 0.55 && s.blando > 0);
 
       // polvo: una nube cada tantos metros, mas seguido cuanto mas rapido va y cuanto mas resbala la rueda.
       // Lo levantan sobre todo las ruedas de atras; en el asfalto solo hay humo de goma si se va muy cruzado.
-      const levanta = mojado ? 0 : seco * (s.polvo * (0.4 + Math.min(1, vh / 16) * 0.6 + resbala * 1.3) + (s.blando === 0 ? Math.max(0, resbala - 0.45) * 1.6 : 0)) * (r.delantera ? 0.45 : 1);
+      const levanta = mojado ? 0 : seco * (s.polvo * (0.4 + Math.min(1, vh / 16) * 0.6 + resbala * 1.3) + (s.blando === 0 ? Math.max(0, resbala - 0.45) * 1.6 : 0) + traba * 1.2) * (r.delantera ? 0.45 + traba * 0.4 : 1);
       if (w.toca && paso < 3 && levanta > 0.02 && vh > 2.5) {
         w.falta -= paso * levanta;
         if (w.falta <= 0) {
@@ -107,7 +130,7 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3]) {
 
       // lo que salta: barro si patina o va rapido por lo blando, agua en el vado, y alguna piedrita cuando la rueda patina en seco
       const pesado = s.blando >= 0.9;
-      const cuanto = ((pesado ? r.patina * 1.3 + Math.min(1, vel / 9) * 0.5 : r.patina * 0.35 * s.blando) + (mojado ? Math.min(1, vel / 5) : 0)) * 45 * dt;
+      const cuanto = ((pesado ? Math.max(r.patina, traba * 0.8) * 1.3 + Math.min(1, vel / 9) * 0.5 : r.patina * 0.35 * s.blando) + (mojado ? Math.min(1, vel / 5) + traba * 0.5 : 0)) * 45 * dt;
       if (az() < cuanto) {
         const tira = -c.sentido * (1.5 + r.patina * 7), sube = 2 + az() * 3.5, abre = (az() - 0.5) * 3.2;
         mota(r.p[0], r.p[1] + 0.1, r.p[2],
@@ -115,12 +138,14 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3]) {
           pesado || mojado ? 0.75 : 0.45, 1 + Math.floor(az() * (pesado || mojado ? 3 : 1.5)), mojado ? 0xcfe3e6 : s.color, mojado ? 1 : 0.7 + az() * 0.3);
       }
     });
+    if (activo) hojas(c, dt, vh);
     huellas.subir();
 
     for (let i = 0; i < NP; i++) {
-      const o = i * 8;
+      const o = i * NE;
       if (D[o + 6] <= 0) continue;
-      D[o + 6] -= dt; D[o + 4] -= 13 * dt;
+      D[o + 6] -= dt; D[o + 4] -= D[o + 8] * dt;
+      if (D[o + 8] < 5) { D[o + 3] += Math.sin(D[o + 6] * 9 + i) * 3 * dt; D[o + 5] += Math.cos(D[o + 6] * 7 + i) * 3 * dt; }   // las hojas revolotean
       D[o] += D[o + 3] * dt; D[o + 1] += D[o + 4] * dt; D[o + 2] += D[o + 5] * dt;
       // el tamano va de a medio pixel (12,5 cm) y al final se achica de golpe, sin girar: son cubitos
       const t = D[o + 6] <= 0 ? 0 : D[o + 7] * (D[o + 6] < 0.12 ? 0.25 : 0.5);
@@ -149,6 +174,6 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3]) {
   // el auto cambio de lugar de golpe (una vuelta al camino): las huellas no se unen con las de antes
   function cortar() { rueda.forEach((w) => { w.toca = false; w.barro = 0; }); huellas.cortar(); }
   // al largar de nuevo: no queda polvo de la pasada anterior
-  function limpiar() { quienes.fill(null); aTam.array.fill(0); aTam.needsUpdate = true; for (let i = 0; i < NP; i++) D[i * 8 + 6] = 0; }
-  return { actualizar, cortar, limpiar };
+  function limpiar() { quienes.fill(null); aTam.array.fill(0); aTam.needsUpdate = true; for (let i = 0; i < NP; i++) D[i * NE + 6] = 0; }
+  return { actualizar, cortar, limpiar, prender: (v) => { activo = !!v; } };
 }

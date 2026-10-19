@@ -21,6 +21,7 @@ import { crearMundo } from './world.js';
 import { crearPost } from './post.js';
 import { crearDibujo, crearEspectro } from './autos.js';
 import { crearCamara } from './camera.js';
+import { ambiente } from './material.js';
 import { crearEfectos } from './fx.js';
 import { crearHuellas } from './huellas.js';
 import { crearTrazada } from './trazada.js';
@@ -180,11 +181,12 @@ huellas.pintar();   // la raya de largada, la meta y las lineas del asfalto
 const trazada = crearTrazada(T, escena, ref);   // la linea para seguir (se prende en la configuracion)
 // el polvo: no hay si llueve, y se lo lleva un viento suave que cambia con la pista
 const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
-const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento]), sonido = crearSonido(), hud = crearHud();
+const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento], liviano), sonido = crearSonido(), hud = crearHud();
 const post = crearPost(render, etapa.clima, liviano);
 const papelitos = crearPapelitos($('papelitos'));   // (los de la meta)
 // lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica).
 // La trazada, mientras nadie la toque, acompaña a la ayuda de manejo: con ayuda se ve, para entender por donde va a ir el auto.
+let conEfectos = true;   // el ajuste "efectos": barro en el auto, humo de frenada, hojas, rafagas en las plantas
 const gusto = (clave) => { const v = club.gusto(clave); return v !== undefined ? v : clave === 'trazada' ? !!gusto('ayuda') : GUSTOS[clave]; };
 
 await respiro('Preparando el auto…', 4);
@@ -458,7 +460,7 @@ function largar(conTutorial) {
   grabacion = crearGrabacion(T);
   copiloto.reiniciar();
   copiloto.voz(conVoz);
-  fx.cortar(); fx.limpiar();
+  fx.cortar(); fx.limpiar(); dibujo.limpiar();
   huellas.limpiar();
   papelitos.limpiar();
   camara.saltar();
@@ -619,7 +621,7 @@ const APLICAR = {
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
   pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
-  efectos: (v) => post.prender(!!v && !consulta.has('simple')),   // (?simple en la direccion tambien los saca)
+  efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
   sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
   voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); hud.prendido('voz', conVoz); },
 };
@@ -709,7 +711,7 @@ function cuadro(ahora) {
     }
   }
   else menu.prueba(teclas.inclinacion());   // (en la configuracion se puede probar la sensibilidad de la inclinacion)
-  dibujo.actualizar(c);
+  dibujo.actualizar(c, dt, conEfectos);
   fx.actualizar(c, dt);
   camara.seguir(c, dt);
   if (c.rompio.length) sonido.voltear(c.rompio, Math.abs(c.velocidad));   // lo que se lleva puesto suena (y el mundo lo tira: ver world.js)
@@ -773,11 +775,12 @@ window.addEventListener('online', () => { if (pantalla !== 'jugando') alVolver()
 if (enCasa) window.shakedown = {
   T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial, creador, comunidad, sonido, papelitos,
   auto: () => c,
+  dibujo: () => dibujo,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,
   saltearEspera: () => { if (tFin > 0) tFin = 0.001; },   // (para las pruebas) muestra el resultado sin esperar
   // (para las pruebas) maneja unos segundos con el volante y el pedal fijos, con la camara y los efectos siguiendolo
-  simular: (seg, x, y, mano = false) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano }, JUEGO.paso); if (i % 2) { fx.actualizar(c, JUEGO.paso * 2); camara.seguir(c, JUEGO.paso * 2); } } },
+  simular: (seg, x, y, mano = false) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano }, JUEGO.paso); if (i % 2) { fx.actualizar(c, JUEGO.paso * 2); dibujo.actualizar(c, JUEGO.paso * 2, conEfectos); camara.seguir(c, JUEGO.paso * 2); } } },
   avanzar: (dt) => { partida.paso(c, dt); if (partida.estado === 'corriendo' && partida.lanzado) grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
   salir: () => aLaPortada(),
   ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); partida.indice = i; fx.cortar(); camara.saltar(); },
