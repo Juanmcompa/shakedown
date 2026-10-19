@@ -30,6 +30,7 @@ import { crearTeclas } from './input.js';
 import { crearHud, tiempoFinal } from './hud.js';
 import { crearPapelitos } from './papelitos.js';
 import { configDe, codigoDe } from './partes.js';
+import { crearModoTravesia } from './travesia.js';
 
 const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 
@@ -41,7 +42,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '23';
+const PAGINA = '24';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -600,6 +601,7 @@ function atender(e) {
 }
 
 const teclas = crearTeclas((tecla) => {
+  if (travesia.activa() && travesia.tecla(tecla)) return;
   if (creador.abierto()) { if (tecla === 'Escape') creador.cerrar(); return; }   // (con el creador abierto, las teclas son del creador)
   if (tecla === 'Enter') { if (pantalla !== 'jugando' && !['BUTTON', 'INPUT', 'A'].includes(document.activeElement.tagName)) largar(); }
   else if (tecla === 'KeyR') { if (pantalla === 'jugando') partida.volver(c, 'pedido'); }
@@ -610,6 +612,15 @@ const teclas = crearTeclas((tecla) => {
   else if (tecla === 'KeyT') { ajustar('trazada', !gusto('trazada')); if (pantalla === 'jugando') hud.aviso(conTrazada ? 'Trazada' : 'Sin trazada', 1.2); }
 });
 
+// --- la Travesia: un modo aparte (ver travesia.js). Usa su propia escena y su propio auto; la pista del dia no se toca ---
+const travesia = crearModoTravesia({
+  render, post, liviano, club, sonido, hud, teclas, raiz,
+  portada: (si) => menu.portada(si),
+  mandos: () => { if (!tactil && teclas.esTactil()) mandosDeCelular(); },
+  voz: () => conVoz,
+  camara: () => club.gusto('camara'),
+});
+
 // --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
 const APLICAR = {
   // (el auto se arma de nuevo, salvo que ya este corriendo: en la largada, mientras dura el tutorial, todavia se puede)
@@ -617,13 +628,13 @@ const APLICAR = {
   ayuda: (v) => { conAyuda = !!v; if (conAyuda && gusto('serio')) { club.gusto('serio', false); conSerio = false; } if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); APLICAR.trazada(gusto('trazada')); },
   serio: (v) => { conSerio = !!v; if (conSerio && gusto('ayuda')) { club.gusto('ayuda', false); conAyuda = false; APLICAR.trazada(gusto('trazada')); } if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); },
   trazada: (v) => { conTrazada = !!v; if (conTrazada) trazada.usar(refDe(club.auto())); trazada.mostrar(conTrazada && pantalla === 'jugando'); },
-  lejos: (v) => camara.alejar(v),
+  lejos: (v) => { camara.alejar(v); travesia.alejar(v); },
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
   pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
   efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
   sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
-  voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); hud.prendido('voz', conVoz); },
+  voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); travesia.voz(conVoz); hud.prendido('voz', conVoz); },
 };
 function ajustar(clave, valor) { club.gusto(clave, valor); APLICAR[clave](valor); menu.pintar(); }
 for (const clave in APLICAR) if (clave !== 'ayuda' && clave !== 'serio') APLICAR[clave](gusto(clave));   // (la ayuda y el modo serio ya se tuvieron en cuenta al armar el auto)
@@ -643,10 +654,12 @@ function encuadrar() {
     lados = parado ? 0.24 : 0.28;
   }
   camara.encuadrar(Math.min(0.42, abajo), parado ? 0.24 : 0.2, lados);
+  travesia.encuadrar(Math.min(0.42, abajo), parado ? 0.24 : 0.2, lados);
 }
 function medir() {
   render.setSize(window.innerWidth, window.innerHeight, false);
   camara.pantalla(window.innerWidth, window.innerHeight);
+  travesia.medir(window.innerWidth, window.innerHeight);
   post.medir(render.domElement.width, render.domElement.height);
   encuadrar();
 }
@@ -674,6 +687,7 @@ function cuadro(ahora) {
   const dt = Math.min(0.05, (ahora - antes) / 1000);
   antes = ahora;
   reloj3d += dt;
+  if (travesia.activa()) { travesia.cuadro(dt, reloj3d); return; }
   const corriendo = pantalla === 'jugando' && partida.estado === 'corriendo';
   const manda = corriendo ? teclas.leer(ent) : QUIETO;
   if (corriendo && ayudaDeLaPasada) { ayuda.aplicar(c, partida.indice, partida.lejos, ent); hud.frenaSola(ayuda.frenando()); }
@@ -729,6 +743,7 @@ function cuadro(ahora) {
 
 window.addEventListener('resize', medir);
 $('largar').addEventListener('click', largar);
+$('travesia').addEventListener('click', () => { if (pantalla !== 'jugando') travesia.entrar(); });
 $('otra').addEventListener('click', largar);
 $('salir').addEventListener('click', aLaPortada);
 medir();
@@ -740,7 +755,7 @@ try {
   if (render.extensions.has('KHR_parallel_shader_compile')) await Promise.race([render.compileAsync(escena, camara.cam), new Promise((sigue) => setTimeout(sigue, 8000))]);
   else render.compile(escena, camara.cam);
 } catch (e) { /* no pasa nada */ }
-$('largar').disabled = false;
+$('largar').disabled = false; $('travesia').disabled = false;
 if (window.cargaPaso) window.cargaPaso(6, 'El primer cuadro');
 requestAnimationFrame(cuadro);
 
@@ -775,6 +790,7 @@ window.addEventListener('online', () => { if (pantalla !== 'jugando') alVolver()
 if (enCasa) window.shakedown = {
   T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, tutorial, creador, comunidad, sonido, papelitos,
   auto: () => c,
+  travesia: travesia.prueba, entrarTravesia: () => travesia.entrar(),
   dibujo: () => dibujo,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
   largar,

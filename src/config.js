@@ -21,6 +21,10 @@ export const SUELOS = {
   vereda:  { id: 9,  nombre: 'Vereda',  agarre: 0.9,  suelto: 1.0, freno: 0.02,  pasta: 0,  rugoso: [0.0, 3],     blando: 0,   polvo: 0.03, color: 0xb9b4a8 },
   adoquin: { id: 10, nombre: 'Adoquín', agarre: 0.84, suelto: 1.2, freno: 0.03,  pasta: 0,  rugoso: [0.022, 1.3], blando: 0,   polvo: 0.04, color: 0x77726a },
   madera:  { id: 11, nombre: 'Madera',  agarre: 0.8,  suelto: 1.2, freno: 0.03,  pasta: 0,  rugoso: [0.012, 1.1], blando: 0,   polvo: 0.02, color: 0x8a6f52 },
+  // los de la Travesia (ver travesiaterreno.js). Van al final: el numero de cada suelo es su lugar, y las pistas de siempre
+  // no los usan. La arena agarra poco y frena (pasta); el fesh-fesh es arena en polvo: casi no agarra y se come el auto.
+  arena:   { id: 12, nombre: 'Arena',   agarre: 0.5,  suelto: 3.3, freno: 0.09,  pasta: 26, rugoso: [0.07, 4],    blando: 1,   polvo: 1.1,  color: 0xd9bd86 },
+  feshfesh: { id: 13, nombre: 'Fesh-fesh', agarre: 0.34, suelto: 3.6, freno: 0.12, pasta: 105, rugoso: [0.03, 5],  blando: 1,   polvo: 1.5,  color: 0xe8d6ab },
 };
 export const SUELO = Object.values(SUELOS); // lista ordenada por id
 
@@ -73,6 +77,15 @@ export const AUTOS = {
 };
 // con que auto se calcula el tiempo de referencia de cada pista (el mismo para todos)
 export const REFERENCIA = 'vitarita';
+
+// La Travesia: un camino infinito y cada vez peor, de cartas y de azar. Gana el que llega mas lejos.
+//   kmPorCarta: cada tantos km se frena y se elige 1 de 3 cartas.     quieto: segundos sin avanzar para que se de por terminada.
+//   danoAlVolver: puntos de daño que cuesta volver al camino (no hay recargo de tiempo).
+//   adelante: cuantos metros de camino hay armados por delante del auto.
+//   lado: lado de cada pedazo de terreno, en metros.   radio: hasta donde se arma terreno alrededor del auto, en metros.
+//   mata: cada cuantos metros se siembra una mata seca.
+//   hasta: a los tantos km la dificultad llega al maximo (despues sigue subiendo despacio).
+export const TRAVESIA = { kmPorCarta: 2, quieto: 8, danoAlVolver: 6, adelante: 520, lado: 64, radio: 190, hasta: 14, mata: 3.2 };
 
 // La ayuda de manejo (se prende en la configuracion): es para el que recien arranca. Mas facil, pero mas lento.
 // El auto trata de seguir la trazada (la linea por donde pasaria un piloto muy bueno) y de llegar bien a cada curva.

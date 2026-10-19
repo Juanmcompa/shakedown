@@ -1,0 +1,229 @@
+// Dibuja el mundo de la Travesia: el terreno en pedazos de a 64 m que se arman delante del auto y se tiran detras (la cuenta
+// la lleva travesiaterreno.js), las piedras, las matas secas, el agua de los arroyos y la luz del desierto.
+// Usa las mismas herramientas que world.js (el piso de pixeles, el agua, los dibujos de piedras y de plantas).
+import * as THREE from '../vendor/three.module.js';
+import { TRAVESIA } from './config.js';
+import { glslPixel } from './pixel.js';
+import { crearRuido } from './noise.js';
+import { texturaDePisos, crearEscenografia } from './arte.js';
+import { ambiente, estilo } from './material.js';
+import { crearLote } from './pixel.js';
+import { crearLoteDeSprites } from './sprites.js';
+import { LUCES, PISO, AGUA } from './world.js';
+import { RADIOS_DE_PIEDRA, altoDePiedra } from './travesiaterreno.js';
+
+const par = (v) => Math.max(2, Math.round(v / 2) * 2);   // medida par, en pixeles
+// la luz del desierto: la del sol, con una bruma de arena mas cerrada
+const LUZ = { ...LUCES.sol, bruma: [0xe7d3ad, 78, 262], cielo: [0xe2dcf0, 0x9a8470, 1.35] };
+// las medidas (en pixeles) de los dos bloques de cada piedra, como en utileria.js
+const medidas = (r) => {
+  const w = par(r * 7.6), d = par(r * 6.4), h = Math.max(2, Math.round(r * altoDePiedra(r) * 4.6));
+  return { w, d, h, w2: par(w * 0.55), d2: par(d * 0.6), h2: Math.max(2, Math.round(h * 0.55)) };
+};
+// el agua es la de world.js, pero recortada a cada pedazo de terreno (cada pedazo tiene su propio mapa de alturas)
+const AGUA_T = { cabeza: AGUA.cabeza + '\nuniform vec4 uCaja;', cuerpo: 'if (vMundo.x < uCaja.x || vMundo.x > uCaja.z || vMundo.z < uCaja.y || vMundo.z > uCaja.w) discard;\n' + AGUA.cuerpo };
+
+export function crearMundoTravesia(escena, liviano) {
+  let T = null;   // el terreno de la corrida de turno (usar(T) lo cambia: el mundo se arma una sola vez)
+  const L = TRAVESIA.lado, NV = L + 1, RADIO = liviano ? TRAVESIA.radio * 0.8 : TRAVESIA.radio;
+  const luz = LUZ;
+  const esc = crearEscenografia();
+  // se preparan todos los dibujos de piedra antes de armar la textura: despues ya no se pueden sumar
+  for (const r of RADIOS_DE_PIEDRA) { const m = medidas(r); esc.piedra(m.w, m.d); esc.canto(m.h + 2); esc.piedra(m.w2, m.d2); esc.canto(m.h2 + 2); }
+  const pisos = texturaDePisos(['pastoSeco']);
+  const dibujo = esc.atlas.textura();
+  const mPiedra = estilo(new THREE.MeshLambertMaterial({ map: dibujo }));
+  const V = new THREE.Vector3(), ARRIBA = new THREE.Vector3(0, 1, 0), M2 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), NORMAL = new THREE.Vector3(), P4 = new THREE.Vector3(0.25, 0.25, 0.25);
+  // (sin huellas en la arena: el piso pide un mapa, y alcanza uno vacio)
+  const sinHuellas = new THREE.DataTexture(new Uint8Array(512 * 512), 512, 512, THREE.RedFormat, THREE.UnsignedByteType);
+  sinHuellas.unpackAlignment = 1; sinHuellas.needsUpdate = true;
+  const ruidoDeTono = crearRuido(99);
+
+  // --- la luz: cielo + sol con sombras que siguen a la camara (igual que en world.js) ---
+  const fondo = new THREE.Color(luz.bruma[0]);
+  escena.background = fondo;
+  escena.fog = new THREE.Fog(luz.bruma[0], luz.bruma[1], luz.bruma[2]);
+  escena.add(new THREE.HemisphereLight(luz.cielo[0], luz.cielo[1], luz.cielo[2]));
+  const sol = new THREE.DirectionalLight(luz.sol[0], luz.sol[1]), haciaElSol = new THREE.Vector3(...luz.sol[2]).normalize();
+  sol.castShadow = true;
+  const lado = liviano ? 1024 : 2048;
+  sol.shadow.mapSize.set(lado, lado);
+  const sc = sol.shadow.camera, R = 90;
+  sc.left = sc.bottom = -R; sc.right = sc.top = R; sc.near = 10; sc.far = 520;
+  sol.shadow.bias = -0.0005; sol.shadow.normalBias = 0.5; sol.shadow.intensity = luz.sombra;
+  escena.add(sol, sol.target);
+  const ejeX = new THREE.Vector3().crossVectors(ARRIBA, haciaElSol).normalize(), ejeY = new THREE.Vector3().crossVectors(haciaElSol, ejeX);
+  const paso = 2 * R / lado, D = new THREE.Vector3();
+
+  // --- los pedazos ---
+  const vivos = new Map(), pendientes = [];   // vivos: clave -> { t, grupo, cosas: lo que hay que liberar }; pendientes: con datos, sin dibujar
+  const indice = new THREE.BufferAttribute((() => {
+    const idx = new Uint16Array(L * L * 6);
+    let o = 0;
+    for (let j = 0; j < L; j++) for (let i = 0; i < L; i++) { const a = j * NV + i, b = a + 1, c = a + NV; idx[o++] = a; idx[o++] = c; idx[o++] = b; idx[o++] = b; idx[o++] = c; idx[o++] = c + 1; }
+    return idx;
+  })(), 1);
+  const claveDe = (t) => t.tx + ',' + t.tz;
+
+  function dibujar(t) {
+    const grupo = new THREE.Group(), liberar = [];
+    // el terreno: sus alturas y el mapa de suelos que lee el shader
+    const pos = new Float32Array(NV * NV * 3), nor = new Float32Array(NV * NV * 3), mapa = new Uint8Array(NV * NV * 4), alturas = new Float32Array(NV * NV);
+    for (let j = 0; j < NV; j++) for (let i = 0; i < NV; i++) {
+      const k = j * NV + i, o = k * 3, h = t.alto(i, j);
+      pos[o] = t.x0 + i; pos[o + 1] = h; pos[o + 2] = t.z0 + j; alturas[k] = h;
+      V.set(t.alto(i - 1, j) - t.alto(i + 1, j), 2, t.alto(i, j - 1) - t.alto(i, j + 1)).normalize();
+      nor[o] = V.x; nor[o + 1] = V.y; nor[o + 2] = V.z;
+      mapa[k * 4] = t.S[k];
+      mapa[k * 4 + 1] = Math.round(ruidoDeTono.n2((t.x0 + i) * 0.045, (t.z0 + j) * 0.045) * 255);
+      mapa[k * 4 + 2] = Math.round(ruidoDeTono.capas((t.x0 + i) * 0.021 + 40, (t.z0 + j) * 0.021 - 17, 3) * 127 + 128);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    g.setIndex(indice);
+    g.computeBoundingSphere();
+    const tMapa = new THREE.DataTexture(mapa, NV, NV, THREE.RGBAFormat, THREE.UnsignedByteType);
+    tMapa.needsUpdate = true;
+    const campo = { value: new THREE.Vector4(t.x0, t.z0, NV, NV) };
+    const mPiso = estilo(new THREE.MeshLambertMaterial(), { clave: 'piso', sombras: true, cabeza: PISO.cabeza, cuerpo: PISO.cuerpo,
+      datos: { uMapa: { value: tMapa }, uPisos: { value: pisos }, uHuellas: { value: sinHuellas }, uCampo: campo, uMojado: { value: 0 } } });
+    const piso = new THREE.Mesh(g, mPiso);
+    piso.receiveShadow = true; piso.castShadow = true;
+    grupo.add(piso);
+    liberar.push(g, mPiso, tMapa);
+
+    // las piedras: un bloque acostado sobre la ladera y otro mas chico apoyado al lado (como en utileria.js)
+    if (t.rocas.length) {
+      const fijos = crearLote();
+      for (const o of t.rocas) {
+        const rnd = (() => { let a = Math.floor(o.x * 131 + o.z * 71) + 9; return () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; }; })();
+        const m = medidas(o.r);
+        NORMAL.set(-(T.altura(o.x + 1, o.z) - T.altura(o.x - 1, o.z)) / 2, 1, -(T.altura(o.x, o.z + 1) - T.altura(o.x, o.z - 1)) / 2).normalize();
+        Q.setFromUnitVectors(ARRIBA, NORMAL);
+        M2.compose(V.set(o.x, o.y, o.z), Q.multiply(Q2.setFromAxisAngle(ARRIBA, o.vuelta || 0)), P4);
+        fijos.bloque(M2, [-m.w / 2, -2, -m.d / 2, m.w / 2, m.h, m.d / 2], { arriba: esc.piedra(m.w, m.d), lados: esc.canto(m.h + 2), abajo: null }, rnd);
+        const cx = Math.round((rnd() < 0.5 ? -1 : 1) * m.w * 0.45), cz = Math.round((rnd() - 0.5) * m.d * 0.6);
+        fijos.bloque(M2, [cx - m.w2 / 2, -2, cz - m.d2 / 2, cx + m.w2 / 2, m.h2, cz + m.d2 / 2], { arriba: esc.piedra(m.w2, m.d2), lados: esc.canto(m.h2 + 2), abajo: null }, rnd);
+      }
+      const gp = fijos.geometria(esc.atlas), mesh = new THREE.Mesh(gp, mPiedra);
+      mesh.castShadow = true; mesh.receiveShadow = true;
+      grupo.add(mesh);
+      liberar.push(gp);
+    }
+
+    // las matas secas y las piedritas
+    if (t.decor.length) {
+      const lote = crearLoteDeSprites();
+      for (const d of t.decor) lote.poner(d.nombre, d.x, d.y, d.z, { escala: d.escala, azar: d.azar, mueve: d.mueve });
+      const mesh = lote.malla(!liviano);
+      grupo.add(mesh);
+      liberar.push(mesh.geometry, mesh.material, mesh.customDepthMaterial);
+    }
+
+    // el agua de los arroyos que pasan por aca, recortada a este pedazo
+    if (t.aguas.length) {
+      const tAlturas = new THREE.DataTexture(alturas, NV, NV, THREE.RedFormat, THREE.FloatType);
+      tAlturas.needsUpdate = true;
+      liberar.push(tAlturas);
+      for (const a of t.aguas) {
+        const p = [];
+        for (const [u, v] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) p.push(a.x + a.hx * a.cruce * u - a.hz * a.largo * v, a.nivel, a.z + a.hz * a.cruce * u + a.hx * a.largo * v);
+        const ga = new THREE.BufferGeometry();
+        ga.setAttribute('position', new THREE.BufferAttribute(new Float32Array(p), 3));
+        ga.setIndex([0, 2, 1, 1, 2, 3]);
+        ga.computeVertexNormals();
+        const mat = estilo(new THREE.MeshLambertMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide }), {
+          clave: 'aguaT', sombras: true, cabeza: AGUA_T.cabeza, cuerpo: AGUA_T.cuerpo,
+          datos: { uAlturas: { value: tAlturas }, uCampo: campo, uCaja: { value: new THREE.Vector4(t.x0, t.z0, t.x0 + L, t.z0 + L) }, uRio: { value: new THREE.Vector3(-a.hz, a.hx, 1.6) },
+            uClara: { value: new THREE.Color(0x7fc4c2) }, uHonda: { value: new THREE.Color(0x2f6f7c) }, uEspuma: { value: new THREE.Color(0xe6f3ee) } },
+        });
+        const m = new THREE.Mesh(ga, mat);
+        m.receiveShadow = true; m.frustumCulled = false;
+        grupo.add(m);
+        liberar.push(ga, mat);
+      }
+    }
+    escena.add(grupo);
+    vivos.set(claveDe(t), { t, grupo, liberar });
+  }
+  function soltar(k) {
+    const v = vivos.get(k);
+    escena.remove(v.grupo);
+    for (const x of v.liberar) if (x && x.dispose) x.dispose();
+    T.soltarTile(v.t);
+    vivos.delete(k);
+    estadistica.dibujados--;
+  }
+  const estadistica = { dibujados: 0 };
+
+  // Una vez por cuadro: arma el terreno que falta cerca del auto (de a un paso por vez para no trabar) y tira el que quedo lejos.
+  // ya: arma todo lo que haga falta de una vez (al largar).   Devuelve cuantos pasos hizo.
+  const queda = (tx, tz, x, z) => Math.hypot((tx + 0.5) * L - x, (tz + 0.5) * L - z);
+  function mantener(x, z, rumbo, ya) {
+    const t0 = performance.now();
+    let hechos = 0;
+    // 1) los que ya tienen datos, a dibujar
+    // 2) los que faltan, en orden: primero los de adelante
+    const fx = Math.sin(rumbo), fz = -Math.cos(rumbo);
+    const cx = Math.floor(x / L), cz = Math.floor(z / L), n = Math.ceil((RADIO + L) / L);
+    const faltan = [];
+    for (let tz = cz - n; tz <= cz + n; tz++) for (let tx = cx - n; tx <= cx + n; tx++) {
+      const d = queda(tx, tz, x, z);
+      if (d > RADIO + L * 0.5 || vivos.has(tx + ',' + tz) || T.hay(tx, tz)) continue;
+      faltan.push([d - 0.35 * ((tx + 0.5) * L - x) * fx - 0.35 * ((tz + 0.5) * L - z) * fz, tx, tz]);
+    }
+    faltan.sort((a, b) => a[0] - b[0]);
+    for (const [, tx, tz] of faltan) {
+      if (!ya && hechos > 0 && performance.now() - t0 > 4) break;
+      if (!T.viable(tx, tz)) continue;
+      pendientes.push(T.armarTile(tx, tz));
+      hechos++;
+      if (!ya && hechos >= 1) break;
+    }
+    // dibujar lo que ya esta calculado (uno por cuadro; al largar, todo)
+    while (pendientes.length && (ya || hechos < 2 || performance.now() - t0 < 6)) {
+      dibujar(pendientes.shift());
+      estadistica.dibujados++;
+      hechos++;
+      if (!ya && performance.now() - t0 > 8) break;
+    }
+    // 3) los que quedaron lejos, afuera
+    for (const [k, v] of vivos) if (queda(v.t.tx, v.t.tz, x, z) > RADIO + L * 1.7) soltar(k);
+    return hechos;
+  }
+
+  return {
+    luz, estadistica, mantener,
+    usar: (nuevo) => { T = nuevo; },
+    vivos: () => vivos.size,
+    // el ambiente del juego es compartido con la pista del dia: al entrar en la Travesia se prepara, y al salir se deja como estaba
+    activar: () => {
+      const antes = ambiente.niebla.value.clone();
+      ambiente.niebla.value.set(fondo.r, fondo.g, fondo.b, 0);
+      return () => ambiente.niebla.value.copy(antes);
+    },
+    // Una vez por cuadro: acomoda lo que depende de donde esta la camara y de donde esta el auto (igual que mundo.mirar de world.js)
+    mirar: (camara, c, ancho, alto2) => {
+      const cam = camara.cam, e = camara.estado;
+      V.set(e.x, e.y, e.z);
+      const a = V.dot(ejeX), b = V.dot(ejeY);
+      V.addScaledVector(ejeX, Math.round(a / paso) * paso - a).addScaledVector(ejeY, Math.round(b / paso) * paso - b);
+      sol.target.position.copy(V);
+      sol.position.copy(V).addScaledVector(haciaElSol, 250);
+      ambiente.bajo.value = e.y;
+      ambiente.centro.value.set(c.pos[0], c.pos[1], c.pos[2]);
+      const lejos = Math.hypot(cam.position.x - c.pos[0], cam.position.y - c.pos[1], cam.position.z - c.pos[2]);
+      V.set(c.pos[0], c.pos[1] + 0.6, c.pos[2]).project(cam);
+      ambiente.hueco.value.set((V.x * 0.5 + 0.5) * ancho, (V.y * 0.5 + 0.5) * alto2, 3.8 * alto2 / (2 * Math.tan(cam.fov * Math.PI / 360)) / lejos);
+      cam.getWorldDirection(D);
+      const h = Math.hypot(D.x, D.z) || 1, baja = Math.min(1, Math.max(0, -D.y)), inclina = Math.max(baja * 0.62, Math.asin(baja) - 0.51);
+      ambiente.camDer.value.set(-D.z / h, 0, D.x / h);
+      ambiente.camMira.value.set(D.x / h, 0, D.z / h);
+      ambiente.camAlto.value.set(D.x / h * Math.sin(inclina), Math.cos(inclina), D.z / h * Math.sin(inclina));
+    },
+    animar: (t) => { ambiente.tiempo.value = t; },
+    // tira todo (al salir de la Travesia)
+    vaciar: () => { for (const k of [...vivos.keys()]) soltar(k); pendientes.length = 0; },
+  };
+}

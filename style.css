@@ -668,3 +668,52 @@ button.cr-pieza:active:not(.no-entra) { background: rgba(255, 255, 255, .32); }
 .fin-amigos.primero b { background: var(--amarillo); color: #000; }
 .fin-amigos span { font-size: 15px; opacity: .92; max-width: 30em; }
 .fin-amigos span:empty { display: none; }
+
+/* --- Travesia (ver travesia.js) --- */
+/* en este modo no hay sectores, ni rival, ni rondas: el reloj muestra los km */
+html.travesia #cuadros, html.travesia #rival, html.travesia #ronda, html.travesia #sello { display: none; }
+/* el vidrio roto: un manchon de pocos pixeles en una de las cuatro esquinas */
+.vidrio { position: fixed; width: 46vmax; height: 40vmax; max-width: 62vw; max-height: 52vh; pointer-events: none; background-size: 100% 100%; image-rendering: pixelated; image-rendering: crisp-edges; opacity: .92; }
+.vidrio[data-parte="0"] { left: 0; top: 0; }
+.vidrio[data-parte="1"] { right: 0; top: 0; transform: scaleX(-1); }
+.vidrio[data-parte="2"] { left: 0; bottom: 0; transform: scaleY(-1); }
+.vidrio[data-parte="3"] { right: 0; bottom: 0; transform: scale(-1, -1); }
+/* las cartas que se tienen: iconos chicos, uno al lado del otro, debajo del tablero */
+.cartas-activas { position: fixed; left: max(var(--mi, 12px), 12px); bottom: max(var(--mb, 12px), 12px); right: 80px; display: flex; flex-wrap: wrap; gap: 4px; pointer-events: none; z-index: 2; }
+.cartas-activas .icono { width: 26px; height: 26px; padding: 3px; border-radius: 5px; background: rgba(8, 9, 10, .66); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
+.cartas-activas .icono[data-tipo="mala"] { box-shadow: inset 0 0 0 1.5px #c0553f; }
+.cartas-activas .icono[data-tipo="buena"] { box-shadow: inset 0 0 0 1.5px #5cc070; }
+.cartas-activas .icono[data-tipo="mezcla"] { box-shadow: inset 0 0 0 1.5px var(--amarillo); }
+/* elegir una carta: tres grandes, para tocar con el pulgar */
+.cartas-pantalla { position: fixed; inset: 0; z-index: 20; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 14px; padding: 20px; background: rgba(8, 9, 10, .8); text-align: center; }
+.cartas-pantalla h2 { font: 800 clamp(30px, 6vw, 48px)/1 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.cartas-mano { display: flex; gap: 14px; justify-content: center; align-items: stretch; width: 100%; max-width: 62rem; }
+.carta { position: relative; flex: 1 1 0; min-width: 0; min-height: 15rem; padding: 16px 12px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border-radius: 12px; background: #1b1d21; color: #fff; text-align: center; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .35); touch-action: manipulation; cursor: pointer; }
+.carta.mala { box-shadow: inset 0 0 0 3px #c0553f; }
+.carta.buena { box-shadow: inset 0 0 0 3px #5cc070; }
+.carta.mezcla { box-shadow: inset 0 0 0 3px var(--amarillo); }
+.carta .icono { width: clamp(56px, 11vw, 92px); height: clamp(56px, 11vw, 92px); }
+.carta b { font: 800 clamp(20px, 3.2vw, 27px)/1.05 var(--titulos); }
+.carta .carta-texto { font: 600 clamp(14px, 2.2vw, 17px)/1.25 var(--texto); opacity: .9; }
+.carta i { position: absolute; top: 8px; left: 10px; font: 700 14px/1 var(--titulos); font-style: normal; opacity: .6; }
+.carta:hover, .carta:focus-visible { background: #272a30; outline: 3px solid #fff; outline-offset: 2px; }
+@media (max-width: 640px) {
+  .cartas-pantalla { padding: 14px; gap: 10px; }
+  .cartas-mano { flex-direction: column; gap: 10px; }
+  .carta { min-height: 0; flex: none; flex-direction: row; justify-content: flex-start; text-align: left; gap: 12px; padding: 12px 14px 12px 28px; }
+  .carta .icono { flex: none; width: 54px; height: 54px; }
+  .carta .carta-texto { display: block; }
+  .carta b, .carta .carta-texto { display: block; }
+}
+/* el resultado */
+.travesia-fin { position: fixed; inset: 0; z-index: 20; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 8px; padding: 24px; background: rgba(8, 9, 10, .8); text-align: center; }
+.travesia-fin > * { flex: none; }
+.travesia-fin #tfMotivo { display: flex; align-items: center; gap: 6px; font-size: 18px; }
+.tf-km { font: 800 clamp(70px, 16vw, 150px)/.9 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.tf-unidad { font: 700 24px/1 var(--titulos); margin-top: -4px; }
+.tf-record { font: 700 20px/1.2 var(--titulos); opacity: .9; }
+.tf-record.nuevo { color: #5cc070; opacity: 1; }
+.tf-cartas { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; max-width: 30rem; }
+.tf-cartas .icono { width: 34px; height: 34px; padding: 4px; border-radius: 6px; background: rgba(255, 255, 255, .08); }
+.travesia-fin .botones { justify-content: center; margin-top: 6px; }
+#tfCompartido { min-height: 1.35em; font-size: 14px; overflow-wrap: anywhere; max-width: 32rem; }

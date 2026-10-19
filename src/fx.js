@@ -13,8 +13,9 @@ const EDADES = [[10, 1.1], [16, 0.82], [22, 0.55], [28, 0.3]];   // [lado en pix
 const POLVOS = {
   ripio: ['#bfa983', '#d6c3a0', '#e8dabc'], tierra: ['#a8704a', '#c48e68', '#d9ab88'],
   gris: ['#a5a29c', '#c2bfb8', '#dbd8d1'], pasto: ['#99906a', '#b5ac84', '#cdc5a0'],
+  arena: ['#c9ae7a', '#dcc592', '#ecdbb2'],   // (la Travesia: va al final para no mover los dibujos de antes en el atlas)
 };
-const POLVO_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.tierra.id]: 'tierra', [SUELOS.pasto.id]: 'pasto' };   // el resto, gris
+const POLVO_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.tierra.id]: 'tierra', [SUELOS.pasto.id]: 'pasto', [SUELOS.arena.id]: 'arena', [SUELOS.feshfesh.id]: 'arena' };   // el resto, gris
 const TRAMA = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 function nube(p, lado, tupida, tonos) {
   const c = (lado - 1) / 2;

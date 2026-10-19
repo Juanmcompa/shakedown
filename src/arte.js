@@ -248,6 +248,20 @@ const PISOS = {
     for (let y = 0; y < p.h; y += 3) p.rect(0, y, p.w, 1, '#3f5f30');
     p.motas('#5e8042', 80, 2, 1); p.motas('#36522a', 30, 2, 1);
   },
+  // la Travesia: arena rayada por el viento (rizos que corren de lado a lado) y fesh-fesh, arena en polvo mas clara y lisa
+  arena: (p) => {
+    p.fondo('#d2b783');
+    veces(16, () => mancha(p, '#c9ad78', entero(p, 4, 8)));
+    veces(12, () => mancha(p, '#dcc593', entero(p, 3, 6)));
+    for (let y = 2; y < p.h; y += 5 + (y >> 4)) { const x = entero(p, 0, p.w - 14), l = entero(p, 8, 22); p.rect(x, y, l, 1, '#bfa36e'); p.rect(x + 2, y + 1, l - 3, 1, '#e4cfa0'); }
+    p.motas('#b99d68', 36); p.motas('#e8d6ab', 40, 2, 1); p.motas('#a98f5e', 12);
+  },
+  feshfesh: (p) => {
+    p.fondo('#e2cf9f');
+    veces(14, () => mancha(p, '#d9c492', entero(p, 5, 9)));
+    veces(10, () => mancha(p, '#ebdcb4', entero(p, 4, 7)));
+    p.motas('#f2e6c4', 54, 2, 1); p.motas('#cdb780', 30, 3, 1); p.motas('#bca56f', 10);
+  },
 };
 // que dibujos usa cada bioma para el pasto, el manchon, el piso de abajo de los arboles y la banquina
 const NATURAL = {

@@ -28,7 +28,7 @@ export const LUCES = {
 };
 
 // El piso: cada pixel mide 25 cm y esta alineado con el mundo. El suelo de cada pixel sale de un mapa (una celda por metro).
-const PISO = {
+export const PISO = {
   cabeza: `
     uniform sampler2D uMapa;
     uniform sampler2DArray uPisos;
@@ -73,7 +73,7 @@ const PISO = {
     diffuseColor.rgb = piso;`,
 };
 // El agua: se dibuja solo en los pixeles donde el piso queda por debajo, con espuma en la orilla.
-const AGUA = {
+export const AGUA = {
   cabeza: `
     uniform sampler2D uAlturas;
     uniform vec4 uCampo;

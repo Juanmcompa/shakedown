@@ -89,10 +89,12 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Los tiempos se guardan solos al terminar, sin compartirlos: el resultado dice si quedó guardado y en qué tabla; sin señal (o si se cierra el juego enseguida) se reintenta solo. Un abandono dice DNF en las tablas, en la portada, en el resultado y en lo que se comparte; también la oficial que quedó cortada porque se cerró el juego
 - [x] Ícono nuevo para el botón de circuitos: un mapa con tres lugares marcados. El de antes (una vuelta cerrada, como una O) no se entendía: la gente no se daba cuenta de que ahí había más pistas
 - [x] Efectos de manejo: humo o tierra al frenar y derrapar (del color del suelo), barro que se acumula en la carrocería (todos los modelos), huellas que se marcan más con las pasadas, ráfagas de viento en las plantas y hojas que vuelan
+- [x] Travesía: modo infinito que sale distinto en cada largada, con suelos nuevos (arena y fesh-fesh), médanos y ríos. Cartas cada 2 km (18 para empezar: averías, mejoras y mezclas), fin por daño, por quedarse parado o por batería, récord en el aparato y mensaje para compartir
 
 ## Lo que sigue
 
 - Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).
+- Travesía: huellas en la arena, médanos que se noten más desde la cámara, más paisaje, sonido de arena, más cartas (el resto de la lista de averías) y ajustar la dificultad probando en celulares.
 - Faros y luces de freno que se noten más al atardecer y con niebla.
 - El recorrido exacto de Mina Clavero – Giulio Cesare, si se consigue el trazado del mapa (OpenStreetMap estuvo bloqueado).
 
