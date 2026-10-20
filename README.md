@@ -270,6 +270,7 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 | Dónde va la publicidad, cuánta hay y qué tan vivos son sus colores (`VIVO`) | `src/carteleria.js` |
 | Qué día es la pista #1 | `src/dia.js` |
 | Los colores de todo (cuánto se apagan, el tono polvoriento) | `PALETA`, al principio de `src/pixel.js` |
+| Las láminas de las cards del inicio | `laminas/` (`hoy`, `oficiales`, `reales`, `travesia`, `tutorial`, `comunidad`, en .webp, unos 960×400): se reemplaza el archivo con el mismo nombre |
 | La luz y la bruma de cada clima | `LUCES` en `src/world.js` y `REVELADOS` en `src/post.js` |
 | Los dibujos de los pisos, árboles y carteles | `src/arte.js` |
 | Los dibujos planos: público, plantas, vacas, fogones | `src/sprites.js` |
