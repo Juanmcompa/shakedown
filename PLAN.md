@@ -96,6 +96,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Travesía más exigente: camino angosto de un solo auto, arena suelta afuera que frena, autos rotos para esquivar y largada de festival con público (prueba `vertravesiafiesta`)
 - [x] Inicio con cards deslizables por modo (`src/home.js`): ya no se entra directo a la carrera, sale el panel Circuitos, "Volver" lleva al inicio y los links abren en su card
 - [x] Láminas dibujadas por Juanma en las cards del inicio (`laminas/`)
+- [x] Ícono nuevo para compartir: una flecha que sale de una caja, hacia arriba (el de antes parecía "volver")
 
 ## Lo que sigue
 
