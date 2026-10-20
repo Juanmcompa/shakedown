@@ -99,6 +99,23 @@ export function crearHud() {
       }
       lista.forEach((n, k) => { const f = $('notas').children[k].lastChild, m = Math.max(0, Math.round((n.i - indice) / 10) * 10); f.textContent = m > 0 ? m : ''; });
     },
+    // el camion de carga: la burbuja del nivel (inclinacion de costado y de frente), la cruz del peso y los bultos que quedan.
+    // c = null: no es el camion, se esconde todo.
+    camion: (c) => {
+      const el = $('cargaTablero');
+      if (!c || !c.camion) { if (!el.hidden) el.hidden = true; return; }
+      el.hidden = false;
+      // la burbuja sube hacia el lado que queda mas alto, como en un nivel de verdad (25 grados llevan al borde)
+      const bx = Math.max(-1, Math.min(1, -c.rolido / 0.44)), by = Math.max(-1, Math.min(1, c.cabeceo / 0.44));
+      $('burbuja').style.transform = 'translate(' + (Math.round(bx * 15)) + 'px,' + (Math.round(by * 15)) + 'px)';
+      // el centro de masa del conjunto (camion y carga), corrido respecto de donde estaria sin carga
+      const cm = c.centroMasa;
+      $('pesoCentro').style.transform = 'translate(' + Math.round(Math.max(-1, Math.min(1, cm.x / 0.6)) * 17) + 'px,' + Math.round(Math.max(-1, Math.min(1, cm.z / 1.2)) * 17) + 'px)';
+      $('burbuja').parentNode.classList.toggle('peligro', Math.abs(c.rolido) > 0.3 || Math.abs(c.cabeceo) > 0.34);
+      const n = c.carga.quedan();
+      if ($('bultosQuedan').textContent !== String(n)) $('bultosQuedan').textContent = n;
+      $('bultosQuedan').parentNode.classList.toggle('poco', n <= 2);
+    },
     // punto amarillo que muestra el volante cuando se dobla inclinando el celular
     volante: (v) => { if (v !== null) $('volanteAca').style.left = (50 + v * 50).toFixed(1) + '%'; },
     actualizar: (c, p, dt) => {

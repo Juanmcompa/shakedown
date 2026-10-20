@@ -24,7 +24,7 @@ Devuelven un resumen corto: qué cambiaron, qué pruebas corrieron y cómo salie
 
 | Área | Subagente |
 | --- | --- |
-| Cómo se maneja, el daño, las reglas, la cámara, la ayuda y la trazada; el garaje y sus partes | `manejo` |
+| Cómo se maneja, el daño, las reglas, la cámara, la ayuda y la trazada; el garaje y sus partes; el camión de carga (`camion.js`, `camionvista.js`) | `manejo` |
 | Cómo se arma la pista del día y los circuitos, el paisaje, el clima y el copiloto | `pistas` |
 | El creador de pistas y las pistas de la comunidad | `creador` |
 | Tablas, clubes, links, guardar tiempos, fantasmas y el servidor | `social` |
@@ -55,7 +55,7 @@ Se corren desde la raíz del repo. Abren el juego en un Chromium sin pantalla (P
 Las que usan servidor necesitan antes uno limpio: `node servidor/local.mjs 8787` (se reinicia entre una prueba y otra).
 
 - `node tools/pruebas/huella.mjs 1 10 tools/pruebas/medidas/huella-v1.txt` (y `16001 3 …huella-circuitos-v1.txt`,
-  `16004 1 …huella-practica-v1.txt`): tienen que decir **IGUAL**. Si no, cambió cómo se maneja o cómo es la pista.
+  `16004 1 …huella-practica-v1.txt`, `16005 1 …huella-giulio-v1.txt`, `16006 1 …huella-montana-v1.txt`): tienen que decir **IGUAL**. Si no, cambió cómo se maneja o cómo es la pista.
 - `node servidor/prueba.mjs`: el servidor (94 pruebas).
 - Las demás `ver*.mjs` prueban cada parte; el comentario del principio de cada una dice qué y cómo.
 

@@ -154,7 +154,7 @@ export function crearMundo(T, escena, liviano, huellas) {
   const gris = luz.mojado > 0.5;
   for (const a of T.aguas) {
     const p = [];
-    for (const [u, v] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) p.push(a.x + a.hx * a.cruce * u - a.hz * a.largo * v, a.nivel, a.z + a.hz * a.cruce * u + a.hx * a.largo * v);
+    for (const [u, v] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const c = v < 0 ? a.pb0 : a.pb1; p.push(a.x + a.hx * a.cruce * u - a.hz * c, a.nivel, a.z + a.hz * a.cruce * u + a.hx * c); }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(p), 3));
     g.setIndex([0, 2, 1, 1, 2, 3]);

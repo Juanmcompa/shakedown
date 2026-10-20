@@ -4,7 +4,9 @@
 
 const GRADOS = { 1: 'uno', 2: 'dos', 3: 'tres', 4: 'cuatro', 5: 'cinco', 6: 'seis' };
 const DICHO = { salto: 'salto', baden: 'badén', vado: 'vado, agua', barro: 'barro', angosto: 'angosto', cornisa: 'cornisa, cuidado', meta: 'meta',
-  puente: 'puente, angosto', cuidado: 'cuidado', adoquin: 'adoquines', asfalto: 'asfalto', ripio: 'ripio', lomo: 'lomo', lajas: 'lajas, despacio', pueblo: 'pueblo', duna: 'duna, con envión', fesh: 'fesh fesh', pedregal: 'piedras sueltas, despacio', surcos: 'huellas hondas', duda: '' };
+  puente: 'puente, angosto', cuidado: 'cuidado', adoquin: 'adoquines', asfalto: 'asfalto', ripio: 'ripio', lomo: 'lomo', lajas: 'lajas, despacio', pueblo: 'pueblo', duna: 'duna, con envión', fesh: 'fesh fesh', pedregal: 'piedras sueltas, despacio', surcos: 'huellas hondas', duda: '',
+  // el camion de carga: la montaña
+  piedras: 'piedras, despacio, cuidá la carga', cascada: 'cascada, te empuja al vacío', bajada: 'bajada, frená de a poco' };
 
 // lo que diria el copiloto por una nota
 export function decir(n) {

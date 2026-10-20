@@ -22,6 +22,10 @@ export const CIRCUITOS = [
     detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.', breve: 'Vuelta cerrada: queda la mejor' },
   { id: 'giulio', numero: 16005, version: 1, real: true, maximo: 1500, nombre: 'Mina Clavero – Giulio Cesare', corto: 'Giulio Cesare', emoji: '🏔️', bioma: 'sierra', clima: 'sol', caracter: 'mixta', lugar: '31°43′S 64°58′O',
     detalle: 'Casi 20 kilómetros de la pampa de altura al pueblo: horquillas arriba, rectas rápidas con saltos, curvas entre el granito, cuestas con pirca, un arroyo y las esquinas de Mina Clavero.', breve: '19 km: de la sierra al pueblo' },
+  // camion: true = se maneja siempre el camion de carga, con su fisica pesada (ver camion.js), y se cuentan los bultos entregados.
+  // Es de pura fantasia: no existe, pero va con los reales (es el "Dark Souls de los camiones"). Va al final de la lista, como siempre.
+  { id: 'montana', numero: 16006, version: 1, real: true, camion: true, maximo: 1800, nombre: 'La Montaña del Sufrimiento', corto: 'Montaña del Sufrimiento', emoji: '🚛', bioma: 'montana', clima: 'niebla', caracter: 'tecnica', lugar: '41°09′S 71°18′O',
+    detalle: 'Un camión cargado, cuatro tramos y ninguna prisa: barro hondo, una escalada de piedras, una cornisa cortada por una cascada y una bajada que no perdona. Cada bulto que se cae suma 60 segundos.', breve: 'Camión con carga: barro, piedras y precipicio' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
 // Las pistas de la comunidad (las que arma un jugador: ver hoja.js) usan los numeros de 13000 a 15999. Duran dos semanas
@@ -687,7 +691,111 @@ function giulio() {
   return T.tramos;
 }
 
-const ARMAR = { subida, bajada, urbano, practica, giulio };
+// ================= LA MONTAÑA DEL SUFRIMIENTO: un camion con carga, cuatro tramos y ninguna prisa =================
+// No es una pista de rally: es para el camion de camion.js (siempre se maneja ese, con su fisica pesada). Dura unos diez minutos.
+//   1. La Trampa de Barro: camino ancho de barro hondo, con pozas de pantano. Acelerar a fondo entierra: hay que dar toques.
+//   2. La Escalada de Piedras: subida en zigzag llena de bloques desalineados (escalones duros) con el precipicio al costado.
+//   3. La Cornisa: un camino angosto al borde del vacio...
+//   4. ...cortado por una cascada que cruza y empuja hacia el barranco.
+//   5. La Bajada Traicionera: pendiente empinada; frenar de golpe tira la carga para adelante.
+// (Los cuatro tramos del pedido son cinco sectores: la cornisa y la cascada se cuentan aparte, asi los cuadraditos del tablero
+// dicen en cual de las dos se fue la carga.)
+function montana() {
+  const T = trazado(), r = azar(16006);
+  const redondo = (x, d = 100) => Math.round(x * d) / d;
+  // pozas de pantano y islas firmes sobre un tramo de barro. [metros desde el inicio, metros a la derecha, radio, hondo, suelo]
+  const poceado = (t, cada, firmes) => {
+    t.pozos = [];
+    const medio = t.ancho / 2 - 1.8;
+    for (let u = 10; u < t.largo - 8; u += cada * (0.7 + r() * 0.6)) {
+      t.pozos.push([redondo(u, 2), redondo((r() * 2 - 1) * medio, 10), redondo(2.1 + r() * 2, 10), redondo(0.2 + r() * 0.2), 'pantano']);
+      if (firmes && r() < 0.55) t.pozos.push([redondo(u + 4 + r() * 5, 2), redondo((r() * 2 - 1) * medio, 10), redondo(1.5 + r() * 0.7, 10), -0.1, 'tierra']);   // una isla firme
+    }
+    return t;
+  };
+  // bloques de piedra desalineados: [metros, derecha, largo, ancho, alto]. Algunos cruzan todo el camino (un escalon duro).
+  const escalones = (t, cada, alto) => {
+    t.escalones = [];
+    const medio = t.ancho / 2;
+    for (let u = 9; u < t.largo - 7; u += cada * (0.75 + r() * 0.5)) {
+      const q = r();
+      if (q < 0.22) t.escalones.push([redondo(u, 2), 0, 1.6, t.ancho, redondo(alto * (0.55 + r() * 0.3))]);
+      else {
+        const ancho = redondo(2 + r() * 1.6, 10), lado = (r() < 0.5 ? -1 : 1) * (medio - ancho / 2 - 0.2 - r() * 0.9);
+        t.escalones.push([redondo(u, 2), redondo(lado, 10), redondo(1.8 + r() * 1.8, 10), ancho, redondo(alto * (0.6 + r() * 0.7))]);
+        if (q > 0.7) t.escalones.push([redondo(u + 3 + r() * 2, 2), redondo(-lado * 0.8, 10), redondo(2 + r() * 1.2, 10), ancho, redondo(alto * (0.5 + r() * 0.5))]);
+      }
+    }
+    return t;
+  };
+
+  // ---------- la largada, en una playa de tierra ----------
+  T.fijar({ ancho: 10, suelo: 'tierra', pendiente: 0 });
+  const largada = T.recta(64);
+  largada.publico = [[20, -(10 / 2 + 7), 6], [27, 10 / 2 + 7.5, 5]];
+
+  // ---------- 1. LA TRAMPA DE BARRO ----------
+  T.fijar({ ancho: 14, suelo: 'barro', rugoso: 0.07 });
+  poceado(T.recta(70, { nota: { tipo: 'barro' } }), 12, true);
+  T.curva(70, 32); poceado(T.recta(44), 11, true);
+  T.curva(70, -32); poceado(T.recta(52), 11, true);
+  T.curva(80, -22); poceado(T.recta(40), 12, true);
+  T.fijar({ ancho: 10, suelo: 'tierra', rugoso: null });
+  T.curva(60, 22);
+  T.recta(26, { control: true });
+
+  // ---------- 2. LA ESCALADA DE PIEDRAS ----------
+  T.fijar({ ancho: 6.4, suelo: 'roca', pendiente: 8, rugoso: 0.05 });
+  T.ladera('izq', 12, 24);
+  escalones(T.recta(78, { nota: { tipo: 'piedras' } }), 8.5, 0.38);
+  T.horquilla(-170);
+  T.ladera('der', 12, 24);
+  escalones(T.recta(84), 7.5, 0.4);
+  T.horquilla(170);
+  T.ladera('izq', 12, 24);
+  escalones(T.recta(80, { nota: { tipo: 'cuidado' } }), 7, 0.42);
+  T.curva(26, -50); T.curva(26, 50);
+  escalones(T.recta(40), 8, 0.34);
+  T.fijar({ pendiente: 3 });
+  T.recta(24, { control: true });
+
+  // ---------- 3. LA CORNISA: angosta, pared a la izquierda y el vacio a la derecha ----------
+  T.ladera('izq', 16, 32).fijar({ ancho: 4.8, suelo: 'tierra', pendiente: 1.5, rugoso: 0.03 });
+  T.recta(40, { nota: { tipo: 'cornisa' } });
+  T.curva(46, 26); T.curva(46, -26);
+  T.recta(36);
+  T.curva(52, -22); T.curva(52, 22);
+  T.recta(30, { control: true });
+
+  // ---------- 4. LA CASCADA: cruza la cornisa y empuja hacia el vacio (el agua corre hacia la derecha) ----------
+  const agua = T.vado(0.46);
+  const llega = T.tramos[T.tramos.length - 3];
+  llega.nota = { tipo: 'cascada' };
+  agua.ancho = 4.8;
+  // el agua llega desde la ladera (izquierda) y se derrama por el borde (a la derecha); la corriente empuja 4,6 m/s2
+  agua.agua = { hondo: 0.46, largo: 60, entre: [-30, 3.6], empuje: 3.0 };
+  T.recta(26);
+  T.curva(44, 24); T.curva(44, -24);
+  T.recta(24, { control: true });
+
+  // ---------- 5. LA BAJADA TRAICIONERA: empinada, de ripio, con curvas que piden frenar ----------
+  T.ladera('izq', 14, 28).fijar({ ancho: 6.6, suelo: 'ripio', pendiente: -12, rugoso: 0.04 });
+  T.recta(86, { nota: { tipo: 'bajada' } });
+  T.curva(30, -62);
+  T.recta(56);
+  T.horquilla(150);
+  T.recta(60, { pendiente: -13 });
+  T.curva(36, -46);
+  T.recta(36, { pendiente: -9 });
+  // la llegada, abajo
+  T.ladera(null).fijar({ pendiente: 1, ancho: 9 });
+  const llegada = T.recta(92);
+  llegada.pendiente = 0;
+  llegada.publico = [[52, -(9 / 2 + 7), 8], [58, 9 / 2 + 7, 7]];
+  return T.tramos;
+}
+
+const ARMAR = { subida, bajada, urbano, practica, giulio, montana };
 
 // Arma la etapa de un circuito (lo mismo que devuelve generarPista para un dia).
 export function armarCircuito(numero) {
@@ -704,5 +812,5 @@ export function armarCircuito(numero) {
   });
   // (biomas: los ambientes por los que pasa, en el orden en que aparecen; casi siempre es uno solo)
   const biomas = [...new Set(tramos.map((t) => t.bioma || c.bioma))];
-  return { numero, fijo: c.id, vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1, maximo: c.maximo };
+  return { numero, fijo: c.id, ...(c.camion ? { camion: true } : {}), vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1, maximo: c.maximo };
 }

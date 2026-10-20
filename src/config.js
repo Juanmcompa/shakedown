@@ -170,6 +170,13 @@ export const CAMARAS = [
   { id: 'arriba', nombre: 'Desde arriba', dist: [74, 104], alto: [78, 76], fov: 30, sigue: 1.0, mira: [5, 21], celu: { parado: [0.62, 0.58], acostado: [0.62, 0.56] } },
 ];
 
+// El camion de carga (La Montaña del Sufrimiento): las mismas tres camaras, pero mas cerca y mas bajas, para ver la carga y la inclinacion.
+export const CAMARAS_CAMION = [
+  { id: 'aerea',  nombre: 'Aérea',        dist: [21, 26], alto: [40, 36], fov: 38, sigue: 0.9, mira: [2, 6], celu: { parado: [0.8, 0.75], acostado: [0.85, 0.8] } },
+  { id: 'atras',  nombre: 'De atrás',     dist: [8.5, 10.5], alto: [18, 15], fov: 58, sigue: 0.5, mira: [1.5, 3.5], celu: { parado: [1.2, 1.15], acostado: [1.05, 1] }, fovParado: 68 },
+  { id: 'arriba', nombre: 'Desde arriba', dist: [34, 42], alto: [64, 62], fov: 32, sigue: 1.0, mira: [3, 8], celu: { parado: [0.7, 0.66], acostado: [0.7, 0.65] } },
+];
+
 export const JUEGO = {
   paso: 1 / 120,        // paso de la fisica
   gravedad: 9.81,

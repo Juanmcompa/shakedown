@@ -1,6 +1,7 @@
 // Las pantallas que no son manejar: el inicio (cards que se deslizan, una por modo: ver home.js), la tabla del club,
 // los circuitos y las pistas de la comunidad (dentro de sus cards), las pistas pasadas, la ayuda, la configuracion y el
 // resultado de cada pasada con su boton de compartir.
+import { BULTOS_TOTAL, RECARGO_BULTO } from './camion.js';
 import { FIRMA } from './config.js';
 import { TIPOS, PARTES, PRESETS, FICHAS, codigoDe, partesDe, armarCodigo, parte, configDe, fichas } from './partes.js';
 import { crearVitrina } from './vitrina.js';
@@ -17,7 +18,9 @@ const CUADRO = { v: '🟩', a: '🟨', r: '🟥', n: '⬛' };
 const ABANDONO = { roto: 'Rompiste el auto', tiempo: 'Se acabó el tiempo', cerrado: 'Cerraste el juego en plena pasada' };
 // El tiempo de un resultado. Un abandono dice DNF, como en las planillas de rally ("did not finish": no termino).
 const DNF = 'DNF';
-const marcaDe = (r) => (r.ab ? DNF : tiempoFinal(r.t));
+// (el camion de carga suma lo que llego: 5/6 📦)
+const bultosDe = (r) => (r.b === undefined || r.b === null ? '' : r.b + '/' + BULTOS_TOTAL + ' 📦');
+const marcaDe = (r) => (r.ab ? DNF : tiempoFinal(r.t) + (bultosDe(r) ? ' · ' + bultosDe(r) : ''));
 const crear = (etiqueta, clase, texto) => { const el = document.createElement(etiqueta); if (clase) el.className = clase; if (texto !== undefined) el.textContent = texto; return el; };
 
 // El mensaje para compartir: Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁 🚙431
@@ -31,7 +34,7 @@ export function mensaje(etapa, r, autor) {
   const cuadros = [...(r.c || 'nnnnn')].map((x) => CUADRO[x]).join(' '), fijo = circuitoDe(etapa.numero);
   return (fijo ? 'Shakedown · ' + fijo.corto + ' ' + fijo.emoji : etapa.comunidad ? 'Shakedown · ' + firmada(etapa.nombre, autor) + ' ' + EMOJI_COMUNIDAD
     : 'Shakedown #' + etapa.numero + ' ' + CLIMAS[etapa.clima].emoji + BIOMAS[etapa.bioma].emoji + (r.practica ? ' 🔧 práctica' : ''))
-    + (r.ab ? ' 💥 ' + DNF + ' ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + ' ' + cuadros + ' 🏁')
+    + (r.ab ? ' 💥 ' + DNF + ' ' + cuadros : ' ⏱️ ' + tiempoFinal(r.t) + (bultosDe(r) ? ' ' + bultosDe(r) : '') + ' ' + cuadros + ' 🏁')
     + ' ' + configDe(r.auto).emoji + codigoDe(r.auto);   // (con que auto: su chasis y el codigo de sus partes)
 }
 // El renglon que cierra todo lo que se comparte (el resultado y la invitacion a un club), debajo del link:
@@ -707,7 +710,7 @@ export function crearMenu(o) {
         caja.append(s);
       });
       $('finDetalle').textContent = r.ab ? '' : (r.rondas ? (r.rondas === 1 ? 'Diste una vuelta. ' : 'La mejor de ' + r.rondas + ' vueltas. ') + (r.seRompio ? 'Después rompiste el auto. ' : '') : '')
-        + (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : r.serio ? ' En modo rally serio.' : '');
+        + (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + (r.b !== undefined && r.b !== null ? (r.b === BULTOS_TOTAL ? 'Llegó toda la carga. ' : r.b === 0 ? 'Llegaste sin carga (+' + BULTOS_TOTAL * RECARGO_BULTO + ' s). ' : 'Se perdieron ' + (BULTOS_TOTAL - r.b) + ' de ' + BULTOS_TOTAL + ' bultos (+' + (BULTOS_TOTAL - r.b) * RECARGO_BULTO + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : r.serio ? ' En modo rally serio.' : '');
       // despues de una pasada complicada sin ayuda, se la ofrece
       $('finAyuda').hidden = !!r.ayuda || !!r.serio || !!ajustes.leer('ayuda') || !(r.ab === 'roto' || r.vueltas >= 2 || (!r.ab && r.t > ref.total * 1.6));
       $('finAyuda').firstElementChild.textContent = '¿Se complicó?';

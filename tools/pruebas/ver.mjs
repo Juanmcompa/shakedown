@@ -62,8 +62,8 @@ export async function abrir(opciones = {}) {
 
 // --- el inicio (las cards): ayudas para las pruebas que antes largaban desde la portada ---
 // El numero de pista de cada circuito, y en que card esta cada modo.
-export const PISTA_DE = { hoy: null, subida: 16001, bajada: 16002, urbano: 16003, practica: 16004, giulio: 16005 };
-export const CARD_DE = { hoy: 'hoy', subida: 'oficiales', bajada: 'oficiales', urbano: 'oficiales', practica: 'oficiales', giulio: 'reales', travesia: 'travesia', tutorial: 'tutorial', comunidad: 'comunidad' };
+export const PISTA_DE = { hoy: null, subida: 16001, bajada: 16002, urbano: 16003, practica: 16004, giulio: 16005, montana: 16006 };
+export const CARD_DE = { hoy: 'hoy', subida: 'oficiales', bajada: 'oficiales', urbano: 'oficiales', practica: 'oficiales', giulio: 'reales', montana: 'reales', travesia: 'travesia', tutorial: 'tutorial', comunidad: 'comunidad' };
 const BOTON_DE = { hoy: '#largar', travesia: '#largarTravesia', tutorial: '#largarTutorial' };
 // espera a que la fila de cards termine de moverse: la card marcada ya esta al medio (no depende de cuantos cuadros por segundo haya)
 export const quieta = async (pag) => {

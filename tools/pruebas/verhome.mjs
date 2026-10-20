@@ -83,7 +83,7 @@ const ofi = await A.evaluate(() => [...document.querySelectorAll('#circuitos li'
 ver('los circuitos oficiales: Subida, Bajada, Urbano y Practica, cada uno con su tiempo (o rayita)', ofi.length === 4 && /Subida/.test(ofi[0]) && /Bajada/.test(ofi[1]) && /Urbano/.test(ofi[2]) && /Práctica/.test(ofi[3]) && ofi.every((x) => /—|\d\d:\d\d/.test(x)), ofi);
 await irACard(A, 'reales');
 const rea = await A.evaluate(() => [...document.querySelectorAll('#catReales li')].map((li) => li.innerText.replace(/\s+/g, ' ').trim()));
-ver('los reales: Giulio Cesare', rea.length === 1 && /Giulio Cesare/.test(rea[0]), rea);
+ver('los reales: Giulio Cesare y, debajo, La Montaña del Sufrimiento (con su camion)', rea.length === 2 && /Giulio Cesare/.test(rea[0]) && /Montaña del Sufrimiento/.test(rea[1]), rea);
 await irACard(A, 'travesia');
 const tv = await A.evaluate(() => ({ record: document.getElementById('tvRecord').textContent, filas: [...document.querySelectorAll('#catAventura li')].map((li) => li.innerText.replace(/\s+/g, ' ').trim()), boton: document.getElementById('largarTravesia').textContent }));
 ver('la travesia: tu record (o "sin record") y los tres primeros de tus amigos', /Sin récord/.test(tv.record) && tv.filas.length === 3 && /^1 .*Ana 23,5 km/.test(tv.filas[0]) && /Bruno/.test(tv.filas[1]) && /Cleo/.test(tv.filas[2]) && /Largar/.test(tv.boton), tv);

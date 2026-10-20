@@ -29,6 +29,7 @@ const PINTURAS = {
   chata: pintura('#e2a21e', { carga: true }),                            //
   buggy: pintura('#c8302a', { numero: '7', franjas: ['#f4f0e6', '#1e1f23'] }),     // rojo de rally, jaula negra
   camion: pintura('#e8b81c', { numero: '3', franjas: ['#1e1f23', '#f4f0e6'] }),    // cabina amarilla, lona caqui
+  carguero: pintura('#c9561f', { numero: '6', franjas: ['#1e1f23', '#f4f0e6'] }),  // cabina naranja, caja de tablas
   f1: pintura('#e01818', { numero: '1', franjas: ['#ffffff', '#000000'] }), // Nuevo auto F1
 };
 const VELO = 'rgba(226, 240, 255, 0.62)';
@@ -525,6 +526,102 @@ const CAMION = {
   },
 };
 
+// ================= EL CARGUERO: el camion de la Montana, con la caja pelada (plataforma con barandas) para la carga =================
+const MADERA = ['#6b4c2c', '#8f6a3e', '#b08a56'];
+const CARGUERO = {
+  W: 18, L: 48, Y0: -5, Y1: 12, rueda: 0.4, atlas: [256, 128], frenos: [[-6, 1, 22.1, 2, 2], [6, 1, 22.1, 2, 2]],
+  cajas: (q) => {
+    const faro = { caras: { nz: '#ffd23a', px: N[1], nx: N[1], py: N[2], ny: N[0], pz: N[1] } };
+    return [
+      [-5, -5, -20, 5, -3, 21, { liso: N[0] }],                         // chasis
+      [-7, -4, -23, 7, -2, -22, { liso: N[2] }],                        // paragolpes de adelante
+      [-7, -4, 22, 7, -2, 23, { liso: N[2] }],                          // paragolpes de atras
+      [-7, -3, -22, 7, 3, -4],                                          // trompa y base de la cabina
+      [-7, 3, -14, 7, 10, -4, { cuña: 3 }],                             // cabina, con el parabrisas tendido
+      [-7, -3, -3, 7, 3, 22],                                           // chasis de la caja, negro con luces
+      [-8, 2, -3, 8, 4, 21, { liso: N[1] }],                            // plataforma
+      [-8, 4, -3, -7, 6, 21, { liso: N[2] }], [7, 4, -3, 8, 6, 21, { liso: N[2] }], [-8, 4, 20, 8, 6, 21, { liso: N[2] }],   // barandas
+      [-8, 4, -3, 8, 9, -2, { liso: N[2] }],                            // defensa contra la cabina
+      [-9, 2, -18, -6, 3, -10, { liso: N[1] }], [6, 2, -18, 9, 3, -10, { liso: N[1] }],    // guardabarros de adelante
+      [-9, 2, 10, -6, 3, 18, { liso: N[1] }], [6, 2, 10, 9, 3, 18, { liso: N[1] }],        // guardabarros de atras
+      [-9, 5, -11, -7, 6, -10, { liso: N[1] }], [7, 5, -11, 9, 6, -10, { liso: N[1] }],    // espejos
+      [7, 3, -3, 8, 11, -2, { liso: N[3] }],                            // escape vertical, atras de la cabina
+      ...(q.rally ? [
+        [-6, -2, -24, -4, 0, -23, faro], [4, -2, -24, 6, 0, -23, faro],   // faros de rally en el paragolpes
+        [-4, 10, -9, 4, 11, -8, { liso: N[1] }],                        // barra de luces del techo
+      ] : []),
+    ];
+  },
+  vistas: {
+    arriba: ({ A }, q, p) => {
+      const c = q.c, v = q.vidrio;
+      p.fondo(N[1]);
+      A(-7, -22, 14, 8, c[2]); A(-7, -22, 14, 1, c[3]); A(-7, -22, 1, 8, c[3]); A(6, -22, 1, 8, c[1]);   // capot
+      A(-6, -14, 12, 3, v[1]); A(-5, -13, 3, 1, v[3]);                                  // parabrisas
+      A(-7, -11, 14, 7, c[2]); A(-7, -11, 14, 1, c[3]); A(-7, -11, 1, 7, c[3]); A(6, -11, 1, 7, c[1]);   // techo de la cabina
+      A(-8, -3, 16, 24, MADERA[1]); A(-8, -3, 1, 24, N[2]); A(7, -3, 1, 24, N[2]); A(-8, 20, 16, 1, N[2]);   // plataforma
+      for (const z of [2, 7, 12, 17]) A(-7, z, 14, 1, MADERA[0]);                       // tablas
+      A(-7, 21, 14, 1, N[1]);
+      salpicar(p, 14, (col, a, b) => A(-8 + Math.floor(a * 16), -3 + Math.floor(b * 24), 1, 1, col));
+      A(-5, -21, 10, 6, BLANCO); cifras(q.numero, (x, y) => A(-3 + x, -20 + y, 1, 1, N[0]));   // numero en el capot
+    },
+    abajo: ({ B }, q, p) => {
+      p.fondo(N[0]);
+      B(-7, -22, 1, 44, q.c[0]); B(6, -22, 1, 44, q.c[0]);
+      B(-5, -20, 1, 41, N[2]); B(4, -20, 1, 41, N[2]);                                  // largueros
+      B(-6, -14, 12, 1, N[3]); B(-6, 14, 12, 1, N[3]); B(-1, -15, 2, 3, N[4]); B(-1, 13, 2, 3, N[4]);   // ejes y diferenciales
+      B(0, -14, 1, 28, N[4]); for (const z of [-8, 0, 8]) B(-4, z, 8, 1, N[1]);          // cardan y travesaños
+      B(2, -6, 1, 24, '#6b4a36');                                                       // escape
+      salpicar(p, 30, (col, a, b) => B(-7 + Math.floor(a * 14), -22 + Math.floor(b * 44), 1, 1, col));
+    },
+    costado: ({ L }, q, p, espejo) => {
+      const c = q.c, v = q.vidrio;
+      p.fondo(N[0]);
+      L(-20, -5, 41, 2, N[2]);                                                          // chasis
+      L(-22, -3, 18, 6, c[2]); L(-22, 2, 18, 1, c[3]); L(-22, -3, 18, 1, c[1]);         // trompa
+      L(-14, 3, 10, 7, c[2]); L(-12, 9, 8, 1, c[3]);                                    // cabina
+      L(-12, -1, 1, 10, c[1]); L(-5, -1, 1, 10, c[1]); L(-6, 2, 1, 1, N[1]);            // puerta y manija
+      L(-11, 5, 6, 4, v[1]); L(-10, 7, 2, 1, v[3]); L(-9, 6, 2, 1, v[3]);              // ventanilla
+      L(-3, -3, 25, 6, N[1]);                                                           // chasis de la caja
+      for (const z of [-1, 3, 7, 19]) { L(z, -1, 2, 2, '#e8b81c'); L(z, -1, 1, 1, '#f7e08a'); }   // luces de posicion
+      L(-3, 3, 24, 2, MADERA[1]); L(-3, 3, 24, 1, MADERA[0]); L(-3, 5, 24, 2, N[2]); L(-3, 9, 1, 3, N[2]);   // plataforma y baranda
+      for (const z of [2, 8, 14, 20]) L(z, 5, 1, 2, N[1]);                              // postes
+      L(-23, -4, 1, 2, N[2]); L(22, -4, 1, 2, N[2]);                                    // paragolpes
+      L(7, 4, 1, 7, N[4]);                                                              // escape vertical
+      L(-18, -3, 10, 5, N[0]); L(9, -3, 10, 5, N[0]);                                   // pasos de rueda
+      L(-22, 2, 2, 1, q.giro);
+      if (q.rally) {
+        L(-22, 0, 17, 1, q.franjas[0]);                                                 // franja sobre el capot
+        L(-12, 4, 4, 3, BLANCO); cifras(q.numero, (x, y) => L(-11 + x, 6 - y, 1, 1, N[0]), espejo);   // numero en la puerta
+      }
+      salpicar(p, 20, (col, a, b) => { const z = -22 + Math.floor(a * 44); L(z, -3 + Math.floor(b * 2.5), 1, 1, col); });
+    },
+    frente: ({ F }, q, p) => {
+      const c = q.c, v = q.vidrio;
+      p.fondo(N[0]);
+      F(-8, 2, 16, 3, MADERA[1]);                                                       // la plataforma asoma a los costados
+      F(-7, 3, 14, 7, c[2]); F(-7, 9, 14, 1, c[3]);                                     // marco del parabrisas
+      F(-6, 4, 12, 5, v[1]); F(-6, 8, 12, 1, v[0]);
+      for (let k = 0; k < 4; k++) { F(-4 + k, 4 + k, 2, 1, v[3]); F(2 + k, 4 + k, 1, 1, v[2]); }
+      F(-4, 4, 3, 1, N[0]); F(1, 4, 3, 1, N[0]);                                        // limpiaparabrisas
+      F(-7, -2, 14, 5, c[2]); F(-7, 2, 14, 1, c[3]);                                    // trompa
+      F(-5, -1, 10, 3, N[1]); F(-4, 0, 8, 1, N[3]); F(-4, 1, 8, 1, N[2]);               // parrilla
+      F(-7, 0, 2, 2, q.luz); F(5, 0, 2, 2, q.luz); F(-7, -1, 2, 1, q.giro); F(5, -1, 2, 1, q.giro);
+      F(-4, -4, 8, 1, METAL[0]);
+      if (!q.rally) return;
+      for (const x of [-6, 4]) { F(x, -2, 2, 2, '#ffd23a'); F(x + 1, -1, 1, 1, '#fff1a8'); }
+    },
+    atras: ({ T }, q, p) => {
+            p.fondo(N[0]);
+      T(-8, 2, 16, 2, MADERA[1]); T(-8, 4, 16, 2, N[2]); T(-8, 6, 16, 1, N[1]); T(-8, 9, 16, 1, N[2]);   // plataforma, baranda y defensa
+      T(-7, -3, 14, 6, N[1]); T(-7, -3, 14, 1, N[2]);                                   // chasis de la caja
+      T(-7, 1, 2, 2, q.freno); T(5, 1, 2, 2, q.freno); T(-7, 0, 2, 1, q.giro); T(5, 0, 2, 1, q.giro);
+      T(-2, -1, 4, 2, BLANCO);                                                          // patente
+    },
+  },
+};
+
+
 // ================= EL F1 moderno =================
 const F1 = {
   W: 16, L: 42, Y0: -2, Y1: 5, rueda: 0.35, frenos: [[-4, 1, 18, 2, 1], [4, 1, 18, 2, 1]], 
@@ -569,7 +666,7 @@ const F1 = {
   },
 };
 // (la lista de modelos va despues de definirlos a todos: si no, el juego no carga)
-const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA, buggy: BUGGY, camion: CAMION, f1: F1 };
+const MODELOS = { vitarita: VITARITA, kacito: KACITO, chata: CHATA, buggy: BUGGY, camion: CAMION, carguero: CARGUERO, f1: F1 };
 
 // Pinta las vistas y arma la forma de un modelo con una pintura. Se guarda: dos autos iguales comparten todo.
 const hechos = new Map();

@@ -213,6 +213,12 @@ export function crearTerreno(etapa) {
         const dd = Math.abs(u - l[0]);
         if (dd < l[2] / 2) hc += l[1] * (0.5 + 0.5 * Math.cos(dd / l[2] * 2 * Math.PI));
       }
+      // escalones: bloques de piedra desalineados sobre el camino (La Escalada de Piedras). [metros desde el inicio del tramo,
+      // metros a la derecha del medio, largo, ancho, alto]. Sube de golpe en un metro (la grilla es de un metro): un escalon duro.
+      if (t.escalones && d < medio + 0.6) for (const e of t.escalones) {
+        const fuera = Math.max(Math.abs(u - e[0]) - e[2] / 2, Math.abs(lado - e[1]) - e[3] / 2);
+        if (fuera < 0.5) { hc += e[4] * (1 - suave(-0.5, 0.5, fuera)); if (fuera < 0) suelo = SUELOS.roca.id; }
+      }
       // "plano": a cada lado del camino el terreno sigue parejo esos metros (para veredas, casas, playones y banquinas de cornisa)
       const plano = PLANO[P.T[c]][lado > 0 ? 1 : 0];
       if (plano && d > medio) hc = mezcla(hc, P.Y[c] + P.G[c] * largo, suave(medio, medio + 1, d));
@@ -252,15 +258,18 @@ export function crearTerreno(etapa) {
     if (!t.agua) continue;
     const m = (t.desde + t.hasta) >> 1, medio = t.largo / 2;
     const a = { x: P.X[m], z: P.Z[m], hx: P.HX[m], hz: P.HZ[m], nivel: P.Y[m] + t.agua.hondo, cruce: medio + 16, largo: t.agua.largo / 2 };
+    // (opcional) "entre": hasta donde llega el agua a cada lado del camino [izquierda negativa, derecha], en vez de parejo;
+    // "empuje": una corriente que empuja a lo que esta adentro, hacia la derecha del camino (m/s2). Ver "corriente".
+    a.entre = !!t.agua.entre; a.pb0 = a.entre ? t.agua.entre[0] : -a.largo; a.pb1 = a.entre ? t.agua.entre[1] : a.largo; a.empuje = t.agua.empuje || 0;
     aguas.push(a);
     const i0 = Math.max(0, Math.floor(a.x - x0 - a.largo - 24)), i1 = Math.min(nx - 1, Math.ceil(a.x - x0 + a.largo + 24));
     const j0 = Math.max(0, Math.floor(a.z - z0 - a.largo - 24)), j1 = Math.min(nz - 1, Math.ceil(a.z - z0 + a.largo + 24));
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       const x = x0 + i * celda, z = z0 + j * celda, k = j * nx + i, ax = x - a.x, az = z - a.z;
       const pb = az * a.hx - ax * a.hz, pa = Math.abs(ax * a.hx + az * a.hz - curva(pb));
-      if (Math.abs(pb) > a.largo || pa > medio + 9) continue;
+      if ((a.entre ? (pb < a.pb0 || pb > a.pb1) : Math.abs(pb) > a.largo) || pa > medio + 9) continue;
       // el cauce se va cerrando hacia las puntas
-      const f = (1 - suave(medio - 1, medio + 7, pa)) * (1 - suave(a.largo - 13, a.largo - 1, Math.abs(pb)));
+      const f = (1 - suave(medio - 1, medio + 7, pa)) * (1 - suave(a.largo - 13, a.largo - 1, a.entre ? a.largo - Math.min(pb - a.pb0, a.pb1 - pb) : Math.abs(pb)));
       const lecho = P.Y[m] - 0.1 + ruido.capas(x / 5, z / 5, 2) * 0.18;
       if (f > 0 && H[k] > lecho) H[k] = mezcla(H[k], lecho, f);
       if (H[k] < a.nivel + 0.25 && S[k] === 255) S[k] = SUELOS.lecho.id;
@@ -297,15 +306,29 @@ export function crearTerreno(etapa) {
       const llega = [0, 0];
       [-1, 1].forEach((s, q) => { for (let de = medio + 1; de < lejos - 6; de += 1) { const eje = serpentea(s * de), borde = mitad(s * de) + 3.5; if (alturaEn(eje + borde, s * de) < nivel + 0.25 || alturaEn(eje - borde, s * de) < nivel + 0.25) break; llega[q] = de; } });
       const corre = (llega[1] - llega[0]) / 2, largo = (llega[1] + llega[0]) / 2;
-      if (largo > 3) aguas.push({ x: P.X[m] - hz * corre, z: P.Z[m] + hx * corre, hx, hz, nivel, cruce: luz + 3 + VAIVEN, largo });
+      if (largo > 3) aguas.push({ x: P.X[m] - hz * corre, z: P.Z[m] + hx * corre, hx, hz, nivel, cruce: luz + 3 + VAIVEN, largo, entre: false, pb0: -largo, pb1: largo, empuje: 0 });
     }
   }
   function agua(x, z, h) {
     for (const a of aguas) {
       const ax = x - a.x, az = z - a.z;
-      if (Math.abs(ax * a.hx + az * a.hz) < a.cruce && Math.abs(az * a.hx - ax * a.hz) < a.largo) return Math.max(0, a.nivel - h);
+      const pb = az * a.hx - ax * a.hz;
+      if (Math.abs(ax * a.hx + az * a.hz) < a.cruce && pb > a.pb0 && pb < a.pb1) return Math.max(0, a.nivel - h);
     }
     return 0;
+  }
+  // La corriente de una cascada que cruza el camino: cuanto empuja (m/s2) hacia la derecha del camino a lo que esta en el agua.
+  // La usa solo el camion de La Montaña del Sufrimiento (los autos no la miran). o: { fx, fz, f } (f: 0 a 1, cuanta agua hay)
+  function corriente(x, z, o) {
+    o.fx = 0; o.fz = 0; o.f = 0;
+    for (const a of aguas) {
+      if (!a.empuje) continue;
+      const ax = x - a.x, az = z - a.z, pb = az * a.hx - ax * a.hz;
+      if (Math.abs(ax * a.hx + az * a.hz) >= a.cruce || pb <= a.pb0 || pb >= a.pb1) continue;
+      const f = Math.min(1, Math.max(0, a.nivel - altura(x, z)) / 0.25);
+      if (f > o.f) { o.f = f; o.fx = -a.hz * a.empuje * f; o.fz = a.hx * a.empuje * f; }
+    }
+    return o;
   }
 
   // --- 4. Suelos naturales: roca donde es muy empinado, pasto en el resto ---
@@ -627,7 +650,7 @@ export function crearTerreno(etapa) {
     biomas, zona: ZONA, biomaEn: (x, z) => (ZONA ? biomas[ZONA[Math.max(0, Math.min(nz - 1, Math.round(z - z0))) * nx + Math.max(0, Math.min(nx - 1, Math.round(x - x0)))]] : biomas[0]), orilla: ORILLA, cultivo: CULTIVO, pelado: PELADO, claros, aguas, vacas, molinos, cosas, postes, fardos, publico, cintas, carteles, mojones, autos, estacionados,
     casas, objetos, barandas, pircas, puentes, estorbos,
     vuelta: L ? { largo: L, desde: L, hasta: 2 * L } : null,   // (solo en una vuelta cerrada) cuanto mide, y entre que metros del camino se corre
-    altura, normal, suelo, indice, controles, sectores, largada, salida, meta,
+    altura, normal, suelo, corriente, indice, controles, sectores, largada, salida, meta,
     cosasCerca: (x, z) => cajasCosas.get(clave(Math.floor(x / 8), Math.floor(z / 8))),
   };
 }

@@ -98,9 +98,11 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Láminas dibujadas por Juanma en las cards del inicio (`laminas/`)
 - [x] Ícono nuevo para compartir: una flecha que sale de una caja, hacia arriba (el de antes parecía "volver")
 - [x] Música de fondo en loop: suave en el inicio, muy bajita en las carreras; botón de nota (tecla N) y opción en Configuración. Arranca con el primer toque
+- [x] La Montaña del Sufrimiento: camión de carga con física propia, 4 tramos (barro, piedras, cornisa con cascada, bajada), carga que se corre y se cae, burbuja de nivel, recargo por bulto, fantasma fiel y prueba `vercamion.mjs`
 
 ## Lo que sigue
 
+- Montaña del Sufrimiento: que las tablas del servidor muestren los bultos entregados; que la cascada se vea como caída de agua; afinar la dificultad (y los tiempos de referencia `PAR_CAMION`) con gente jugando en el celu.
 - Que la card de la pista del día pida al servidor las tablas de hoy aunque esté cargado un circuito (ahora muestra lo último guardado en el aparato).
 - Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).
 - Travesía: puestos de asistencia cada 10 km para arreglar averías con las cartas buenas (ya están guardadas en `ARREGLOS`, fuera del sorteo), sonido de arena, y ajustar la dificultad probando en celulares.
