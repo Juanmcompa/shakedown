@@ -97,6 +97,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Inicio con cards deslizables por modo (`src/home.js`): ya no se entra directo a la carrera, sale el panel Circuitos, "Volver" lleva al inicio y los links abren en su card
 - [x] Láminas dibujadas por Juanma en las cards del inicio (`laminas/`)
 - [x] Ícono nuevo para compartir: una flecha que sale de una caja, hacia arriba (el de antes parecía "volver")
+- [x] Música de fondo en loop: suave en el inicio, muy bajita en las carreras; botón de nota (tecla N) y opción en Configuración. Arranca con el primer toque
 
 ## Lo que sigue
 

@@ -522,7 +522,7 @@ export function crearMenu(o) {
       <div><dt><kbd>Espacio</kbd></dt><dd>freno de mano</dd></div>
       <div><dt><kbd>R</kbd> ${dib('volver')}</dt><dd>volver al camino (suma 8 segundos)</dd></div>
       <div><dt><kbd>C</kbd> ${dib('cam-aerea')}${dib('cam-atras')}${dib('cam-arriba')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
-      <div><dt><kbd>M</kbd> ${dib('sonido')} <kbd>V</kbd> ${dib('voz')}</dt><dd>sonido y voz del copiloto</dd></div>
+      <div><dt><kbd>M</kbd> ${dib('sonido')} <kbd>N</kbd> ${dib('musica')} <kbd>V</kbd> ${dib('voz')}</dt><dd>sonido, música y voz del copiloto</dd></div>
       <div><dt><kbd>T</kbd> ${dib('trazada')}</dt><dd>trazada: la línea para seguir</dd></div>
     </dl>
     <dl class="teclas dedos">
@@ -532,7 +532,7 @@ export function crearMenu(o) {
       <div><dt>${dib('mano')}</dt><dd>freno de mano</dd></div>
       <div><dt>${dib('volver')}</dt><dd>volver al camino (suma 8 segundos)</dd></div>
       <div><dt>${dib('cam-aerea')}${dib('cam-atras')}${dib('cam-arriba')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
-      <div><dt>${dib('sonido')}${dib('voz')}</dt><dd>sonido y voz del copiloto</dd></div>
+      <div><dt>${dib('sonido')}${dib('musica')}${dib('voz')}</dt><dd>sonido, música y voz del copiloto</dd></div>
     </dl>
     <p>${dib('bandera')} larga la pasada oficial: una sola por día. ${dib('cono')} es práctica: no cuenta para la tabla.</p>
     <p>${dib('circuito')} Además de la pista del día hay circuitos fijos, para correr las veces que quieras: una subida y una bajada de montaña, un callejero por el pueblo y una vuelta cerrada para practicar, donde das las vueltas que quieras. Queda guardado tu mejor tiempo.</p>

@@ -26,6 +26,8 @@ import { crearEfectos } from './fx.js';
 import { crearHuellas } from './huellas.js';
 import { crearTrazada } from './trazada.js';
 import { crearSonido } from './audio.js';
+import { crearMusica } from './musica.js';
+import { icono } from './iconos.js';
 import { crearTeclas } from './input.js';
 import { crearHud, tiempoFinal } from './hud.js';
 import { crearPapelitos } from './papelitos.js';
@@ -43,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '30';
+const PAGINA = '31';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -183,7 +185,7 @@ huellas.pintar();   // la raya de largada, la meta y las lineas del asfalto
 const trazada = crearTrazada(T, escena, ref);   // la linea para seguir (se prende en la configuracion)
 // el polvo: no hay si llueve, y se lo lleva un viento suave que cambia con la pista
 const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
-const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento], liviano), sonido = crearSonido(), hud = crearHud();
+const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento], liviano), sonido = crearSonido(), musica = crearMusica(), hud = crearHud();
 const post = crearPost(render, etapa.clima, liviano);
 const papelitos = crearPapelitos($('papelitos'));   // (los de la meta)
 // lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica).
@@ -457,6 +459,8 @@ const menu = crearMenu({
   borrarPista,
 });
 
+// cuanto suena la musica en cada pantalla, contando 1 el volumen del inicio (en la carrera no tiene que tapar motor, copiloto ni golpes)
+const NIVEL_MUSICA = { carrera: 0.13, fin: 0.45 };
 let pantalla = 'portada';   // portada (el inicio con las cards), jugando o fin
 let modo = 'practica';      // oficial o practica
 let antes = performance.now(), resto = 0, reloj3d = 0, tactil = false, grabacion = null, tFin = 0, avisado = '', trabado = false, paraAtras = false;
@@ -657,6 +661,7 @@ const teclas = crearTeclas((tecla) => {
   else if (tecla === 'Escape') aLaPortada();
   else if (tecla === 'KeyC') { const m = camara.cambiar(); club.gusto('camara', m.id); hud.camara(m.id); hud.aviso(m.nombre, 1.2); }
   else if (tecla === 'KeyM') ajustar('sonido', !gusto('sonido'));
+  else if (tecla === 'KeyN') ajustar('musica', !gusto('musica'));
   else if (tecla === 'KeyV') ajustar('voz', !gusto('voz'));
   else if (tecla === 'KeyT') { ajustar('trazada', !gusto('trazada')); if (pantalla === 'jugando') hud.aviso(conTrazada ? 'Trazada' : 'Sin trazada', 1.2); }
 });
@@ -677,6 +682,13 @@ const travesia = crearModoTravesia({
   renombrar: () => { if (!nube.hay) return; for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); subirTravesia().then((ok) => { if (!ok) reintentarLuego(); }); },
 });
 
+// Los navegadores no dejan sonar nada hasta que la persona toca algo: la musica arranca con el primer toque o tecla
+// (recien ahi se baja el archivo, asi no frena la carga del juego).
+function primerToque() { musica.iniciar(); if (musica.estado().cargada) for (const t of TOQUES) document.removeEventListener(t, primerToque, true); }
+const TOQUES = ['pointerup', 'touchend', 'click', 'keydown'];
+for (const t of TOQUES) document.addEventListener(t, primerToque, true);
+$('botonMusica').addEventListener('click', () => ajustar('musica', !gusto('musica')));
+
 // --- la configuracion: como se aplica cada cosa que se puede elegir (los valores de fabrica estan en GUSTOS, en config.js) ---
 const APLICAR = {
   // (el auto se arma de nuevo, salvo que ya este corriendo: en la largada, mientras dura el tutorial, todavia se puede)
@@ -690,6 +702,7 @@ const APLICAR = {
   pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
   efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); travesia.efectos(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
   sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
+  musica: (v) => { hud.prendido('musica', !!v); const b = $('botonMusica'); b.firstElementChild.src = icono('musica', undefined, !v); b.classList.toggle('apagado', !v); b.setAttribute('aria-pressed', !!v); },
   voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); travesia.voz(conVoz); hud.prendido('voz', conVoz); },
 };
 function ajustar(clave, valor) { club.gusto(clave, valor); APLICAR[clave](valor); menu.pintar(); }
@@ -737,6 +750,8 @@ const HACIA = new THREE.Vector3(), AL_AUTO = new THREE.Vector3();
 
 function cuadro(ahora) {
   requestAnimationFrame(cuadro);
+  // la musica: suave en el inicio, muy bajita en las carreras, a medio camino en el resultado; calla con el sonido o con su boton apagados
+  musica.poner(pantalla === 'portada' && !travesia.activa() ? 1 : pantalla === 'fin' ? NIVEL_MUSICA.fin : NIVEL_MUSICA.carrera, !!gusto('musica') && !!gusto('sonido'));
   // con el creador de pistas abierto (tapa toda la pantalla) no se dibuja nada: el aparato descansa
   if (creador.abierto() && !cargando) { antes = ahora; return; }
   cuidarFluidez((ahora - antes) / 1000);
@@ -859,7 +874,7 @@ window.addEventListener('online', () => { if (pantalla !== 'jugando') alVolver()
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
 if (enCasa) window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, recordesDeLosClubes, subirTravesia, tutorial, creador, comunidad, sonido, papelitos,
+  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, recordesDeLosClubes, subirTravesia, tutorial, creador, comunidad, sonido, musica, papelitos,
   auto: () => c,
   travesia: travesia.prueba, entrarTravesia: () => travesia.entrar(),
   dibujo: () => dibujo,
