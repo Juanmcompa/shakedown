@@ -16,9 +16,9 @@ export const MONTANA = 16006;
 //   barro: hasta que torque sostienen en el barro (el pedal sube hasta ahi y lo sueltan)   bajada: velocidad maxima en la bajada
 //   piedras / cornisa / agua: velocidad en esos tramos (m/s)   reaccion: segundos entre una correccion y otra
 export const PILOTOS_CAMION = {
-  manso:  { barro: 0.66, piedras: 2.0, cornisa: 2.4, agua: 2.0, bajada: 4.2, llano: 7, reaccion: 0.14, frenada: 0.55 },
-  normal: { barro: 0.7, piedras: 2.6, cornisa: 3.0, agua: 2.4, bajada: 5.5, llano: 9, reaccion: 0.12, frenada: 0.7 },
-  bruto:  { barro: 1.0, piedras: 4.5, cornisa: 5.5, agua: 5.0, bajada: 9, llano: 12, reaccion: 0.1, frenada: 1 },
+  manso:  { barro: 0.45, piedras: 2.0, cornisa: 2.4, agua: 2.0, bajada: 4.2, llano: 7, reaccion: 0.14, frenada: 0.55 },
+  normal: { barro: 0.5, piedras: 2.6, cornisa: 3.0, agua: 2.4, bajada: 5.5, llano: 9, reaccion: 0.12, frenada: 0.7 },
+  bruto:  { barro: 0.85, piedras: 4.5, cornisa: 5.5, agua: 5.0, bajada: 9, llano: 12, reaccion: 0.1, frenada: 1 },
 };
 
 // Corre la pista. o: un piloto de PILOTOS_CAMION. Devuelve lo que paso.
@@ -52,20 +52,23 @@ export function correrCamion(T, o, { maximo = 1800, traza = false, alPaso = null
     const i = p.indice, v = c.velocidad, tr = tramos[P.T[i]];
     // el volante: hacia un punto del camino unos metros adelante (todo o nada, como con el teclado)
     const a = Math.min(P.n - 1, i + Math.round(4 + 1.2 * Math.abs(v))), f = c.adelante;
-    const lado = (tr.agua ? 0 : 0);
+    // (apunta al medio de las rodadas, que serpentean: es lo que haria quien maneja viendo los surcos)
+    const lado = tr.agua ? 0 : T.surcoCentro(a);
     const dx = P.X[a] - P.HZ[a] * lado - c.pos[0], dz = P.Z[a] + P.HX[a] * lado - c.pos[2];
     const e = Math.atan2(f[0] * dz - f[2] * dx, f[0] * dx + f[2] * dz);
     ent.x = Math.abs(e) < 0.05 ? 0 : Math.sign(e) * Math.min(1, Math.abs(e) * 2.2);
     // que velocidad quiere llevar: segun el suelo y lo que viene (frena antes de lo empinado y de las curvas)
-    const suelo = SUELOS_POR_ID[P.S[i]];
+    // (el suelo es el que pisan las ruedas, no el del tramo: en las rodadas hay barro aunque el camino sea de tierra o de roca)
+    const suelo = c.enPiso ? SUELOS_POR_ID[c.suelo] : SUELOS_POR_ID[P.S[i]];
     let quiere = o.llano;
     const mira = (desde, hasta) => { for (let k = desde; k <= hasta; k += 4) { const j = Math.min(P.n - 1, i + k), r = tramos[P.T[j]]; if (r.agua) return 'agua'; if (r.suelo === 'barro') return 'barro'; if (r.escalones) return 'piedras'; } return ''; };
     let clase = '';
-    if (suelo === 'barro' || suelo === 'pantano' || suelo === 'charco') clase = 'barro';
+    if (tr.escalones && tr.suelo === 'roca') clase = 'piedras';   // (entre las piedras manda la piedra: el barro de las rodadas es de a ratos)
+    else if (suelo === 'barro' || suelo === 'pantano' || suelo === 'charco') clase = 'barro';
     else if (tr.escalones) clase = 'piedras';
     else if (tr.agua) clase = 'agua';
+    else if (tr.pendiente <= -8) clase = 'bajada';   // (antes que la cornisa: el camino entero es angosto)
     else if (tr.ancho < 5.2) clase = 'cornisa';
-    else if (tr.pendiente <= -8) clase = 'bajada';
     else { const q = mira(1, 26); clase = q === 'agua' ? 'agua' : q === 'piedras' ? 'piedras' : q === 'barro' ? 'barro' : ''; }
     if (clase && clase !== 'barro') quiere = o[clase];
     // en las curvas, mas despacio
@@ -74,12 +77,13 @@ export function correrCamion(T, o, { maximo = 1800, traza = false, alPaso = null
     // el pedal
     ent.y = 0;
     if (clase === 'barro') {
-      // pluma: pisa hasta el torque que elige y suelta hasta que baje
-      if (m.on && c.gas > o.barro) m.on = false; else if (!m.on && c.gas < 0.12) m.on = true;
-      ent.y = m.on ? 1 : 0;
+      // pluma: pisa hasta el torque que elige y suelta en cuanto lo pasa (el pedal baja de a poco: el torque queda cerca de ese valor)
+      ent.y = c.gas < o.barro ? 1 : 0;
       if (c.hundido > 0.5) { ent.y = 0; m.on = false; }
     } else if (v < quiere - 0.3) ent.y = 1;
     else if (v > quiere + 1.0) ent.y = -(clase === 'bajada' ? Math.min(1, o.frenada) : 1) * (v > quiere + 3 ? 1 : 0.6);
+    // enterrada en un pozo de barro: soltar el pedal, que se acomode
+    if (clase !== "barro" && c.hundido > 0.9 && ent.y > 0) ent.y = 0;
     // en la bajada el freno se da de a poco (el pedal es todo o nada: se frena a ratos)
     if (clase === 'bajada' && ent.y < 0) { m.golpes = (m.golpes || 0) + 1; if (m.golpes % 3 !== 0 && v < quiere + 3) ent.y = 0; }
     // trabado en el piso: un rato de marcha atras, y si no sale, pide volver al camino

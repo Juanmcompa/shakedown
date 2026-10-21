@@ -16,7 +16,7 @@ export const BULTOS_TOTAL = 6;
 export const RECARGO_BULTO = 60;        // segundos que suma cada bulto perdido
 export const CODIGO_CAMION = '353';     // con que codigo de partes figura en las tablas (el Camioncito de partes.js)
 // el tiempo de referencia de La Montaña del Sufrimiento (segundos): lo que tarda un buen piloto con la carga, por sector (de ahi salen los cuadritos de colores)
-export const PAR_CAMION = { sectores: [230, 340, 62, 45, 56], total: 733 };
+export const PAR_CAMION = { sectores: [190, 345, 75, 120, 80], total: 810 };   // (v3: camino angosto; salen del piloto "normal" de tools/pilotocamion.mjs)
 
 // --- el camion: mismos nombres que los autos de config.js, mas lo propio (torque, ruedas, cubierta de la caja) ---
 export const CAMION_CARGA = {
@@ -25,7 +25,7 @@ export const CAMION_CARGA = {
   // suspension muy blanda: cede unos 30 cm con la carga puesta y rebota (poco amortiguador)
   resorteLargo: 0.66, recorrido: 0.48, resorte: 31000, amortigua: [2300, 3000],
   // motor: torque maximo en las ruedas (N·m, entre las cuatro), potencia (W) y la velocidad a la que corta (m/s)
-  torque: 7200, potencia: 98000, corta: 15, pedal: [0.7, 3.5, 0.55], giroRueda: 0, inerciaRueda: 55,
+  torque: 7200, potencia: 98000, corta: 15, pedal: [0.7, 3.5, 0.55], suelta: [0.7, 3.5], giroRueda: 0, inerciaRueda: 55,
   // frenos: en "g" de todo el peso; parte que frenan las de adelante
   frenos: 0.72, frenoAdelante: 0.55, frenoMotor: 0.1, reversa: 0.5, aire: 4.6,
   giro: 0.5, giroFino: 0.2, giroVel: 1.9, lateral: 0.28, deriva: 0.15, firme: 0.5, patinaje: 0.85, alturaLateral: 0.55,
@@ -43,6 +43,7 @@ const SUELO_CAMION = {
   [SUELOS.lecho.id]: { mu: 0.8, res: 0.03, hunde: 0, visc: 150 },
   [SUELOS.pasto.id]: { mu: 0.95, res: 0.03, hunde: 0.2, visc: 40 },
 };
+const TRACCION_MIN = 0.1, TRACCION_DESDE = 0.5, TRACCION_RANGO = 1.5;   // control de traccion en suelo blando (ver c.paso)
 const HUNDIDO_MAX = 0.24;   // metros que baja la rueda cuando esta del todo enterrada
 
 // --- los bultos ---
@@ -280,7 +281,7 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
   for (let i = 0; i < 4; i++) {
     c.ruedas.push({ x: (i % 2 ? 1 : -1) * C.trocha, z: (i < 2 ? -1 : 1) * C.ejes + C.centro, delantera: i < 2, empuja: 1,
       largo: C.resorteLargo, toca: false, patina: 0, cruza: 0, giro: 0, suelo: 0, carga: 0, tope: 1, vl: 0, p: [0, 0, 0],
-      w: 0, hundido: 0, desl: 0 });
+      w: 0, hundido: 0, desl: 0, blando: false });
   }
   const [ax, az, panza, techo] = C.caja;
   const puntos = [[0, panza, C.centro - C.ejes], [0, panza, C.centro + C.ejes], [0, panza, C.centro], [0, techo, C.centro + 0.2]];
@@ -318,14 +319,18 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
 
     // --- comandos ---
     // El pedal es progresivo: mantenerlo apretado sube el torque (rapido hasta pedal[2], despues de a poco: pedal[0] y pedal[1]
-    // son los segundos que tarda en cada tramo); soltarlo lo baja enseguida. Un toque corto da poco torque: lo que hace falta
-    // en el barro. Mantenido hasta el fondo, el torque pasa lo que agarra el barro y la rueda patina y se entierra.
+    // son los segundos que tarda en cada tramo). Soltarlo lo baja enseguida (suelta[1] por segundo) pero, con las ruedas
+    // embarradas, de a poco (suelta[0]): asi un toque corto, de medio segundo, deja torque para arrancar y dar toques avanza.
+    // Mantenido hasta el fondo, el torque pasa lo que agarra el barro, la rueda patina y se entierra (el control de traccion
+    // de mas abajo lo deja avanzar un poco).
     let quiereGas = 0;
     c.frenando = false;
     if (ent.y > 0) { quiereGas = ent.y; c.sentido = 1; }
     else if (ent.y < 0) { if (vf > 1.2) c.frenando = true; else { quiereGas = -ent.y; c.sentido = -1; } }
     c.freno = c.frenando ? Math.min(1, -ent.y) : 1;
-    c.gas += lim(quiereGas - c.gas, -dt * 3.5, dt / (c.gas < C.pedal[2] ? C.pedal[0] : C.pedal[1]));
+    let embarrada = false;
+    for (const r of c.ruedas) if (r.toca && r.blando) embarrada = true;
+    c.gas += lim(quiereGas - c.gas, -dt * (embarrada ? C.suelta[0] : C.suelta[1]), dt / (c.gas < C.pedal[2] ? C.pedal[0] : C.pedal[1]));
     c.mano = !!ent.mano;
     const giroMax = Math.min(C.giro, C.giroFino + 2 * C.ejes * 9 / Math.max(vf * vf, 4));
     const rapidez = C.giroVel * (Math.abs(ent.x) < Math.abs(c.volante) ? 1.7 : 1) * dt;
@@ -360,7 +365,10 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
       r.toca = t < total;
       r.largo = lim(t - R, C.resorteLargo - C.recorrido - 0.08, C.resorteLargo);
       const reparto = 0.25 * (1 - C.reparto) + C.reparto * (r.tope / grip);
-      const Td = pedido * torqueMax * reparto;
+      // Control de traccion blando (el teclado y el pedal tactil son todo o nada): cada rueda que patina en barro o pantano recibe
+      // menos torque, pero nunca del todo (TRACCION_MIN). Asi las que agarran tiran del camion y la que patina no se entierra sola.
+      const traccion = r.blando ? 1 - (1 - TRACCION_MIN) * lim((Math.abs(r.desl) - TRACCION_DESDE) / TRACCION_RANGO, 0, 1) : 1;
+      const Td = pedido * torqueMax * reparto * traccion;
       r.patina = 0; r.cruza = 0; r.carga = 0; r.tope = 0;
       if (!r.toca) {
         // en el aire: gira libre (y el motor la acelera)
@@ -392,10 +400,13 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
       const sx = ly * nz - lz * ny, sy = lz * nx - lx * nz, sz = lx * ny - ly * nx;
       terreno.suelo(cx, cz, S);
       const tab = SUELO_CAMION[S.id] || NORMAL;
+      r.blando = tab.hunde >= 1;   // (barro y pantano: el charco y el pasto no llevan control de traccion)
       const vl = vx * lx + vy * ly + vz * lz, vs = vx * sx + vy * sy + vz * sz;
       r.vl = vl;
       // lo maximo que agarra la cubierta: se pierde algo cuando patina (el agarre "de arrancar" es mayor que el de patinar)
-      const pico = S.agarre * cubierta[S.id] * tab.mu * Nf, suelta = tab.hunde > 0 ? 0.55 : 0.2;
+      // el pasto mojado en pendiente es una jabonosa: cuanto mas inclinado, menos agarra (afuera del camino, en las laderas)
+      const muSuelo = S.id === SUELOS.pasto.id ? tab.mu * (1 - 0.45 * lim((0.985 - ny) / 0.06, 0, 1)) : tab.mu;
+      const pico = S.agarre * cubierta[S.id] * muSuelo * Nf, suelta = tab.hunde > 0 ? 0.55 : 0.2;
       const tope = pico * (1 - suelta * lim((Math.abs(r.desl) - 0.6) / 2.5, 0, 1));
       r.tope = tope;
 

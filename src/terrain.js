@@ -183,7 +183,49 @@ export function crearTerreno(etapa) {
     return mejor;
   }
   const lomitas = bioma.relieve > 8 ? 2.2 : 0.9;
-  // la zona de cada celda: la del camino mas cercano, con el limite desparejo (como se mezclan de verdad un bosque y un campo)
+  // --- 2a. Surcos: las rodadas profundas que dejaron los camiones (solo los tramos que traen "surcos", hoy la Montaña del Sufrimiento) ---
+  // t.surcos = { hondo: [izq, der], lomo, banco, cuneta, culebra, varia, alterna, charcos, ext, suelo, orilla }  (todo en metros)
+  //   hondo: cuanto se hunde cada rodada.  lomo: la joroba entre las dos.  banco: el borde del camino que se levanta.
+  //   cuneta: la zanja de afuera.  culebra: cuanto serpentean las rodadas (hay que pelear el volante).  varia: cuanto cambia el hondo
+  //   metro a metro.  alterna: cuanto se alterna cual rodada es la mas honda (inclina el camion de costado).  charcos: parte de las
+  //   rodadas con agua (su suelo, "pozas": 'charco' si no se dice).  lodo: que parte de las rodadas es barro (si no se dice, todas).  ext: rodadas viejas, mas chicas, mas afuera.  suelo: el del fondo de la rodada.  orilla: el de la zanja.
+  // Todo sale del metro del camino y del ruido de la pista: la misma pista da siempre las mismas rodadas (el fantasma es fiel).
+  const SEP = 0.9, ANC = 0.85, EXT = 3.7;   // (SEP: las rodadas van justo donde van las ruedas del camion, que tiene 0,88 m de trocha)
+  const SU = {}, hayS = etapa.tramos.some((t) => t.surcos);
+  if (hayS) {
+    const crudo = {};
+    for (const k of ['hL', 'hR', 'lomo', 'banco', 'cun', 'cul', 'var', 'alt', 'chr', 'ext']) crudo[k] = new Float32Array(P.n);
+    for (let i = 0; i < P.n; i++) {
+      const t = etapa.tramos[P.T[i]], q = t.surcos;
+      if (!q || t.agua) continue;
+      crudo.hL[i] = q.hondo[0]; crudo.hR[i] = q.hondo[1]; crudo.lomo[i] = q.lomo || 0; crudo.banco[i] = q.banco || 0; crudo.cun[i] = q.cuneta || 0;
+      crudo.cul[i] = q.culebra || 0; crudo.var[i] = q.varia || 0; crudo.alt[i] = q.alterna || 0; crudo.chr[i] = q.charcos || 0; crudo.ext[i] = q.ext || 0;
+    }
+    // (se suaviza entre un tramo y el otro, para que no haya escalones)
+    for (const k in crudo) SU[k] = promedio(crudo[k], 9, false);
+  }
+  // cuanto se corren las rodadas hacia la derecha en el metro gi (serpentean con dos ondas, a mano y sin azar)
+  const serpiente = (gi, cul) => cul * (0.62 * Math.sin(gi / 21 + 0.7) + 0.38 * Math.sin(gi / 8.3 + 2.1));
+  const bache = (x, a) => { if (x >= a) return 0; const c = 0.5 + 0.5 * Math.cos(Math.PI * x / a); return c * c * (3 - 2 * c); };
+
+  // las dos rodadas en el metro c del camino, a "largo" metros mas adelante y "lado" a la derecha: donde esta cada una (ls: el lado
+  // medido desde el medio de las rodadas), cuanto se hunde (dL, dR) y que tan adentro esta el punto (bL, bR: 1 = en el fondo, 0 = afuera)
+  function perfilSurco(c, largo, lado) {
+    const gi = c + largo, ls = lado - serpiente(gi, SU.cul[c]), m = SU.var[c];
+    const al = SU.alt[c] * Math.sin(gi * 0.1209 + 1.3);   // (cada 52 m cambia cual rodada es la mas honda)
+    const dL = Math.max(0.03, SU.hL[c] * (1 + al) * (1 + m * ruido.capas(gi / 8, 11.7, 2)));
+    const dR = Math.max(0.03, SU.hR[c] * (1 - al) * (1 + m * ruido.capas(gi / 8, 41.3, 2)));
+    // (las rodadas no van del todo paralelas: cada una se corre un poco por su cuenta)
+    const oL = 0.28 * SU.cul[c] * ruido.capas(gi / 6, 5.5, 2), oR = 0.28 * SU.cul[c] * ruido.capas(gi / 6, 23.1, 2);
+    return { gi, ls, dL, dR, bL: bache(Math.abs(ls + SEP - oL), ANC), bR: bache(Math.abs(ls - SEP - oR), ANC) };
+  }
+  // que tan adentro de una rodada esta un punto del mundo (0 a 1): el dibujo oscurece el piso con esto (ver huellas.js)
+  function enSurco(x, z) {
+    const c = hayS ? cerca(x, z) : -1;
+    if (c < 0 || !(SU.hL[c] > 0 || SU.hR[c] > 0)) return 0;
+    const ax = x - P.X[c], az = z - P.Z[c], q = perfilSurco(c, ax * P.HX[c] + az * P.HZ[c], az * P.HX[c] - ax * P.HZ[c]);
+    return Math.abs(az * P.HX[c] - ax * P.HZ[c]) > P.W[c] / 2 ? 0 : Math.max(q.bL * (q.dL > 0.04 ? 1 : 0), q.bR * (q.dR > 0.04 ? 1 : 0));
+  }  // la zona de cada celda: la del camino mas cercano, con el limite desparejo (como se mezclan de verdad un bosque y un campo)
   const ZONA = varios ? new Uint8Array(nx * nz) : null;
   const zonaEn = (x, z) => {
     const qx = x + (ruido.n2(x / 13 + 5.3, z / 13) - 0.5) * 22, qz = z + (ruido.n2(x / 13, z / 13 + 9.1) - 0.5) * 22;
@@ -215,17 +257,39 @@ export function crearTerreno(etapa) {
       }
       // escalones: bloques de piedra desalineados sobre el camino (La Escalada de Piedras). [metros desde el inicio del tramo,
       // metros a la derecha del medio, largo, ancho, alto]. Sube de golpe en un metro (la grilla es de un metro): un escalon duro.
+      let sobrePiedra = false;   // (cerca de un escalon no se pone barro: las ruedas tienen que poder trepar)
       if (t.escalones && d < medio + 0.6) for (const e of t.escalones) {
+        if (Math.abs(u - e[0]) < e[2] / 2 + 1.2 && e[4] > 0.2) sobrePiedra = true;
         const fuera = Math.max(Math.abs(u - e[0]) - e[2] / 2, Math.abs(lado - e[1]) - e[3] / 2);
         if (fuera < 0.5) { hc += e[4] * (1 - suave(-0.5, 0.5, fuera)); if (fuera < 0) suelo = SUELOS.roca.id; }
+      }
+      // surcos: las dos rodadas hondas con su lomo en el medio, el banco del borde y la zanja de afuera
+      let dSurco = 0, orillaSuelo = -1;
+      if (hayS && d < medio + 5 && (SU.hL[c] > 0 || SU.hR[c] > 0)) {
+        const { gi, ls, dL, dR, bL, bR } = perfilSurco(c, largo, lado), ad = Math.abs(ls);
+        dSurco = -(dL * bL + dR * bR) + SU.lomo[c] * bache(ad, SEP * 0.85) + 0.55 * (SU.hL[c] + SU.hR[c]) / 2 * bache(Math.abs(ad - (SEP + ANC + 0.5)), 1.0);
+        if (SU.ext[c] > 0 && medio > 4.6) dSurco -= SU.ext[c] * (bache(Math.abs(ls + EXT), 0.9) + bache(Math.abs(ls - EXT), 0.9));
+        if (SU.banco[c] > 0) dSurco += SU.banco[c] * bache(Math.abs(d - Math.max(medio - 0.7, SEP + ANC + 0.3)), 1.5);
+        if (SU.cun[c] > 0 && d > medio - 0.2) dSurco -= SU.cun[c] * bache(Math.abs(d - (medio + 1.5)), 1.6);
+        const q = t.surcos;
+        if (q) {
+          // (lodo: que parte de las rodadas es barro; en el resto queda el suelo del camino, por ejemplo roca entre las piedras)
+          if (Math.max(bL * (dL > 0.04 ? 1 : 0), bR * (dR > 0.04 ? 1 : 0)) > 0.3 && d < medio + 0.6 && suelo === P.S[c] && !sobrePiedra && (q.lodo === undefined || ruido.n2(gi / 9, ls > 0 ? 61.9 : 17.3) < q.lodo)) {
+            suelo = SUELOS[q.suelo || 'pantano'].id;
+            if (q.charcos && SU.chr[c] > 0 && ruido.n2(gi / 6, ls > 0 ? 37.7 : 3.3) > 1 - SU.chr[c] && Math.max(bL * dL, bR * dR) > 0.55 * Math.max(dL, dR)) suelo = SUELOS[q.pozas || 'charco'].id;
+          }
+          if (q.orilla && d >= medio + 0.6 && d < medio + 0.6 + (q.orillaAncho || 2.4)) orillaSuelo = SUELOS[q.orilla].id;
+        }
       }
       // "plano": a cada lado del camino el terreno sigue parejo esos metros (para veredas, casas, playones y banquinas de cornisa)
       const plano = PLANO[P.T[c]][lado > 0 ? 1 : 0];
       if (plano && d > medio) hc = mezcla(hc, P.Y[c] + P.G[c] * largo, suave(medio, medio + 1, d));
       const f = suave(medio + plano, medio + plano + (t.hombro || 4), d);
       h = mezcla(hc, h + lomas * suave(medio + plano + 2, medio + plano + 18, d) + pozitos, f);
+      h += dSurco;
       borde = d - medio;
       if (d < medio + 0.6) S[k] = suelo;
+      else if (orillaSuelo >= 0) S[k] = orillaSuelo;
       else if (t.vereda && d < medio + 0.6 + t.vereda) { S[k] = SUELOS.vereda.id; PELADO[k] = 1; }
       else if (d < medio + 1.9 && !t.agua) ORILLA[k] = 1;
     }
@@ -650,7 +714,10 @@ export function crearTerreno(etapa) {
     biomas, zona: ZONA, biomaEn: (x, z) => (ZONA ? biomas[ZONA[Math.max(0, Math.min(nz - 1, Math.round(z - z0))) * nx + Math.max(0, Math.min(nx - 1, Math.round(x - x0)))]] : biomas[0]), orilla: ORILLA, cultivo: CULTIVO, pelado: PELADO, claros, aguas, vacas, molinos, cosas, postes, fardos, publico, cintas, carteles, mojones, autos, estacionados,
     casas, objetos, barandas, pircas, puentes, estorbos,
     vuelta: L ? { largo: L, desde: L, hasta: 2 * L } : null,   // (solo en una vuelta cerrada) cuanto mide, y entre que metros del camino se corre
-    altura, normal, suelo, corriente, indice, controles, sectores, largada, salida, meta,
+    // cuanto se corren hacia la derecha las rodadas en un metro del camino (0 si la pista no las tiene): el piloto automatico las sigue
+    enSurco,
+    surcoCentro: hayS ? (i) => serpiente(i, SU.cul[Math.max(0, Math.min(P.n - 1, Math.round(i)))]) : () => 0,
+        altura, normal, suelo, corriente, indice, controles, sectores, largada, salida, meta,
     cosasCerca: (x, z) => cajasCosas.get(clave(Math.floor(x / 8), Math.floor(z / 8))),
   };
 }

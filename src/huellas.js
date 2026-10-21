@@ -27,6 +27,15 @@ export function crearHuellas(T, render) {
     const s = T.salida.i, m = T.meta.i;
     if (!T.vuelta) for (let de = -P.W[s] / 2 + 0.3; de < P.W[s] / 2 - 0.3; de += 0.2) for (const va of [0, 0.25]) en(s, va, de, PINTURA.blanca);   // (en una vuelta cerrada, solo los cuadros)
     for (let de = -P.W[m] / 2 + 0.2; de < P.W[m] / 2 - 0.2; de += 0.2) for (let f = 0; f < 4; f++) if ((Math.floor(de * 2 + 100) + (f >> 1)) % 2) en(m, f * 0.25, de, PINTURA.blanca);
+    // las rodadas de barro (la Montaña del Sufrimiento): el fondo queda oscuro, como si ya hubieran pasado muchos camiones.
+    // Se pinta como el resto de lo fijo, asi vuelve despues de borrar las huellas.
+    if (T.enSurco) for (const t of T.etapa.tramos) {
+      if (!t.surcos) continue;
+      for (let i = t.desde; i < t.hasta; i++) for (let f = 0; f < 4; f++) for (let de = -P.W[i] / 2 + 0.3; de < P.W[i] / 2 - 0.3; de += 0.25) {
+        const x = P.X[i] + P.HX[i] * f * 0.25 - P.HZ[i] * de, z = P.Z[i] + P.HZ[i] * f * 0.25 + P.HX[i] * de, w = T.enSurco(x, z);
+        if (w > 0.12) pinta(x, z, w > 0.7 ? 150 : w > 0.4 ? 100 : 60);
+      }
+    }
     for (const t of T.etapa.tramos) {
       // los lomos de burro, a rayas amarillas cruzadas
       for (const l of t.lomos || []) for (let va = -l[2] / 2 + 0.25; va < l[2] / 2 - 0.25; va += 0.25) {
