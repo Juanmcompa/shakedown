@@ -101,6 +101,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] La Montaña del Sufrimiento: camión de carga con física propia, 4 tramos (barro, piedras, cornisa con cascada, bajada), carga que se corre y se cae, burbuja de nivel, recargo por bulto, fantasma fiel y prueba `vercamion.mjs`
 - [x] Montaña v2: barro y rodadas profundas en toda la pista (serpentean, una más honda que otra, charcos y pozos); hay que pelear el volante
 - [x] Montaña v3: camino de 3,4 m (casi el ancho del camión), rodadas justo donde van las ruedas, zanja y barro afuera; arreglado el barro que no dejaba avanzar (control de tracción por rueda y pedal que se suelta de a poco en el barro)
+- [x] Montaña v4: el barro resbala en vez de frenar (menos hundimiento, poco agarre de costado, la cola se cruza a fondo); acelerando nunca queda parado
 
 ## Lo que sigue
 

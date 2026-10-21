@@ -16,8 +16,8 @@ export const MONTANA = 16006;
 //   barro: hasta que torque sostienen en el barro (el pedal sube hasta ahi y lo sueltan)   bajada: velocidad maxima en la bajada
 //   piedras / cornisa / agua: velocidad en esos tramos (m/s)   reaccion: segundos entre una correccion y otra
 export const PILOTOS_CAMION = {
-  manso:  { barro: 0.45, piedras: 2.0, cornisa: 2.4, agua: 2.0, bajada: 4.2, llano: 7, reaccion: 0.14, frenada: 0.55 },
-  normal: { barro: 0.5, piedras: 2.6, cornisa: 3.0, agua: 2.4, bajada: 5.5, llano: 9, reaccion: 0.12, frenada: 0.7 },
+  manso:  { barro: 0.6, piedras: 2.0, cornisa: 2.4, agua: 2.0, bajada: 4.2, llano: 7, reaccion: 0.14, frenada: 0.55 },
+  normal: { barro: 0.6, piedras: 2.6, cornisa: 3.0, agua: 2.4, bajada: 5.5, llano: 9, reaccion: 0.12, frenada: 0.7 },
   bruto:  { barro: 0.85, piedras: 4.5, cornisa: 5.5, agua: 5.0, bajada: 9, llano: 12, reaccion: 0.1, frenada: 1 },
 };
 

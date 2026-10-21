@@ -36,15 +36,17 @@ export const CAMION_CARGA = {
 // Como cambia cada suelo para el camion: mu (por cuanto se multiplica el agarre), res (rodar mas duro: parte del peso),
 // hunde (cuanto se entierra la rueda que patina, 1 = lo normal), visc (freno que crece con la velocidad)
 const NORMAL = { mu: 1, res: 0, hunde: 0, visc: 0 };
+// (v4: el barro es jabon, no pegamento. lat: cuanto del agarre de costado queda (menos = se desliza), baja: cuanto tira hacia el lado
+// bajo de la rodada o la ladera, gasta: cuanto agarre se come el motor (mas = la cola se cruza al acelerar), blando: lleva control de traccion)
 const SUELO_CAMION = {
-  [SUELOS.barro.id]: { mu: 0.62, res: 0.0, hunde: 1, visc: 650 },
-  [SUELOS.pantano.id]: { mu: 0.5, res: 0.04, hunde: 1.7, visc: 900 },
-  [SUELOS.charco.id]: { mu: 0.85, res: 0.06, hunde: 0.6, visc: 200 },
+  [SUELOS.barro.id]: { mu: 0.42, res: 0.0, hunde: 0.3, visc: 450, lat: 0.35, baja: 2.5, gasta: 1.0, blando: true },
+  [SUELOS.pantano.id]: { mu: 0.4, res: 0.02, hunde: 0.2, visc: 120, lat: 0.45, baja: 2.5, gasta: 1.0, blando: true },
+  [SUELOS.charco.id]: { mu: 0.85, res: 0.06, hunde: 0.4, visc: 120, lat: 0.7, blando: true },
   [SUELOS.lecho.id]: { mu: 0.8, res: 0.03, hunde: 0, visc: 150 },
   [SUELOS.pasto.id]: { mu: 0.95, res: 0.03, hunde: 0.2, visc: 40 },
 };
 const TRACCION_MIN = 0.1, TRACCION_DESDE = 0.5, TRACCION_RANGO = 1.5;   // control de traccion en suelo blando (ver c.paso)
-const HUNDIDO_MAX = 0.24;   // metros que baja la rueda cuando esta del todo enterrada
+const HUNDIDO_MAX = 0.12;   // metros que baja la rueda cuando esta del todo enterrada
 
 // --- los bultos ---
 //   tipo, medidas (mitad de cada lado: x a lo ancho, y alto, z a lo largo), masa, rozamiento [quieto, deslizando],
@@ -400,7 +402,7 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
       const sx = ly * nz - lz * ny, sy = lz * nx - lx * nz, sz = lx * ny - ly * nx;
       terreno.suelo(cx, cz, S);
       const tab = SUELO_CAMION[S.id] || NORMAL;
-      r.blando = tab.hunde >= 1;   // (barro y pantano: el charco y el pasto no llevan control de traccion)
+      r.blando = !!tab.blando;   // (barro y pantano: el charco y el pasto no llevan control de traccion)
       const vl = vx * lx + vy * ly + vz * lz, vs = vx * sx + vy * sy + vz * sz;
       r.vl = vl;
       // lo maximo que agarra la cubierta: se pierde algo cuando patina (el agarre "de arrancar" es mayor que el de patinar)
@@ -422,7 +424,7 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
       if (Tb > 0) { const dw = dt * Tb / I; wp = Math.abs(wp) <= dw ? 0 : wp - Math.sign(wp) * dw; }
       const K = 0.2 * mr / dt;
       let Fl = K * (wp * R - vl) / (1 + K * dt * R * R / I);
-      const rodar = (S.freno + tab.res * (1 + r.hundido * 3)) * Nf;
+      const rodar = (S.freno + tab.res * (1 + r.hundido * 1)) * Nf;
       Fl = lim(Fl, -tope, tope);
       r.w = wp - dt / I * Fl * R;
       // cuanto patina: la diferencia entre lo que gira la rueda y lo que avanza
@@ -430,7 +432,7 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
       const patinando = lim((Math.abs(r.desl) - 0.7) / 4, 0, 1);
       if (c.gas > 0.02 && !c.frenando) r.patina = patinando;
       // resistencia a rodar, del barro y del agua
-      Fl -= rodar * Math.tanh(vl / 0.4) + tab.visc * vl * (1 + r.hundido * 2) + S.pasta * vl * (tab.visc ? 0 : 1);
+      Fl -= rodar * Math.tanh(vl / 0.4) + tab.visc * vl * (1 + r.hundido * 0.5) + S.pasta * vl * (tab.visc ? 0 : 1);
       // si patina en un suelo blando se hunde (mas rapido cuanto mas patina); rodando sin patinar, de a poco sale
       if (tab.hunde > 0) {
         const cava = patinando * (Math.abs(Td) > 1 ? 1 : 0.4) * tab.hunde * 0.55;
@@ -438,12 +440,12 @@ export function crearCamion(terreno, C = CAMION_CARGA) {
       } else r.hundido = Math.max(0, r.hundido - dt * 0.35);
       if (r.hundido > hundidoMax) hundidoMax = r.hundido;
       // de costado: lo que sobra del agarre despues de acelerar o frenar
-      const gasta = bloqueada ? 0.98 : C.patinaje;
-      let lat = Math.sqrt(Math.max(0.04 * tope * tope, tope * tope - gasta * gasta * Fl * Fl));
+      const gasta = bloqueada ? 0.98 : (tab.gasta || C.patinaje), lado = tab.lat || 1;
+      let lat = Math.sqrt(Math.max(0.04 * tope * tope, tope * tope - gasta * gasta * Fl * Fl)) * lado;
       const cruza = Math.abs(vs) / Math.max(Math.abs(vl), 4), tarde = deriva[S.id], pronto = C.firme * C.deriva;
       const cuanto = cruza <= pronto || tarde <= C.deriva ? cruza / C.deriva : C.firme + (1 - C.firme) * (cruza - pronto) / (tarde - pronto);
-      const agarra = Math.min(tope * cuanto, mr / dt * C.lateral * Math.abs(vs));
-      const Fq = lim((vs > 0 ? -agarra : agarra) + mr * g * sy * (r.hundido < 0.9 ? 1 : 0.3), -lat, lat) - (S.pasta + tab.visc) * 0.6 * vs;
+      const agarra = Math.min(tope * cuanto * lado, mr / dt * C.lateral * Math.abs(vs));
+      const Fq = lim((vs > 0 ? -agarra : agarra) + mr * g * sy * (tab.baja || 1) * (r.hundido < 0.9 ? 1 : 0.3), -lat, lat) - (S.pasta + tab.visc) * 0.6 * vs;
 
       const Ax = nx * Nf + lx * Fl, Ay = ny * Nf + ly * Fl, Az = nz * Nf + lz * Fl;
       Fx += Ax + sx * Fq; Fy += Ay + sy * Fq; Fz += Az + sz * Fq;

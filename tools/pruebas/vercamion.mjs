@@ -37,7 +37,7 @@ function correr(i, seg, f, mide) {
 const metro = (c, desde) => { let k = desde; while (k < P.n - 1 && (P.X[k + 1] - c.pos[0]) * P.HX[k] + (P.Z[k + 1] - c.pos[2]) * P.HZ[k] <= 0) k++; return k; };
 const lateral = (c, i) => (c.pos[0] - P.X[i]) * -P.HZ[i] + (c.pos[2] - P.Z[i]) * P.HX[i];
 
-// -- el barro: a fondo patina y se entierra pero avanza algo, dando toques avanza mas (el detalle esta en vercamion-barro.mjs) --
+// -- el barro (v4: jabon, no pegamento): a fondo patina pero nunca queda parado; dando toques avanza (el detalle esta en vercamion-barro.mjs) --
 {
   const barro = T.etapa.tramos[P.T[100]].suelo === 'barro';
   const fondo = correr(100, 20, (t, e) => { e.y = 1; });
@@ -46,10 +46,9 @@ const lateral = (c, i) => (c.pos[0] - P.X[i]) * -P.HZ[i] + (c.pos[2] - P.Z[i]) *
   const aFondo = metro(fondo.c, 100) - 100, aToques = metro(toques.c, 100) - 100;
   const perif = Math.max(...fondo.c.ruedas.map((r) => Math.abs(r.w) * 0.47));
   ver('el metro 100 es de barro', barro);
-  ver('a fondo en el barro avanza poco pero algo (' + aFondo + ' m en 20 s)', aFondo >= 8 && aFondo <= 40, aFondo);
-  ver('y las ruedas patinan: giran a ' + perif.toFixed(0) + ' m/s mientras el camion va a ' + Math.abs(fondo.c.velocidad).toFixed(1), perif > 3 * Math.max(0.3, Math.abs(fondo.c.velocidad)), [perif, fondo.c.velocidad]);
-  ver('y se entierra (hundido ' + fondo.c.hundido.toFixed(2) + ')', fondo.c.hundido > 0.5, fondo.c.hundido);
-  ver('dando toques al pedal avanza (' + aToques + ' m en 20 s, con el pedal a fondo ' + aFondo + ')', aToques >= 15 && aToques >= aFondo, [aToques, aFondo]);
+  ver('a fondo en el barro avanza (' + aFondo + ' m en 20 s) y sigue andando (' + Math.abs(fondo.c.velocidad).toFixed(1) + ' m/s)', aFondo >= 15 && Math.abs(fondo.c.velocidad) > 0.5, [aFondo, fondo.c.velocidad]);
+  ver('y las ruedas patinan: giran a ' + perif.toFixed(0) + ' m/s mientras el camion va a ' + Math.abs(fondo.c.velocidad).toFixed(1), perif > 1.1 * Math.abs(fondo.c.velocidad), [perif, fondo.c.velocidad]);
+  ver('dando toques al pedal avanza (' + aToques + ' m en 20 s, con el pedal a fondo ' + aFondo + ')', aToques >= 15, [aToques, aFondo]);
 }
 
 // -- la inclinacion corre el centro de masa y la carga --

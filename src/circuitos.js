@@ -24,7 +24,7 @@ export const CIRCUITOS = [
     detalle: 'Casi 20 kilómetros de la pampa de altura al pueblo: horquillas arriba, rectas rápidas con saltos, curvas entre el granito, cuestas con pirca, un arroyo y las esquinas de Mina Clavero.', breve: '19 km: de la sierra al pueblo' },
   // camion: true = se maneja siempre el camion de carga, con su fisica pesada (ver camion.js), y se cuentan los bultos entregados.
   // Es de pura fantasia: no existe, pero va con los reales (es el "Dark Souls de los camiones"). Va al final de la lista, como siempre.
-  { id: 'montana', numero: 16006, version: 3, real: true, camion: true, maximo: 1800, nombre: 'La Montaña del Sufrimiento', corto: 'Montaña del Sufrimiento', emoji: '🚛', bioma: 'montana', clima: 'niebla', caracter: 'tecnica', lugar: '41°09′S 71°18′O',
+  { id: 'montana', numero: 16006, version: 4, real: true, camion: true, maximo: 1800, nombre: 'La Montaña del Sufrimiento', corto: 'Montaña del Sufrimiento', emoji: '🚛', bioma: 'montana', clima: 'niebla', caracter: 'tecnica', lugar: '41°09′S 71°18′O',
     detalle: 'Un camión cargado, cuatro tramos y ninguna prisa: barro hondo con rodadas que te agarran las ruedas, una escalada de piedras, una cornisa cortada por una cascada y una bajada que no perdona. Cada bulto que se cae suma 60 segundos.', breve: 'Camión con carga: barro, piedras y precipicio' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
