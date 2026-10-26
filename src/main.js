@@ -45,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '33';
+const PAGINA = '34';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -74,7 +74,9 @@ try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true })
 }
 const liviano = window.matchMedia('(pointer: coarse)').matches;   // celular o tablet: menos pixeles y sombras mas chicas
 let nitidez = Math.min(window.devicePixelRatio, liviano ? 1.5 : 2), cuadros = 0, lentos = 0;   // pixeles dibujados por cada pixel de pantalla
-render.setPixelRatio(nitidez);
+let conPixeles = false;   // con el pixelado el lienzo es de 1 pixel por pixel de pantalla (el mundo se dibuja chico adentro) y el navegador lo agranda sin suavizar
+const ponerNitidez = () => { render.setPixelRatio(conPixeles ? 1 : nitidez); render.domElement.style.imageRendering = conPixeles ? 'pixelated' : ''; };
+ponerNitidez();
 render.shadowMap.enabled = true;
 
 // --- que pista se corre: la del link de un amigo, un circuito fijo (?c=subida), una pista de la comunidad (?pista=13042-1:
@@ -701,6 +703,7 @@ const APLICAR = {
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
   pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
   efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); travesia.efectos(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
+  pixeles: (v) => { post.pixelar(v); conPixeles = post.pixelado() !== 'nada'; ponerNitidez(); render.setSize(window.innerWidth, window.innerHeight, false); post.medir(render.domElement.width, render.domElement.height); },
   sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
   musica: (v) => { hud.prendido('musica', !!v); const b = $('botonMusica'); b.firstElementChild.src = icono('musica', undefined, !v); b.classList.toggle('apagado', !v); b.setAttribute('aria-pressed', !!v); },
   voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); travesia.voz(conVoz); hud.prendido('voz', conVoz); },
@@ -742,7 +745,7 @@ function cuidarFluidez(seg) {
   if (cuadros < 90) return;
   if (lentos > 60) {
     if (post.prendido()) post.prender(false);
-    else if (nitidez > 0.6) { nitidez = Math.max(0.6, nitidez * 0.75); render.setPixelRatio(nitidez); medir(); }
+    else if (nitidez > 0.6 && !conPixeles) { nitidez = Math.max(0.6, nitidez * 0.75); ponerNitidez(); medir(); }   // (con pixelado ya se dibuja chico: no hay nada que bajar)
   }
   cuadros = lentos = 0;
 }

@@ -551,8 +551,8 @@ export function crearMenu(o) {
 
   // --- la configuracion ---
   // Cada grupo de botones y cada barra dice que gusto cambia (data-ajuste). "si" y "no" valen verdadero y falso;
-  // lo demas son numeros. La barra de la camara va en porcentaje (100 = la distancia normal).
-  const leerValor = (txt) => (txt === 'si' ? true : txt === 'no' ? false : Number(txt));
+  // lo demas son numeros o palabras ("Píxeles": nada, medio, fuerte). La barra de la camara va en porcentaje (100 = la distancia normal).
+  const leerValor = (txt) => (txt === 'si' ? true : txt === 'no' ? false : isNaN(Number(txt)) ? txt : Number(txt));   // ("si", "no", un numero, o una palabra como "medio")
   const deBarra = { lejos: (v) => v / 100, sensible: (v) => v }, aBarra = { lejos: (v) => Math.round(v * 100), sensible: (v) => v };
   function pintarAjustes() {
     for (const el of document.querySelectorAll('[data-ajuste]')) {
@@ -560,6 +560,7 @@ export function crearMenu(o) {
       if (el.tagName === 'INPUT') { if (document.activeElement !== el) el.value = aBarra[clave](vale); continue; }
       for (const b of el.children) { const si = leerValor(b.dataset.valor) === vale; b.classList.toggle('elegido', si); b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', si); }
     }
+    if (vitrina) vitrina.pixelar(ajustes.leer('pixeles'));
     // la sensibilidad no hace falta si se dobla con las flechas
     $('ajusteInclina').hidden = !!ajustes.leer('botones');
   }
@@ -585,7 +586,7 @@ export function crearMenu(o) {
   function abrir(cual) {
     for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes'], ['panelGaraje', 'garaje']]) $(id).hidden = nombre !== cual;
     // el garaje: la vitrina dibuja solo mientras esta abierto
-    if (cual === 'garaje') { if (!vitrina) vitrina = crearVitrina($('vitrina')); pintarGaraje(); }
+    if (cual === 'garaje') { if (!vitrina) { vitrina = crearVitrina($('vitrina')); vitrina.pixelar(ajustes.leer('pixeles')); } pintarGaraje(); }
     if (vitrina) vitrina.prender(cual === 'garaje');
     if (cual === 'pasadas') pintarPasadas();
     // en el celular, al abrir la configuracion se prende el sensor (si lo hay) para poder probar la sensibilidad

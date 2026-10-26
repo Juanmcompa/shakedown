@@ -2,14 +2,21 @@
 // Tiene su propia escena y su propio dibujante (aparte de los de la pista), y dibuja solo mientras se ve.
 //   mostrar(C)   pone el auto de esa configuracion (ver partes.js)
 //   prender(si)  empieza o deja de dibujar
+//   pixelar(n)   nada / medio / fuerte: se dibuja en un lienzo mas chico que el navegador agranda sin suavizar (como el resto del juego; sin paleta ni tramado, porque el fondo es transparente)
 import * as THREE from '../vendor/three.module.js';
 import { armarAuto } from './autos.js';
 
 export function crearVitrina(lienzo) {
-  let render = null, escena, camara, auto = null, prendida = false, angulo = -0.7, antes = 0;
+  let render = null, nivel = 'nada', escena, camara, auto = null, prendida = false, angulo = -0.7, antes = 0;
+  const PIX = { medio: 3, fuerte: 5 };   // (igual que en post.js: pixeles de pantalla por pixel grande)
+  function ponerRatio() {
+    render.setPixelRatio(PIX[nivel] ? 1 / PIX[nivel] : Math.min(window.devicePixelRatio, 2));
+    lienzo.style.imageRendering = PIX[nivel] ? 'pixelated' : '';
+    lienzo.width = 0;   // (para que se vuelva a medir)
+  }
   function armar() {
     render = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, alpha: true });
-    render.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    ponerRatio();
     escena = new THREE.Scene();
     camara = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
     camara.position.set(0, 2.6, 7.4);
@@ -54,6 +61,7 @@ export function crearVitrina(lienzo) {
       escena.add(auto.grupo);
       lienzo.width = 0;   // (para que se vuelva a encuadrar)
     },
+    pixelar(n) { n = PIX[n] ? n : 'nada'; if (n === nivel) return; nivel = n; if (render) ponerRatio(); },
     prender(si) {
       if (si === prendida) return;
       prendida = si;

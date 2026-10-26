@@ -103,6 +103,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Montaña v3: camino de 3,4 m (casi el ancho del camión), rodadas justo donde van las ruedas, zanja y barro afuera; arreglado el barro que no dejaba avanzar (control de tracción por rueda y pedal que se suelta de a poco en el barro)
 - [x] Montaña v4: el barro resbala en vez de frenar (menos hundimiento, poco agarre de costado, la cola se cruza a fondo); acelerando nunca queda parado
 - [x] Montaña v5: vuelta atrás del camión (no era divertido): se corre con cualquier auto y la física de siempre, camino de 4,6 m con 18 eses y rodadas hondas. El camino deformado queda como opción estándar `surcos` para pistas complicadas; el camión quedó guardado sin usar
+- [x] Píxeles: el mundo se dibuja en píxeles grandes con paleta limitada y trama, opción en Configuración (no / medio / fuerte, medio por defecto); además alivia al celular
 
 ## Lo que sigue
 

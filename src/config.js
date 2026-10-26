@@ -154,7 +154,7 @@ export const FIRMA = { etapa: 'Early Access', aviso: 'App en desarrollo', autor:
 //   trazada: la linea en el piso que muestra por donde pasar y donde frenar. Mientras nadie la toque acompaña a la
 //            ayuda de manejo: con ayuda se ve (asi se entiende por donde va a ir el auto) y sin ayuda no.
 //   serio: el modo "rally serio" (ver SERIO). Es lo contrario de la ayuda: si se prende uno, se apaga el otro.
-export const GUSTOS = { ayuda: false, serio: false, trazada: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, sonido: true, musica: true, voz: true };
+export const GUSTOS = { ayuda: false, serio: false, trazada: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, pixeles: 'medio', sonido: true, musica: true, voz: true };
 export const gradosDeInclinacion = (sensible) => 24 * 2 ** ((55 - sensible) / 55);
 
 // Camaras (tecla C, o el boton de la camara). Lo que va entre corchetes cambia con la velocidad: [despacio, rapido].
