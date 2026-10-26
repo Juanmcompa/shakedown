@@ -10,12 +10,11 @@ export function crearCamara(T) {
   // La parte de la pantalla donde tiene que quedar el auto, para que no lo tapen los controles (fracciones de pantalla):
   // nunca mas abajo que "abajo", ni mas arriba que "arriba", ni mas cerca de los costados que "lados".
   const zona = { abajo: 0.16, arriba: 0.2, lados: 0.22 };
-  let lista = CAMARAS;   // los modos que valen ahora (el camion de carga usa otros, mas cerca y mas bajos)
   const quieta = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const hacia = (a, b, dt, seg) => a + (b - a) * (1 - Math.exp(-dt / seg));
 
   function seguir(c, dt) {
-    const m = lista[e.modo], v = Math.abs(c.velocidad), f = c.adelante, rapido = Math.min(1, v / 22);
+    const m = CAMARAS[e.modo], v = Math.abs(c.velocidad), f = c.adelante, rapido = Math.min(1, v / 22);
     // recien cambiada de modo, se acomoda rapido; despues se mueve con calma
     const calma = e.apuro > 0 ? 0.3 : 1;
     e.apuro = Math.max(0, e.apuro - dt);
@@ -93,15 +92,13 @@ export function crearCamara(T) {
     // Donde tiene que quedar el auto en la pantalla (ver "zona"). Lo llama el juego segun donde estan los controles.
     encuadrar: (abajo, arriba, lados) => { zona.abajo = abajo; zona.arriba = arriba; zona.lados = lados; },
     // cual esta puesta: { id, nombre, ... } (ver CAMARAS)
-    modo: () => lista[e.modo],
-    // cambia el juego de camaras (null = las de siempre); mismos ids y mismo orden
-    usar: (otras) => { lista = otras || CAMARAS; e.apuro = 1.4; },
+    modo: () => CAMARAS[e.modo],
     // pasa a la siguiente, o a la que se pida por su id. Devuelve la que quedo.
     cambiar: (id) => {
-      const k = lista.findIndex((m) => m.id === id);
-      e.modo = k >= 0 ? k : id === undefined ? (e.modo + 1) % lista.length : e.modo;
+      const k = CAMARAS.findIndex((m) => m.id === id);
+      e.modo = k >= 0 ? k : id === undefined ? (e.modo + 1) % CAMARAS.length : e.modo;
       e.apuro = 1.4;
-      return lista[e.modo];
+      return CAMARAS[e.modo];
     },
     saltar: () => { e.listo = false; },
     // vibracion que dura hasta que se la apaga (0): cuanto, en metros de temblor

@@ -1,3 +1,4 @@
+// GUARDADO SIN USAR (ver el aviso de src/camion.js): el camion ya no esta en el juego.
 // Piloto automatico del camion de La Montaña del Sufrimiento (circuito 'montana'): sigue el camino con entradas de teclado
 // (volante todo o nada, pedal que se pisa y se suelta) y corre la pista entera con las reglas del juego, sin graficos.
 // Sirve para ver que la pista se pueda terminar, cuanto dura y cuantos bultos llegan.

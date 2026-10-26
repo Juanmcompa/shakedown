@@ -1,3 +1,4 @@
+// GUARDADO SIN USAR (ver src/camion.js): esta prueba ya no corre, la Montaña se maneja con el auto (ver vermontana.mjs).
 // El camion de La Montaña del Sufrimiento en el barro, con entradas como las de una persona (teclado y pedal tactil, que son
 // todo o nada) y un volante que sigue las rodadas. Objetivo (v4): el barro es jabon, no pegamento. Acelerando nunca queda
 // parado ni se clava; lo que frustra es el resbale: patina, la cola se cruza al acelerar a fondo o al doblar, y se va de costado.

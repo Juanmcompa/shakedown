@@ -22,10 +22,10 @@ export const CIRCUITOS = [
     detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.', breve: 'Vuelta cerrada: queda la mejor' },
   { id: 'giulio', numero: 16005, version: 1, real: true, maximo: 1500, nombre: 'Mina Clavero – Giulio Cesare', corto: 'Giulio Cesare', emoji: '🏔️', bioma: 'sierra', clima: 'sol', caracter: 'mixta', lugar: '31°43′S 64°58′O',
     detalle: 'Casi 20 kilómetros de la pampa de altura al pueblo: horquillas arriba, rectas rápidas con saltos, curvas entre el granito, cuestas con pirca, un arroyo y las esquinas de Mina Clavero.', breve: '19 km: de la sierra al pueblo' },
-  // camion: true = se maneja siempre el camion de carga, con su fisica pesada (ver camion.js), y se cuentan los bultos entregados.
-  // Es de pura fantasia: no existe, pero va con los reales (es el "Dark Souls de los camiones"). Va al final de la lista, como siempre.
-  { id: 'montana', numero: 16006, version: 4, real: true, camion: true, maximo: 1800, nombre: 'La Montaña del Sufrimiento', corto: 'Montaña del Sufrimiento', emoji: '🚛', bioma: 'montana', clima: 'niebla', caracter: 'tecnica', lugar: '41°09′S 71°18′O',
-    detalle: 'Un camión cargado, cuatro tramos y ninguna prisa: barro hondo con rodadas que te agarran las ruedas, una escalada de piedras, una cornisa cortada por una cascada y una bajada que no perdona. Cada bulto que se cae suma 60 segundos.', breve: 'Camión con carga: barro, piedras y precipicio' },
+  // La Montaña del Sufrimiento: de pura fantasia (no existe), pero va con los reales. Se corre con el auto del garaje, como todas.
+  // Es la que estrena el camino deformado (rodadas hondas, barro, badenes): ver "surcos" en terrain.js. Va al final de la lista, como siempre.
+  { id: 'montana', numero: 16006, version: 5, real: true, maximo: 900, nombre: 'La Montaña del Sufrimiento', corto: 'Montaña del Sufrimiento', emoji: '🪨', bioma: 'montana', clima: 'niebla', caracter: 'tecnica', lugar: '41°09′S 71°18′O',
+    detalle: 'Un camino todo deformado y angosto: rodadas hondas que te agarran las ruedas, barro, badenes, una escalada de piedras, una cornisa cortada por una cascada y una bajada que no perdona. Eses, curvas y contracurvas todo el camino.', breve: 'Camino deformado: rodadas, barro y precipicio' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
 // Las pistas de la comunidad (las que arma un jugador: ver hoja.js) usan los numeros de 13000 a 15999. Duran dos semanas
@@ -691,19 +691,22 @@ function giulio() {
   return T.tramos;
 }
 
-// ================= LA MONTAÑA DEL SUFRIMIENTO: un camion con carga, cuatro tramos y ninguna prisa =================
-// No es una pista de rally: es para el camion de camion.js (siempre se maneja ese, con su fisica pesada). Dura unos diez minutos.
-//   1. La Trampa de Barro: camino ancho de barro hondo, con pozas de pantano. Acelerar a fondo entierra: hay que dar toques.
+// ================= LA MONTAÑA DEL SUFRIMIENTO: un camino deformado, cinco sectores y ninguna prisa =================
+// Se corre con cualquier auto del garaje y la fisica de siempre. Lo que la hace dificil es el camino: rodadas hondas, barro, badenes,
+// piedras y un ancho justo. Es la pista modelo del "camino deformado" (ver "surcos" en terrain.js): para otra pista complicada alcanza con
+// llamar a surcar(desde, {...}) con los mismos datos, ajustando hondo / serpenteo (culebra) / ancho (sep) a gusto.
+//   1. La Trampa de Barro: barro con rodadas y pozas de pantano. Pide toques de gas y de volante.
 //   2. La Escalada de Piedras: subida en zigzag llena de bloques desalineados (escalones duros) con el precipicio al costado.
 //   3. La Cornisa: un camino angosto al borde del vacio...
-//   4. ...cortado por una cascada que cruza y empuja hacia el barranco.
-//   5. La Bajada Traicionera: pendiente empinada; frenar de golpe tira la carga para adelante.
-// (Los cuatro tramos del pedido son cinco sectores: la cornisa y la cascada se cuentan aparte, asi los cuadraditos del tablero
-// dicen en cual de las dos se fue la carga.)
+//   4. ...cortado por una cascada (un vado de agua).
+//   5. La Bajada Traicionera: pendiente empinada con surcos lavados; hay que frenar a tiempo.
+// Y eses (curva y contracurva enlazadas) en todos los sectores.
 function montana() {
   const T = trazado(), r = azar(16006);
-  // el camino mide casi lo que el camion (2,4 m) mas un poco: cuesta no salirse. Las dos rodadas van justo donde van las ruedas.
-  const CAMINO = 3.4;
+  // el camino es angosto pero corrible para un auto (1,9 m de ancho): se siente justo y los bordes asustan. Las rodadas van donde van las ruedas.
+  const CAMINO = 4.6;
+  // una ese: curva y contracurva enlazadas (radio, grados). Si se pasa "f", lo arma sobre cada una de las dos curvas.
+  const ese = (radio, grados, f) => { for (const a of [grados, -grados]) { const t = T.curva(radio, a); if (f) f(t); } };
   const redondo = (x, d = 100) => Math.round(x * d) / d;
   // pozas de pantano y islas firmes sobre un tramo de barro. [metros desde el inicio, metros a la derecha, radio, hondo, suelo]
   const poceado = (t, cada, firmes) => {
@@ -755,72 +758,88 @@ function montana() {
   largada.publico = [[20, -(10 / 2 + 7), 6], [27, 10 / 2 + 7.5, 5]];
 
   // ---------- 1. LA TRAMPA DE BARRO ----------
-  // Es un barrial con dos rodadas hondas (las de los camiones de antes) y una joroba en el medio; mas afuera, otras viejas.
-  // Las ruedas caen adentro y salirse cuesta: el borde se levanta y afuera hay una zanja de pantano.
+  // Es un barrial con dos rodadas hondas y una joroba en el medio; mas afuera, otras viejas, y a los costados una zanja de pantano.
+  // Las ruedas caen adentro y salirse cuesta: el borde se levanta. El barro resbala (no traba) y hay eses para pelear el volante.
   const t1 = T.tramos.length;
   T.fijar({ ancho: CAMINO, suelo: 'barro', rugoso: 0.07 });
-  piedritas(poceado(T.recta(70, { nota: { tipo: 'barro' } }), 12, true), 17, 0.16);
-  T.curva(70, 32); piedritas(poceado(T.recta(44), 11, true), 17, 0.16);
-  T.curva(70, -32); piedritas(poceado(T.recta(52), 11, true), 17, 0.16);
-  T.curva(80, -22); piedritas(poceado(T.recta(40), 12, true), 17, 0.16);
+  const barro = (largo, mas) => piedritas(poceado(T.recta(largo, mas), 12, true), 17, 0.16);
+  barro(56, { nota: { tipo: 'barro' } });
+  ese(26, 38, (t) => poceado(t, 9, true));
+  barro(28);
+  T.curva(70, 32); barro(30);
+  ese(24, -42, (t) => poceado(t, 9, true));
+  barro(16);
+  T.curva(70, -32); barro(34);
+  T.curva(80, -22); barro(18);
+  ese(26, 34, (t) => poceado(t, 9, true));
   T.fijar({ ancho: CAMINO, suelo: 'tierra', rugoso: null });
   T.curva(60, 22);
   T.recta(26, { control: true });
-  surcar(t1, { hondo: [0.14, 0.14], lomo: 0.08, banco: 0.15, cuneta: 0.45, culebra: 0.8, varia: 0.4, alterna: 0.35, charcos: 0.4, ext: 0.08, suelo: 'barro', orilla: 'pantano', orillaAncho: 5 });
+  surcar(t1, { hondo: [0.14, 0.14], lomo: 0.08, banco: 0.15, cuneta: 0.45, culebra: 0.8, varia: 0.4, alterna: 0.35, charcos: 0.4, ext: 0.08, suelo: 'barro', orilla: 'pantano', orillaAncho: 5, sep: 0.78, ancho: 0.8 });
 
   // ---------- 2. LA ESCALADA DE PIEDRAS ----------
   // (con rodadas de barro entre las piedras, charcos en los huecos y piedras sueltas justo donde van las ruedas)
   const t2 = T.tramos.length;
   T.fijar({ ancho: CAMINO, suelo: 'roca', pendiente: 8, rugoso: 0.05 });
   T.ladera('izq', 12, 24);
-  pocear(piedritas(escalones(T.recta(78, { nota: { tipo: 'piedras' } }), 8.5, 0.38), 13, 0.15), 17, 'charco', 0.14, 1.4);
+  const piedral = (t, cada, alto) => pocear(piedritas(escalones(t, cada, alto), 13, 0.15), 17, 'charco', 0.14, 1.4);
+  piedral(T.recta(52, { nota: { tipo: 'piedras' } }), 8.5, 0.38);
+  ese(30, 36, (t) => piedral(t, 9, 0.3));
+  piedral(T.recta(14), 8.5, 0.34);
   T.horquilla(-170, { ancho: CAMINO });
   T.ladera('der', 12, 24);
-  pocear(piedritas(escalones(T.recta(84), 7.5, 0.4), 13, 0.15), 17, 'charco', 0.14, 1.4);
+  piedral(T.recta(40), 7.5, 0.4);
+  ese(28, -40, (t) => piedral(t, 9, 0.3));
+  piedral(T.recta(26), 7.5, 0.4);
   T.horquilla(170, { ancho: CAMINO });
   T.ladera('izq', 12, 24);
-  pocear(piedritas(escalones(T.recta(80, { nota: { tipo: 'cuidado' } }), 7, 0.42), 13, 0.15), 17, 'charco', 0.14, 1.4);
+  piedral(T.recta(46, { nota: { tipo: 'cuidado' } }), 7, 0.42);
+  ese(26, 44, (t) => piedral(t, 9, 0.3));
+  piedral(T.recta(10), 7, 0.4);
   T.curva(26, -50); T.curva(26, 50);
-  pocear(piedritas(escalones(T.recta(40), 8, 0.34), 13, 0.15), 17, 'charco', 0.14, 1.4);
+  piedral(T.recta(34), 8, 0.34);
   T.fijar({ pendiente: 3 });
   T.recta(24, { control: true });
-  surcar(t2, { hondo: [0.09, 0.11], lomo: 0.06, banco: 0.12, cuneta: 0.3, culebra: 0.4, varia: 0.6, alterna: 0.5, charcos: 0.25, lodo: 0.85, suelo: 'barro', orilla: 'barro', orillaAncho: 4 });
+  surcar(t2, { hondo: [0.09, 0.11], lomo: 0.06, banco: 0.12, cuneta: 0.3, culebra: 0.4, varia: 0.6, alterna: 0.5, charcos: 0.25, lodo: 0.85, suelo: 'barro', orilla: 'barro', orillaAncho: 4, sep: 0.78, ancho: 0.8 });
 
   // ---------- 3. LA CORNISA: angosta, pared a la izquierda y el vacio a la derecha ----------
-  // (la rodada del lado del vacio es la mas honda: el camion se inclina hacia el barranco y la carga se corre)
+  // (la rodada del lado del vacio es la mas honda: el auto se ladea hacia el barranco)
   const t3 = T.tramos.length;
   T.ladera('izq', 16, 32).fijar({ ancho: CAMINO, suelo: 'tierra', pendiente: 1.5, rugoso: 0.03 });
-  T.recta(40, { nota: { tipo: 'cornisa' } });
-  T.curva(46, 26); T.curva(46, -26);
-  pocear(T.recta(36), 14, 'charco', 0.12, 1.1);
-  T.curva(52, -22); T.curva(52, 22);
-  T.recta(30, { control: true });
+  T.recta(34, { nota: { tipo: 'cornisa' } });
+  ese(36, 40); ese(36, 40);
+  pocear(T.recta(30), 14, 'charco', 0.12, 1.1);
+  ese(40, -36); ese(40, 36);
+  T.recta(26, { control: true });
 
-  // ---------- 4. LA CASCADA: cruza la cornisa y empuja hacia el vacio (el agua corre hacia la derecha) ----------
+  // ---------- 4. LA CASCADA: cruza la cornisa, un vado de agua corriente (se cruza como cualquier vado) ----------
   const agua = T.vado(0.46);
   const llega = T.tramos[T.tramos.length - 3], vado0 = T.tramos.length - 3;
   llega.nota = { tipo: 'cascada' };
   agua.ancho = CAMINO;
-  // el agua llega desde la ladera (izquierda) y se derrama por el borde (a la derecha); la corriente empuja 4,6 m/s2
-  agua.agua = { hondo: 0.46, largo: 60, entre: [-30, 3.6], empuje: 3.0 };
-  T.recta(26);
-  T.curva(44, 24); T.curva(44, -24);
-  T.recta(24, { control: true });
-  surcar(t3, { hondo: [0.08, 0.17], lomo: 0.07, banco: 0.22, cuneta: 0.3, culebra: 0.3, varia: 0.3, alterna: 0.15, charcos: 0.3, lodo: 0.6, suelo: 'barro', orilla: 'pantano', orillaAncho: 3 });
+  // el agua llega desde la ladera (izquierda) y se derrama por el borde (a la derecha)
+  agua.agua = { hondo: 0.46, largo: 60, entre: [-30, 3.6] };
+  T.recta(20);
+  ese(36, 34); ese(36, -34);
+  T.recta(22, { control: true });
+  surcar(t3, { hondo: [0.08, 0.17], lomo: 0.07, banco: 0.22, cuneta: 0.3, culebra: 0.3, varia: 0.3, alterna: 0.15, charcos: 0.3, lodo: 0.6, suelo: 'barro', orilla: 'pantano', orillaAncho: 3, sep: 0.78, ancho: 0.8 });
   for (const t of T.tramos.slice(vado0, vado0 + 3)) t.surcos = undefined;   // (en el cruce del arroyo no hay rodadas: el agua las borro)
 
   // ---------- 5. LA BAJADA TRAICIONERA: empinada, de ripio, con curvas que piden frenar ----------
   // (con surcos que lavo el agua: hondos, angostos y torcidos, y una rodada mas honda que la otra por tramos)
   const t4 = T.tramos.length;
   T.ladera('izq', 14, 28).fijar({ ancho: CAMINO, suelo: 'ripio', pendiente: -12, rugoso: 0.04 });
-  T.recta(86, { nota: { tipo: 'bajada' } });
+  T.recta(44, { nota: { tipo: 'bajada' } });
+  ese(34, 32);
+  T.recta(10);
   T.curva(30, -62);
-  pocear(T.recta(56), 16, 'charco', 0.16, 1.3);
+  pocear(T.recta(34), 16, 'charco', 0.16, 1.3);
+  ese(30, 36);
   T.horquilla(150, { ancho: CAMINO });
-  pocear(T.recta(60, { pendiente: -13 }), 16, 'charco', 0.16, 1.3);
+  pocear(T.recta(40, { pendiente: -13 }), 16, 'charco', 0.16, 1.3);
   T.curva(36, -46);
-  T.recta(36, { pendiente: -9 });
-  surcar(t4, { hondo: [0.26, 0.26], lomo: 0.14, banco: 0.2, cuneta: 0.35, culebra: 0.8, varia: 0.8, alterna: 0.6, charcos: 0.3, suelo: 'tierra', orilla: 'barro', orillaAncho: 4 });
+  T.recta(30, { pendiente: -9 });
+  surcar(t4, { hondo: [0.2, 0.2], lomo: 0.14, banco: 0.2, cuneta: 0.35, culebra: 0.8, varia: 0.8, alterna: 0.6, charcos: 0.3, suelo: 'tierra', orilla: 'barro', orillaAncho: 4, sep: 0.78, ancho: 0.8 });
   // la llegada, abajo
   T.ladera(null).fijar({ pendiente: 1, ancho: 9 });
   const llegada = T.recta(92);
@@ -846,5 +865,5 @@ export function armarCircuito(numero) {
   });
   // (biomas: los ambientes por los que pasa, en el orden en que aparecen; casi siempre es uno solo)
   const biomas = [...new Set(tramos.map((t) => t.bioma || c.bioma))];
-  return { numero, fijo: c.id, ...(c.camion ? { camion: true } : {}), vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1, maximo: c.maximo };
+  return { numero, fijo: c.id, vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1, maximo: c.maximo };
 }

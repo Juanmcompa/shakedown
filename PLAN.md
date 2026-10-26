@@ -102,11 +102,10 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Montaña v2: barro y rodadas profundas en toda la pista (serpentean, una más honda que otra, charcos y pozos); hay que pelear el volante
 - [x] Montaña v3: camino de 3,4 m (casi el ancho del camión), rodadas justo donde van las ruedas, zanja y barro afuera; arreglado el barro que no dejaba avanzar (control de tracción por rueda y pedal que se suelta de a poco en el barro)
 - [x] Montaña v4: el barro resbala en vez de frenar (menos hundimiento, poco agarre de costado, la cola se cruza a fondo); acelerando nunca queda parado
+- [x] Montaña v5: vuelta atrás del camión (no era divertido): se corre con cualquier auto y la física de siempre, camino de 4,6 m con 18 eses y rodadas hondas. El camino deformado queda como opción estándar `surcos` para pistas complicadas; el camión quedó guardado sin usar
 
 ## Lo que sigue
 
-- Montaña: ver jugando si la corriente de la cascada es demasiado con el camino angosto, y si las horquillas de la bajada necesitan un radio más abierto.
-- Montaña del Sufrimiento: que las tablas del servidor muestren los bultos entregados; que la cascada se vea como caída de agua; afinar la dificultad (y los tiempos de referencia `PAR_CAMION`) con gente jugando en el celu.
 - Que la card de la pista del día pida al servidor las tablas de hoy aunque esté cargado un circuito (ahora muestra lo último guardado en el aparato).
 - Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).
 - Travesía: puestos de asistencia cada 10 km para arreglar averías con las cartas buenas (ya están guardadas en `ARREGLOS`, fuera del sorteo), sonido de arena, y ajustar la dificultad probando en celulares.

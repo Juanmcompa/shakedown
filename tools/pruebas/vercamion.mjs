@@ -1,3 +1,4 @@
+// GUARDADO SIN USAR (ver src/camion.js): esta prueba ya no corre, la Montaña se maneja con el auto (ver vermontana.mjs).
 // El camion de carga de La Montaña del Sufrimiento (circuito 'montana'). Dos partes:
 //  1. La fisica, sin navegador y con entradas de teclado escritas a mano (el camion es determinista: lo mismo de siempre):
 //     - a fondo en el barro casi no avanza y las ruedas patinan (se entierra); dando toques, avanza

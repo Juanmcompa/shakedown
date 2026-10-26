@@ -32,9 +32,6 @@ import { crearTeclas } from './input.js';
 import { crearHud, tiempoFinal } from './hud.js';
 import { crearPapelitos } from './papelitos.js';
 import { configDe, codigoDe } from './partes.js';
-import { crearCamion, CAMION_CARGA, CODIGO_CAMION, RECARGO_BULTO, PAR_CAMION } from './camion.js';
-import { crearVistaCamion } from './camionvista.js';
-import { CAMARAS_CAMION } from './config.js';
 import { crearModoTravesia } from './travesia.js';
 import { leerEnlaceTravesia } from './travesiaenlace.js';
 
@@ -48,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '32';
+const PAGINA = '33';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -155,8 +152,6 @@ const seSube = !(comunidad && comunidad.borrador);
 
 await respiro('Armando la pista…', 2);
 const etapa = generarPista(numero), T = crearTerreno(etapa), P = T.camino, ref = crearReferencia(T, AUTOS[REFERENCIA]);
-// el camion de carga no corre contra la cuenta de un auto de rally: su referencia es lo que hace un buen piloto con la carga
-if (etapa.camion) { ref.sectores = PAR_CAMION.sectores.slice(); ref.total = PAR_CAMION.total; }
 const club = crearClub(numero, HOY, versionDe), copiloto = crearCopiloto(T);
 nube.conLlave(() => club.llave());
 if (olvidar) club.olvidarPista(olvidar);
@@ -206,7 +201,7 @@ const ayuda = crearAyuda(T);
 // Se calcula recien cuando hace falta.
 // (id: el codigo del auto armado: ver partes.js)
 const refs = { [codigoDe(REFERENCIA)]: ref }, refDe = (id) => { id = codigoDe(id); return refs[id] || (refs[id] = crearReferencia(T, configDe(id))); };
-let c = null, dibujo = null, vistaCamion = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false, conTrazada = !!gusto('trazada');
+let c = null, dibujo = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false, conTrazada = !!gusto('trazada');
 // el modo "rally serio" (ver SERIO en config.js): lo contrario de la ayuda. (Si alguna vez quedaron los dos, gana la ayuda.)
 let conSerio = !conAyuda && !!gusto('serio'), serioDeLaPasada = false;
 // El auto con el que se corre: el que armaste en el garaje (su codigo de partes, como '431'; ver partes.js).
@@ -215,20 +210,7 @@ function ponerAuto(id) {
   id = codigoDe(id);
   const C = configDe(id);
   if (dibujo) escena.remove(dibujo.grupo);
-  if (vistaCamion) { vistaCamion.sacar(); vistaCamion = null; }
   club.ponerAuto(id);
-  // el camion de carga (La Montaña del Sufrimiento) es siempre el mismo y no se ayuda: su fisica es aparte (camion.js)
-  if (etapa.camion) {
-    c = crearCamion(T);
-    if (conTrazada) trazada.usar(refDe(id));
-    dibujo = crearDibujo(escena, CAMION_CARGA);
-    vistaCamion = crearVistaCamion(escena, c);
-    camara.usar(CAMARAS_CAMION);
-    partida.preparar(c); c.cargaNueva();
-    camara.saltar();
-    return;
-  }
-  camara.usar(null);
   c = crearAuto(T, conAyuda ? { ...C, ...AYUDA.auto } : conSerio ? enSerio(C) : C);
   if (conAyuda) ayuda.preparar(C, refDe(id));
   if (conTrazada) trazada.usar(refDe(id));
@@ -239,7 +221,7 @@ function ponerAuto(id) {
 ponerAuto(club.auto());
 const espectros = {};
 // (el fantasma de cada auto armado: con su chasis y sus ruedas)
-const espectroDe = (id) => { id = codigoDe(id); return espectros[id] || (espectros[id] = crearEspectro(escena, T, etapa.camion ? CAMION_CARGA : configDe(id))); };
+const espectroDe = (id) => { id = codigoDe(id); return espectros[id] || (espectros[id] = crearEspectro(escena, T, configDe(id))); };
 
 // --- contra quien se corre ---
 // rival: null o { clave, nombre, t, ab, practica, auto, fantasma }. La clave es la de "claveDe": '*' si es una pasada propia.
@@ -522,10 +504,9 @@ function largar(conTutorial) {
   modo = club.sePuedeOficial() ? 'oficial' : 'practica';
   raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
   pantalla = 'jugando';
-  tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda && !etapa.camion; serioDeLaPasada = conSerio && !etapa.camion;
+  tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio;
   rondas = 0; mejorRonda = null; mejoroAlgo = false;
   partida.preparar(c);
-  if (c.carga) { c.cargaNueva(); vistaCamion.reiniciar(); }   // (el camion de carga: vuelven todos los bultos)
   if (!explicar) partida.largar();
   grabacion = crearGrabacion(T);
   copiloto.reiniciar();
@@ -599,8 +580,8 @@ function terminar() {
   pantalla = 'fin';
   hud.llamar(false); trabado = false;
   const llego = partida.estado === 'llegada';
-  let r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: etapa.camion ? CODIGO_CAMION : club.auto(),
-    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada, serio: serioDeLaPasada, ...(etapa.camion ? { b: c.carga.quedan() } : {}) };
+  let r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: club.auto(),
+    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada, serio: serioDeLaPasada };
   let mejoro = false, g = grabacion;   // (en las practicas y en los circuitos queda guardada solo la mejor)
   if (T.vuelta && mejorRonda) { r = { ...mejorRonda.r, nombre: club.nombre(), rondas, seRompio: partida.estado === 'abandono' }; g = mejorRonda.g; mejoro = mejoroAlgo; }
   else if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
@@ -767,17 +748,6 @@ function cuidarFluidez(seg) {
 }
 const HACIA = new THREE.Vector3(), AL_AUTO = new THREE.Vector3();
 
-// El camion de carga: cada bulto que se pierde suma su recargo al reloj y se avisa; el resto de la carga se ve y se cuenta en el tablero.
-function cuidarCarga() {
-  const n = c.carga.nuevos();
-  if (n && pantalla === 'jugando' && partida.estado === 'corriendo') {
-    partida.recargar(n * RECARGO_BULTO);
-    hud.grande('+' + n * RECARGO_BULTO + ' s', 1.8, 'rojo');
-    hud.aviso(n === 1 ? 'Se cayó un bulto' : 'Se cayeron ' + n + ' bultos', 2.4);
-    sonido.toque('piso', 6, partida.roto);
-  }
-  hud.camion(pantalla === 'jugando' ? c : null);
-}
 function cuadro(ahora) {
   requestAnimationFrame(cuadro);
   // la musica: suave en el inicio, muy bajita en las carreras, a medio camino en el resultado; calla con el sonido o con su boton apagados
@@ -794,7 +764,6 @@ function cuadro(ahora) {
   if (corriendo && ayudaDeLaPasada) { ayuda.aplicar(c, partida.indice, partida.lejos, ent); hud.frenaSola(ayuda.frenando()); }
   resto += dt;
   while (resto >= JUEGO.paso) { c.paso(manda, JUEGO.paso); resto -= JUEGO.paso; }
-  if (c.carga) cuidarCarga();
   if (pantalla === 'jugando') {
     // el choque suena en el momento (cada cosa a lo suyo, y la chapa cruje mas cuanto mas roto esta el auto: ver audio.js)
     if (partida.estado === 'corriendo') sonido.toque(c.contra, c.impacto, partida.roto);
@@ -828,7 +797,6 @@ function cuadro(ahora) {
   }
   else menu.prueba(teclas.inclinacion());   // (en la configuracion se puede probar la sensibilidad de la inclinacion)
   dibujo.actualizar(c, dt, conEfectos);
-  if (vistaCamion) vistaCamion.actualizar(c, dt);
   fx.actualizar(c, dt);
   camara.seguir(c, dt);
   if (c.rompio.length) sonido.voltear(c.rompio, Math.abs(c.velocidad));   // lo que se lleva puesto suena (y el mundo lo tira: ver world.js)
@@ -914,8 +882,8 @@ if (enCasa) window.shakedown = {
   largar,
   saltearEspera: () => { if (tFin > 0) tFin = 0.001; },   // (para las pruebas) muestra el resultado sin esperar
   // (para las pruebas) maneja unos segundos con el volante y el pedal fijos, con la camara y los efectos siguiendolo
-  simular: (seg, x, y, mano = false) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano }, JUEGO.paso); if (i % 2) { fx.actualizar(c, JUEGO.paso * 2); dibujo.actualizar(c, JUEGO.paso * 2, conEfectos); if (vistaCamion) vistaCamion.actualizar(c, JUEGO.paso * 2); camara.seguir(c, JUEGO.paso * 2); } } if (c.carga) cuidarCarga(); },
-  avanzar: (dt) => { if (c.carga) cuidarCarga(); partida.paso(c, dt); if (partida.estado === 'corriendo' && partida.lanzado) grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
+  simular: (seg, x, y, mano = false) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano }, JUEGO.paso); if (i % 2) { fx.actualizar(c, JUEGO.paso * 2); dibujo.actualizar(c, JUEGO.paso * 2, conEfectos); camara.seguir(c, JUEGO.paso * 2); } } },
+  avanzar: (dt) => { partida.paso(c, dt); if (partida.estado === 'corriendo' && partida.lanzado) grabacion.muestra(partida.tiempo, c); for (const e of partida.eventos.splice(0)) atender(e); },
   salir: () => aLaPortada(),
   ir: (i) => { i = Math.max(0, Math.min(P.n - 1, i)); c.poner(P.X[i], P.Z[i], Math.atan2(P.HX[i], -P.HZ[i])); partida.indice = i; fx.cortar(); camara.saltar(); },
 };

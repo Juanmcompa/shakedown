@@ -1,3 +1,6 @@
+// GUARDADO SIN USAR: el camion se probo en La Montaña del Sufrimiento (v1 a v4) y se volvio atras (v5: ahora se corre con el auto
+// del garaje y la fisica de siempre). Ningun modulo del juego lo importa ni esta en la lista "modulos" de index.html; queda por si se lo
+// quiere retomar para otra cosa. Para usarlo de nuevo hay que volver a conectarlo (main.js, hud, reglas, fantasma, menu, camara).
 // El camion de carga de "La Montaña del Sufrimiento" (circuito 'montana'): fisica pesada, aparte de la del auto.
 // Es un cuerpo rigido con cuatro ruedas, como vehicle.js, pero:
 //  - el motor da TORQUE a las ruedas (no velocidad): cada rueda tiene su propio giro. Si el torque pasa lo que agarra el

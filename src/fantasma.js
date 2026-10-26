@@ -20,7 +20,6 @@ export const AUTOS_DEL_LINK = ['vitarita', 'kacito'];   // el orden no se puede 
 // Las pasadas de mas de 2047 muestras (17 minutos) anotan su largo en 12 bits en vez de 11, y lo avisan con la marca 8
 // (asi los links de antes, de 11 bits, se siguen leyendo igual).
 export const TOPE_MUESTRAS = 3600;
-const PISTA_CAMION = 16006;   // el circuito 'montana' (circuitos.js): el unico donde el resultado lleva los bultos que llegaron
 const COLORES = 'varn', ABANDONOS = ['', 'roto', 'tiempo', 'cerrado'];
 
 // --- texto <-> bytes (base64 que se puede poner en un link) ---
@@ -180,8 +179,6 @@ function pasarResultado(io, m, enc, dec, pista, completo) {
   o.t = io.crudo(Math.max(0, Math.min(524287, Math.round((m.t || 0) * 100))), 19) / 100;
   o.c = '';
   for (let k = 0; k < 5; k++) o.c += COLORES[io.crudo(Math.max(0, COLORES.indexOf((m.c || 'nnnnn')[k] || 'n')), 2)];
-  // el camion de carga (La Montaña del Sufrimiento) suma cuantos bultos llegaron (0 a 6; 7 = no se sabe)
-  if (pista === PISTA_CAMION) { const b = io.crudo(m.b === undefined || m.b === null ? 7 : Math.max(0, Math.min(6, m.b)), 3); if (b < 7) o.b = b; }
   o.s = []; o.vueltas = 0; o.roto = 0;
   if (!completo) return o;
   for (let k = 0; k < 5; k++) o.s.push(io.crudo(Math.max(0, Math.min(32767, Math.round((m.s && m.s[k] || 0) * 100))), 15) / 100);

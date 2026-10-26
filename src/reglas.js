@@ -72,10 +72,6 @@ export function crearPartida(T, par) {
     avisar('vuelta', motivo);
   };
 
-  // suma segundos al reloj (el camion de la Montaña del Sufrimiento: cada bulto perdido recarga). Como volver al camino, corre el
-  // reloj de golpe y la grabacion repite la muestra: el fantasma espera esos segundos.
-  p.recargar = function (seg) { if (p.estado === 'corriendo' && p.lanzado) p.tiempo += seg; };
-
   p.paso = function (c, dt) {
     if (p.estado === 'cuenta') {
       p.cuenta -= dt;

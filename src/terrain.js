@@ -183,14 +183,21 @@ export function crearTerreno(etapa) {
     return mejor;
   }
   const lomitas = bioma.relieve > 8 ? 2.2 : 0.9;
-  // --- 2a. Surcos: las rodadas profundas que dejaron los camiones (solo los tramos que traen "surcos", hoy la Montaña del Sufrimiento) ---
-  // t.surcos = { hondo: [izq, der], lomo, banco, cuneta, culebra, varia, alterna, charcos, ext, suelo, orilla }  (todo en metros)
-  //   hondo: cuanto se hunde cada rodada.  lomo: la joroba entre las dos.  banco: el borde del camino que se levanta.
-  //   cuneta: la zanja de afuera.  culebra: cuanto serpentean las rodadas (hay que pelear el volante).  varia: cuanto cambia el hondo
-  //   metro a metro.  alterna: cuanto se alterna cual rodada es la mas honda (inclina el camion de costado).  charcos: parte de las
-  //   rodadas con agua (su suelo, "pozas": 'charco' si no se dice).  lodo: que parte de las rodadas es barro (si no se dice, todas).  ext: rodadas viejas, mas chicas, mas afuera.  suelo: el del fondo de la rodada.  orilla: el de la zanja.
+  // --- 2a. Surcos: el CAMINO DEFORMADO, la opcion estandar para pistas complicadas (hoy: La Montaña del Sufrimiento) ---
+  // Rodadas hondas, lomo en el medio, bancos que se levantan en el borde, zanja afuera, barro y charcos: el auto rebota, se ladea
+  // y hay que pelear el volante. Se pide por tramo (y se reparte con "surcar" en circuitos.js):
+  //   t.surcos = { hondo: [izq, der], lomo, banco, cuneta, culebra, varia, alterna, charcos, lodo, ext, suelo, pozas, orilla, orillaAncho, sep, ancho }
+  //   (todo en metros)
+  //   hondo: cuanto se hunde cada rodada (0,08 es una huella; 0,25 una trampa).  lomo: la joroba entre las dos.  banco: el borde que se levanta.
+  //   cuneta: la zanja de afuera.  culebra (el "serpenteo"): cuanto serpentean las rodadas, a izquierda y derecha (hay que pelear el volante).
+  //   varia: cuanto cambia el hondo metro a metro.  alterna: cuanto se alterna cual rodada es la mas honda (inclina el auto de costado).
+  //   charcos: parte de las rodadas con agua (su suelo, "pozas": 'charco' si no se dice).  lodo: que parte de las rodadas es barro (si no
+  //   se dice, todas; en el resto queda el suelo del camino).  ext: rodadas viejas, mas chicas, mas afuera.  suelo: el del fondo de la
+  //   rodada.  orilla / orillaAncho: el suelo de la zanja y cuantos metros.
+  //   sep: de la mitad del camino al centro de cada rodada (0,9 por defecto; las ruedas de un auto caen a 0,7).  ancho: lo ancha que es cada una (0,85).
   // Todo sale del metro del camino y del ruido de la pista: la misma pista da siempre las mismas rodadas (el fantasma es fiel).
-  const SEP = 0.9, ANC = 0.85, EXT = 3.7;   // (SEP: las rodadas van justo donde van las ruedas del camion, que tiene 0,88 m de trocha)
+  const Q0 = (etapa.tramos.find((t) => t.surcos) || {}).surcos || {};
+  const SEP = Q0.sep || 0.9, ANC = Q0.ancho || 0.85, EXT = 3.7;   // (valen para toda la pista, los de la primera que los trae)
   const SU = {}, hayS = etapa.tramos.some((t) => t.surcos);
   if (hayS) {
     const crudo = {};
@@ -382,7 +389,7 @@ export function crearTerreno(etapa) {
     return 0;
   }
   // La corriente de una cascada que cruza el camino: cuanto empuja (m/s2) hacia la derecha del camino a lo que esta en el agua.
-  // La usa solo el camion de La Montaña del Sufrimiento (los autos no la miran). o: { fx, fz, f } (f: 0 a 1, cuanta agua hay)
+  // Hoy no la usa nadie: era del camion guardado en camion.js (los autos no la miran; para usarla, t.agua.empuje). o: { fx, fz, f } (f: 0 a 1, cuanta agua hay)
   function corriente(x, z, o) {
     o.fx = 0; o.fz = 0; o.f = 0;
     for (const a of aguas) {

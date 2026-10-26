@@ -1,3 +1,4 @@
+// GUARDADO SIN USAR (ver el aviso de camion.js): nadie lo carga.
 // Como se ve la carga del camion (La Montaña del Sufrimiento): los cajones, los troncos y las cuerdas que los atan.
 // La fisica esta en camion.js; aca solo se dibuja lo que ella dice (posicion de cada bulto, cuerdas tensas o cortadas).
 // Los bultos van sueltos en la escena (en coordenadas del mundo): arriba del camion giran con el, y los que se perdieron

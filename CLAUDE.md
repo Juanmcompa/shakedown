@@ -24,7 +24,7 @@ Devuelven un resumen corto: qué cambiaron, qué pruebas corrieron y cómo salie
 
 | Área | Subagente |
 | --- | --- |
-| Cómo se maneja, el daño, las reglas, la cámara, la ayuda y la trazada; el garaje y sus partes; el camión de carga (`camion.js`, `camionvista.js`) | `manejo` |
+| Cómo se maneja, el daño, las reglas, la cámara, la ayuda y la trazada; el garaje y sus partes | `manejo` |
 | Cómo se arma la pista del día y los circuitos, el paisaje, el clima y el copiloto | `pistas` |
 | El creador de pistas y las pistas de la comunidad | `creador` |
 | Tablas, clubes, links, guardar tiempos, fantasmas y el servidor | `social` |
@@ -55,9 +55,9 @@ Se corren desde la raíz del repo. Abren el juego en un Chromium sin pantalla (P
 Las que usan servidor necesitan antes uno limpio: `node servidor/local.mjs 8787` (se reinicia entre una prueba y otra).
 
 - `node tools/pruebas/huella.mjs 1 10 tools/pruebas/medidas/huella-v1.txt` (y `16001 3 …huella-circuitos-v1.txt`,
-  `16004 1 …huella-practica-v1.txt`, `16005 1 …huella-giulio-v1.txt`, `16006 1 …huella-montana-v4.txt`): tienen que decir **IGUAL**. Si no, cambió cómo se maneja o cómo es la pista.
+  `16004 1 …huella-practica-v1.txt`, `16005 1 …huella-giulio-v1.txt`, `16006 1 …huella-montana-v5.txt`): tienen que decir **IGUAL**. Si no, cambió cómo se maneja o cómo es la pista.
 - `node servidor/prueba.mjs`: el servidor (129 pruebas).
-- El camión de la Montaña: `vercamion.mjs` (la pista entera, la carga, el fantasma) y `vercamion-barro.mjs` (el barro y el ancho).
+- La Montaña (camino deformado, con el auto): `vermontana.mjs`.
 - Las demás `ver*.mjs` prueban cada parte; el comentario del principio de cada una dice qué y cómo.
 
 Con gráficos por software todo anda lento (1 cuadro por segundo): las pruebas usan `shakedown.avanzar(segundos)` en vez
