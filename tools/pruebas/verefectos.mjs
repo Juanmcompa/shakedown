@@ -67,7 +67,7 @@ const a = await pag.evaluate(() => {
     if (!o.isInstancedMesh || !o.userData.arboles) return;
     r.mallas++; r.arboles += o.count; r.planos.add(o.userData.planos);
     const m = o.material; if (m.alphaTest < 0.4 || !m.map) r.alphaTest = false; if (m.transparent) r.sinTransparencia = false;
-    if (o.geometry.index.count !== o.userData.planos * 6 + 6 || !o.geometry.getAttribute('aTop') || !o.geometry.getAttribute('aUv2')) r.indices = false;   // los planos cruzados y el plano horizontal de la copa (vista de arriba)
+    if (o.geometry.index.count !== (o.userData.planos * 6 + 6) * 2 || !o.geometry.getAttribute('aTop') || !o.geometry.getAttribute('aUv2')) r.indices = false;   // los planos cruzados y el plano horizontal de la copa (vista de arriba), cada uno con sus dos caras
   });
   r.arbolesDelTerreno = s.T.cosas.filter((o) => o.clase === 'arbol' && o.tipo !== 'arbusto').length;
   return { ...r, planos: [...r.planos] };

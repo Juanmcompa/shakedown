@@ -10,16 +10,17 @@ import { estilo } from './material.js';
 const entero = (p, a, b) => a + Math.floor(p.azar() * (b - a + 1));
 const lim = (v, a, b) => Math.max(a, Math.min(b, v));
 
-// cinco tonos por follaje, de oscuro a claro (los mismos que tenian los arboles de bloques)
+// cinco tonos por follaje, de oscuro a claro: verdes del mismo tono que el pasto (src/arte.js) y con poco salto entre tonos,
+// para que los arboles no se despeguen del terreno
 const HOJAS = {
-  pino: ['#16382a', '#1f4a33', '#2a5f3c', '#3a7848', '#559458'],
-  pinoAlto: ['#1a3b24', '#24502c', '#316837', '#43823f', '#5f9d4c'],
-  lenga: ['#7a2418', '#a83a1e', '#cf5a22', '#e8862c', '#f6b545'],      // otoño: del rojo al naranja
-  nire: ['#8a5a14', '#b9801c', '#dba526', '#f0c43a', '#fbe06a'],       // otoño: amarillo
-  alamo: ['#3d6a24', '#55872c', '#73a336', '#96bf45', '#bcd75e'],
-  eucalipto: ['#33503f', '#46695a', '#5c8272', '#7a9d8a', '#a0bba8'],
-  araucaria: ['#12302a', '#1a4034', '#24523f', '#33684c', '#4b825c'],
-  sauce: ['#4a5a26', '#62732f', '#7f9140', '#a0b157', '#c3d078'],
+  pino: ['#2f5a2e', '#376833', '#407639', '#4b843e', '#5a9246'],
+  pinoAlto: ['#335c2c', '#3b6a31', '#447836', '#50873d', '#609646'],
+  lenga: ['#8a4424', '#9e5228', '#b0622c', '#c07434', '#cc8840'],      // otoño: del rojo al naranja (apagado, como el pasto)
+  nire: ['#8e6a26', '#a07a2c', '#b08a32', '#bf9a3c', '#caa84a'],       // otoño: amarillo (apagado)
+  alamo: ['#467832', '#4f8636', '#5a933c', '#679f43', '#78ab4d'],
+  eucalipto: ['#456a42', '#4f7748', '#5a844f', '#679158', '#779d63'],
+  araucaria: ['#2b5530', '#336235', '#3c6f3a', '#467c40', '#538947'],
+  sauce: ['#4e7a30', '#578735', '#62943b', '#6ea043', '#7dab4d'],
   seco: ['#3a2e24', '#4d3b2c', '#63503b', '#7d664b', '#9b8260'],
 };
 const CORTEZA = {
@@ -43,10 +44,10 @@ function masa(p, tipo, cx, cy, rx, ry, hueco = 0.08) {
     if (dy > 0.1 && p.azar() < hueco * (0.3 + dy)) continue;
     if (d > 0.84 && p.azar() < 0.3) continue;   // el borde "comido": hojas sueltas, no una raya lisa
     // hojas de pixel: ruido de varios tonos, con puntos brillantes y oscuros sueltos (como las texturas de PS1)
-    let luz = 0.56 - dy * 0.4 - dx * 0.16 + (p.azar() - 0.5) * 0.55;
-    if ((x * 5 + y * 9) % 7 === 0) luz -= 0.14;   // sombra de racimo
+    let luz = 0.56 - dy * 0.22 + (p.azar() - 0.5) * 0.4;   // (sin sombra de costado: al cruzarse los planos se veian costuras)
+    if ((x * 5 + y * 9) % 7 === 0) luz -= 0.08;   // sombra de racimo
     if (d > 0.82 && dy > 0) luz -= 0.1;
-    const q = p.azar(); if (q < 0.08) luz += 0.32; else if (q > 0.93) luz -= 0.3;
+    const q = p.azar(); if (q < 0.08) luz += 0.22; else if (q > 0.93) luz -= 0.2;
     hoja(p, tipo, x, y, luz);
   }
 }
@@ -59,7 +60,7 @@ function conifera(p, tipo, pie, fino, piso) {
     for (let x = Math.ceil(cx - hw); x <= cx + hw; x++) {
       if (x < 0 || x >= W || (y > 4 && p.azar() < 0.05 + frac * 0.1) || (Math.abs(x - cx) > hw - 1.2 && p.azar() < 0.3)) continue;
       const q = p.azar();
-      hoja(p, tipo, x, y, 0.66 - (x - cx) / W * 0.55 - frac * 0.4 + (p.azar() - 0.5) * 0.5 - (frac > 0.85 ? 0.2 : 0) + (q < 0.07 ? 0.3 : q > 0.94 ? -0.28 : 0));
+      hoja(p, tipo, x, y, 0.62 - frac * 0.26 + (p.azar() - 0.5) * 0.38 - (frac > 0.85 ? 0.12 : 0) + (q < 0.07 ? 0.22 : q > 0.94 ? -0.2 : 0));
     }
   }
   troncoDe(p, tipo, Math.round(cx) - 1, copa - 3, H);
@@ -133,7 +134,7 @@ function copaDeArriba(p, tipo, estrella) {
     const r = estrella ? 0.72 + 0.28 * Math.abs(Math.sin(ang * 4 + f)) : 0.92 + 0.08 * Math.sin(ang * 5 + f);
     const d = Math.hypot(dx, dy) / r + (p.azar() - 0.5) * 0.18;
     if (d > 1 || (d > 0.82 && p.azar() < 0.32)) continue;
-    let luz = 0.62 - d * 0.28 - dx * 0.12 - dy * 0.12 + (p.azar() - 0.5) * 0.55;
+    let luz = 0.6 - d * 0.2 + (p.azar() - 0.5) * 0.4;
     const q = p.azar(); if (q < 0.09) luz += 0.3; else if (q > 0.93) luz -= 0.3;
     hoja(p, tipo, x, y, luz);
   }
@@ -174,6 +175,8 @@ function dibujos() {
   return hecho;
 }
 
+// (Cada plano tiene sus dos caras como triangulos aparte, todos con la normal para arriba. Con "DoubleSide" la cara de atras
+// da vuelta la normal y queda a oscuras: por eso un plano se veia oscuro y el que lo cruza claro.)
 // Los planos cruzados: cada uno es un cuadrado (x de -0,5 a 0,5; y de 0 a 1) girado. Con 3 planos queda un asterisco.
 function formaCruzada(planos) {
   const pos = [], nor = [], uv = [], idx = [];
@@ -183,6 +186,7 @@ function formaCruzada(planos) {
     for (let i = 0; i < 4; i++) nor.push(0, 1, 0);   // la luz es pareja: el dibujo ya trae su sombra
     uv.push(0, 0, 1, 0, 1, 1, 0, 1);
     idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    idx.push(b, b + 2, b + 1, b, b + 3, b + 2);   // la otra cara, con la misma normal (ver abajo)
   }
   // y el plano de la copa vista de arriba: horizontal (aTop = 1; su altura y ancho los pone el material con aForma)
   const top = new Array(pos.length / 3).fill(0), b = pos.length / 3;
@@ -190,6 +194,7 @@ function formaCruzada(planos) {
   for (let i = 0; i < 4; i++) { nor.push(0, 1, 0); top.push(1); }
   uv.push(0, 0, 1, 0, 1, 1, 0, 1);
   idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
   const g = new THREE.BufferGeometry();
   g.setAttribute('aTop', new THREE.Float32BufferAttribute(top, 1));
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -225,7 +230,7 @@ export function crearLoteDeArboles(liviano) {
       geo.setAttribute('aUv', new THREE.InstancedBufferAttribute(aUv, 4));
       geo.setAttribute('aUv2', new THREE.InstancedBufferAttribute(aUv2, 4));
       geo.setAttribute('aForma', new THREE.InstancedBufferAttribute(aForma, 2));
-      m.material = estilo(new THREE.MeshLambertMaterial({ map: textura, alphaTest: 0.5, side: THREE.DoubleSide }), { calada: true, uvInstancia: true, clave: 'arbol' });
+      m.material = estilo(new THREE.MeshLambertMaterial({ map: textura, alphaTest: 0.5 }), { calada: true, uvInstancia: true, clave: 'arbol' });
       m.customDepthMaterial = estilo(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: textura, alphaTest: 0.5 }), { uvInstancia: true, soloForma: true, clave: 'arbol' });
       m.castShadow = true; m.receiveShadow = false;
       m.userData.arboles = lista.length; m.userData.planos = planos;
