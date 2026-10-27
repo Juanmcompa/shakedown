@@ -533,11 +533,24 @@ function ponerLaHora(h) { mundo.hora(h); post.revelar(revelado(etapa.clima, h));
 
 // Correr una pista desde el inicio. Las pistas no se cambian en caliente (el terreno se arma una vez): si la que se pidio no es la
 // que esta cargada, se abre su direccion con "#largar" y al terminar de cargar empieza sola, como si se hubiera tocado de nuevo.
+// El cartel de carga se va cuando el mundo ya se dibujo un par de veces (los primeros cuadros tardan: se arman texturas y
+// sombras), con un fundido corto, asi no queda la pantalla vacia entre el cartel y la largada.
+function sacarCartelDeCarga() {
+  if (!raiz.classList.contains('yendo')) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => {
+    raiz.classList.add('yendo-fin');
+    setTimeout(() => raiz.classList.remove('yendo', 'yendo-fin'), 350);
+  }, 150)));
+}
 function correr(n, dir, nombre) {
   if (pantalla === 'jugando') return;
   if (n === numero) { largar(); return; }
   // (el nombre de la pista que viene: la pagina nueva lo muestra mientras carga, en vez del inicio)
   try { sessionStorage.setItem('shakedown.yendo', nombre || ''); } catch (e) { /* sin memoria */ }
+  // (el cartel de carga aparece ya en esta pagina, mientras el navegador baja la otra: sin pantalla en blanco en el medio)
+  const t = document.getElementById('yendoTexto');
+  if (t) t.textContent = nombre ? 'Cargando ' + nombre + '…' : 'Cargando…';
+  raiz.classList.add('yendo');
   location.href = dir ? dir + '#largar' : conServidor(direccionDe(n) + '#largar');
 }
 
@@ -872,7 +885,7 @@ function cuadro(ahora) {
   camara.cam.getWorldDirection(HACIA);
   post.dibujar(escena, camara.cam, AL_AUTO.set(c.pos[0], c.pos[1], c.pos[2]).sub(camara.cam.position).dot(HACIA));
   // con el primer cuadro dibujado, se va el cartel de carga y aparece la portada
-  if (cargando) { cargando = false; raiz.classList.remove('cargando'); menu.pintar(); menu.acomodar(); menu.enfocar(); if (arrancar) { arrancar = false; largar(); } raiz.classList.remove('yendo'); }
+  if (cargando) { cargando = false; raiz.classList.remove('cargando'); menu.pintar(); menu.acomodar(); menu.enfocar(); if (arrancar) { arrancar = false; largar(); } sacarCartelDeCarga(); }
 }
 
 window.addEventListener('resize', medir);

@@ -138,6 +138,8 @@ ver('Subida: carga esa pista y larga solo (' + e.pista + ')', e.pista === 16001 
 const vistoSubida = await A.evaluate(() => ({ menu: sessionStorage.getItem('__menuVisto'), cartel: sessionStorage.getItem('__yendoVisto') }));
 ver('en el camino no se volvio a ver el menu del inicio', vistoSubida.menu === null, vistoSubida);
 ver('y mientras cargaba decia "Cargando <pista>..."', /^Cargando .+…$/.test(vistoSubida.cartel || ''), vistoSubida);
+// (el cartel de carga se va con un fundido despues de los primeros cuadros: se espera a que se vaya)
+await A.waitForFunction(() => !document.documentElement.classList.contains('yendo'), null, { timeout: 60000 }).catch(() => {});
 ver('la direccion queda limpia (sin el "#largar") y la pantalla de carga ya no esta', await A.evaluate(() => !location.hash && /c=subida/.test(location.search) && !document.documentElement.classList.contains('yendo')));
 const finS = await llegar(A);
 ver('Subida: llega a la meta', finS === 'llegada', finS);

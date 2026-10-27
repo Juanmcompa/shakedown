@@ -304,6 +304,7 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
 .yendo { display: none; }
 html.yendo:not(.carga-fallo) .yendo { position: fixed; inset: 0; z-index: 50; display: grid; place-content: center; justify-items: center; gap: 14px; background: #16181b; text-align: center; padding: 24px; }
 html.yendo:not(.carga-fallo) #portada { visibility: hidden; }
+html.yendo-fin .yendo { opacity: 0; transition: opacity .3s; pointer-events: none; }
 .yendo b { font: 800 clamp(26px, 8vw, 40px)/1.1 var(--titulos); max-width: 16em; }
 /* el codigo de un auto (431): en la portada, en el garaje y al lado del nombre en la tabla */
 .codigo-auto { font: 700 14px/1 var(--titulos); letter-spacing: .08em; padding: 2px 5px 3px; border-radius: 3px; background: rgba(255, 255, 255, .14); color: #fff; }
