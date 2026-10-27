@@ -151,10 +151,10 @@ export const FIRMA = { etapa: 'Early Access', aviso: 'App en desarrollo', autor:
 //   sensible: de 0 a 100, cuanto dobla al inclinar el celular. Con 55 hacen falta 24 grados para llevar el volante a fondo;
 //             con 100, unos 14; con 0, unos 48.
 //   lejos: la distancia de la camara, en partes de la normal (0.7 a 1.5).   pedales: su tamaño, igual.
-//   trazada: la linea en el piso que muestra por donde pasar y donde frenar. Mientras nadie la toque acompaña a la
-//            ayuda de manejo: con ayuda se ve (asi se entiende por donde va a ir el auto) y sin ayuda no.
+//   trazada: la linea en el piso que muestra por donde pasar y donde frenar. Viene prendida.
+//   botones: doblar con las flechas en pantalla (no inclinando). Viene prendido: no pide permiso del sensor.
 //   serio: el modo "rally serio" (ver SERIO). Es lo contrario de la ayuda: si se prende uno, se apaga el otro.
-export const GUSTOS = { ayuda: false, serio: false, trazada: false, sensible: 55, botones: false, lejos: 1, pedales: 1, efectos: true, pixeles: 'medio', sonido: true, musica: true, voz: true };
+export const GUSTOS = { ayuda: false, serio: false, trazada: true, sensible: 55, botones: true, lejos: 1, pedales: 1, efectos: true, sonido: true, musica: true, voz: true };
 export const gradosDeInclinacion = (sensible) => 24 * 2 ** ((55 - sensible) / 55);
 
 // Camaras (tecla C, o el boton de la camara). Lo que va entre corchetes cambia con la velocidad: [despacio, rapido].

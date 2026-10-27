@@ -913,7 +913,7 @@ export function crearEspectro(escena, T, C) {
     nombre: (txt) => {
       const x = lienzo.getContext('2d');
       x.clearRect(0, 0, 256, 64);
-      x.font = '700 34px "Barlow Condensed", "Arial Narrow", sans-serif';
+      x.font = '700 28px "Atkinson Hyperlegible", "Segoe UI", sans-serif';
       const w = Math.min(244, x.measureText(txt).width + 28);
       x.fillStyle = 'rgba(0, 0, 0, .78)';
       x.fillRect(128 - w / 2, 8, w, 48);

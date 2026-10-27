@@ -45,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '34';
+const PAGINA = '35';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -74,8 +74,7 @@ try { render = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: true })
 }
 const liviano = window.matchMedia('(pointer: coarse)').matches;   // celular o tablet: menos pixeles y sombras mas chicas
 let nitidez = Math.min(window.devicePixelRatio, liviano ? 1.5 : 2), cuadros = 0, lentos = 0;   // pixeles dibujados por cada pixel de pantalla
-let conPixeles = false;   // con el pixelado el lienzo es de 1 pixel por pixel de pantalla (el mundo se dibuja chico adentro) y el navegador lo agranda sin suavizar
-const ponerNitidez = () => { render.setPixelRatio(conPixeles ? 1 : nitidez); render.domElement.style.imageRendering = conPixeles ? 'pixelated' : ''; };
+const ponerNitidez = () => render.setPixelRatio(nitidez);
 ponerNitidez();
 render.shadowMap.enabled = true;
 
@@ -193,7 +192,7 @@ const papelitos = crearPapelitos($('papelitos'));   // (los de la meta)
 // lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica).
 // La trazada, mientras nadie la toque, acompaña a la ayuda de manejo: con ayuda se ve, para entender por donde va a ir el auto.
 let conEfectos = true;   // el ajuste "efectos": barro en el auto, humo de frenada, hojas, rafagas en las plantas
-const gusto = (clave) => { const v = club.gusto(clave); return v !== undefined ? v : clave === 'trazada' ? !!gusto('ayuda') : GUSTOS[clave]; };
+const gusto = (clave) => { const v = club.gusto(clave); return v !== undefined ? v : GUSTOS[clave]; };
 
 await respiro('Preparando el auto…', 4);
 // --- el auto del jugador (se puede cambiar en la portada) y los fantasmas ---
@@ -430,7 +429,7 @@ const menu = crearMenu({
   deLink: !!(enlace || fijo || deLaComunidad || esBorrador || vale(pedida)),
   // correr desde una card: la pista pedida (n). Si ya esta cargada, empieza; si no, se carga esa pista y arranca sola ("#largar").
   // dir: la direccion de la pista, si la card la conoce (las pistas de la comunidad)
-  correr: (n, dir) => correr(n, dir),
+  correr: (n, dir, nombre) => correr(n, dir, nombre),
   ajustes: { leer: gusto, poner: (clave, valor) => ajustar(clave, valor), probar: () => teclas.probarSensor() },
   aviso: avisoDeLaPista || (linkViejo ? 'El link que abriste es de una versión anterior de esta pista: ese tiempo ya no vale.'
     : linkCaido ? 'No pude traer la pasada de tu amigo. Revisá la conexión y abrí el link de nuevo.' : ''),
@@ -484,15 +483,18 @@ function mandosDeCelular() {
   $('tactil').hidden = false;
   teclas.celular((inclina) => { hayVolante = inclina; pintarVolante(); });
   pintarVolante();
-  if (raiz.requestFullscreen) raiz.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  // (la pantalla completa solo se puede pedir con un toque: si la pasada arranco sola tras recargar, no se pide)
+  if (raiz.requestFullscreen && (!navigator.userActivation || navigator.userActivation.isActive)) raiz.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
 }
 
 // Correr una pista desde el inicio. Las pistas no se cambian en caliente (el terreno se arma una vez): si la que se pidio no es la
 // que esta cargada, se abre su direccion con "#largar" y al terminar de cargar empieza sola, como si se hubiera tocado de nuevo.
-function correr(n, dir) {
+function correr(n, dir, nombre) {
   if (pantalla === 'jugando') return;
   if (n === numero) { largar(); return; }
+  // (el nombre de la pista que viene: la pagina nueva lo muestra mientras carga, en vez del inicio)
+  try { sessionStorage.setItem('shakedown.yendo', nombre || ''); } catch (e) { /* sin memoria */ }
   location.href = dir ? dir + '#largar' : conServidor(direccionDe(n) + '#largar');
 }
 
@@ -703,7 +705,6 @@ const APLICAR = {
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
   pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
   efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); travesia.efectos(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
-  pixeles: (v) => { post.pixelar(v); conPixeles = post.pixelado() !== 'nada'; ponerNitidez(); render.setSize(window.innerWidth, window.innerHeight, false); post.medir(render.domElement.width, render.domElement.height); },
   sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
   musica: (v) => { hud.prendido('musica', !!v); const b = $('botonMusica'); b.firstElementChild.src = icono('musica', undefined, !v); b.classList.toggle('apagado', !v); b.setAttribute('aria-pressed', !!v); },
   voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); travesia.voz(conVoz); hud.prendido('voz', conVoz); },
@@ -728,13 +729,23 @@ function encuadrar() {
   camara.encuadrar(Math.min(0.42, abajo), parado ? 0.24 : 0.2, lados);
   travesia.encuadrar(Math.min(0.42, abajo), parado ? 0.24 : 0.2, lados);
 }
+// Mide de nuevo el lienzo, la camara y las imagenes del revelado. Al girar el celular las medidas de la ventana a veces llegan
+// tarde o dos veces (y en un iPhone, con el numero viejo): por eso, ademas de escuchar el giro, cada cuadro se fija si el
+// tamaño cambio, y asi lo que se dibuja nunca queda con las medidas de la otra posicion.
+let medido = '';
+const tamanoAhora = () => window.innerWidth + 'x' + window.innerHeight + '@' + render.getPixelRatio();
 function medir() {
-  render.setSize(window.innerWidth, window.innerHeight, false);
-  camara.pantalla(window.innerWidth, window.innerHeight);
-  travesia.medir(window.innerWidth, window.innerHeight);
+  const W = window.innerWidth, H = window.innerHeight;
+  if (!W || !H) return;   // (a mitad del giro puede venir en cero: se espera a la siguiente medida)
+  medido = tamanoAhora();
+  render.setSize(W, H, false);
+  camara.pantalla(W, H);
+  travesia.medir(W, H);
   post.medir(render.domElement.width, render.domElement.height);
   encuadrar();
 }
+// el giro: se mide ya y otra vez cuando el aparato termino de acomodar la pantalla
+function alGirar() { medir(); for (const ms of [120, 450]) setTimeout(medir, ms); }
 
 // Si el aparato no da abasto (menos de 30 cuadros por segundo durante un rato), primero se apagan
 // el desenfoque y los brillos, y si sigue sin dar se dibuja con menos pixeles: se ve menos lindo, pero se puede manejar.
@@ -745,7 +756,7 @@ function cuidarFluidez(seg) {
   if (cuadros < 90) return;
   if (lentos > 60) {
     if (post.prendido()) post.prender(false);
-    else if (nitidez > 0.6 && !conPixeles) { nitidez = Math.max(0.6, nitidez * 0.75); ponerNitidez(); medir(); }   // (con pixelado ya se dibuja chico: no hay nada que bajar)
+    else if (nitidez > 0.6) { nitidez = Math.max(0.6, nitidez * 0.75); ponerNitidez(); medir(); }
   }
   cuadros = lentos = 0;
 }
@@ -758,6 +769,7 @@ function cuadro(ahora) {
   // con el creador de pistas abierto (tapa toda la pantalla) no se dibuja nada: el aparato descansa
   if (creador.abierto() && !cargando) { antes = ahora; return; }
   cuidarFluidez((ahora - antes) / 1000);
+  if (tamanoAhora() !== medido) medir();   // (si el tamaño cambio y nadie avisó, se mide igual: ver medir)
   const dt = Math.min(0.05, (ahora - antes) / 1000);
   antes = ahora;
   reloj3d += dt;
@@ -812,13 +824,16 @@ function cuadro(ahora) {
   camara.cam.getWorldDirection(HACIA);
   post.dibujar(escena, camara.cam, AL_AUTO.set(c.pos[0], c.pos[1], c.pos[2]).sub(camara.cam.position).dot(HACIA));
   // con el primer cuadro dibujado, se va el cartel de carga y aparece la portada
-  if (cargando) { cargando = false; raiz.classList.remove('cargando'); menu.pintar(); menu.acomodar(); menu.enfocar(); if (arrancar) { arrancar = false; largar(); } }
+  if (cargando) { cargando = false; raiz.classList.remove('cargando'); menu.pintar(); menu.acomodar(); menu.enfocar(); if (arrancar) { arrancar = false; largar(); } raiz.classList.remove('yendo'); }
 }
 
 window.addEventListener('resize', medir);
+window.addEventListener('orientationchange', alGirar);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', medir);
 // Venimos de tocar una card de otra pista ("#largar"): al aparecer el primer cuadro empieza sola la pasada. (En un iPhone el permiso del
-// sensor de inclinacion solo se puede pedir con un toque: ahi se queda en el inicio, con la card de esa pista, a un toque de largar.)
-let arrancar = location.hash === '#largar' && !(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function' && teclas.esTactil());
+// sensor de inclinacion solo se puede pedir con un toque: ahi, si se dobla inclinando, se queda en el inicio con esa pista, a un toque de largar.)
+// Con las flechas en pantalla (lo de fabrica) no hace falta el sensor, asi que tampoco el permiso: arranca sola tambien en el iPhone.
+let arrancar = location.hash === '#largar' && !(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function' && teclas.esTactil() && !gusto('botones'));
 if (location.hash === '#largar') quedarseEn(numero);
 $('otra').addEventListener('click', largar);   // (los botones de correr del inicio los maneja menu.js: ver "correr")
 $('salir').addEventListener('click', aLaPortada);
@@ -858,7 +873,7 @@ if (deLaTravesia) {
   club.anotarAmigoTravesia(deLaTravesia);
   quedarseEn(numero);
   menu.pintar();
-  menu.verCard('travesia');   // (el inicio abre en la Travesia, con su aviso y el boton para largar)
+  // (el inicio muestra el aviso con el boton para ir a la Travesia; el panel de la Travesia, con sus amigos, queda a un toque)
   $('cartelTvTexto').textContent = deLaTravesia.nombre + ' llegó a ' + deLaTravesia.km.toFixed(1).replace('.', ',') + ' km en la Travesía';
   $('cartelTv').hidden = false;
   $('cartelTvIr').addEventListener('click', () => { $('cartelTv').hidden = true; if (pantalla !== 'jugando') travesia.entrar(); });
@@ -877,7 +892,7 @@ window.addEventListener('online', () => { if (pantalla !== 'jugando') alVolver()
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
 if (enCasa) window.shakedown = {
-  T, ref, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, recordesDeLosClubes, subirTravesia, tutorial, creador, comunidad, sonido, musica, papelitos,
+  T, ref, menu, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, recordesDeLosClubes, subirTravesia, tutorial, creador, comunidad, sonido, musica, papelitos,
   auto: () => c,
   travesia: travesia.prueba, entrarTravesia: () => travesia.entrar(),
   dibujo: () => dibujo,

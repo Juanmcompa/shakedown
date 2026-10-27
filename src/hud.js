@@ -27,10 +27,10 @@ export function crearHud() {
     // (los pedales del celular se ven solo mientras se corre: los esconde el estilo si no esta la clase "jugando")
     mostrar: (si) => { $('hud').hidden = !si; $('mandos').hidden = !si; document.documentElement.classList.toggle('jugando', si); if (!si) $('sello').classList.remove('se-ve'); },
     // --- el estado de los botones: tiene que verse de un vistazo ---
-    // la camara: el auto dibujado como se lo ve con la que esta puesta, y encendido el puntito que le toca
+    // la camara: una camarita, y encendido el puntito de la vista que esta puesta
     camara: (id) => {
       const b = boton('camara'), k = Math.max(0, CAMARAS.findIndex((m) => m.id === id));
-      b.firstElementChild.src = icono('cam-' + CAMARAS[k].id);
+      b.firstElementChild.src = icono('camara');
       Array.from(puntos.children).forEach((p, i) => p.classList.toggle('aca', i === k));
       b.setAttribute('aria-label', 'Cámara: ' + CAMARAS[k].nombre + ' (' + (k + 1) + ' de ' + CAMARAS.length + '). Cambiar');
     },

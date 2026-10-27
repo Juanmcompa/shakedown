@@ -1,4 +1,4 @@
-// Las pantallas que no son manejar: el inicio (cards que se deslizan, una por modo: ver home.js), la tabla del club,
+// Las pantallas que no son manejar: el inicio (la pista protagonista y la fila de modos), la tabla del club,
 // los circuitos y las pistas de la comunidad (dentro de sus cards), las pistas pasadas, la ayuda, la configuracion y el
 // resultado de cada pasada con su boton de compartir.
 import { FIRMA } from './config.js';
@@ -10,7 +10,6 @@ import { fechaDe } from './dia.js';
 import { tiempoFinal, CLASE_DE_COLOR } from './hud.js';
 import { ponerIconos, rotular, icono } from './iconos.js';
 import { EQUIPO, retrato } from './equipo.js';
-import { crearHome } from './home.js';
 
 const $ = (id) => document.getElementById(id);
 const CUADRO = { v: '🟩', a: '🟨', r: '🟥', n: '⬛' };
@@ -51,9 +50,9 @@ function cuadritos(colores) {
 export const quedan = (vence) => { const d = Math.ceil((vence - Date.now() / 1000) / 86400); return d <= 1 ? 'vence hoy' : 'quedan ' + d + ' días'; };
 
 // o: { T, club, hoy, ref, copiloto, elegirAuto(id), rival(),
-//      deLink                        true si la direccion pide algo concreto: el inicio abre en la card de esa pista
+//      deLink                        true si la direccion pide algo concreto: el inicio muestra esa pista
 //      correr(numero, direccion)     corre esa pista (ver "correr" en main.js)
-//      travesia(), tutorial()        los botones de las cards de la Travesia y de la mision tutorial
+//      travesia(), tutorial()        los botones de los paneles de la Travesia y de la mision tutorial
 //      comunidad                     null, o la pista de la comunidad que se corre: { nombre, autor, club, clubNombre, vence }
 //                                    (o { borrador: true, nombre, club } si es el borrador del creador)
 //      armar(codigo)                 abre el creador de pistas (codigo: el club para el que se arma)
@@ -84,16 +83,9 @@ export function crearMenu(o) {
   // quien hace el juego: debajo de la marca, solo en el inicio
   $('firmaAutor').textContent = FIRMA.autor;
   $('firma').hidden = !FIRMA.autor;
-  // Las cards, en orden. La card de "la pista" es la del modo al que pertenece lo que esta cargado: la del dia (o una pasada),
-  // un circuito oficial o real, o una pista de la comunidad. Los links de un amigo abren ahi.
-  const CARDS = [
-    { clave: 'hoy', id: 'cardHoy', nombre: 'Pista del día' }, { clave: 'oficiales', id: 'cardOficiales', nombre: 'Circuitos' },
-    { clave: 'reales', id: 'cardReales', nombre: 'Reales' }, { clave: 'travesia', id: 'cardTravesia', nombre: 'Travesía' },
-    { clave: 'tutorial', id: 'cardTutorial', nombre: 'Primera vez' }, { clave: 'comunidad', id: 'cardComunidad', nombre: 'Comunidad' },
-  ];
-  const cardDeLaPista = comunidad ? 'comunidad' : fijo ? (fijo.real ? 'reales' : 'oficiales') : 'hoy';
-  // la pista que muestra la card del dia: la de hoy, o la pasada que se abrio (nunca un circuito)
-  const diaN = fijo || comunidad ? hoy : numero;
+  // El inicio muestra la pista cargada (la de hoy, una pasada, un circuito o una pista de la comunidad: los links de un amigo
+  // abren ahi, con el aviso de quien te desafia). Los otros modos son paneles: se elige una pista y se larga.
+  const MODOS = ['pasadas', 'circuitos', 'reales', 'travesia', 'tutorial', 'comunidad'];
   // hasta que el juego termina de armar todo, los botones de correr esperan
   let listo = false;
 
@@ -295,35 +287,36 @@ export function crearMenu(o) {
     return li;
   }
   const vacia = (icono, texto) => { const li = crear('li', 'vacio', texto); li.dataset.icono = icono; return li; };
-  let largoDeLaPasada = null;   // (el largo de la pista de hoy, cuando lo cargado es otra cosa: se arma una sola vez)
+  // La pista protagonista: la que esta cargada. Con sus tiempos abajo: los de tus amigos y clubes (en lo libre, sus mejores
+  // tiempos en esa pista) y el tuyo.
   function pintarDia() {
-    const n = diaN, propia = n === numero, d = datosDelDia(n), E = propia ? etapa : d;
-    let largo = propia ? etapa.largo : largoDeLaPasada;
-    if (largo === null) { try { largo = largoDeLaPasada = generarPista(n).largo; } catch (e) { largo = largoDeLaPasada = 0; } }
-    $('hoyTipo').textContent = n === hoy ? 'Pista del día' : 'Pista pasada';
-    $('pistaNumero').textContent = '#' + n;
-    $('pistaFecha').textContent = fechaDe(n);
+    const n = numero, E = etapa;
+    const largo = etapa.largo || 0;
+    $('hoyTipo').textContent = fijo ? (fijo.real ? 'Circuito real' : 'Circuito') : borrador ? 'Borrador' : comunidad ? 'Pista de la comunidad' : n === hoy ? 'Pista del día' : 'Pista anterior';
+    $('pistaNumero').textContent = libre ? '' : '#' + n;
+    $('pistaFecha').textContent = libre ? (comunidad && comunidad.autor ? 'por ' + comunidad.autor : '') : fechaDe(n);
     $('pistaNombre').textContent = E.nombre;
     // (si la pista pasa por varios ambientes, se nombran todos: 🌾🌲⛰️ Campo, bosque y montaña)
-    const varios = propia && etapa.biomas && etapa.biomas.length > 1 ? etapa.biomas.map((b) => BIOMAS[b].nombre.toLowerCase()) : null;
+    const varios = etapa.biomas && etapa.biomas.length > 1 ? etapa.biomas.map((b) => BIOMAS[b].nombre.toLowerCase()) : null;
     const ambiente = varios ? etapa.biomas.map((b) => BIOMAS[b].emoji).join('') + ' ' + (varios.slice(0, -1).join(', ') + ' y ' + varios[varios.length - 1]).replace(/^./, (l) => l.toUpperCase()) : BIOMAS[E.bioma].emoji + ' ' + BIOMAS[E.bioma].nombre;
     const datos = $('pistaDatos');
     datos.textContent = '';
-    for (const txt of [ambiente, CLIMAS[E.clima].emoji + ' ' + CLIMAS[E.clima].nombre, largo ? (largo / 1000).toFixed(1).replace('.', ',') + ' km' : '', CARACTER[E.caracter].nombre]) if (txt) datos.append(crear('span', 'dato', txt));
-    // los tiempos: los tres primeros de tus amigos y, aparte, el tuyo
-    const tabla = club.tablaDe(n), otros = tabla.filter((r) => !r.mio && !r.ab).slice(0, 3), mio = tabla.find((r) => r.mio);
-    const ol = $('hoyTiempos');
+    for (const txt of [ambiente, CLIMAS[E.clima].emoji + ' ' + CLIMAS[E.clima].nombre, largo ? (largo / 1000).toFixed(1).replace('.', ',') + ' km' : '', CARACTER[E.caracter] ? CARACTER[E.caracter].nombre : '']) if (txt) datos.append(crear('span', 'dato', txt));
+    // los tiempos: los primeros de tus amigos y, aparte, el tuyo
+    const ol = $('hoyTiempos'), tabla = libre ? club.practicas() : club.tablaDe(n);
+    const otros = tabla.filter((r) => !r.mio && !r.ab && r.t > 0).slice(0, 5), mio = libre ? club.practica() : tabla.find((r) => r.mio);
     ol.textContent = '';
     otros.forEach((r, k) => ol.append(filaTiempo(String(k + 1), r)));
     if (!otros.length) ol.append(vacia('podio', 'Sin tiempos de amigos'));
-    const puede = propia ? club.sePuedeOficial() : n === hoy && !mio, practica = club.resumen(n).practica;
-    if (mio) { const li = filaTiempo('', mio, 'Vos'); li.append(cuadritos(mio.c)); ol.append(li); }
+    const puede = !libre && club.sePuedeOficial(), practica = libre ? mio : club.resumen(n).practica;
+    if (mio) { const li = filaTiempo('', mio, 'Vos'); if (mio.c) li.append(cuadritos(mio.c)); ol.append(li); }
     else if (puede) ol.append(vacia('bandera', 'Te falta tu pasada'));
     else ol.append(vacia('cono', practica ? 'Práctica ' + marcaDe(practica) : 'Sin pasada'));
     ol.lastChild.classList.add('mio');
     // la bandera a cuadros larga la pasada oficial; el cono, una practica
-    rotular($('largar'), puede ? 'Largar' : 'Practicar');
-    $('largar').dataset.icono = puede ? 'bandera' : 'cono';
+    const largar = libre || puede;
+    rotular($('largar'), largar ? 'Largar' : 'Practicar');
+    $('largar').dataset.icono = largar ? 'bandera' : 'cono';
     $('largar').dataset.n = n;
   }
   // los circuitos fijos: oficiales (la lista para elegir) o reales (con su descripcion corta). Cada fila, con tu mejor tiempo.
@@ -372,12 +365,12 @@ export function crearMenu(o) {
     pintarTutorial();
     pintarComunidad();
     for (const b of document.querySelectorAll('[data-largar]')) b.disabled = b.tagName === 'BUTTON' && !listo;
-    ponerIconos($('home'));
+    ponerIconos($('home')); ponerIconos($('panel'));
   }
   // lo que va debajo de las cards: contra quien se corre, compartir y lo que hay que saber de la pista cargada. Solo se
   // muestra cuando la card del medio es la de esa pista.
   function pintarPie() {
-    const aca = home.clave() === cardDeLaPista, rival = o.rival();
+    const aca = true, rival = o.rival();
     const oficial = libre ? club.practica() : club.oficial();
     $('desafio').hidden = !rival || !aca;
     if (rival) $('desafio').querySelector('span').textContent = 'Contra ' + rival.nombre + (rival.ab ? '' : ' · ' + tiempoFinal(rival.t));
@@ -489,7 +482,8 @@ export function crearMenu(o) {
     for (let n = hoy; n >= Math.max(1, hoy - 60); n--) {
       const d = datosDelDia(n), res = club.resumen(n), a = crear('a', n === numero ? 'aca' : '');
       a.href = n === hoy ? location.pathname : location.pathname + '?p=' + n;
-      a.append(crear('b', '', '#' + n), crear('span', 'emoji', CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji), crear('span', 'quien', d.nombre), crear('small', '', n === hoy ? 'hoy' : fechaDe(n)));
+      a.dataset.largar = 'c'; a.dataset.n = n;   // (tocarla la larga directo: ver los botones de correr)
+      a.append(crear('b', '', '#' + n), crear('span', 'emoji', CLIMAS[d.clima].emoji + BIOMAS[d.bioma].emoji), crear('span', 'quien', d.nombre), crear('small', '', n === hoy ? 'hoy' : n === hoy - 1 ? 'ayer' : fechaDe(n)));
       if (res.oficial) a.append(crear('span', 'tiempoMarca', marcaDe(res.oficial)), cuadritos(res.oficial.c));
       else a.append(crear('span', 'tiempoMarca', res.practica ? '🔧 ' + tiempoFinal(res.practica.t) : '—'), crear('span'));
       const li = crear('li');
@@ -521,7 +515,7 @@ export function crearMenu(o) {
       <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o las flechas</dt><dd>manejar</dd></div>
       <div><dt><kbd>Espacio</kbd></dt><dd>freno de mano</dd></div>
       <div><dt><kbd>R</kbd> ${dib('volver')}</dt><dd>volver al camino (suma 8 segundos)</dd></div>
-      <div><dt><kbd>C</kbd> ${dib('cam-aerea')}${dib('cam-atras')}${dib('cam-arriba')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
+      <div><dt><kbd>C</kbd> ${dib('camara')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
       <div><dt><kbd>M</kbd> ${dib('sonido')} <kbd>N</kbd> ${dib('musica')} <kbd>V</kbd> ${dib('voz')}</dt><dd>sonido, música y voz del copiloto</dd></div>
       <div><dt><kbd>T</kbd> ${dib('trazada')}</dt><dd>trazada: la línea para seguir</dd></div>
     </dl>
@@ -531,7 +525,7 @@ export function crearMenu(o) {
       <div><dt>${dib('abajo')}</dt><dd>frenar y marcha atrás</dd></div>
       <div><dt>${dib('mano')}</dt><dd>freno de mano</dd></div>
       <div><dt>${dib('volver')}</dt><dd>volver al camino (suma 8 segundos)</dd></div>
-      <div><dt>${dib('cam-aerea')}${dib('cam-atras')}${dib('cam-arriba')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
+      <div><dt>${dib('camara')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
       <div><dt>${dib('sonido')}${dib('musica')}${dib('voz')}</dt><dd>sonido, música y voz del copiloto</dd></div>
     </dl>
     <p>${dib('bandera')} larga la pasada oficial: una sola por día. ${dib('cono')} es práctica: no cuenta para la tabla.</p>
@@ -560,7 +554,6 @@ export function crearMenu(o) {
       if (el.tagName === 'INPUT') { if (document.activeElement !== el) el.value = aBarra[clave](vale); continue; }
       for (const b of el.children) { const si = leerValor(b.dataset.valor) === vale; b.classList.toggle('elegido', si); b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', si); }
     }
-    if (vitrina) vitrina.pixelar(ajustes.leer('pixeles'));
     // la sensibilidad no hace falta si se dobla con las flechas
     $('ajusteInclina').hidden = !!ajustes.leer('botones');
   }
@@ -576,17 +569,40 @@ export function crearMenu(o) {
       }
     } else for (const b of el.children) b.addEventListener('click', () => ajustes.poner(clave, leerValor(b.dataset.valor)));
   }
+  // --- las ofertas del final de una pasada: el rally serio (si fue muy buena) y la ayuda de manejo (si fue muy mala) ---
+  // Un cartel corto con un boton, que no se repite siempre: cada oferta se vuelve a hacer despues de ENTRE_OFERTAS pasadas,
+  // y si alguien dice "No, gracias", no se le vuelve a ofrecer. Se anota en el aparato (gusto "ofertas").
+  const ENTRE_OFERTAS = 5;
+  const ofertas = () => club.gusto('ofertas') || { pasadas: 0 };
+  const anotarOferta = (cambio) => club.gusto('ofertas', { ...ofertas(), ...cambio });
+  const puedeOfrecer = (cual) => { const o = ofertas(), v = o[cual]; return !v || (!v.no && o.pasadas - v.vista >= ENTRE_OFERTAS); };
+  const ofrecida = (cual) => { const o = ofertas(); anotarOferta({ [cual]: { ...(o[cual] || {}), vista: o.pasadas } }); };
+  const rechazada = (cual) => { const o = ofertas(); anotarOferta({ [cual]: { vista: o.pasadas, no: true } }); };
+  // "muy buena": sin salidas, todos los sectores verdes y cerca de la referencia (o mejor que ella por bastante)
+  const fueMuyRapida = (r) => !r.ab && !r.vueltas && (r.t <= ref.total * 0.97 || ([...r.c].every((x) => x === 'v') && r.t <= ref.total * 1.12));
+  const fueMuyLenta = (r) => r.ab === 'roto' || r.vueltas >= 2 || (!r.ab && r.t > ref.total * 1.6);
   $('probarAyuda').addEventListener('click', () => {
     ajustes.poner('ayuda', true);
     $('finAyuda').firstElementChild.textContent = 'Listo: la próxima pasada va con ayuda de manejo.';
-    $('probarAyuda').hidden = true;
+    $('probarAyuda').hidden = $('noAyuda').hidden = true;
   });
+  $('noAyuda').addEventListener('click', () => { rechazada('ayuda'); $('finAyuda').hidden = true; });
+  $('probarSerio').addEventListener('click', () => {
+    ajustes.poner('serio', true);   // (apaga la ayuda, si estaba)
+    $('finSerio').firstElementChild.textContent = 'Listo: la próxima pasada va en modo rally serio.';
+    $('probarSerio').hidden = $('noSerio').hidden = true;
+  });
+  $('noSerio').addEventListener('click', () => { rechazada('serio'); $('finSerio').hidden = true; });
 
   // --- paneles ---
+  // (cada panel es el div "panel" + su nombre con la primera en mayuscula: panelTabla, panelPasadas, panelCircuitos...)
+  const PANELES = ['tabla', 'pasadas', 'ayuda', 'ajustes', 'garaje', ...MODOS.filter((m) => m !== 'pasadas')];
+  const idDe = (nombre) => 'panel' + nombre[0].toUpperCase() + nombre.slice(1);
   function abrir(cual) {
-    for (const [id, nombre] of [['panelTabla', 'tabla'], ['panelPasadas', 'pasadas'], ['panelAyuda', 'ayuda'], ['panelAjustes', 'ajustes'], ['panelGaraje', 'garaje']]) $(id).hidden = nombre !== cual;
+    for (const nombre of PANELES) $(idDe(nombre)).hidden = nombre !== cual;
+    $('home').dataset.card = MODOS.includes(cual) ? cual : 'hoy';   // (cual modo esta abierto: para las pruebas y el estilo)
     // el garaje: la vitrina dibuja solo mientras esta abierto
-    if (cual === 'garaje') { if (!vitrina) { vitrina = crearVitrina($('vitrina')); vitrina.pixelar(ajustes.leer('pixeles')); } pintarGaraje(); }
+    if (cual === 'garaje') { if (!vitrina) { vitrina = crearVitrina($('vitrina')); } pintarGaraje(); }
     if (vitrina) vitrina.prender(cual === 'garaje');
     if (cual === 'pasadas') pintarPasadas();
     // en el celular, al abrir la configuracion se prende el sensor (si lo hay) para poder probar la sensibilidad
@@ -606,26 +622,21 @@ export function crearMenu(o) {
   $('clubArmar').addEventListener('click', () => armar(vista));
   $('editarPista').addEventListener('click', () => armar());
 
-  // --- el carrusel de cards (ver home.js) y sus botones ---
-  // Tocar el boton de una card corre ese modo: si ya esta cargado, empieza; si no, main.js carga esa pista y arranca.
-  const home = crearHome({
-    cards: CARDS,
-    alCambiar: () => pintarPie(),
-    puedeTeclas: () => !$('portada').hidden && $('panel').hidden && $('creador').hidden,
-  });
-  const indiceDe = (clave) => Math.max(0, CARDS.findIndex((c) => c.clave === clave));
-  // Al abrir: en la card de lo que esta cargado (los links de un amigo abren ahi, con el aviso de quien te desafia). Alguien que
-  // entra por primera vez, sin link, empieza por la mision tutorial.
-  home.ir(indiceDe(o.deLink || !club.esNuevo() ? cardDeLaPista : cardDeLaPista === 'hoy' ? 'tutorial' : cardDeLaPista), false);
-  $('homePista').addEventListener('click', (e) => {
+  // --- los botones de correr (el de la pista de hoy y los de las listas de los paneles) ---
+  // Tocar uno corre ese modo: si la pista ya esta cargada, empieza; si no, main.js la carga y arranca sola.
+  // El inicio abre siempre con la pista cargada; solo cuando llega un link de otro modo (Travesia) se abre ese panel.
+  document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-largar]');
-    if (!b) return;
+    if (!b || $('portada').hidden) return;
     e.preventDefault();
-    if (!listo) return;
+    if (!listo || b.disabled) return;
     const que = b.dataset.largar;
     if (que === 'travesia') o.travesia();
     else if (que === 'tutorial') o.tutorial();
-    else o.correr(Number(b.dataset.n), b.dataset.dir || '');
+    else {
+      const q = b.querySelector('.quien') || b.querySelector('b:not(.tiempoMarca)') || $('pistaNombre');
+      o.correr(Number(b.dataset.n), b.dataset.dir || '', q ? q.textContent.trim() : '');
+    }
   });
   $('verGuiaTravesiaCard').addEventListener('click', () => o.guiaTravesia && o.guiaTravesia());
 
@@ -676,19 +687,15 @@ export function crearMenu(o) {
 
   return {
     pintar,
-    portada: (si) => { $('portada').hidden = !si; if (!si) abrir(''); else { pintar(); home.acomodar(); } },
+    portada: (si) => { $('portada').hidden = !si; if (!si) abrir(''); else pintar(); },
     // el juego ya armo todo: se pueden apretar los botones de correr, y el inicio se muestra con la card que corresponde
-    listo: () => { listo = true; pintar(); home.acomodar(); },
-    // abre el inicio en una card (por ejemplo la de la Travesia, cuando llega un link de un amigo)
-    verCard: (clave) => home.ir(indiceDe(clave), false),
-    acomodar: () => home.acomodar(),
-    // Enter: aprieta el boton principal de la card del medio (el de correr; en una lista, la pista cargada o la primera)
-    principal: () => {
-      const card = document.getElementById(CARDS[home.actual()].id);
-      const b = card.querySelector('.card-pie [data-largar]') || card.querySelector('[data-largar].aca') || card.querySelector('[data-largar]');
-      if (b) b.click();
-    },
-    enfocar: () => { const b = document.getElementById(CARDS[home.actual()].id).querySelector('[data-largar]'); if (b) b.focus({ preventScroll: true }); },
+    listo: () => { listo = true; pintar(); },
+    // abre el panel de un modo (por ejemplo el de la Travesia, cuando llega un link de un amigo)
+    verCard: (clave) => abrir(MODOS.includes(clave) ? clave : ''),
+    acomodar: () => {},
+    // Enter: aprieta el boton principal (el de largar de la pista cargada)
+    principal: () => { const b = $('largar'); if (b && !b.disabled) b.click(); },
+    enfocar: () => { const b = $('largar'); if (b && !b.hidden) b.focus({ preventScroll: true }); },
     // Muestra el resultado de una pasada. r: el resultado. armarLink: funcion que devuelve el codigo del link (con el fantasma).
     // mejoro: true si es tu mejor tiempo en esa pista (para las practicas y los circuitos).
     // Devuelve como quedaste contra los de la tabla: { puesto, de, cuenta } (ver pintarContra).
@@ -709,10 +716,16 @@ export function crearMenu(o) {
       });
       $('finDetalle').textContent = r.ab ? '' : (r.rondas ? (r.rondas === 1 ? 'Diste una vuelta. ' : 'La mejor de ' + r.rondas + ' vueltas. ') + (r.seRompio ? 'Después rompiste el auto. ' : '') : '')
         + (r.vueltas ? (r.vueltas === 1 ? 'Volviste al camino una vez (+8 s). ' : 'Volviste al camino ' + r.vueltas + ' veces (+' + r.vueltas * 8 + ' s). ') : '') + 'Referencia ' + tiempoFinal(ref.total) + '.' + (r.ayuda ? ' Con ayuda de manejo.' : r.serio ? ' En modo rally serio.' : '');
-      // despues de una pasada complicada sin ayuda, se la ofrece
-      $('finAyuda').hidden = !!r.ayuda || !!r.serio || !!ajustes.leer('ayuda') || !(r.ab === 'roto' || r.vueltas >= 2 || (!r.ab && r.t > ref.total * 1.6));
-      $('finAyuda').firstElementChild.textContent = '¿Se complicó?';
-      $('probarAyuda').hidden = false;
+      // Las ofertas (una sola por pasada, y no en cada una): muy buena sin el rally serio, se ofrece el rally serio; muy mala sin ayuda, la ayuda.
+      // (una pasada de practica en la pista del dia tambien cuenta; el borrador no)
+      const o = ofertas();
+      if (!borrador) anotarOferta({ pasadas: o.pasadas + 1 });
+      const sinOferta = borrador || !!r.ayuda || !!r.serio;
+      const verSerio = !sinOferta && !ajustes.leer('serio') && !ajustes.leer('ayuda') && fueMuyRapida(r) && puedeOfrecer('serio');
+      const verAyuda = !sinOferta && !verSerio && !ajustes.leer('ayuda') && !ajustes.leer('serio') && fueMuyLenta(r) && puedeOfrecer('ayuda');
+      $('finSerio').hidden = !verSerio; $('finAyuda').hidden = !verAyuda;
+      if (verSerio) { ofrecida('serio'); $('finSerio').firstElementChild.textContent = '¡Vas muy bien!'; $('probarSerio').hidden = $('noSerio').hidden = false; }
+      if (verAyuda) { ofrecida('ayuda'); $('finAyuda').firstElementChild.textContent = '¿Se complicó?'; $('probarAyuda').hidden = $('noAyuda').hidden = false; }
       $('nombre').value = club.nombre();
       $('compartido').textContent = '';
       $('finGuardado').hidden = true;   // (main.js dice enseguida si se esta guardando: ver "guardado")

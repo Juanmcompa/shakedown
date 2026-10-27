@@ -124,9 +124,11 @@ let enlace = '', codigoClub = '', kmA = 0;
   // A figura en la tabla (por el link: sin servidor para el club todavia)
   let tabla = await P.evaluate(() => window.shakedown.club.travesiaTabla());
   ver('A queda como amigo en la tabla de la Travesia (por el link)', tabla.length === 1 && tabla[0].nombre === 'Ana' && Math.abs(tabla[0].km - kmA) < 0.006 && tabla[0].link === true, tabla);
+  await irACard(P, 'travesia', await P.evaluate(() => matchMedia('(pointer: coarse)').matches));
   const resumen = await P.evaluate(() => document.getElementById('catAventura').innerText.replace(/\s+/g, ' '));
-  ver('en el inicio (card de la Travesia) se ve el record de A', await P.evaluate(() => document.getElementById('home').dataset.card) === 'travesia' && /Ana/.test(resumen) && /12,3/.test(resumen), resumen);
+  ver('en el inicio (panel de la Travesia) se ve el record de A', await P.evaluate(() => document.getElementById('home').dataset.card) === 'travesia' && /Ana/.test(resumen) && /12,3/.test(resumen), resumen);
   await P.screenshot({ path: 'out/travesia-aventura.png' });
+  await irACard(P, 'hoy', await P.evaluate(() => matchMedia('(pointer: coarse)').matches));
   // B se suma al club de A (como si hubiera abierto su invitacion): los km de A llegan del servidor, con su numero de corredor
   const dela = await P.evaluate(async (codigo) => { const s = window.shakedown; s.club.ponerNombre('Beto'); const r = await s.nube.entrar(codigo, 'Beto'); s.club.ponerClub({ codigo: r.codigo, nombre: r.nombre }); await s.recordesDeLosClubes(true); return s.club.travesiaTabla(); }, codigoClub);
   ver('con el club, los km de A vienen del servidor (con su numero) y no se repite', dela.length === 1 && dela[0].nombre === 'Ana' && dela[0].km === kmA && !!dela[0].j && dela[0].de && dela[0].de.length === 1, dela);

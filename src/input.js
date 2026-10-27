@@ -80,7 +80,7 @@ export function crearTeclas(alTocar) {
     celular: (alSaber) => {
       tactil = true;
       avisar = alSaber;
-      pedirSensor();
+      if (!conFlechas) pedirSensor();   // (con las flechas en pantalla no hace falta el sensor ni su permiso)
       if (sabido !== null) alSaber(sabido);
     },
     // (para la configuracion) empieza a escuchar el sensor sin prender los mandos, para poder probar la sensibilidad

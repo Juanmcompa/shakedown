@@ -41,7 +41,7 @@ Aparecen en "El club" y son los que explican el juego la primera vez (ver "La pr
 
 ## Cómo es
 
-- **El inicio.** El juego abre en un inicio con cards grandes que se deslizan (con el dedo, las flechas del teclado o los puntitos), una por modo: pista del día, circuitos, reales, Travesía, misión tutorial y comunidad. Cada card muestra tus tiempos y los de tus amigos, y su botón larga ese modo. Al terminar, "Volver" trae de nuevo al inicio. Los links de un amigo abren en la card que corresponde. La primera vez abre en la misión tutorial.
+- **El inicio.** El juego abre en la pista del día, grande, con su botón Largar y la tabla de tiempos debajo. Más abajo, **Pistas anteriores** (las de los días pasados) y una fila de modos: Circuitos, Reales, Travesía, Tutorial y Comunidad, cada uno con su panel para elegir. Al elegir otra pista aparece "Cargando…" y la pasada empieza sola. Los links de un amigo muestran su pista con el aviso de contra quién corrés.
 - **La pista sale de la fecha.** El número del día genera todo: el recorrido, el lugar (bosque, campo o montaña), el clima (seco, lluvia, niebla o atardecer) y las notas del copiloto. La #1 es la del 10 de octubre de 2026. El día cambia a la medianoche de Argentina.
 - **Pasadas cortas.** Entre dos y tres minutos, en cinco sectores.
 - **Una pasada oficial por día.** Después se puede practicar todo lo que se quiera, pero no cuenta para la tabla.
@@ -237,7 +237,6 @@ La tuerca de la portada abre la configuración. Lo que se elige queda guardado e
 - **Sensibilidad al inclinar** (celular): cuánto hay que inclinar para llevar el volante a fondo. Se prueba ahí mismo: un punto amarillo muestra el volante.
 - **Pedales** (celular): chicos, normales o grandes.
 - **Desenfoque y brillos:** sin ellos el juego anda más liviano.
-- **Píxeles:** no, medio (por defecto) o fuerte. Dibuja el mundo en píxeles grandes, con menos colores y una trama en los degradés; además el juego anda más liviano.
 - **Sonido** y **voz del copiloto.**
 
 ## Qué tocar para cambiar el juego
@@ -374,4 +373,4 @@ El plan de desarrollo está en [PLAN.md](PLAN.md).
 
 Desarrollado por Juan M. Comparini. El juego está en desarrollo (Early Access).
 
-Hecho con [Three.js](https://threejs.org/) (licencia MIT). Tipografías [Barlow y Barlow Condensed](https://github.com/jpt/barlow) (licencia OFL), incluidas en `vendor/fuentes`.
+Hecho con [Three.js](https://threejs.org/) (licencia MIT). Tipografías Pixelify Sans (títulos y botones), VT323 (números grandes) y Atkinson Hyperlegible (textos), con licencia OFL, en `fuentes/`.

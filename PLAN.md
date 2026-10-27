@@ -104,6 +104,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Montaña v4: el barro resbala en vez de frenar (menos hundimiento, poco agarre de costado, la cola se cruza a fondo); acelerando nunca queda parado
 - [x] Montaña v5: vuelta atrás del camión (no era divertido): se corre con cualquier auto y la física de siempre, camino de 4,6 m con 18 eses y rodadas hondas. El camino deformado queda como opción estándar `surcos` para pistas complicadas; el camión quedó guardado sin usar
 - [x] Píxeles: el mundo se dibuja en píxeles grandes con paleta limitada y trama, opción en Configuración (no / medio / fuerte, medio por defecto); además alivia al celular
+- [x] Pantallas y controles: sin pixelado; inicio sin cards (pista del día grande con su tabla, Pistas anteriores bien visible y fila de modos); al cambiar de pista se larga directo sin volver al menú; tablero revisado en celulares chicos (desde 320 px) y al girar; tipografía nueva (Pixelify Sans, VT323, Atkinson Hyperlegible); de fábrica flechas y trazada, sin ayuda ni rally serio, con ofertas al terminar (muy rápido → rally serio, muy lento → ayuda); camarita en el botón de la vista
 
 ## Lo que sigue
 

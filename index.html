@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="34" class="cargando">
+<html lang="es" data-pagina="35" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -27,6 +27,16 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preload" as="image" type="image/webp" href="marca/logo-640.webp" imagesrcset="marca/logo-640.webp 640w, marca/logo.webp 1200w" imagesizes="(max-width: 600px) 60vw, 20rem">
 <style>html { background: #16181b; }</style>
+<script>
+  // Si la pagina se abre con #largar (se eligio otra pista desde el inicio), no se muestra el inicio: se ve "Cargando <pista>..."
+  // y la pasada empieza sola. main.js saca esta marca al largar. (El nombre lo dejo el inicio antes de recargar.)
+  try {
+    if (location.hash === '#largar') {
+      document.documentElement.className += ' yendo';
+      window.yendoA = sessionStorage.getItem('shakedown.yendo') || '';
+    }
+  } catch (e) { /* sin memoria: igual se ve la carga */ }
+</script>
 <script>
   // --- Si algo falla mientras carga ---
   // Se avisa en el cartel de carga y se ofrece probar de nuevo, en vez de dejar la pantalla a medio armar. Abajo queda un
@@ -226,7 +236,7 @@
   // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'home', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'musica', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'travesiafiesta', 'cartas', 'travesiaguia', 'travesiaenlace'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'musica', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'travesiafiesta', 'cartas', 'travesiaguia', 'travesiaenlace'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -235,6 +245,9 @@
 </head>
 <body>
 <canvas id="lienzo"></canvas>
+<!-- Al elegir otra pista: lo que se ve mientras se carga, en vez del inicio (ver "yendo" en main.js) -->
+<div id="yendo" class="yendo" role="status"><span class="carga-barra" aria-hidden="true"><i></i></span><b id="yendoTexto">Cargando…</b></div>
+<script>if (window.yendoA) document.getElementById('yendoTexto').textContent = 'Cargando ' + window.yendoA + '…';</script>
 <!-- Travesia: el vidrio roto, sobre el juego y debajo del tablero -->
 <div id="vidrio" class="vidrio" aria-hidden="true" hidden></div>
 <div id="arenaOjos" class="arena-ojos" aria-hidden="true" hidden></div>
@@ -326,7 +339,6 @@
     <!-- Las secciones: la tabla, las pistas pasadas, como se juega y la configuracion -->
     <nav class="solapas" aria-label="Secciones">
       <button data-panel="tabla" data-icono="podio" aria-label="Tabla del club"><span class="rotulo">Tabla</span></button>
-      <button data-panel="pasadas" data-icono="calendario" aria-label="Pistas pasadas"><span class="rotulo">Pasadas</span></button>
       <button data-panel="ayuda" data-icono="ayuda" aria-label="Cómo se juega"><span class="rotulo">Cómo se juega</span></button>
       <button id="botonMusica" type="button" class="solo-icono" aria-label="Música" aria-pressed="true"><img class="icono" alt="" draggable="false"></button>
       <button data-panel="ajustes" data-icono="ajustes" class="solo-icono" aria-label="Configuración" title="Configuración"><span class="rotulo">Configuración</span></button>
@@ -348,89 +360,29 @@
     </div>
   </header>
 
-  <section id="home" class="home" aria-label="Modos de juego" data-card="hoy">
-    <div id="homePista" class="home-pista" role="list">
-
-      <!-- 1. la pista del dia (con "algo de los tiempos": los tres primeros de tus amigos y tu tiempo) -->
-      <article id="cardHoy" class="card" data-card="hoy" role="listitem" aria-label="Pista del día" style="--tono: #d9b84a">
-        <div class="card-arte"><img src="laminas/hoy.webp" alt="" width="960" height="400" decoding="async" draggable="false"></div>
-        <div class="card-cuerpo">
-          <p class="card-rotulo"><span data-icono="calendario" data-color="#d9b84a"><span id="hoyTipo">Pista del día</span></span> <b id="pistaNumero"></b> <span id="pistaFecha" class="lugar"></span></p>
-          <h2 id="pistaNombre"></h2>
-          <p id="pistaDatos" class="datos"></p>
-          <ol id="hoyTiempos" class="card-tiempos"></ol>
-        </div>
-        <div class="card-pie">
-          <button id="largar" class="card-largar" data-largar="hoy" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Largar</span></button>
-        </div>
-      </article>
-
-      <!-- 2. los circuitos oficiales: la lista corta para elegir, cada uno con tu mejor tiempo -->
-      <article id="cardOficiales" class="card" data-card="oficiales" role="listitem" aria-label="Circuitos" style="--tono: #9aa7b4">
-        <div class="card-arte"><img src="laminas/oficiales.webp" alt="" width="960" height="400" decoding="async" loading="lazy" draggable="false"></div>
-        <div class="card-cuerpo">
-          <p class="card-rotulo"><span data-icono="circuito" data-color="#9aa7b4">Circuitos</span></p>
-          <ol id="circuitos" class="circuitos compactos card-lista"></ol>
-        </div>
-      </article>
-
-      <!-- 3. los circuitos reales (tramos de verdad) -->
-      <article id="cardReales" class="card" data-card="reales" role="listitem" aria-label="Circuitos reales" style="--tono: #8fb58a">
-        <div class="card-arte"><img src="laminas/reales.webp" alt="" width="960" height="400" decoding="async" loading="lazy" draggable="false"></div>
-        <div class="card-cuerpo">
-          <p class="card-rotulo"><span data-icono="sierra" data-color="#8fb58a">Reales</span></p>
-          <ol id="catReales" class="circuitos compactos card-lista"></ol>
-        </div>
-      </article>
-
-      <!-- 4. la Travesia: tu record en km y los de tus amigos -->
-      <article id="cardTravesia" class="card" data-card="travesia" role="listitem" aria-label="Travesía" style="--tono: #e0c27c">
-        <div class="card-arte"><img src="laminas/travesia.webp" alt="" width="960" height="400" decoding="async" loading="lazy" draggable="false"></div>
-        <div class="card-cuerpo">
-          <p class="card-rotulo"><span data-icono="duna" data-color="#e0c27c">Travesía</span></p>
-          <p id="tvRecord" class="card-grande"></p>
-          <ol id="catAventura" class="card-tiempos"></ol>
-          <p><button id="verGuiaTravesiaCard" type="button" class="con-texto discreto" data-icono="ayuda" data-color="#000000">Cómo se juega</button></p>
-        </div>
-        <div class="card-pie">
-          <button id="largarTravesia" class="card-largar" data-largar="travesia" data-icono="duna" data-color="#000000" disabled><span class="rotulo">Largar</span></button>
-        </div>
-      </article>
-
-      <!-- 5. la mision tutorial: aprender a manejar con el equipo (la primera vez, el inicio abre aca) -->
-      <article id="cardTutorial" class="card" data-card="tutorial" role="listitem" aria-label="Misión tutorial" style="--tono: #6fa3b5">
-        <div class="card-arte"><img src="laminas/tutorial.webp" alt="" width="960" height="400" decoding="async" loading="lazy" draggable="false"></div>
-        <div class="card-cuerpo">
-          <p class="card-rotulo"><span data-icono="volante" data-color="#6fa3b5">Primera vez</span></p>
-          <h2 id="tutTitulo">Misión tutorial</h2>
-          <p id="tutDice" class="card-dice"></p>
-        </div>
-        <div class="card-pie">
-          <button id="largarTutorial" class="card-largar" data-largar="tutorial" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Empezar</span></button>
-        </div>
-      </article>
-
-      <!-- 6. la comunidad: las pistas que armo la gente (tuyas, de tus clubes y las que abriste por link) y crear una -->
-      <article id="cardComunidad" class="card" data-card="comunidad" role="listitem" aria-label="Comunidad" style="--tono: #a99bc4">
-        <div class="card-arte"><img src="laminas/comunidad.webp" alt="" width="960" height="400" decoding="async" loading="lazy" draggable="false"></div>
-        <div class="card-cuerpo">
-          <p class="card-rotulo"><span data-icono="publico" data-color="#a99bc4">Comunidad</span></p>
-          <ol id="comunidad" class="circuitos compactos card-lista"></ol>
-          <p id="comunidadVacia" class="chico">Todavía no tenés ninguna. Las que armes, las de tus clubes y las que abras por link aparecen acá.</p>
-        </div>
-        <div class="card-pie">
-          <button id="armarPista" type="button" class="card-largar" data-icono="lapiz" data-color="#000000"><span class="rotulo">Crear una pista</span></button>
-        </div>
-      </article>
-    </div>
-    <button id="homeAtras" type="button" class="home-flecha atras" data-icono="izquierda" aria-label="Card anterior"></button>
-    <button id="homeAdelante" type="button" class="home-flecha adelante" data-icono="derecha" aria-label="Card siguiente"></button>
+  <section id="home" class="home" aria-label="Inicio" data-card="hoy">
+    <!-- La pista de hoy, protagonista (o la pasada / circuito / pista de la comunidad que este cargada): nombre, clima, km,
+         el boton grande de largar y, debajo, la tabla de tiempos -->
+    <article id="cardHoy" class="dia" aria-label="Pista del día">
+      <p class="dia-rotulo"><span data-icono="calendario" data-color="#d9b84a"><span id="hoyTipo">Pista del día</span></span> <b id="pistaNumero"></b> <span id="pistaFecha" class="lugar"></span></p>
+      <h2 id="pistaNombre"></h2>
+      <p id="pistaDatos" class="datos"></p>
+      <button id="largar" class="largar-grande" data-largar="hoy" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Largar</span></button>
+      <ol id="hoyTiempos" class="card-tiempos"></ol>
+    </article>
+    <!-- Los modos: icono y palabra, siempre a la vista. Cada uno abre una lista simple para elegir y largar. -->
+    <nav id="homeModos" class="modos" aria-label="Modos de juego">
+      <button type="button" class="modo destacado" data-panel="pasadas" data-icono="calendario" data-color="#000000"><span class="modo-nombre">Pistas anteriores</span></button>
+      <button type="button" class="modo" data-panel="circuitos" data-icono="circuito" data-color="#9aa7b4"><span class="modo-nombre">Circuitos</span></button>
+      <button type="button" class="modo" data-panel="reales" data-icono="sierra" data-color="#8fb58a"><span class="modo-nombre">Reales</span></button>
+      <button type="button" class="modo" data-panel="travesia" data-icono="duna" data-color="#e0c27c"><span class="modo-nombre">Travesía</span></button>
+      <button type="button" class="modo" data-panel="tutorial" data-icono="volante" data-color="#6fa3b5"><span class="modo-nombre">Tutorial</span></button>
+      <button type="button" class="modo" data-panel="comunidad" data-icono="publico" data-color="#a99bc4"><span class="modo-nombre">Comunidad</span></button>
+    </nav>
   </section>
 
   <div class="home-pie">
     <p id="desafio" class="desafio" data-icono="fantasma" data-color="#000000" hidden><span></span></p>
-    <nav id="homePuntos" class="home-puntos" aria-label="Modos"></nav>
-    <p id="homeNombre" class="home-nombre" aria-hidden="true"></p>
     <div class="botones home-acciones">
       <button id="compartirPortada" class="segundo" data-icono="compartir" data-color="#000000" aria-label="Compartir" hidden><span class="rotulo">Compartir</span></button>
       <!-- en el borrador del creador de pistas: volver a armarlo -->
@@ -480,8 +432,35 @@
     </div>
     <p id="clubPie" class="club-pie" hidden><button id="clubSalir" type="button" class="con-texto discreto">Salir del club</button></p>
   </div>
+  <div id="panelCircuitos" hidden>
+    <h2>Circuitos</h2>
+    <ol id="circuitos" class="circuitos compactos"></ol>
+  </div>
+  <div id="panelReales" hidden>
+    <h2>Circuitos reales</h2>
+    <ol id="catReales" class="circuitos compactos"></ol>
+  </div>
+  <div id="panelTravesia" hidden>
+    <h2>Travesía</h2>
+    <p id="tvRecord" class="card-grande"></p>
+    <ol id="catAventura" class="card-tiempos"></ol>
+    <p><button id="largarTravesia" class="largar-grande" data-largar="travesia" data-icono="duna" data-color="#000000" disabled><span class="rotulo">Largar</span></button></p>
+    <p><button id="verGuiaTravesiaCard" type="button" class="con-texto discreto" data-icono="ayuda" data-color="#000000">Cómo se juega</button></p>
+  </div>
+  <div id="panelTutorial" hidden>
+    <h2 id="tutTitulo">Misión tutorial</h2>
+    <p id="tutDice" class="card-dice"></p>
+    <p><button id="largarTutorial" class="largar-grande" data-largar="tutorial" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Empezar</span></button></p>
+  </div>
+  <div id="panelComunidad" hidden>
+    <h2>Comunidad</h2>
+    <ol id="comunidad" class="circuitos compactos"></ol>
+    <p id="comunidadVacia" class="chico">Todavía no tenés ninguna. Las que armes, las de tus clubes y las que abras por link aparecen acá.</p>
+    <p><button id="armarPista" type="button" class="largar-grande" data-icono="lapiz" data-color="#000000"><span class="rotulo">Crear una pista</span></button></p>
+  </div>
   <div id="panelPasadas" hidden>
-    <h2>Pistas pasadas</h2>
+    <h2>Pistas anteriores</h2>
+    <p class="chico">Elegí un día y largá esa pista. Las del día anterior están primero.</p>
     <ol id="pasadas" class="pasadas"></ol>
   </div>
   <div id="panelAyuda" hidden>
@@ -526,10 +505,10 @@
     <div class="ajuste">
       <span class="que" data-icono="trazada">Trazada</span>
       <div class="opciones" data-ajuste="trazada" role="radiogroup" aria-label="Trazada"><button type="button" data-valor="no">No</button><button type="button" data-valor="si">Sí</button></div>
-      <p class="chico">Una línea pintada en el camino que muestra por dónde pasar. <b class="verde">Verde</b>: podés acelerar. <b class="amarillo">Amarilla</b>: venís justo. <b class="rojo">Roja</b>: hay que frenar. Con la ayuda de manejo viene prendida.</p>
+      <p class="chico">Una línea pintada en el camino que muestra por dónde pasar. <b class="verde">Verde</b>: podés acelerar. <b class="amarillo">Amarilla</b>: venís justo. <b class="rojo">Roja</b>: hay que frenar. Viene prendida.</p>
     </div>
     <div class="ajuste">
-      <label class="que" data-icono="cam-aerea" for="ajLejos">Distancia de la cámara</label>
+      <label class="que" data-icono="camara" for="ajLejos">Distancia de la cámara</label>
       <div class="barra-ajuste"><span>cerca</span><input id="ajLejos" type="range" data-ajuste="lejos" min="70" max="150" step="5"><span>lejos</span></div>
     </div>
     <div class="ajuste solo-dedos">
@@ -546,11 +525,6 @@
     <div class="ajuste solo-dedos">
       <span class="que" data-icono="arriba" data-color="#f2c200">Pedales</span>
       <div class="opciones" data-ajuste="pedales" role="radiogroup" aria-label="Tamaño de los pedales"><button type="button" data-valor="0.82">Chicos</button><button type="button" data-valor="1">Normales</button><button type="button" data-valor="1.2">Grandes</button></div>
-    </div>
-    <div class="ajuste">
-      <span class="que" data-icono="pixeles">Píxeles</span>
-      <div class="opciones" data-ajuste="pixeles" role="radiogroup" aria-label="Píxeles"><button type="button" data-valor="nada">No</button><button type="button" data-valor="medio">Medio</button><button type="button" data-valor="fuerte">Fuerte</button></div>
-      <p class="chico">La imagen se dibuja en píxeles grandes y con pocos colores. Dibuja menos: anda más liviano.</p>
     </div>
     <div class="ajuste">
       <span class="que" data-icono="brillo">Desenfoque y brillos</span>
@@ -638,7 +612,9 @@
   <div id="finCuadros" class="sectores"></div>
   <p id="finDetalle"></p>
   <!-- aparece despues de una pasada complicada, si se corrio sin ayuda -->
-  <p id="finAyuda" class="sugerencia" hidden><span>¿Se complicó?</span> <button id="probarAyuda" type="button" class="con-texto" data-icono="salvavidas" data-color="#000000">Probar con ayuda de manejo</button></p>
+  <p id="finAyuda" class="sugerencia" hidden><span>¿Se complicó?</span> <button id="probarAyuda" type="button" class="con-texto" data-icono="salvavidas" data-color="#000000">Probar con ayuda de manejo</button> <button id="noAyuda" type="button" class="con-texto discreto">No, gracias</button></p>
+  <!-- aparece despues de una pasada muy buena, si se corrio sin el rally serio (no se repite siempre: ver "ofertas" en menu.js) -->
+  <p id="finSerio" class="sugerencia" hidden><span>¡Vas muy bien!</span> <button id="probarSerio" type="button" class="con-texto" data-icono="casco" data-color="#000000">Probar el rally serio</button> <button id="noSerio" type="button" class="con-texto discreto">No, gracias</button></p>
   <div id="social" class="social">
     <label for="nombre">Tu nombre</label>
     <input id="nombre" type="text" maxlength="14" autocomplete="nickname" autocapitalize="words" spellcheck="false">

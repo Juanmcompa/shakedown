@@ -46,8 +46,8 @@ await cargada(A);
 await A.evaluate(() => window.shakedown.club.ponerNombre('Juanma'));
 await irACard(A, 'comunidad');
 ver('A: en la card de la comunidad estan las pistas, todavia vacias, y el boton para armar una', await visible(A, 'armarPista') && await visible(A, 'comunidadVacia'), await texto(A, 'comunidadVacia'));
-const ordenCards = await A.evaluate(() => [...document.querySelectorAll('.card')].map((c) => c.dataset.card).join(' > '));
-ver('A: las cards, en orden: pista del dia, circuitos, reales, travesia, tutorial y comunidad (al final)', ordenCards === 'hoy > oficiales > reales > travesia > tutorial > comunidad', ordenCards);
+const ordenCards = await A.evaluate(() => [...document.querySelectorAll('#homeModos .modo')].map((c) => c.dataset.panel).join(' > '));
+ver('A: los modos, en orden: pistas anteriores, circuitos, reales, travesia, tutorial y comunidad (al final)', ordenCards === 'pasadas > circuitos > reales > travesia > tutorial > comunidad', ordenCards);
 ver('A: Mina Clavero esta en los reales y los oficiales no la repiten', await A.evaluate(() => /Giulio/.test(document.getElementById('catReales').textContent) && !/Giulio/.test(document.getElementById('circuitos').textContent)));
 await A.screenshot({ path: 'out/creador-0-circuitos.png' });
 await A.click('#armarPista');
@@ -103,7 +103,7 @@ if (PARTE === 'mirar') {
 await A.click('#crProbar');
 await A.waitForURL(/pista=borrador/, { timeout: 90000 });
 await cargada(A);
-ver('A: el borrador se abre como una pista mas: el inicio abre en la comunidad, con "Tu borrador" y el boton de seguir armando', /Tu borrador/.test(await texto(A, 'comunidad')) && await visible(A, 'editarPista') && (await A.evaluate(() => document.getElementById('home').dataset.card)) === 'comunidad', [await texto(A, 'comunidad'), await A.evaluate(() => document.getElementById('home').dataset.card)]);
+ver('A: el borrador se abre como una pista mas: el inicio lo muestra como la pista cargada (tipo Borrador), con el boton de seguir armando y "Tu borrador" en la lista de la comunidad', /Tu borrador/.test(await texto(A, 'comunidad')) && await visible(A, 'editarPista') && /Borrador/.test(await A.evaluate(() => document.getElementById('hoyTipo').textContent)), [await texto(A, 'comunidad'), await A.evaluate(() => document.getElementById('hoyTipo').textContent)]);
 ver('A: en el borrador no se comparte', !(await visible(A, 'compartirPortada')));
 await A.screenshot({ path: 'out/creador-6-borrador.png' });
 const finB = await correr(A, 'bueno', 'vitarita');
@@ -186,6 +186,7 @@ const listaA = await A.evaluate(() => [...document.querySelectorAll('#comunidad 
 ver('A: su pista esta en la lista de la comunidad, con su tiempo', listaA.length === 1 && /La Curva del Tero/.test(listaA[0]) && /por vos/.test(listaA[0]) && /\d\d:\d\d:\d\d/.test(listaA[0]), listaA);
 
 // ---------- A arma un club y le publica una pista; B entra al club y la ve ----------
+await A.click('#cerrarPanel');
 await A.click('[data-panel="tabla"]');
 await A.waitForTimeout(300);
 await A.click('#clubes button.mas');

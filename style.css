@@ -1,11 +1,15 @@
 /* Shakedown. Lenguaje visual: carteles viales (amarillo y negro) y dibujos de pocos pixeles sobre el terreno. */
-/* Las letras son Barlow y Barlow Condensed (licencia libre OFL), guardadas en vendor/fuentes. */
-@font-face { font-family: 'Barlow Condensed'; font-weight: 600; font-display: swap; src: url(vendor/fuentes/barlow-condensed-600.woff2) format('woff2'); }
-@font-face { font-family: 'Barlow Condensed'; font-weight: 700; font-display: swap; src: url(vendor/fuentes/barlow-condensed-700.woff2) format('woff2'); }
-@font-face { font-family: 'Barlow Condensed'; font-weight: 800; font-display: swap; src: url(vendor/fuentes/barlow-condensed-800.woff2) format('woff2'); }
-@font-face { font-family: 'Barlow'; font-weight: 500; font-display: swap; src: url(vendor/fuentes/barlow-500.woff2) format('woff2'); }
-@font-face { font-family: 'Barlow'; font-weight: 600; font-display: swap; src: url(vendor/fuentes/barlow-600.woff2) format('woff2'); }
-@font-face { font-family: 'Barlow'; font-weight: 700; font-display: swap; src: url(vendor/fuentes/barlow-700.woff2) format('woff2'); }
+/* Las letras (todas con licencia libre OFL, guardadas en fuentes/ con su licencia; no se piden a ningun sitio de afuera):
+   - Pixelify Sans: titulos, botones y rotulos. Letra de pixeles, como los dibujos del juego.
+   - VT323: los numeros grandes (tiempo, velocidad, km). Pixelada tambien, pero con cifras que no se confunden (un 5 no parece una S).
+   - Atkinson Hyperlegible: los textos chicos. Hecha para leerse bien en pantallas chicas.
+   "size-adjust" achica o agranda cada una para que, con el mismo tamaño en el CSS, se vean parejas. */
+@font-face { font-family: 'Pixelify Sans'; font-weight: 400; font-display: swap; size-adjust: 88%; src: url(fuentes/pixelify-sans-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Pixelify Sans'; font-weight: 600; font-display: swap; size-adjust: 88%; src: url(fuentes/pixelify-sans-latin-600-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Pixelify Sans'; font-weight: 700; font-display: swap; size-adjust: 88%; src: url(fuentes/pixelify-sans-latin-700-normal.woff2) format('woff2'); }
+@font-face { font-family: 'VT323'; font-weight: 400 800; font-display: swap; size-adjust: 125%; src: url(fuentes/vt323-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Atkinson Hyperlegible'; font-weight: 400 600; font-display: swap; src: url(fuentes/atkinson-hyperlegible-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Atkinson Hyperlegible'; font-weight: 700 800; font-display: swap; src: url(fuentes/atkinson-hyperlegible-latin-700-normal.woff2) format('woff2'); }
 :root {
   --amarillo: #f2c200;
   --barro: #7d3a20;
@@ -14,8 +18,9 @@
   --verde: #5cc070;
   --placa: rgba(12, 13, 15, .82);
   --boton: rgba(0, 0, 0, .55);
-  --titulos: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
-  --texto: 'Barlow', 'Segoe UI', system-ui, sans-serif;
+  --titulos: 'Pixelify Sans', 'Arial Narrow', sans-serif;
+  --numeros: 'VT323', 'Pixelify Sans', ui-monospace, monospace;
+  --texto: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
   /* margenes: 16 px, o mas si la pantalla del celular tiene recortes */
   --mi: max(16px, env(safe-area-inset-left));
   --md: max(16px, env(safe-area-inset-right));
@@ -50,16 +55,16 @@ p, h1, h2, h3 { margin: 0; }
 .tablero { display: contents; }
 .placa { position: absolute; background: var(--placa); border-radius: 5px; padding: 8px 12px; }
 .tiempo { left: var(--mi); top: var(--ma); display: grid; gap: 6px; justify-items: start; }
-#reloj { font: 700 46px/1 var(--titulos); font-variant-numeric: tabular-nums; }
-#rival { display: flex; align-items: center; gap: 5px; font: 700 17px/1 var(--titulos); font-variant-numeric: tabular-nums; }
+#reloj { font: 700 46px/1 var(--numeros); font-variant-numeric: tabular-nums; }
+#rival { display: flex; align-items: center; gap: 5px; font: 700 17px/1 var(--numeros); font-variant-numeric: tabular-nums; }
 #rival .icono { width: 12px; height: 12px; }
 #rival .quien { max-width: 7em; color: #fff; }
 #rival.adelante b { color: var(--verde); } #rival.atras b { color: var(--rojo); }
 /* en una vuelta cerrada: en que vuelta se va y cual es la mejor */
-.ronda { font: 600 14px/1 var(--titulos); letter-spacing: .02em; color: #d9d6cc; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ronda { font: 600 14px/1 var(--numeros); letter-spacing: .02em; color: #d9d6cc; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .marcha { left: var(--mi); bottom: var(--mb); display: grid; gap: 6px; min-width: 132px; }
 .vel { font-size: 14px; }
-.vel b { font: 700 54px/.9 var(--titulos); font-variant-numeric: tabular-nums; margin-right: 3px; }
+.vel b { font: 700 54px/.9 var(--numeros); font-variant-numeric: tabular-nums; margin-right: 3px; }
 .medidor { display: flex; align-items: center; gap: 6px; }
 .medidor .icono { width: 12px; height: 12px; opacity: .8; }
 .barra { flex: 1; display: block; height: 8px; border-radius: 0; background: rgba(255, 255, 255, .22); overflow: hidden; }
@@ -127,14 +132,16 @@ html:not(.practica) .mando.salir { display: none; }
 /* --- el inicio: arriba la marca, tu auto y las secciones; en el medio las cards que se deslizan (una por modo); abajo los
    puntitos que dicen en cual estas. Detras se ve la escena de la pista, oscurecida. --- */
 #portada { position: fixed; inset: 0; overflow: hidden; display: flex; flex-direction: column; gap: 10px; padding: var(--ma) var(--md) var(--mb) var(--mi); background: rgba(8, 9, 10, .8); }
-.home-arriba { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "marca solapas" "coche coche"; gap: 8px 12px; align-items: center; width: 100%; max-width: 70rem; margin: 0 auto; }
-.home-marca { grid-area: marca; display: grid; justify-items: start; gap: 4px; min-width: 0; }
+.home-arriba { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "marca solapas" "firma firma" "coche coche"; gap: 6px 12px; align-items: center; width: 100%; max-width: 70rem; margin: 0 auto; }
+.home-marca { display: contents; }
+.home-marca .marca { grid-area: marca; }
+.home-marca .firma-portada { grid-area: firma; }
 .home-arriba .solapas { grid-area: solapas; flex-wrap: nowrap; }
 .home-arriba .mi-auto { grid-area: coche; justify-self: stretch; width: 100%; }
 .home-arriba .carga { grid-column: 1 / -1; grid-row: 3; }
 .marca { display: block; width: min(11rem, 100%); }
 .marca img { display: block; width: 100%; height: auto; }
-.firma-portada { margin: 0; font: 500 12px/1.2 var(--texto); color: #cfccc3; letter-spacing: .01em; }
+.firma-portada { margin: 0; font: 500 12px/1.2 var(--texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cfccc3; letter-spacing: .01em; }
 .firma-portada b { font-weight: 700; color: #fff; }
 /* tu auto: se toca para abrir el garaje */
 button.mi-auto { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: center; text-align: left; padding: 6px 12px; background: var(--placa); color: #fff; border-radius: 5px; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .3); font: 500 13px/1.25 var(--texto); }
@@ -143,7 +150,7 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
 /* mientras carga: la marca grande en el medio, la barra y lo que va pasando; lo demas aparece cuando esta listo */
 .cargando #portada { justify-content: center; align-items: center; }
 .cargando .home-arriba { display: flex; flex-direction: column; align-items: center; max-width: none; }
-.cargando .home-marca { justify-items: center; }
+.cargando .home-marca { display: grid; justify-items: center; gap: 4px; }
 .cargando .marca { width: min(34rem, 84vw); margin: 0 auto; }
 .cargando .solapas, .cargando .mi-auto, .cargando #home, .cargando .home-pie, .cargando .firma-portada { display: none; }
 .carga { display: none; }
@@ -159,42 +166,23 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
 .carga-codigo { max-width: 36em; font: 500 13px/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; color: #d9d6cc; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
 .carga-todo { width: min(36em, 100%); padding: 8px 10px; border: 0; border-radius: 5px; background: rgba(255, 255, 255, .1); color: #fff; font: 500 12px/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
 
-/* la fila de cards: se desliza con el dedo y cada card queda al medio (scroll-snap). La siguiente asoma al costado. */
-.home { --ancho: min(80vw, 26rem); --sep: 12px; position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.home-pista { flex: 1 1 auto; min-height: 0; position: relative; display: flex; align-items: center; gap: var(--sep); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; margin: 0 calc(-1 * var(--md)) 0 calc(-1 * var(--mi)); }
-.home-pista::-webkit-scrollbar { display: none; }
-/* (dos espacios a los costados, para que la primera y la ultima card tambien puedan quedar al medio) */
-.home-pista::before, .home-pista::after { content: ''; flex: 0 0 calc((100% - var(--ancho)) / 2 - var(--sep)); }
-.card { --tono: #9aa7b4; flex: 0 0 var(--ancho); height: min(100%, 44rem); scroll-snap-align: center; scroll-snap-stop: always; display: flex; flex-direction: column; min-height: 0; background: #181b1f; border-radius: 8px; border-top: 6px solid var(--tono); overflow: hidden; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .12); opacity: .55; transform: scale(.94); transition: opacity .2s, transform .2s; }
-.card.aca { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
-/* la ilustracion: una lamina dibujada (o un icono grande de pixeles), sobre una franja del color de la card */
-.card-arte { position: relative; flex: none; display: grid; place-items: center; padding: 14px 0 10px; overflow: hidden; }
-.card-arte::before { content: ''; position: absolute; inset: 0; background: var(--tono); opacity: .16; }
-.card-arte::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--tono); opacity: .35; }
-.card-arte > span { position: relative; display: block; line-height: 0; }
-.card-arte .icono { width: 96px; height: 96px; vertical-align: 0; }
-/* la lamina dibujada de cada modo: ocupa toda la franja, recortada al ancho de la card */
-.card-arte:has(> img) { padding: 0; }
-.card-arte:has(> img)::before { display: none; }
-.card-arte > img { display: block; width: 100%; height: auto; aspect-ratio: 2.4; max-height: 32vh; object-fit: cover; object-position: 60% 50%; }
-.card-cuerpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.card-rotulo { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font: 700 17px/1.1 var(--titulos); letter-spacing: .06em; text-transform: uppercase; color: var(--tono); }
-.card-rotulo > span:first-child { display: inline-flex; align-items: center; gap: 8px; }
-.card-rotulo .icono { width: 18px; height: 18px; vertical-align: 0; }
-.card-rotulo b { font: 800 22px/1 var(--titulos); color: #fff; letter-spacing: 0; }
-.card-rotulo .lugar { margin-left: auto; color: #fff; font: 600 14px/1 var(--texto); letter-spacing: 0; text-transform: none; }
-.card h2 { margin: 0; font: 800 clamp(26px, 7vw, 34px)/1.05 var(--titulos); }
-.datos { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
-.card-grande { margin: 0; font: 800 clamp(44px, 13vw, 68px)/1 var(--titulos); color: var(--tono); font-variant-numeric: tabular-nums; }
-.card-dice { margin: 0; font-size: 18px; }
-.card-pie { flex: none; padding: 8px 16px 14px; }
-/* el boton grande para correr: del color apagado de la card */
-.card-largar { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 20px 14px; background: var(--tono); color: #000; }
-.card-largar > .icono { width: 32px; height: 32px; vertical-align: 0; }
-.card-largar .rotulo { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: nowrap; }
-.card-largar:disabled { opacity: .55; }
-/* tiempos: el puesto, el auto, quien es y su tiempo (los tuyos con una tira del color de la card) */
+/* --- el inicio: la pista cargada (la de hoy) protagonista, sus tiempos debajo y la fila de modos --- */
+.home { --tono: #d9b84a; position: relative; flex: 1 1 auto; min-height: 0; width: 100%; max-width: 40rem; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; }
+.home::-webkit-scrollbar { display: none; }
+.dia { flex: none; display: grid; gap: 10px; padding: 14px 16px 16px; background: #181b1f; border-radius: 8px; border-top: 6px solid var(--tono); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .12); }
+.dia-rotulo { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font: 700 17px/1.1 var(--titulos); letter-spacing: .06em; text-transform: uppercase; color: var(--tono); }
+.dia-rotulo > span:first-child { display: inline-flex; align-items: center; gap: 8px; }
+.dia-rotulo .icono { width: 18px; height: 18px; vertical-align: 0; }
+.dia-rotulo b { font: 800 22px/1 var(--titulos); color: #fff; letter-spacing: 0; }
+.dia-rotulo .lugar { margin-left: auto; color: #fff; font: 600 14px/1 var(--texto); letter-spacing: 0; text-transform: none; }
+.dia h2 { margin: 0; font: 800 clamp(34px, 10vw, 52px)/1 var(--titulos); }
+.datos { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 15px; }
+/* el boton grande para largar */
+.largar-grande { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 20px 16px; font-size: 34px; background: var(--tono); color: #000; }
+.largar-grande > .icono { width: 36px; height: 36px; vertical-align: 0; }
+.largar-grande .rotulo { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: nowrap; }
+.largar-grande:disabled { opacity: .55; }
+/* tiempos: el puesto, el auto, quien es y su tiempo (los tuyos con una tira del color de la pista) */
 .card-tiempos { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
 .card-tiempos li { display: grid; grid-template-columns: 1.2em auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-height: 38px; padding: 5px 10px; background: rgba(255, 255, 255, .07); }
 .card-tiempos li i { font: 700 15px/1 var(--titulos); font-style: normal; opacity: .65; text-align: center; }
@@ -205,80 +193,98 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
 .card-tiempos li.vacio { display: flex; gap: 8px; font: 600 15px/1.2 var(--texto); }
 .card-tiempos li.vacio > .icono { width: 20px; height: 20px; vertical-align: 0; opacity: .8; }
 .card-tiempos .cuadros i { width: 11px; height: 11px; }
-.card .circuitos { gap: 6px; }
-.card .circuitos a { min-height: 52px; border-left: 3px solid var(--tono); }
-.card .circuitos .emoji { font-size: 24px; }
-.card .circuitos b { font-size: 21px; }
-.card .circuitos a:hover { background: rgba(255, 255, 255, .13); }
+.card-grande { margin: 0; font: 800 clamp(44px, 13vw, 68px)/1 var(--numeros); color: #e0c27c; font-variant-numeric: tabular-nums; }
+.card-dice { margin: 0; font-size: 18px; }
 .tiempoMarca.sin { opacity: .4; }
-.card .chico { margin: 0; }
-/* los puntitos, el nombre de la card y lo que va debajo */
-.home-pie { flex: none; display: grid; justify-items: center; gap: 6px; width: 100%; max-width: 70rem; margin: 0 auto; }
-.home-puntos { display: flex; gap: 10px; align-items: center; justify-content: center; }
-.punto { position: relative; width: 12px; height: 12px; padding: 0; border-radius: 2px; background: rgba(255, 255, 255, .28); }
-.punto::before { content: ''; position: absolute; inset: -14px -3px; }
-.punto.aca { width: 28px; background: #e9e6dc; }
-.home-nombre { margin: 0; font: 700 15px/1 var(--titulos); letter-spacing: .08em; text-transform: uppercase; opacity: .8; min-height: 15px; }
+.panel .circuitos { gap: 6px; }
+.panel .circuitos a { min-height: 52px; }
+.panel .circuitos a:hover { background: rgba(255, 255, 255, .13); }
+/* la fila de modos: icono y palabra. "Pistas anteriores" va arriba, ancho y amarillo: tiene que verse */
+.modos { flex: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.modo { display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 64px; padding: 8px 2px 9px; background: var(--placa); color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); border-radius: 6px; }
+.modo > .icono { width: 28px; height: 28px; vertical-align: 0; }
+.modo-nombre { font: 700 16px/1.05 var(--titulos); letter-spacing: .02em; text-align: center; }
+@media (max-width: 480px) { .modo-nombre { font-size: 12.5px; letter-spacing: 0; } }
+.modo.destacado { grid-column: 1 / -1; grid-auto-flow: column; justify-content: center; gap: 10px; min-height: 52px; padding: 8px 14px 9px; background: var(--amarillo); color: #000; box-shadow: none; }
+.modo.destacado .modo-nombre { font-size: 22px; }
+.modo.destacado > .icono { width: 30px; height: 30px; }
+@media (hover: hover) and (pointer: fine) { .modo:not(.destacado):hover { background: rgba(255, 255, 255, .16); } }
+.home-pie { flex: none; display: grid; justify-items: center; gap: 6px; width: 100%; max-width: 40rem; margin: 0 auto; }
 .home-pie .desafio { max-width: 100%; }
 .home-pie .chico { margin: 0; text-align: center; }
 .home-acciones { justify-content: center; }
 .home-acciones:not(:has(button:not([hidden]))) { display: none; }
-/* las flechas al costado de la card del medio: solo donde hay raton (en el celular se desliza con el dedo) */
-.home-flecha { display: none; position: absolute; top: 50%; z-index: 2; width: 48px; height: 48px; padding: 0; place-items: center; transform: translateY(-50%); background: var(--boton); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5); }
-.home-flecha .icono { width: 28px; height: 28px; vertical-align: 0; }
-.home-flecha:disabled { opacity: .25; }
-.home-flecha:disabled > .icono { filter: none; }
-.home-flecha.atras { left: calc(50% - var(--ancho) / 2 - 62px); }
-.home-flecha.adelante { right: calc(50% - var(--ancho) / 2 - 62px); }
-@media (hover: hover) and (pointer: fine) { .home-flecha { display: grid; } .home-flecha:not(:disabled):hover { background: rgba(0, 0, 0, .8); } }
-/* pantalla ancha (compu): una card central grande, las vecinas atras; la barra de arriba en una sola fila */
 @media (min-width: 700px) {
-  .home { --ancho: min(36rem, 62vw); }
-  .home-arriba { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "marca coche solapas"; gap: 12px 20px; }
+  .home-arriba { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "marca coche solapas" "firma . ."; gap: 6px 20px; }
   .home-arriba .mi-auto { justify-self: center; width: min(22rem, 100%); }
-  .marca { width: min(14rem, 100%); }
-  .card-arte .icono { width: 120px; height: 120px; }
-  .card.aca { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .22); }
+  .home { max-width: 46rem; }
+  .modos { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .modo.destacado { grid-column: auto; grid-auto-flow: row; gap: 4px; padding: 8px 4px 9px; }
+  .modo.destacado .modo-nombre { font-size: 16px; }
+  .modo.destacado > .icono { width: 28px; height: 28px; }
 }
-/* pantallas bajas: todo se aprieta un poco */
 @media (max-height: 760px) {
-  .card-arte { padding: 8px 0 6px; }
-  .card-arte .icono { width: 72px; height: 72px; }
-  .card-cuerpo { gap: 8px; padding: 10px 14px; }
+  .dia { gap: 8px; padding: 10px 14px 12px; }
   .card-tiempos li { min-height: 34px; padding: 3px 9px; }
-  .card .circuitos a { min-height: 48px; }
-  .card-largar { padding: 9px 18px 11px; }
+  .largar-grande { padding: 10px 18px 12px; }
+}
+@media (max-width: 380px) {
+  /* (cinco modos no entran en una fila: tres arriba y dos abajo, mas anchos) */
+  .modos { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .modo:not(.destacado) { grid-column: span 2; }
+  .modo:nth-child(n+5):not(.destacado) { grid-column: span 3; }
+  .modo-nombre { font-size: 14px; }
+}
+@media (max-height: 680px) {
+  /* poca altura: de los tiempos se ven los tuyos y a lo sumo dos de amigos */
+  .dia .card-tiempos li:nth-child(n+3):not(.mio) { display: none; }
+}
+@media (max-height: 600px) and (orientation: portrait) {
+  #portada { gap: 6px; }
+  .home { gap: 8px; }
+  .dia { gap: 6px; padding: 8px 12px 10px; }
+  .dia h2 { font-size: 28px; }
+  .datos { font-size: 14px; }
+  .largar-grande { padding: 6px 16px 8px; font-size: 26px; }
+  .largar-grande > .icono { width: 28px; height: 28px; }
+  .card-tiempos li { min-height: 30px; }
+  .modos { gap: 6px; }
+  .modo { min-height: 46px; padding: 5px 2px 6px; gap: 2px; }
+  .modo > .icono { width: 22px; height: 22px; }
+  .modo.destacado { min-height: 44px; }
+  .modo.destacado .modo-nombre { font-size: 20px; }
 }
 @media (max-width: 380px), (max-height: 680px) {
   .marca { width: min(9rem, 100%); }
-  .card-arte .icono { width: 56px; height: 56px; }
+  .dia h2 { font-size: clamp(28px, 9vw, 36px); }
+  .largar-grande { font-size: 28px; }
+  .modo { min-height: 56px; }
+  .modo > .icono { width: 24px; height: 24px; }
 }
-/* celular acostado: una sola fila arriba y la card con la ilustracion al costado */
+/* celular acostado: una sola fila arriba, y abajo la pista a la izquierda y los modos a la derecha */
 @media (max-height: 520px) {
   #portada { gap: 6px; padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
-  .home-arriba { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "marca coche solapas"; gap: 8px 14px; }
+  .home-arriba { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "marca coche solapas" "firma . ."; gap: 2px 14px; }
   .home-arriba .mi-auto { justify-self: center; width: min(20rem, 100%); }
-  .marca { width: 8rem; }
-  .home { --ancho: min(34rem, 70vw); }
-  .card { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-  .card-arte { grid-row: 1 / 3; padding: 0; }
-  .card-arte .icono { width: 64px; height: 64px; }
-  .card-cuerpo { grid-column: 2; padding: 8px 12px; gap: 6px; }
-  .card-pie { grid-column: 2; padding: 6px 12px 10px; }
-  .card h2 { font-size: 24px; }
-  .card-tiempos li { min-height: 28px; padding: 2px 8px; }
-  .card-tiempos .quien { font-size: 16px; }
-  .card .circuitos a { min-height: 40px; padding-top: 4px; padding-bottom: 4px; }
-  .card-grande { font-size: 40px; }
+  .marca { width: min(8rem, 100%); }
+  .home { max-width: 70rem; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-content: start; align-items: start; gap: 8px 14px; }
+  .modos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .modo.destacado { grid-column: 1 / -1; grid-auto-flow: column; gap: 8px; }
+  .modo.destacado .modo-nombre { font-size: 18px; }
+  .dia h2 { font-size: 28px; }
+  .dia .card-tiempos li { min-height: 28px; padding: 2px 8px; }
   .home-pie { grid-auto-flow: column; justify-content: center; align-items: center; gap: 4px 16px; }
-  .home-nombre { display: none; }
 }
 /* en el celular los botones de las secciones son iconos; en la barra de arriba, mas chicos */
 @media (hover: none) and (pointer: coarse) {
   .home-arriba .solapas button { width: 44px; height: 44px; }
   .home-arriba .solapas button > .icono { width: 28px; height: 28px; }
-  .card-largar > .icono { width: 32px; height: 32px; }
 }
+/* al elegir otra pista la pagina se vuelve a cargar: en vez del inicio se ve esto, y la pasada empieza sola */
+.yendo { display: none; }
+html.yendo:not(.carga-fallo) .yendo { position: fixed; inset: 0; z-index: 50; display: grid; place-content: center; justify-items: center; gap: 14px; background: #16181b; text-align: center; padding: 24px; }
+html.yendo:not(.carga-fallo) #portada { visibility: hidden; }
+.yendo b { font: 800 clamp(26px, 8vw, 40px)/1.1 var(--titulos); max-width: 16em; }
 /* el codigo de un auto (431): en la portada, en el garaje y al lado del nombre en la tabla */
 .codigo-auto { font: 700 14px/1 var(--titulos); letter-spacing: .08em; padding: 2px 5px 3px; border-radius: 3px; background: rgba(255, 255, 255, .14); color: #fff; }
 .quien .codigo-auto { margin-left: 6px; font-size: 12px; opacity: .85; vertical-align: 1px; }
@@ -314,7 +320,7 @@ button.auto small { opacity: .75; align-self: start; }
 button.auto.elegido { box-shadow: inset 0 0 0 3px var(--amarillo); }
 .desafio { background: var(--amarillo); color: #000; font: 700 20px/1.15 var(--titulos); padding: 8px 14px 9px; border-radius: 5px; display: flex; align-items: center; gap: 10px; }
 .resultado { background: var(--placa); padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-radius: 5px; }
-.resultado .tiempo, .tiempoMarca { position: static; background: none; padding: 0; font: 700 22px/1 var(--titulos); font-variant-numeric: tabular-nums; }
+.resultado .tiempo, .tiempoMarca { position: static; background: none; padding: 0; font: 700 22px/1 var(--numeros); font-variant-numeric: tabular-nums; }
 .botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 button { font: 700 27px/1 var(--titulos); padding: 12px 28px 14px; border: 0; border-radius: 6px; background: var(--amarillo); color: #000; cursor: pointer; }
 button:disabled { background: rgba(255, 255, 255, .22); color: #fff; cursor: progress; }
@@ -337,7 +343,7 @@ button.chiquito.elegido .icono { filter: brightness(0); opacity: 1; }
 .solo-icono .rotulo { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* --- paneles: tabla, pasadas, ayuda --- */
-.panel { position: fixed; inset: 0; overflow-y: auto; background: rgba(8, 9, 10, .97); padding: clamp(16px, 4vw, 48px); display: grid; align-content: start; justify-items: center; }
+.panel { --tono: #e0c27c; position: fixed; inset: 0; overflow-y: auto; background: rgba(8, 9, 10, .97); padding: clamp(16px, 4vw, 48px); display: grid; align-content: start; justify-items: center; }
 .panel > div { width: min(34rem, 100%); display: grid; gap: 12px; }
 .panel h2 { font: 800 30px/1.1 var(--titulos); padding-right: 56px; }
 .panel h3 { font: 700 20px/1.1 var(--titulos); margin-top: 8px; }
@@ -415,13 +421,13 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 3p
 #fin { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 10px; padding: 24px; background: rgba(8, 9, 10, .78); text-align: center; }
 #fin > * { flex: none; }
 #fin h2 { font: 700 30px/1.1 var(--titulos); }
-#finGrande { font: 800 clamp(64px, 13vw, 140px)/.95 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+#finGrande { font: 800 clamp(64px, 13vw, 140px)/.95 var(--numeros); color: var(--amarillo); font-variant-numeric: tabular-nums; }
 #finGrande.abandono { color: var(--rojo); }
 .sectores { display: flex; gap: 8px; }
 .sector { display: grid; justify-items: center; gap: 3px; min-width: 52px; }
 .sector i { width: 44px; height: 44px; background: rgba(255, 255, 255, .18); }
 .sector.verde i { background: var(--verde); } .sector.amarillo i { background: var(--amarillo); } .sector.rojo i { background: var(--rojo); } .sector.negro i { background: #000; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35); }
-.sector b { font: 700 18px/1 var(--titulos); font-variant-numeric: tabular-nums; color: #fff; }
+.sector b { font: 700 18px/1 var(--numeros); font-variant-numeric: tabular-nums; color: #fff; }
 .sector small { font-size: 12px; opacity: .8; color: #fff; }
 .social { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; max-width: 34em; margin-top: 6px; }
 .social label { font-size: 14px; }
@@ -524,9 +530,18 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   .tactil .vel b { font-size: 32px; }
   /* el cartel de la largada va en el medio, debajo de la cuenta regresiva: a los costados y abajo no hay lugar */
   .sello, .tactil .sello, .tactil.sin-volante .sello { position: fixed; left: 50%; right: auto; top: calc(34% + 40px); bottom: auto; transform: translateX(-50%); padding: 7px 12px 8px 24px; }
-  .sello-etapa b { font-size: 20px; }
-  .sello-etapa span { font-size: 13px; }
+  .sello-etapa b { font-size: 17px; }
+  .sello-etapa span { font-size: 13px; white-space: normal; }
+  /* (no puede pasar por debajo del boton de volver, que esta contra el borde derecho: la letra pixelada es mas ancha) */
+  .sello, .tactil .sello, .tactil.sin-volante .sello { max-width: calc(100vw - 2 * (var(--md) + 70px)); }
 }
+/* celular chico parado (hasta 379 de ancho): entre el tiempo y los botones del costado solo entra una nota, y va pegada al tiempo */
+@media (orientation: portrait) and (max-width: 379px) {
+  .tactil .notas { left: calc(var(--mi) + 108px); transform: none; }
+  .nota.despues { display: none; }
+}
+/* celular acostado y angosto (568 o menos): la nota que sigue taparia los botones de arriba */
+@media (orientation: landscape) and (max-width: 599px) { .nota.despues { display: none; } }
 @media (max-width: 760px) {
   #reloj { font-size: 34px; }
   .vel b { font-size: 40px; }
@@ -681,7 +696,7 @@ button.chiquito.tacho.seguro .icono { opacity: 1; }
 .cr-hoja .cr-punta { opacity: .55; }
 .cr-hoja .cr-ultima b { box-shadow: 0 3px 0 var(--amarillo); }
 .cr-medida { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-.cr-medida b { font: 800 26px/1 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.cr-medida b { font: 800 26px/1 var(--numeros); color: var(--amarillo); font-variant-numeric: tabular-nums; }
 .cr-medida b.corta { color: #fff; opacity: .65; }
 .cr-medida button { margin-left: auto; font-size: 15px; padding: 6px 12px 7px 8px; }
 .cr-medida button:disabled { opacity: .4; }
@@ -761,7 +776,7 @@ html.travesia #cuadros, html.travesia #rival, html.travesia #ronda, html.travesi
 html.sin-tablero .placa.marcha { visibility: hidden; }
 /* elegir una carta: tres grandes, para tocar con el pulgar */
 .cartas-pantalla { position: fixed; inset: 0; z-index: 20; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 14px; padding: 20px; background: rgba(8, 9, 10, .8); text-align: center; }
-.cartas-pantalla h2 { font: 800 clamp(30px, 6vw, 48px)/1 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.cartas-pantalla h2 { font: 800 clamp(30px, 6vw, 48px)/1 var(--numeros); color: var(--amarillo); font-variant-numeric: tabular-nums; }
 .cartas-mano { display: flex; gap: 14px; justify-content: center; align-items: stretch; width: 100%; max-width: 62rem; }
 .carta { position: relative; flex: 1 1 0; min-width: 0; min-height: 15rem; padding: 16px 12px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border-radius: 12px; background: #1b1d21; color: #fff; text-align: center; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .35); touch-action: manipulation; cursor: pointer; }
 .carta.mala { box-shadow: inset 0 0 0 3px #c0553f; }
@@ -785,7 +800,7 @@ html.sin-tablero .placa.marcha { visibility: hidden; }
 .travesia-fin { position: fixed; inset: 0; z-index: 20; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 8px; padding: 24px; background: rgba(8, 9, 10, .8); text-align: center; }
 .travesia-fin > * { flex: none; }
 .travesia-fin #tfMotivo { display: flex; align-items: center; gap: 6px; font-size: 18px; }
-.tf-km { font: 800 clamp(70px, 16vw, 150px)/.9 var(--titulos); color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.tf-km { font: 800 clamp(70px, 16vw, 150px)/.9 var(--numeros); color: var(--amarillo); font-variant-numeric: tabular-nums; }
 .tf-unidad { font: 700 24px/1 var(--titulos); margin-top: -4px; }
 .tf-record { font: 700 20px/1.2 var(--titulos); opacity: .9; }
 .tf-record.nuevo { color: #5cc070; opacity: 1; }
@@ -802,7 +817,7 @@ html.sin-tablero .placa.marcha { visibility: hidden; }
 .tf-tabla .puesto { font: 700 17px/1 var(--titulos); }
 .tf-tabla .quien { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tf-tabla .quien .codigo-auto { margin-left: 6px; font-size: 12px; opacity: .85; vertical-align: 1px; }
-.tf-tabla b { font: 800 19px/1 var(--titulos); font-variant-numeric: tabular-nums; color: var(--amarillo); }
+.tf-tabla b { font: 800 19px/1 var(--numeros); font-variant-numeric: tabular-nums; color: var(--amarillo); }
 .tf-nombre { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
 .tf-nombre input { width: 9em; padding: 5px 8px; font: 600 16px/1.2 var(--texto); color: #fff; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .3); border-radius: 4px; }
 @media (max-height: 760px) { .tf-tabla li { padding: 3px 10px; font-size: 15px; } .tf-km { font-size: clamp(54px, 13vw, 100px); } }
