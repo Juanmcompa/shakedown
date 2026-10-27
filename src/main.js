@@ -45,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '37';
+const PAGINA = '38';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -537,6 +537,8 @@ function ponerLaHora(h) { mundo.hora(h); post.revelar(revelado(etapa.clima, h));
 // sombras), con un fundido corto, asi no queda la pantalla vacia entre el cartel y la largada.
 function sacarCartelDeCarga() {
   if (!raiz.classList.contains('yendo')) return;
+  // (si la hoja de estilos todavia no llego, se espera: sin ella el juego se veria desarmado)
+  if (document.querySelector('link[rel="stylesheet"][media="print"]')) { setTimeout(sacarCartelDeCarga, 100); return; }
   requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => {
     raiz.classList.add('yendo-fin');
     setTimeout(() => raiz.classList.remove('yendo', 'yendo-fin'), 350);

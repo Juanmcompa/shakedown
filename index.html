@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="37" class="cargando">
+<html lang="es" data-pagina="38" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -239,7 +239,13 @@
   const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'musica', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'travesiafiesta', 'festival', 'cartas', 'travesiaguia', 'travesiaenlace'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
-  document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
+  // Viniendo de elegir otra pista ("#largar"): la hoja de estilos no frena el primer dibujo de la pagina (se pide de nuevo en
+  // cada visita y en el celu tarda), asi en vez de una pantalla en blanco se ve enseguida el cartel de carga, que tiene sus
+  // estilos aca mismo. La hoja entera llega mientras tanto, antes de que termine de armarse la pista.
+  if (document.documentElement.classList.contains('yendo')) {
+    document.write('<style>html,body{background:#16181b;margin:0}html.yendo:not(.con-estilo) .yendo{position:fixed;inset:0;z-index:50;display:grid;place-content:center;justify-items:center;gap:14px;background:#16181b;color:#fff;text-align:center;padding:24px;font:700 28px/1.1 system-ui,sans-serif}html.yendo:not(.con-estilo) .carga-barra{display:block;width:min(15rem,70vw);height:8px;background:rgba(255,255,255,.22);overflow:hidden}html.yendo:not(.con-estilo) .carga-barra i{display:block;width:34%;height:100%;background:#f2c200;animation:carga 1.2s steps(14) infinite}@keyframes carga{from{transform:translateX(-100%)}to{transform:translateX(300%)}}html.yendo:not(.con-estilo) body>:not(.yendo){visibility:hidden}</style>');
+    document.write('<link rel="stylesheet" href="style.css?v=' + V + '" media="print" onload="this.media=\'all\';document.documentElement.classList.add(\'con-estilo\')">');
+  } else document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
   document.write('<script type="importmap">' + JSON.stringify({ imports: mapa }) + '<\/script>');
 </script>
 </head>
