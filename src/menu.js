@@ -76,7 +76,11 @@ export function crearMenu(o) {
   let ultimo = null, linkDe = null, ultimoMejoro = false;   // el ultimo resultado mostrado, la funcion que arma su link y si fue tu mejor tiempo
   // la tabla: de quien se ven los tiempos ('' = todos los que se conocen; si no, el codigo de un club), si esta abierto
   // el formulario para armar un club, y lo ultimo que hay para avisar ahi
-  let vista = '', armando = false, aviso = '', saliendo = 0;
+  // vista: '*' = todos los que corrieron (lo trae el servidor, ver "todos" en main.js), '' = mis amigos (links y clubes juntos) o el
+  // codigo de un club. Se acuerda la ultima que se eligio. En lo libre (circuitos y pistas de la comunidad) no hay "todos".
+  const TODOS = '*', conTodos = !libre && !!o.clubes;
+  let vista = conTodos ? (club.gusto('vistaTabla') !== undefined ? club.gusto('vistaTabla') : TODOS) : '';
+  let armando = false, aviso = '', saliendo = 0;
 
   // --- el inicio ---
   $('inicio').href = location.pathname;
@@ -160,11 +164,16 @@ export function crearMenu(o) {
     pintarPie();
     // la tabla: en lo libre, los mejores tiempos de cada uno; en una pista del dia, las oficiales y, aparte, las practicas
     pintarClubes();
-    const principal = libre ? club.practicas(vista) : club.tabla(vista), practicas = libre ? [] : club.practicas(vista);
-    pintarTabla($('tabla'), principal);
+    const deTodos = vista === TODOS, t = deTodos && o.todos ? o.todos() : null;
+    const principal = deTodos ? [] : libre ? club.practicas(vista) : club.tabla(vista), practicas = libre || deTodos ? [] : club.practicas(vista);
+    $('tabla').classList.toggle('todos', deTodos);
+    if (deTodos) pintarTodos($('tabla'), t); else pintarTabla($('tabla'), principal);
     pintarTabla($('practicas'), practicas);
-    $('tablaVacia').hidden = principal.length > 0 || armando;
-    $('tablaVacia').textContent = vista ? 'Todavía no corrió nadie de este club.' : borrador ? 'Los tiempos del borrador quedan solo en este aparato.'
+    $('tablaTotal').hidden = !deTodos || !t || !t.total;
+    if (deTodos && t) $('tablaTotal').textContent = t.total + (t.total === 1 ? ' corredor' : ' corredores') + (t.yo ? ' · vos, #' + t.yo.puesto : '');
+    $('tablaVacia').hidden = armando || (deTodos ? !!(t && t.total) : principal.length > 0);
+    $('tablaVacia').textContent = deTodos ? (t ? 'Todavía no corrió nadie la pasada oficial. ¡Sé el primero!' : 'Buscando la tabla de todos…')
+      : vista ? 'Todavía no corrió nadie de este club.' : borrador ? 'Los tiempos del borrador quedan solo en este aparato.'
       : comunidad ? 'Todavía no hay tiempos. Corrila y compartila: acá aparecen todos los que la corren.'
       : 'Todavía no hay tiempos. Corré tu pasada y compartila: los de tus amigos aparecen acá cuando abrís sus links' + (o.clubes ? ', o solos si arman un club.' : '.');
     $('practicasTitulo').hidden = libre || practicas.length === 0;
@@ -176,26 +185,33 @@ export function crearMenu(o) {
 
   // --- los clubes: arriba de la tabla, un boton por club (y "Todos"); el + arma uno nuevo ---
   const lista = (nombres) => (nombres.length < 2 ? nombres.join('') : nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1]);
+  // Las fichas de "de quien ver los tiempos": Todos, Amigos y un boton por club (sin servidor propio de lo libre: "Todos" son los que
+  // se conocen). La misma lista va en el inicio y en el panel de la tabla; el + (armar un club) solo en el panel.
+  function fichasDeVista(caja, mios, conMas) {
+    caja.textContent = '';
+    const ficha = (texto, valor) => {
+      const si = vista === valor && !armando, b = crear('button', si ? 'elegido' : '', texto);
+      b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', si);
+      b.addEventListener('click', () => { vista = valor; armando = false; aviso = ''; saliendo = 0; if (conTodos) club.gusto('vistaTabla', valor); pintar(); });
+      caja.append(b);
+    };
+    if (conTodos) { ficha('Todos', TODOS); ficha('Amigos', ''); for (const c of mios) ficha(c.nombre, c.codigo); }
+    else if (mios.length) { ficha('Todos', ''); for (const c of mios) ficha(c.nombre, c.codigo); }
+    if (!conMas) return;
+    // sin clubes, el boton lo dice con todas las letras; con clubes alcanza con el +
+    const mas = crear('button', 'mas' + (armando ? ' elegido' : ''), mios.length ? undefined : ' Armar un club');
+    mas.type = 'button'; mas.dataset.icono = 'mas'; mas.title = 'Armar un club'; mas.setAttribute('aria-label', 'Armar un club'); mas.setAttribute('aria-pressed', armando);
+    mas.addEventListener('click', () => { armando = !armando; aviso = ''; saliendo = 0; pintar(); if (armando) $('clubNombre').focus(); });
+    caja.append(mas);
+  }
   function pintarClubes() {
     const caja = $('clubes'), mios = o.clubes ? club.clubes() : [];
-    if (vista && !mios.some((c) => c.codigo === vista)) vista = '';
+    if (vista === TODOS ? !conTodos : vista && !mios.some((c) => c.codigo === vista)) vista = '';
     caja.hidden = !o.clubes;
-    caja.textContent = '';
-    if (o.clubes) {
-      const ficha = (texto, valor) => {
-        const b = crear('button', vista === valor && !armando ? 'elegido' : '', texto), si = vista === valor && !armando;
-        b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', si);
-        b.addEventListener('click', () => { vista = valor; armando = false; aviso = ''; saliendo = 0; pintar(); });
-        caja.append(b);
-      };
-      if (mios.length) { ficha('Todos', ''); for (const c of mios) ficha(c.nombre, c.codigo); }
-      // sin clubes, el boton lo dice con todas las letras; con clubes alcanza con el +
-      const mas = crear('button', 'mas' + (armando ? ' elegido' : ''), mios.length ? undefined : ' Armar un club');
-      mas.type = 'button'; mas.dataset.icono = 'mas'; mas.title = 'Armar un club'; mas.setAttribute('aria-label', 'Armar un club'); mas.setAttribute('aria-pressed', armando);
-      mas.addEventListener('click', () => { armando = !armando; aviso = ''; saliendo = 0; pintar(); if (armando) $('clubNombre').focus(); });
-      caja.append(mas);
-    }
-    const info = vista && o.clubes ? o.clubes.de(vista) : null, enClub = !!vista && !armando;
+    if (o.clubes) fichasDeVista(caja, mios, true);
+    $('hoyVista').hidden = !conTodos;
+    if (conTodos) fichasDeVista($('hoyVista'), mios, false);
+    const info = vista && vista !== TODOS && o.clubes ? o.clubes.de(vista) : null, enClub = !!vista && vista !== TODOS && !armando;
     $('clubNuevo').hidden = !armando;
     $('clubApodo').hidden = !(mios.length && !club.nombre() && !armando);   // (sin nombre, en la tabla de los demas se figura como "?")
     $('clubCabeza').hidden = !enClub;
@@ -248,6 +264,7 @@ export function crearMenu(o) {
     const rival = o.rival();
     lista.forEach((r) => {
       const li = crear('li', r.mio ? 'mio' : '');
+      if (r.puesto) li.dataset.puesto = r.puesto;   // (en la tabla de todos el puesto no es el lugar en la lista: puede faltar un tramo)
       const quien = crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?'));
       quien.append(crear('small', 'codigo-auto', codigoDe(r.auto)));   // (con que auto corrio: el codigo de sus partes)
       if (r.ayuda) quien.append(conAyuda());
@@ -275,6 +292,19 @@ export function crearMenu(o) {
     ponerIconos(ol);
   }
 
+  // La tabla de todos, entera: los primeros que mando el servidor y, si vos estas mas alla, un salto y tu puesto con los de alrededor.
+  function pintarTodos(ol, t) {
+    ol.classList.add('todos');
+    const filas = t ? [...t.tabla] : [], ultimo = filas.length ? filas[filas.length - 1].puesto : 0;
+    const mas = t ? (t.cerca.length ? t.cerca : t.yo ? [t.yo] : []).filter((x) => x.puesto > ultimo) : [];
+    pintarTabla(ol, filas);
+    if (mas.length) {
+      if (mas[0].puesto > ultimo + 1) { const hueco = crear('li', 'hueco', '⋮'); hueco.dataset.puesto = ''; ol.append(hueco); }
+      const parte = crear('ol'); pintarTabla(parte, mas);
+      while (parte.firstChild) ol.append(parte.firstChild);
+    }
+  }
+
   // --- las cards del inicio: una por modo. Cada una muestra algo de los tiempos (los tuyos y los de tus amigos) y tiene su boton
   // para correr. Se pintan de nuevo cada vez que cambia algo (llegan tiempos de un club, se corre, se elige otro auto...). ---
   const koma = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -283,6 +313,7 @@ export function crearMenu(o) {
   function filaTiempo(puesto, r, quien) {
     const li = crear('li', r.mio ? 'mio' : ''), nombre = crear('span', 'quien', quien || r.nombre || '?');
     nombre.append(crear('small', 'codigo-auto', codigoDe(r.auto)));
+    if (r.ayuda) nombre.append(conAyuda()); else if (r.serio) nombre.append(conSerio());
     li.append(crear('i', '', puesto), crear('span', 'emoji', configDe(r.auto).emoji), nombre, crear('b', 'tiempoMarca', marcaDe(r)));
     return li;
   }
@@ -302,17 +333,39 @@ export function crearMenu(o) {
     const datos = $('pistaDatos');
     datos.textContent = '';
     for (const txt of [ambiente, CLIMAS[E.clima].emoji + ' ' + CLIMAS[E.clima].nombre, largo ? (largo / 1000).toFixed(1).replace('.', ',') + ' km' : '', CARACTER[E.caracter] ? CARACTER[E.caracter].nombre : '']) if (txt) datos.append(crear('span', 'dato', txt));
-    // los tiempos: los primeros de tus amigos y, aparte, el tuyo
-    const ol = $('hoyTiempos'), tabla = libre ? club.practicas() : club.tablaDe(n);
-    const otros = tabla.filter((r) => !r.mio && !r.ab && r.t > 0).slice(0, 5), mio = libre ? club.practica() : tabla.find((r) => r.mio);
-    ol.textContent = '';
-    otros.forEach((r, k) => ol.append(filaTiempo(String(k + 1), r)));
-    if (!otros.length) ol.append(vacia('podio', 'Sin tiempos de amigos'));
+    // los tiempos: los primeros de todos (o de tus amigos, o de un club, segun la ficha) y, aparte, el tuyo
+    const ol = $('hoyTiempos'), deTodos = vista === TODOS && conTodos, t = deTodos && o.todos ? o.todos() : null;
+    const tabla = libre ? club.practicas() : club.tabla(deTodos ? '' : vista);
+    const mio = libre ? club.practica() : tabla.find((r) => r.mio);
     const puede = !libre && club.sePuedeOficial(), practica = libre ? mio : club.resumen(n).practica;
-    if (mio) { const li = filaTiempo('', mio, 'Vos'); if (mio.c) li.append(cuadritos(mio.c)); ol.append(li); }
-    else if (puede) ol.append(vacia('bandera', 'Te falta tu pasada'));
-    else ol.append(vacia('cono', practica ? 'Práctica ' + marcaDe(practica) : 'Sin pasada'));
-    ol.lastChild.classList.add('mio');
+    ol.textContent = '';
+    if (deTodos) {
+      // el puesto de cada uno es el de la tabla de todos; el tuyo, aunque estes lejos, va abajo con tu puesto.
+      // (tu fila lleva tus cuadraditos; los de los demas no, para no adelantar como es la pista antes de correrla)
+      const primeros = t ? t.tabla.slice(0, 5) : [], yo = t && t.yo;
+      for (const r of primeros) { const li = filaTiempo(String(r.puesto), r, r.mio ? 'Vos' : ''); if (r.mio && r.c) li.append(cuadritos(r.c)); ol.append(li); }
+      if (!primeros.length) ol.append(vacia('podio', t ? 'Todavía no corrió nadie. ¡Sé el primero!' : 'Buscando la tabla de todos…'));
+      if (yo && !primeros.some((r) => r.mio)) {
+        if (yo.puesto > primeros.length + 1) ol.append(crear('li', 'hueco', '⋮'));
+        const li = filaTiempo(String(yo.puesto), yo, 'Vos'); li.append(cuadritos(yo.c)); ol.append(li);
+      } else if (!yo) {
+        if (mio) { const li = filaTiempo('', mio, 'Vos'); if (mio.c) li.append(cuadritos(mio.c)); ol.append(li); }
+        else if (puede) ol.append(vacia('bandera', 'Te falta tu pasada'));
+        else ol.append(vacia('cono', practica ? 'Práctica ' + marcaDe(practica) : 'Sin pasada'));
+        ol.lastChild.classList.add('mio');
+      }
+      $('hoyPuesto').hidden = !t || !t.total;
+      $('hoyPuestoTexto').textContent = t && t.total ? (t.yo ? '#' + t.yo.puesto + ' de ' + t.total : t.total + (t.total === 1 ? ' corredor' : ' corredores')) : '';
+    } else {
+      const otros = tabla.filter((r) => !r.mio && !r.ab && r.t > 0).slice(0, 5);
+      otros.forEach((r, k) => ol.append(filaTiempo(String(k + 1), r)));
+      if (!otros.length) ol.append(vacia('podio', 'Sin tiempos de amigos'));
+      if (mio) { const li = filaTiempo('', mio, 'Vos'); if (mio.c) li.append(cuadritos(mio.c)); ol.append(li); }
+      else if (puede) ol.append(vacia('bandera', 'Te falta tu pasada'));
+      else ol.append(vacia('cono', practica ? 'Práctica ' + marcaDe(practica) : 'Sin pasada'));
+      ol.lastChild.classList.add('mio');
+      $('hoyPuesto').hidden = true;
+    }
     // la bandera a cuadros larga la pasada oficial; el cono, una practica
     const largar = libre || puede;
     rotular($('largar'), largar ? 'Largar' : 'Practicar');
@@ -386,7 +439,23 @@ export function crearMenu(o) {
   // tiempo, y se pinta de nuevo si llegan tiempos nuevos de los clubes. Devuelve { puesto, de, cuenta } (puesto 0: no hay con
   // quien comparar). Una practica en la pista del dia no cuenta: dice donde habria quedado; en lo libre, una pasada que no fue
   // la mejor tuya, donde queda ese tiempo.
+  // Tu puesto entre todos ("37º de 412"), si esta pasada es tu oficial y el servidor ya la tiene (si no, no se dice nada). Devuelve el texto.
+  const puestoGlobal = (r) => {
+    const t = o.todos ? o.todos() : null, yo = t && t.yo;
+    return !libre && !r.practica && !r.ab && yo && Math.abs(yo.t - r.t) < 0.02 ? { yo, t } : null;
+  };
+  function pintarGlobal(r) {
+    const g = $('finTodos'), x = puestoGlobal(r);
+    g.hidden = !x;
+    if (!x) return;
+    const { yo, t } = x, filas = [...t.tabla, ...t.cerca];
+    const delante = filas.find((f) => f.puesto === yo.puesto - 1 && !f.ab);
+    g.textContent = '';
+    g.append(crear('b', '', yo.puesto === 1 ? '¡1º de ' + t.total + '!' : yo.puesto + 'º de ' + t.total), crear('span', '', yo.puesto === 1 ? 'Sos el más rápido de todos, por ahora.' : delante ? 'A ' + (r.t - delante.t).toFixed(2).replace('.', ',') + ' s de ' + (delante.nombre || '?') : 'Entre todos los que la corrieron'));
+    g.classList.toggle('primero', yo.puesto === 1);
+  }
   function pintarContra(r, mejoro) {
+    pintarGlobal(r);
     const el = $('finAmigos'), otros = (libre ? club.practicas() : club.tabla()).filter((x) => !x.mio && !x.ab && x.t > 0);
     el.hidden = !!r.ab || !otros.length;
     if (el.hidden) return { puesto: 0, de: 0, cuenta: false };
@@ -395,7 +464,8 @@ export function crearMenu(o) {
     const empate = otros.find((x) => Math.abs(x.t - r.t) <= 0.004);
     const puesto = ganaron.length + 1, de = otros.length + 1, cuenta = libre ? !!mejoro : !r.practica;
     const s = (d) => d.toFixed(2).replace('.', ',') + ' s', quien = (x) => x.nombre || '?';
-    const titulo = (cuenta ? '' : libre ? 'Con este tiempo, ' : 'Habrías quedado ') + (puesto === 1 && cuenta ? '¡1º de ' + de + '!' : puesto + 'º de ' + de);
+    const amigos = puestoGlobal(r) ? ' amigos' : '';   // (si tambien se dice el puesto entre todos, este aclara que es entre amigos)
+    const titulo = (cuenta ? '' : libre ? 'Con este tiempo, ' : 'Habrías quedado ') + (puesto === 1 && cuenta ? '¡1º de ' + de + amigos + '!' : puesto + 'º de ' + de + amigos);
     const cerca = [];
     if (ganaron.length) cerca.push('A ' + s(r.t - ganaron[0].t) + ' de ' + quien(ganaron[0]));
     if (empate) cerca.push('Empatado con ' + quien(empate));
@@ -664,7 +734,9 @@ export function crearMenu(o) {
     // el link lleva el codigo corto con el que la pasada quedo en el servidor; si no hay servidor, la pasada entera
     const final = codigo ? await o.acortar(r, codigo) : '';
     // tres renglones: el resultado, el link y que el juego esta en desarrollo
-    await pasar(mensaje(etapa, r, comunidad && comunidad.autor) + '\n' + conAviso(location.origin + location.pathname + (final ? '#r=' + final : '')), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
+    // (el primer renglon es siempre el de siempre; si ya se sabe el puesto entre todos, va en otro renglon, antes del link)
+    const g = puestoGlobal(r), puesto = g ? '\n🏆 ' + g.yo.puesto + 'º de ' + g.t.total : '';
+    await pasar(mensaje(etapa, r, comunidad && comunidad.autor) + puesto + '\n' + conAviso(location.origin + location.pathname + (final ? '#r=' + final : '')), (texto) => { if (salida) salida.textContent = texto; }, 'Copiado. Pegalo en el grupo.');
   }
   $('compartir').addEventListener('click', () => ultimo && compartir(ultimo, $('compartido')));
   $('compartirPortada').addEventListener('click', () => {
@@ -682,11 +754,40 @@ export function crearMenu(o) {
     pintar();
   };
   $('nombre').addEventListener('change', () => ponerNombre($('nombre').value));
+
+  // --- el nombre antes de la pasada oficial ---
+  // La oficial va a la tabla de todos, asi que no larga sin nombre. Se pide en un cartel simple con uno sugerido (de rally) que se
+  // acepta de un toque; "Otro nombre" sortea otro. Las practicas, los circuitos y la Travesia no lo piden.
+  const APODOS = ['Barro Rojo', 'Pata de Cabra', 'Don Ripio', 'Tero Veloz', 'Polvareda', 'Chispa', 'El Zorro', 'Cuesta Arriba', 'Doña Cuneta', 'Rueda Libre', 'Chapa y Barro', 'Pisa y Corre', 'Vizcachita', 'Mate Cocido', 'Capó Abierto', 'Freno de Mano'];
+  const sugerido = () => (Math.random() < 0.4 ? 'Piloto ' + (100 + Math.floor(Math.random() * 900)) : APODOS[Math.floor(Math.random() * APODOS.length)]);
+  let despuesDelNombre = null;
+  const cerrarCartel = () => { $('cartelNombre').hidden = true; despuesDelNombre = null; };
+  $('cartelNombreForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    ponerNombre($('cartelNombreCampo').value);
+    if (!club.nombre()) { $('cartelNombreCampo').value = sugerido(); return; }   // (escribio solo espacios: se le propone uno)
+    const seguir = despuesDelNombre;
+    cerrarCartel();
+    if (seguir) seguir();
+  });
+  $('cartelNombreOtro').addEventListener('click', () => { $('cartelNombreCampo').value = sugerido(); $('cartelNombreCampo').focus(); });
+  $('cartelNombreVolver').addEventListener('click', cerrarCartel);
+  $('cartelNombre').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); cerrarCartel(); } });
+  // ver la tabla de todos entera, desde el inicio
+  $('hoyVerTodos').addEventListener('click', () => { vista = TODOS; abrir('tabla'); pintar(); });
   $('clubApodo').addEventListener('submit', (e) => { e.preventDefault(); ponerNombre($('clubMiNombre').value); if (!club.nombre()) $('clubMiNombre').focus(); });
   $('nombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('nombre').blur(); });
 
   return {
     pintar,
+    // pide el nombre (con uno sugerido) y despues sigue con "siguiente"
+    pedirNombre: (siguiente) => {
+      despuesDelNombre = siguiente;
+      $('cartelNombreCampo').value = sugerido();
+      $('cartelNombre').hidden = false;
+      ponerIconos($('cartelNombre'));
+      $('cartelNombreCampo').focus(); $('cartelNombreCampo').select();
+    },
     portada: (si) => { $('portada').hidden = !si; if (!si) abrir(''); else pintar(); },
     // el juego ya armo todo: se pueden apretar los botones de correr, y el inicio se muestra con la card que corresponde
     listo: () => { listo = true; pintar(); },
@@ -759,6 +860,7 @@ export function crearMenu(o) {
         : estado === 'pendiente' ? 'Sin conexión: tu tiempo se guarda solo cuando vuelva.'
         : (comunidad || clubes.length) && sinNombre ? 'Guardado. Poné tu nombre para que figure en la tabla.'
         : comunidad ? 'Guardado en la tabla de la pista.'
+        : conTodos && !libre && ultimo && !ultimo.practica ? 'Guardado en la tabla de todos' + (clubes.length === 1 ? ' y en la de «' + clubes[0].nombre + '».' : clubes.length ? ' y en las de tus clubes.' : '.')
         : clubes.length === 1 ? 'Guardado en la tabla de «' + clubes[0].nombre + '».'
         : clubes.length ? 'Guardado en las tablas de tus clubes.'
         : 'Guardado. Compartilo para que lo vean tus amigos.');

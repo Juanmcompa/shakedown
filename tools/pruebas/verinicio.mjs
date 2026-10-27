@@ -6,7 +6,7 @@
 // un link de un amigo (#r=, #t=) abra donde corresponde; y que en celulares chicos entren la pista, Largar y Pistas anteriores.
 // Capturas en out/: inicio-compu, inicio-celu, inicio-320, inicio-anteriores, inicio-travesia.
 // uso: node tools/pruebas/verinicio.mjs
-import { abrir, irACard, largarDesdeHome } from './ver.mjs';
+import { abrir, irACard, largarDesdeHome, aceptarNombre } from './ver.mjs';
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
 const dedos = { hasTouch: true, isMobile: true, deviceScaleFactor: 2 };
@@ -166,7 +166,7 @@ const b = await abrir({ ancho: 1280, alto: 720, ruta: '#r=' + codigoHoy });
 await listo(b.pag);
 await b.pag.waitForTimeout(800);
 ver('link de un amigo (#r=) en la pista del dia: el inicio la muestra, con el aviso de contra quien se corre', (await modo(b.pag)) === 'hoy' && await visible(b.pag, '#desafio') && /^Contra .*\d\d:\d\d/.test(await b.pag.evaluate(() => document.getElementById('desafio').innerText.trim())));
-await b.pag.click('#largar');
+await b.pag.click('#largar'); await aceptarNombre(b.pag);
 await b.pag.waitForFunction(() => window.shakedown.estado().pantalla === 'jugando', null, { timeout: 30000 });
 ver('y un toque en Largar corre (la pasada del amigo es el rival)', (await estado(b.pag)).rival !== null, await estado(b.pag));
 await b.cerrar();
@@ -175,7 +175,7 @@ await listo(c.pag);
 await c.pag.waitForTimeout(800);
 e = await estado(c.pag);
 ver('link de un amigo en un circuito: la pista cargada es Subida, el inicio la muestra y trae el aviso', e.pista === 16001 && /Subida/.test(await c.pag.evaluate(() => document.getElementById('pistaNombre').textContent)) && await visible(c.pag, '#desafio'), [e.pista]);
-await c.pag.tap('#largar');
+await c.pag.tap('#largar'); await aceptarNombre(c.pag, true);
 await c.pag.waitForFunction(() => window.shakedown.estado().pantalla === 'jugando', null, { timeout: 30000 });
 ver('un toque en Largar corre contra el fantasma', (await estado(c.pag)).rival !== null);
 await c.cerrar();
@@ -236,7 +236,7 @@ const g = await abrir({ ancho: 1280, alto: 720, nuevo: true });
 await listo(g.pag);
 await g.pag.waitForTimeout(800);
 ver('la primera vez, el inicio abre igual (la pista del dia) y Largar abre el tutorial', (await modo(g.pag)) === 'hoy' && await visible(g.pag, '#largar'));
-await g.pag.click('#largar');
+await g.pag.click('#largar'); await aceptarNombre(g.pag);
 await g.pag.waitForTimeout(900);
 ver('y Largar abre el tutorial (el equipo explica antes de largar)', await g.pag.evaluate(() => !document.getElementById('tutorial').hidden));
 await g.cerrar();

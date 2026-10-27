@@ -26,6 +26,12 @@
 //   POST /travesias                { llave, clubes: [codigos] }  el record de cada miembro de esos clubes, de mayor a menor.
 //                                                               Sin fantasma ni pista: la Travesia sale distinta cada vez.
 //
+//   POST /todos                    { llave, pista, version }     la tabla del dia de TODOS los que corrieron la oficial de esa pista, con
+//                                                               o sin club: { total, tabla (los primeros 100), yo (tu fila), cerca (tu puesto y
+//                                                               los dos de arriba y de abajo, si estas mas alla del 100) }. Cada fila lleva su
+//                                                               puesto y el codigo corto de la pasada (con el se baja el fantasma).
+//   POST /nombre                   { llave, apodo }              cambia el nombre en todo lo que ya tiene guardado ese corredor.
+//
 // No hay cuentas ni contraseñas. Cada aparato inventa una "llave" larga al azar y la manda cuando escribe algo; aca se
 // guarda solo su huella (no la llave), que hace de numero de corredor. Nadie mas la conoce, asi que nadie puede subir
 // tiempos a nombre de otro. De cada pasada se guarda lo mismo que viaja en un link largo: el apodo, el tiempo, los
@@ -33,7 +39,7 @@
 //
 // El "codigo" de una pasada es el mismo texto que antes iba entero en el link. Aca se lo lee con el mismo programa
 // que usa el juego (src/fantasma.js): lo que figura en la tabla sale de la pasada grabada, no de lo que diga el que la manda.
-import { leerCodigo, limpiarTexto, TOPE_MUESTRAS } from '../src/fantasma.js';
+import { leerCodigo, limpiarTexto, SIN_NOMBRE, TOPE_MUESTRAS } from '../src/fantasma.js';
 import { esCircuito, esDeLaComunidad, COMUNIDAD } from '../src/circuitos.js';
 import { leerHoja, armarHoja } from '../src/hoja.js';
 import { hoy } from '../src/dia.js';
@@ -55,6 +61,8 @@ export const LIMITES = {
   travesiasPorConexion: 600,  // por dia: records de la Travesia que se pueden mandar desde una misma conexion
   travesiasPorDia: 20000,     // por dia, entre todos
   kmMaximo: 1000,             // un record de la Travesia mayor a esto no es creible (hoy se llega a unas decenas de km)
+  nombresPorConexion: 600,    // por dia: cambios de nombre que se pueden mandar desde una misma conexion
+  tablaDeTodos: 100,          // cuantos puestos devuelve la tabla de todos (ademas de los cercanos al que pregunta)
   largoDelCodigo: 6000,       // letras, como mucho, de una pasada (una de dos minutos lleva unas 600; la mas larga posible, 4.500)
   // las pistas de la comunidad (las que arma un jugador en el creador)
   pistasPorConexion: 40,      // por dia: cuantas se pueden publicar desde una misma conexion
@@ -93,6 +101,13 @@ const ESQUEMA = [
     creador TEXT NOT NULL, club TEXT NOT NULL DEFAULT '', hoja TEXT NOT NULL, creado INTEGER NOT NULL, vence INTEGER NOT NULL)`,
   'CREATE INDEX IF NOT EXISTS pistas_del_club ON pistas (club, vence)',
   'CREATE INDEX IF NOT EXISTS pistas_de ON pistas (creador, vence)',
+  // Para armar la tabla de todos (la pasada oficial de cada corredor, ordenada): primero los que llegaron, del mas rapido al mas lento.
+  // La tabla "pasadas" ya guarda todas las pasadas, con o sin club; esto solo la ordena rapido.
+  `CREATE INDEX IF NOT EXISTS pasadas_tabla ON pasadas (pista, version, practica, (ab <> ''), cent, creado, id)`,
+  'CREATE INDEX IF NOT EXISTS pasadas_de_quien ON pasadas (jugador)',
+  // Las pasadas hechas en "rally serio" (es una marca que viaja en el codigo de la pasada y no tenia columna: se agrega esta
+  // tabla aparte, nueva, para no tocar la que ya esta publicada). Las anteriores figuran como no serias.
+  'CREATE TABLE IF NOT EXISTS serias (id TEXT PRIMARY KEY)',
   // El record de la Travesia: una fila por corredor, con su mejor marca en km (la Travesia no tiene pista fija ni fantasma:
   // cada corrida sale distinta). Es una tabla aparte, y nueva: la base que ya esta publicada la gana sola, sin migracion.
   `CREATE TABLE IF NOT EXISTS travesias (jugador TEXT PRIMARY KEY, nombre TEXT NOT NULL, km REAL NOT NULL, auto TEXT NOT NULL DEFAULT '', creado INTEGER NOT NULL)`,
@@ -177,6 +192,8 @@ async function guardarPasada(env, pedido, de) {
   if (!(pista <= hoy(Date.now() + LIMITES.adelanto * 1000) || esCircuito(pista) || esDeLaComunidad(pista))) falla(425, 'Esa pista todavía no empezó.');
   // (en una pista de la comunidad no hay oficial: se corre las veces que se quiera, como en un circuito)
   if (esDeLaComunidad(pista) && !m.practica) falla(400, 'En esa pista no hay pasada oficial.');
+  // la oficial entra a la tabla de todos: sin nombre no hay tabla (las practicas y los circuitos pueden ir sin nombre)
+  if (!m.practica && (!m.nombre || m.nombre === SIN_NOMBRE)) falla(400, 'Poné tu nombre para correr la pasada oficial.');
   if (!m.ab) {
     if (!(m.t >= 15 && m.t <= 3600)) falla(400, 'Ese tiempo no puede ser.');
     // el tiempo tiene que coincidir con lo grabado (hay dos muestras por segundo, hasta TOPE_MUESTRAS)
@@ -206,6 +223,9 @@ async function guardarPasada(env, pedido, de) {
           AND EXISTS (SELECT 1 FROM pasadas WHERE ${ESTA} AND practica = ?5 AND cent = ?6)`).bind(m.nombre, pista, version, jugador, practica, cent),
         // (si es de una pista de la comunidad: si sigue vigente, para poder decir por que no entro)
         DB.prepare(`SELECT ${viva('?1', '?2', '?3')} AS viva`).bind(pista, version, ahora()),
+        // si fue en rally serio, queda anotado (para la tabla de todos). Va al final para no mover los lugares de arriba.
+        DB.prepare(`INSERT OR IGNORE INTO serias (id) SELECT id FROM pasadas WHERE pista = ?1 AND version = ?2 AND jugador = ?3 AND practica = ?4 AND cent = ?5 AND ?6 = 1`)
+          .bind(pista, version, jugador, practica, cent, m.serio ? 1 : 0),
       ]);
     } catch (e) {
       if (intento < 3 && esRepetido(e)) continue;   // (justo ese codigo corto ya existia: se prueba con otro)
@@ -338,6 +358,55 @@ async function tablas(env, pedido) {
       pistas: r[b + 3].results.map((x) => ({ numero: x.numero, version: x.version, nombre: x.nombre, autor: x.autor, vence: x.vence })) };
   });
   return salida;
+}
+
+// --- la tabla de todos: la pasada oficial de la pista del dia de cada corredor, con o sin club ---
+// Orden: primero los que llegaron, del mas rapido al mas lento; despues los abandonos. Empate: el que llego antes.
+// Devuelve los primeros 100, tu fila con tu puesto ("yo") y, si estas mas alla del 100, tu puesto con los dos de arriba y
+// los dos de abajo ("cerca"). Cada fila lleva el codigo corto de su pasada: con el se baja el fantasma (GET /pasadas/<id>).
+const ORDEN = "(p.ab <> ''), p.cent, p.creado, p.id";
+const DEL_DIA = 'p.pista = ?1 AND p.version = ?2 AND p.practica = 0';
+const COLUMNAS = "p.id, p.jugador, p.nombre, p.t, p.c, p.auto, p.ab, p.ayuda, EXISTS (SELECT 1 FROM serias s WHERE s.id = p.id) AS serio";
+async function tablaDeTodos(env, pedido) {
+  const DB = env.DB, pista = Math.floor(Number(pedido.pista)), version = Math.floor(Number(pedido.version));
+  // (solo la pista de cada dia: los circuitos y las pistas de la comunidad no tienen oficial)
+  if (!(pista >= 1 && pista <= hoy(Date.now() + LIMITES.adelanto * 1000)) || esCircuito(pista) || esDeLaComunidad(pista) || !(version >= 0 && version < 64)) falla(400, 'Falta la pista.');
+  const yo = esLlave(pedido.llave) ? await huella(pedido.llave) : '';
+  const fila = (x, puesto, j) => ({ puesto, id: x.id, j: x.jugador, nombre: x.nombre, t: x.t, c: x.c, auto: x.auto, ab: x.ab, ayuda: !!x.ayuda, serio: !!x.serio, practica: false, ...(x.jugador === j ? { mio: true } : {}) });
+  const r = await DB.batch([
+    DB.prepare(`SELECT COUNT(*) AS n FROM pasadas p WHERE ${DEL_DIA}`).bind(pista, version),
+    DB.prepare(`SELECT ${COLUMNAS} FROM pasadas p WHERE ${DEL_DIA} ORDER BY ${ORDEN} LIMIT ?3`).bind(pista, version, LIMITES.tablaDeTodos),
+    // tu fila, y cuantas hay antes que vos
+    DB.prepare(`SELECT ${COLUMNAS}, (SELECT COUNT(*) FROM pasadas q WHERE q.pista = p.pista AND q.version = p.version AND q.practica = 0
+        AND ((q.ab <> ''), q.cent, q.creado, q.id) < ((p.ab <> ''), p.cent, p.creado, p.id)) AS antes
+      FROM pasadas p WHERE ${DEL_DIA} AND p.jugador = ?3 LIMIT 1`).bind(pista, version, yo),
+  ]);
+  const tabla = r[1].results.map((x, k) => fila(x, k + 1, yo)), mia = r[2].results[0];
+  const salida = { total: r[0].results[0].n, tabla, yo: null, cerca: [] };
+  if (!mia) return salida;
+  const puesto = mia.antes + 1;
+  salida.yo = fila(mia, puesto, yo);
+  // si no estas en la tabla, o te quedan cerca del final de ella, se traen los de tu alrededor
+  if (puesto + 2 > LIMITES.tablaDeTodos) {
+    const desde = Math.max(0, mia.antes - 2), c = await DB.prepare(`SELECT ${COLUMNAS} FROM pasadas p WHERE ${DEL_DIA} ORDER BY ${ORDEN} LIMIT 5 OFFSET ?3`).bind(pista, version, desde).all();
+    salida.cerca = c.results.map((x, k) => fila(x, desde + k + 1, yo));
+  }
+  return salida;
+}
+// Cambia el nombre de un corredor en todo lo que ya tiene guardado (asi la tabla de todos y los clubes lo muestran de una).
+async function cambiarNombre(env, pedido, de) {
+  const DB = env.DB, apodo = limpiar(pedido.apodo, 14);
+  if (!esLlave(pedido.llave)) falla(400, 'Falta la llave.');
+  if (!apodo) falla(400, 'Poné tu nombre.');
+  const jugador = await huella(pedido.llave), cambios = contador('n:' + de, LIMITES.nombresPorConexion);
+  const r = await DB.batch([
+    cambios.anotar(DB),
+    DB.prepare(`UPDATE pasadas SET nombre = ?2 WHERE jugador = ?1 AND nombre <> ?2 AND ${ENTRA('?3', '?4')}`).bind(jugador, apodo, cambios.clave, cambios.tope),
+    DB.prepare(`UPDATE miembros SET nombre = ?2 WHERE jugador = ?1 AND nombre <> ?2 AND ${ENTRA('?3', '?4')}`).bind(jugador, apodo, cambios.clave, cambios.tope),
+    DB.prepare(`UPDATE travesias SET nombre = ?2 WHERE jugador = ?1 AND nombre <> ?2 AND ${ENTRA('?3', '?4')}`).bind(jugador, apodo, cambios.clave, cambios.tope),
+  ]);
+  if (cambios.sePaso(r[0])) falla(429, 'Desde esta conexión ya se cambiaron muchos nombres hoy.');
+  return { listo: true };
 }
 
 // --- la Travesia: el mejor record de km de cada uno ---
@@ -488,6 +557,7 @@ async function limpiarLoViejo(DB) {
   await DB.batch([
     DB.prepare('DELETE FROM pasadas WHERE creado < ?1').bind(t - LIMITES.guardaDias * 86400),
     DB.prepare('DELETE FROM limites WHERE vence < ?1').bind(t),
+    DB.prepare('DELETE FROM serias WHERE id NOT IN (SELECT id FROM pasadas)'),
     // de las pistas de la comunidad que vencieron hace una semana: sus pasadas, y la hoja (la fila queda, por su version)
     DB.prepare(`DELETE FROM pasadas WHERE pista BETWEEN ${COMUNIDAD.desde} AND ${COMUNIDAD.hasta}
       AND NOT EXISTS (SELECT 1 FROM pistas WHERE numero = pasadas.pista AND version = pasadas.version AND vence > ?1)`).bind(t - 7 * DIA),
@@ -542,6 +612,8 @@ export default {
       else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'entrar') hacer = () => entrarAlClub(env, partes[1], cuerpo, de);
       else if (donde === 'clubes' && metodo === 'POST' && partes.length === 3 && partes[2] === 'salir') hacer = () => salirDelClub(env, partes[1], cuerpo);
       else if (donde === 'tablas' && metodo === 'POST' && partes.length === 1) hacer = () => tablas(env, cuerpo);
+      else if (donde === 'todos' && metodo === 'POST' && partes.length === 1) hacer = () => tablaDeTodos(env, cuerpo);
+      else if (donde === 'nombre' && metodo === 'POST' && partes.length === 1) hacer = () => cambiarNombre(env, cuerpo, de);
       else if (donde === 'travesia' && metodo === 'POST' && partes.length === 1) hacer = () => guardarTravesia(env, cuerpo, de);
       else if (donde === 'travesias' && metodo === 'POST' && partes.length === 1) hacer = () => tablasTravesia(env, cuerpo);
       else if (donde === 'pistas' && metodo === 'POST' && partes.length === 1) hacer = () => crearPista(env, cuerpo, de);

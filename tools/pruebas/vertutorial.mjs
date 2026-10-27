@@ -2,6 +2,8 @@
 // que se pueda saltar, cerrar y volver a ver, y que a quien ya jugo no se le muestre.
 // uso: node tools/pruebas/vertutorial.mjs [pc|cel|celh|sensor|todo] [capturas]
 import { abrir, irACard, largarDesdeHome } from './ver.mjs';
+// (la oficial sin nombre pide uno antes de largar: se acepta el sugerido, que es lo que haria alguien que recien llega)
+const pedido = async (pag, dedos) => { await pag.waitForFunction(() => !document.getElementById('cartelNombre').hidden || window.shakedown.estado().pantalla === 'jugando', null, { timeout: 30000 }); if (await pag.evaluate(() => !document.getElementById('cartelNombre').hidden)) await (dedos ? pag.tap('#cartelNombreListo') : pag.click('#cartelNombreListo')); };
 const cual = process.argv[2] || 'todo', conFotos = process.argv.includes('capturas') || cual !== 'todo';
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
@@ -31,6 +33,7 @@ async function recorrer(nombre, forma, sensor) {
   ver(nombre + ': alguien nuevo: el inicio abre en la pista del dia y Largar lleva al tutorial', await pag.evaluate(() => document.getElementById('home').dataset.card === 'hoy'));
   if (sensor) await pag.evaluate(() => window.shakedown.ajustar('botones', false));   // (de fabrica se dobla con flechas; esta variante es la de quien eligio inclinar)
   await tocar('#largar');
+  await pedido(pag, dedos);   // (alguien nuevo: primero el nombre, despues el tutorial)
   if (sensor) await pag.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 20, gamma: 3 })));
   await pag.waitForTimeout(900);
   let e = await estado(pag);
@@ -65,7 +68,7 @@ if (cual === 'sensor' || cual === 'todo') await recorrer('sensor', FORMAS.cel, t
 if (cual === 'todo' || cual === 'otros') {
   // --- saltar, cerrar, teclas, volver a verlo, y el que ya jugo ---
   const j = await abrir({ ...FORMAS.pc, nuevo: true }), pag = j.pag;
-  await pag.click('#largar');
+  await pag.click('#largar'); await pedido(pag);
   await pag.waitForTimeout(600);
   await pag.keyboard.press('KeyC');   // (una tecla del juego: con el tutorial abierto no tiene que hacer nada)
   await pag.keyboard.press('ArrowRight');
@@ -80,13 +83,13 @@ if (cual === 'todo' || cual === 'otros') {
   await pag.waitForTimeout(500);
   e = await estado(pag);
   ver('Esc cierra y vuelve a la portada, sin gastar la oficial ni darlo por visto', !e.abierto && e.pantalla === 'portada' && e.nuevo && await pag.evaluate(() => window.shakedown.club.sePuedeOficial() && !document.getElementById('portada').hidden), e);
-  await pag.click('#largar');
+  await pag.click('#largar'); await pedido(pag);
   await pag.waitForTimeout(600);
   ver('la proxima vez se abre de nuevo', (await estado(pag)).abierto);
   await pag.click('#tutCerrar');
   await pag.waitForTimeout(400);
   ver('la X tambien cierra', !(await estado(pag)).abierto && (await estado(pag)).pantalla === 'portada');
-  await pag.click('#largar');
+  await pag.click('#largar'); await pedido(pag);
   await pag.waitForTimeout(600);
   await pag.click('#tutSaltar');
   await pag.waitForTimeout(600);
@@ -97,7 +100,7 @@ if (cual === 'todo' || cual === 'otros') {
 
   // quien ya jugo (o ya lo vio) larga derecho; y lo puede volver a ver desde "Como se juega"
   const k = await abrir({ ...FORMAS.cel }), P = k.pag;
-  await P.tap('#largar');
+  await P.tap('#largar'); await pedido(P, true);
   await P.waitForTimeout(700);
   e = await estado(P);
   ver('el que ya lo vio larga derecho', !e.abierto && e.partida !== 'previa', e);

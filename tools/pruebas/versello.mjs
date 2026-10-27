@@ -1,6 +1,6 @@
 // El cartel de la largada ("Early Access" y la firma) y la firma en lo que se comparte.
 // uso: node tools/pruebas/versello.mjs [pc|cel|celh|flechas|todo] [capturas]
-import { abrir, irACard, largarDesdeHome } from './ver.mjs';
+import { abrir, irACard, largarDesdeHome, aceptarNombre } from './ver.mjs';
 const cual = process.argv[2] || 'todo', conFotos = process.argv.includes('capturas') || cual !== 'todo';
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
@@ -70,6 +70,7 @@ if (cual === 'antes') {
     const j = await abrir({ ...forma }), pag = j.pag, dedos = !!(forma.contexto && forma.contexto.hasTouch);
     if (flechas) await pag.evaluate(() => window.shakedown.ajustar('botones', true));
     if (dedos) await pag.tap('#largar'); else await pag.click('#largar');
+    await aceptarNombre(pag, dedos);
     await pag.waitForTimeout(500);
     await pag.evaluate(() => window.shakedown.avanzar(1.2));
     await pag.waitForTimeout(2500);
@@ -108,7 +109,7 @@ if (cual === 'todo' || cual === 'tutorial') {
   // salir de una practica en plena cuenta y volver a largar: el cartel aparece de nuevo
   const k = await abrir({ ...FORMAS.pc }), q = k.pag;
   await q.emulateMedia({ reducedMotion: 'reduce' });
-  await q.evaluate(() => { const s = window.shakedown; s.largar(); s.avanzar(3.3); s.simular(2, 0, 1); s.partida.volver(s.auto(), 'pedido'); });   // (una oficial empezada...)
+  await q.evaluate(() => { const s = window.shakedown; s.club.ponerNombre('Pilo'); s.largar(); s.avanzar(3.3); s.simular(2, 0, 1); s.partida.volver(s.auto(), 'pedido'); });   // (una oficial empezada...)
   await q.evaluate(() => { const s = window.shakedown; for (let i = 0; i < 400 && s.partida.estado === 'corriendo'; i++) { s.auto().impacto = 40; s.avanzar(0.3); } s.saltearEspera(); });   // (...y terminada rompiendo el auto)
   await q.waitForFunction(() => !document.getElementById('fin').hidden, null, { timeout: 30000 }).catch(() => {});
   await q.click('#otra');   // practicar
@@ -119,7 +120,7 @@ if (cual === 'todo' || cual === 'tutorial') {
   await q.waitForTimeout(500);
   const afuera = await q.evaluate(() => ({ portada: !document.getElementById('portada').hidden, seVe: document.getElementById('sello').classList.contains('se-ve') }));
   ver('practica: al salir en plena cuenta, el cartel queda apagado', afuera.portada && !afuera.seVe, afuera);
-  await q.click('#largar');
+  await q.click('#largar'); await aceptarNombre(q);
   await q.waitForTimeout(600);
   e = await estado(q);
   ver('practica: al largar otra vez, vuelve a aparecer', e.partida === 'cuenta' && e.visible, e);

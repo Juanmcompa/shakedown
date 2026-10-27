@@ -47,6 +47,8 @@ export function limpiarTexto(txt, largo) {
   return /[^\s\u200b-\u200d\u2060\ufe00-\ufe0f]/.test(s) ? s : '';
 }
 export const limpio = (txt) => limpiarTexto(txt, 14);
+// lo que dice una pasada grabada sin nombre (el servidor no deja entrar a la tabla de todos a una oficial asi)
+export const SIN_NOMBRE = 'Sin nombre';
 
 // Un resultado es: { pista, nombre, t (segundos), s: [segundos de cada sector], c: 'vvarv', auto, ab: '' o por que abandono,
 //                    vueltas, roto, practica, ayuda (corrio con la ayuda de manejo), serio (en modo "rally serio") }
@@ -156,7 +158,7 @@ const envolver = (v) => ((v + VUELTA / 2) & (VUELTA - 1)) - VUELTA / 2;   // un 
 function pasarResultado(io, m, enc, dec, pista, completo) {
   const letras = enc ? enc.encode(limpio(m.nombre)).slice(0, 24) : null, largo = Math.min(24, io.crudo(letras ? letras.length : 0, 5)), leidas = new Uint8Array(largo);
   for (let k = 0; k < largo; k++) leidas[k] = io.crudo(letras ? letras[k] : 0, 8);
-  const o = { pista, nombre: limpio(dec.decode(leidas)) || 'Sin nombre' };
+  const o = { pista, nombre: limpio(dec.decode(leidas)) || SIN_NOMBRE };
   o.practica = !!io.crudo(m.practica ? 1 : 0, 1);
   o.ab = ABANDONOS[io.crudo(Math.max(0, ABANDONOS.indexOf(m.ab || '')), 2)];
   // El auto. Antes era uno de AUTOS_DEL_LINK; ahora es el codigo de sus partes (ver partes.js), que va despues de las
@@ -188,7 +190,7 @@ function pasarResultado(io, m, enc, dec, pista, completo) {
 // (asi se leia un resultado en el formato anterior)
 function leerResultado(b, i, dec, pista) {
   const u16 = () => { const v = b[i] | (b[i + 1] << 8); i += 2; return v; };
-  const largo = Math.min(24, b[i++]), nombre = limpio(dec.decode(b.slice(i, i + largo))) || 'Sin nombre';
+  const largo = Math.min(24, b[i++]), nombre = limpio(dec.decode(b.slice(i, i + largo))) || SIN_NOMBRE;
   i += largo;
   const marcas = b[i++], m = { pista, nombre, practica: !!(marcas & 1), ab: marcas & 2 ? (marcas & 16 ? 'tiempo' : marcas & 32 ? 'cerrado' : 'roto') : '', auto: AUTOS_DEL_LINK[(marcas >> 2) & 3] || AUTOS_DEL_LINK[0] };
   m.t = (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16)) / 100; i += 3;

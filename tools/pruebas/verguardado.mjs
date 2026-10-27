@@ -65,7 +65,7 @@ ver('A: sin señal al terminar, el resultado dice que se guarda cuando vuelva', 
 await A.screenshot({ path: 'out/guardado-1-sin-senal.png' });
 await sinSenal(A, false);
 await A.evaluate(() => window.dispatchEvent(new Event('online')));
-const listoA = await esperarGuardado(A, /Guardado en la tabla de «Los Tercos»/);
+const listoA = await esperarGuardado(A, /Guardado en la tabla de todos y en la de «Los Tercos»/);
 ver('A: al volver la señal se guarda solo, y dice en que tabla', listoA && await A.evaluate(() => !!window.shakedown.club.oficial().id), await guardado(A));
 ver('A: con el tilde verde', await A.evaluate(() => { const el = document.getElementById('finGuardado'); return el.classList.contains('listo') && !!el.querySelector('img.icono'); }));
 await A.screenshot({ path: 'out/guardado-2-guardado.png' });
@@ -83,7 +83,7 @@ const finB = await romper(B);
 await esperarFin(B);
 const resB = await B.evaluate(() => ({ grande: document.getElementById('finGrande').textContent, titulo: document.getElementById('finTitulo').textContent }));
 ver('B: rompe el auto: el resultado dice DNF y por que', finB.estado === 'abandono' && resB.grande === 'DNF' && resB.titulo === 'Rompiste el auto', [finB.estado, resB]);
-ver('B: el DNF se guarda solo en la tabla del club', await esperarGuardado(B, /Guardado en la tabla de «Los Tercos»/) && await B.evaluate(() => !!window.shakedown.club.oficial().id), await guardado(B));
+ver('B: el DNF se guarda solo en la tabla del club', await esperarGuardado(B, /Guardado en la tabla de todos y en la de «Los Tercos»/) && await B.evaluate(() => !!window.shakedown.club.oficial().id), await guardado(B));
 await B.screenshot({ path: 'out/guardado-3-dnf-celular.png' });
 await B.evaluate(() => { window.__compartido = ''; navigator.share = (d) => { window.__compartido = d.text; return Promise.resolve(); }; document.getElementById('compartir').click(); });
 await B.waitForFunction(() => window.__compartido, null, { timeout: 15000 }).catch(() => {});
@@ -126,11 +126,13 @@ ver('A: Caro ya no figura como que todavia no corrio', !(await texto(A, 'clubFal
 await A.screenshot({ path: 'out/guardado-4-tabla.png' });
 await dormir(a);
 
-// ---------- D: sin club ni nombre; corre sin señal y cierra el juego ----------
+// ---------- D: sin club; corre la oficial sin señal y cierra el juego ----------
+// (la oficial pide nombre: se le pone uno; despues se lo saca para ver la pista de la comunidad, que si corre sin nombre)
 const d = await abrir({ ancho: 390, alto: 844, ruta: '?servidor=' + encodeURIComponent(API), contexto: celular });
 if (!d.cargo) { console.log('D NO CARGO\n' + d.errores.join('\n')); process.exit(1); }
 const D = d.pag;
 await cargada(D);
+await D.evaluate(() => window.shakedown.club.ponerNombre('Dora'));
 await sinSenal(D, true);
 const finD = await correr(D, 'bueno', 'kacito');
 await esperarFin(D);
@@ -140,6 +142,7 @@ await D.reload();   // (cierra el juego antes de que vuelva la señal, y lo vuel
 await cargada(D);
 await D.waitForFunction(() => { const o = window.shakedown.club.oficial(); return o && o.id; }, null, { timeout: 20000 }).catch(() => {});
 ver('D: sin club, al volver a abrir el juego la oficial se sube sola', await D.evaluate(() => /^[0-9A-Za-z]{7}$/.test(window.shakedown.club.oficial().id || '')), await D.evaluate(() => window.shakedown.club.oficial()));
+await D.evaluate(() => window.shakedown.club.ponerNombre(''));
 // una pista de la comunidad (la publica alguien por el servidor) que D corre sin haberse puesto nombre
 const pista = await D.evaluate(async (api) => {
   const hoja = { v: 1, a: 'campo', c: 'sol', p: ['r2', 'd3', 'ge', 'r1', 'i4', 'sa', 'r2', 'd5', 'pu', 'i2', 'r3', 'd4', 'cn', 'r2', 'i5', 'va', 'r2'] };

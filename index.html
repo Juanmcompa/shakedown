@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="35" class="cargando">
+<html lang="es" data-pagina="36" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -368,7 +368,10 @@
       <h2 id="pistaNombre"></h2>
       <p id="pistaDatos" class="datos"></p>
       <button id="largar" class="largar-grande" data-largar="hoy" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Largar</span></button>
+      <!-- de quien ver los tiempos: Todos (los que corrieron la oficial, con o sin club), Amigos (links y clubes) o un club -->
+      <div id="hoyVista" class="opciones clubes vista-hoy" role="radiogroup" aria-label="De quién ver los tiempos" hidden></div>
       <ol id="hoyTiempos" class="card-tiempos"></ol>
+      <p id="hoyPuesto" class="hoy-puesto" hidden><span id="hoyPuestoTexto"></span> <button id="hoyVerTodos" type="button" class="con-texto discreto" data-icono="podio" data-color="#000000">Ver la tabla</button></p>
     </article>
     <!-- Los modos: icono y palabra, siempre a la vista. Cada uno abre una lista simple para elegir y largar. -->
     <nav id="homeModos" class="modos" aria-label="Modos de juego">
@@ -393,11 +396,26 @@
   </div>
 </main>
 
+<!-- Antes de la pasada oficial, si todavia no hay nombre: se pide aca (con uno sugerido, que se acepta de un toque) -->
+<section id="cartelNombre" class="cartel-nombre" role="dialog" aria-modal="true" aria-labelledby="cartelNombreTitulo" hidden>
+  <form id="cartelNombreForm" class="cartel-nombre-caja">
+    <h2 id="cartelNombreTitulo">¿Cómo te anotamos?</h2>
+    <p class="chico">Tu tiempo queda en la tabla de todos. Después lo podés cambiar.</p>
+    <input id="cartelNombreCampo" type="text" maxlength="14" autocomplete="nickname" autocapitalize="words" spellcheck="false" enterkeyhint="go" aria-label="Tu nombre">
+    <div class="botones">
+      <button id="cartelNombreListo" type="submit" data-icono="bandera" data-color="#000000"><span class="rotulo">Listo</span></button>
+      <button id="cartelNombreOtro" type="button" class="con-texto discreto">Otro nombre</button>
+      <button id="cartelNombreVolver" type="button" class="segundo" data-icono="atras" data-color="#000000" aria-label="Volver"><span class="rotulo">Volver</span></button>
+    </div>
+  </form>
+</section>
+
 <!-- paneles que se abren sobre la portada -->
 <section id="panel" class="panel" hidden>
   <button id="cerrarPanel" class="cerrar" data-icono="cerrar" data-color="#000000" aria-label="Cerrar"></button>
   <div id="panelTabla" hidden>
     <h2>Tabla <span id="tablaPista"></span></h2>
+    <p id="tablaTotal" class="chico" hidden></p>
     <!-- Los clubes (aparecen solo si el juego tiene servidor): "Todos", un boton por club y el "+" para armar uno nuevo. -->
     <div id="clubes" class="opciones clubes" role="radiogroup" aria-label="De quién ver los tiempos" hidden></div>
     <div id="clubCabeza" class="club-cabeza" hidden>
@@ -608,6 +626,7 @@
   <h2 id="finTitulo"></h2>
   <p id="finGrande"></p>
   <!-- como quedaste contra los de la tabla (tus amigos): el puesto, y a cuanto del de adelante y del de atras (lo pone menu.js) -->
+  <p id="finTodos" class="fin-amigos fin-todos" hidden></p>
   <p id="finAmigos" class="fin-amigos" hidden></p>
   <div id="finCuadros" class="sectores"></div>
   <p id="finDetalle"></p>

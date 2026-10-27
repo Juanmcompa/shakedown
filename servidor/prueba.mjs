@@ -325,6 +325,83 @@ if (!BASE) {
   LIMITES.travesiasPorDia = topesT.travesiasPorDia;
 }
 
+// --- la tabla de todos: la oficial de cada corredor, con o sin club ---
+{
+  const topes = { ...LIMITES }, ayer = N - 1, Ty = crearTerreno(generarPista(ayer)), [LX, LY, LZ, LW] = ['x', 'y', 'z', 'w'].map((x) => x.repeat(24) + 'T' + sufijo);
+  const todos = (quien, pista = ayer) => pedir('POST', '/todos', { llave: quien, pista, version: 1 });
+  r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: '', t: 100 }) });
+  ver('la oficial sin nombre no entra', r.estado === 400 && /nombre/i.test(r.cosa.error), r);
+  r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: '‏\u0007  ', t: 100 }) });
+  ver('ni con un nombre de puras marcas invisibles', r.estado === 400, r);
+  r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: '', t: 100, practica: true }) });
+  ver('una practica sin nombre si entra', r.estado === 200, r);
+  r = await todos(LX);
+  ver('al principio la tabla de todos esta vacia', r.estado === 200 && r.cosa.total === 0 && r.cosa.tabla.length === 0 && r.cosa.yo === null, r);
+  // tres corredores sin club: Xavi 100 s, Yoli 90 s (rally serio, con ayuda), Zeta abandona
+  r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: 'Xavi', t: 100, auto: '323' }) });
+  const idX = r.cosa && r.cosa.id;
+  r = await pedir('POST', '/pasadas', { llave: LY, codigo: await pasada(Ty, { pista: ayer, nombre: 'Yoli', t: 90, serio: true, ayuda: true }) });
+  const idY = r.cosa && r.cosa.id;
+  r = await pedir('POST', '/pasadas', { llave: LZ, codigo: await pasada(Ty, { pista: ayer, nombre: 'Zeta', t: 40, ab: 'roto', dura: 40 }) });
+  ver('los tres suben su oficial sin estar en ningun club', idX && idY && r.estado === 200, r);
+  r = await todos(LX);
+  const tb = r.cosa && r.cosa.tabla;
+  ver('la tabla de todos: total, orden (el que abandona al final) y puestos', r.estado === 200 && r.cosa.total === 3 && tb.map((x) => x.puesto + x.nombre).join() === '1Yoli,2Xavi,3Zeta', r.cosa);
+  ver('cada fila lleva auto, tiempo, colores, marcas y el codigo del fantasma', tb[0].id === idY && tb[0].t === 90 && tb[0].auto === '333' && tb[0].ayuda === true && tb[0].serio === true && tb[1].auto === '323' && tb[1].serio === false && tb[1].ayuda === false && tb[2].ab === 'roto' && tb[1].c.length === 5 && /^[\w-]{16}$/.test(tb[0].j), tb);
+  ver('mi fila esta marcada, con mi puesto', r.cosa.yo && r.cosa.yo.puesto === 2 && r.cosa.yo.mio === true && tb.filter((x) => x.mio).map((x) => x.nombre).join() === 'Xavi' && r.cosa.cerca.length === 0, r.cosa);
+  const f = await pedir('GET', '/pasadas/' + tb[0].id);
+  ver('el fantasma de cualquiera se baja con su codigo', f.estado === 200 && f.cosa.codigo.startsWith('d'), f.estado);
+  r = await todos('');
+  ver('sin llave se ve la tabla, pero sin mi fila', r.estado === 200 && r.cosa.total === 3 && r.cosa.yo === null && !r.cosa.tabla.some((x) => x.mio), r.cosa);
+  r = await todos(LW);
+  ver('quien todavia no corrio ve la tabla sin su fila', r.cosa.total === 3 && r.cosa.yo === null, r.cosa);
+  r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: 'Xavi', t: 80 }) });
+  ver('una segunda oficial no entra', r.estado === 409, r);
+  r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: 'Xavi', t: 80, practica: true }) });
+  r = await todos(LX);
+  ver('y las practicas no figuran en la tabla de todos', r.cosa.total === 3 && r.cosa.tabla.map((x) => x.t).join() === '90,100,40', r.cosa);
+  r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: 'Xavier', t: 100, auto: '323' }) });
+  ver('volver a subir la misma con otro nombre la actualiza', r.estado === 200 && r.cosa.id === idX, r);
+  r = await pedir('POST', '/nombre', { llave: LY, apodo: '  Yolanda <b>  ' });
+  ver('cambiar el nombre', r.estado === 200 && r.cosa.listo === true, r);
+  r = await todos(LX);
+  ver('el nombre nuevo se ve en la tabla de todos (limpio), y en las otras de esa persona', r.cosa.tabla.map((x) => x.nombre).join() === 'Yolanda b,Xavier,Zeta' && r.cosa.tabla[0].id === idY, r.cosa.tabla);
+  r = await pedir('POST', '/nombre', { llave: LY, apodo: '  ' });
+  ver('un nombre vacio no se acepta', r.estado === 400, r);
+  r = await pedir('POST', '/nombre', { apodo: 'Sin llave' });
+  ver('cambiar el nombre pide llave', r.estado === 400, r);
+  // pistas que no tienen tabla de todos
+  const malas = [[N + 5, 1, 'una pista del futuro'], [16001, 1, 'un circuito'], [13005, 1, 'una pista de la comunidad'], [0, 1, 'la pista cero'], [ayer, 99, 'una version imposible']];
+  const estadosMalos = [];
+  for (const [pista, version] of malas) estadosMalos.push((await pedir('POST', '/todos', { llave: LX, pista, version })).estado);
+  ver('pistas sin oficial no tienen tabla de todos', estadosMalos.every((x) => x === 400), estadosMalos);
+  r = await pedir('POST', '/todos', { llave: LX, pista: N, version: 1 });
+  ver('la de hoy si', r.estado === 200 && r.cosa.total >= 2, r);
+  // con tope: los primeros, mi puesto y los dos de arriba y de abajo
+  if (!BASE) {
+    const tope = LIMITES.tablaDeTodos;
+    LIMITES.tablaDeTodos = 1;
+    r = await todos(LZ);
+    ver('con tope: trae los primeros, mi fila y los que tengo alrededor', r.cosa.tabla.length === 1 && r.cosa.tabla[0].nombre === 'Yolanda b' && r.cosa.yo.puesto === 3 && r.cosa.cerca.map((x) => x.puesto + x.nombre).join() === '1Yolanda b,2Xavier,3Zeta', r.cosa);
+    r = await todos(LX);
+    ver('con tope y estando cerca del final: tambien trae los de alrededor', r.cosa.yo.puesto === 2 && r.cosa.cerca.map((x) => x.puesto).join() === '1,2,3', r.cosa);
+    LIMITES.tablaDeTodos = tope;
+    // las oficiales sin club cuentan en el tope por conexion como cualquier pasada
+    LIMITES.pasadasPorConexion = 1;
+    const ip = { 'cf-connecting-ip': '4.4.4.4' };
+    const a = await pedir('POST', '/pasadas', { llave: llave('q') + sufijo, codigo: await pasada(Ty, { pista: ayer, nombre: 'Q1', t: 101 }) }, ip);
+    const b = await pedir('POST', '/pasadas', { llave: llave('r') + sufijo, codigo: await pasada(Ty, { pista: ayer, nombre: 'Q2', t: 102 }) }, ip);
+    ver('la oficial respeta el tope por conexion', a.estado === 200 && b.estado === 429, [a.estado, b.estado]);
+    LIMITES.pasadasPorConexion = topes.pasadasPorConexion;
+    // el tope de cambios de nombre
+    LIMITES.nombresPorConexion = 2;
+    const nom = async (k) => (await pedir('POST', '/nombre', { llave: llave('n') + k + sufijo, apodo: 'N' + k }, { 'cf-connecting-ip': '3.3.3.3' })).estado;
+    const ne = [await nom(1), await nom(2), await nom(3)];
+    ver('los cambios de nombre tienen tope por conexion', ne.join() === '200,200,429', ne);
+    LIMITES.nombresPorConexion = topes.nombresPorConexion;
+  }
+}
+
 // --- quien puede usarlo desde un navegador ---
 r = await pedir('GET', '/', undefined, { origin: 'https://juanmcompa.github.io' });
 ver('el juego publicado puede', r.cabeza.get('access-control-allow-origin') === 'https://juanmcompa.github.io', r.cabeza.get('access-control-allow-origin'));

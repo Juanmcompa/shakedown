@@ -45,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '35';
+const PAGINA = '36';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -232,6 +232,8 @@ function buscarRival() {
   if (clave === '-') return null;   // eligio correr solo
   const mia = (lista) => lista.find((x) => x.mio && x.codigo), tiene = (x) => x && (x.codigo || x.id);
   let r = clave ? (deLaPractica ? club.practicas() : club.tabla()).find((x) => (clave === '*' ? x.mio : !x.mio && (claveDe(x) === clave || x.nombre === clave))) : null;
+  // alguien de la tabla de todos que no esta en ningun club ni llego por link: su fantasma se baja del servidor al elegirlo
+  if (!tiene(r) && clave && clave !== '*' && !deLaPractica) r = filasDeTodos().find((x) => !x.mio && claveDe(x) === clave) || r;
   // sin rival elegido: despues de la oficial, se practica contra la mejor pasada propia
   if (!tiene(r) && !club.sePuedeOficial()) { const a = mia(club.tabla()), b = mia(club.practicas()); r = a && b ? (b.t < a.t || a.ab ? b : a) : a || b; }
   return tiene(r) ? r : null;
@@ -321,6 +323,36 @@ function subirTravesia() {
     return true;
   })().finally(() => { subiendoTravesia = null; }));
 }
+// --- la tabla de todos: la oficial de cada corredor de la pista del dia, este o no en un club (ver "todos" en worker.js) ---
+// Queda en "deTodos" por numero de pista: { total, tabla (los primeros), yo (mi fila, con mi puesto), cerca (alrededor mio) }.
+// Solo en una pista del dia (hoy o una anterior): los circuitos y las pistas de la comunidad no tienen oficial.
+const deTodos = {};
+let ultimaTodos = -1e9, pidiendoTodos = null;
+const hayTodos = () => nube.hay && !fijo && !comunidad && !esCircuito(numero) && numero >= 1 && numero <= HOY;
+const filasDeTodos = () => { const t = deTodos[numero]; return t ? [...t.tabla, ...(t.yo ? [t.yo] : []), ...t.cerca] : []; };
+function traerTodos(ya) {
+  if (!hayTodos() || (!ya && performance.now() - ultimaTodos < 15000)) return Promise.resolve();
+  if (pidiendoTodos) return pidiendoTodos;
+  ultimaTodos = performance.now();
+  const n = numero;
+  return (pidiendoTodos = (async () => {
+    const t = await nube.todos(n, versionDe(n));
+    if (t) {
+      deTodos[n] = t;
+      // si el rival elegido es de esta tabla y todavia no se habia podido armar, ahora si
+      if (!rival && /^@/.test((club.rival() || '').split('|')[0])) cargarRival();
+      menu.pintar();
+    }
+  })().finally(() => { pidiendoTodos = null; }));
+}
+// Con el nombre nuevo se figura en los clubes y en la tabla de todos aunque todavia no se haya corrido de nuevo.
+async function renombrar() {
+  if (!nube.hay || !club.nombre()) return;
+  for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre());
+  await nube.nombre(club.nombre());
+  traerTodos(true);
+}
+
 // Los records de la Travesia de la gente de mis clubes (quedan en el club, ver club.js)
 let ultimaTravesia = -1e9;
 async function recordesDeLosClubes(ya) {
@@ -352,6 +384,7 @@ const deLosClubes = {};
 let ultimaTabla = -1e9;
 async function tablasDeLosClubes(ya) {
   recordesDeLosClubes(ya);   // (y los records de la Travesia, que van aparte)
+  traerTodos(ya);            // (y la tabla de todos, que no depende de ningun club)
   const mios = club.clubes(), deLaPista = !!comunidad && !comunidad.borrador;
   if (!nube.hay || (!mios.length && !deLaPista) || (!ya && performance.now() - ultimaTabla < 15000)) return;
   ultimaTabla = performance.now();
@@ -419,7 +452,7 @@ const creador = crearCreador({
   probar: () => { location.href = conServidor(location.pathname + '?pista=borrador'); },
   // recien publicada: se abre la pista, con su link (el aviso de "publicada" lo da la portada)
   publicada: (p) => { location.href = conServidor(location.pathname + '?pista=' + p.numero + '-' + p.version + '#publicada'); },
-  renombrar: () => { if (nube.hay) for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); },
+  renombrar,
   alCerrar: () => { if (pantalla !== 'jugando') menu.enfocar(); },
 });
 
@@ -447,8 +480,10 @@ const menu = crearMenu({
   // (renombrar: con el nombre nuevo se figura en los clubes aunque todavia no se haya corrido)
   clubes: nube.hay ? {
     fundar: fundarClub, dejar: dejarClub, de: (codigo) => deLosClubes[codigo] || null, refrescar: () => tablasDeLosClubes(false),
-    renombrar: () => { for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); },
+    renombrar,
   } : null,
+  // la tabla de todos de la pista cargada (null si no hay, o todavia no llego)
+  todos: () => deTodos[numero] || null,
   // volver a ver el tutorial (desde "Como se juega")
   tutorial: () => largar(true),
   // el creador de pistas (codigo: el club para el que se arma, si se abre desde un club)
@@ -503,9 +538,13 @@ function correr(n, dir, nombre) {
 // cuando termina.
 function largar(conTutorial) {
   if (pantalla === 'jugando') return;
+  // La pasada oficial va a la tabla de todos: no larga sin nombre (se pide en un cartel, con uno sugerido que se acepta de un
+  // toque). El tutorial que se pide a proposito, las practicas, los circuitos y la Travesia se corren sin nombre.
+  const sinNombre = !club.nombre();
+  if (sinNombre && club.sePuedeOficial() && conTutorial !== true) { menu.pedirNombre(() => largar(conTutorial)); return; }
   if (!tactil && teclas.esTactil()) mandosDeCelular();
   const explicar = conTutorial === true || club.esNuevo();
-  modo = club.sePuedeOficial() ? 'oficial' : 'practica';
+  modo = club.sePuedeOficial() && !(sinNombre && conTutorial === true) ? 'oficial' : 'practica';
   raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
   pantalla = 'jugando';
   tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio;
@@ -683,7 +722,7 @@ const travesia = crearModoTravesia({
   record: () => { subirTravesia().then((ok) => { if (!ok) reintentarLuego(); }); },
   amigos: () => club.travesiaTabla(),
   refrescar: async () => { await subirTravesia(); await recordesDeLosClubes(true); },
-  renombrar: () => { if (!nube.hay) return; for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre()); subirTravesia().then((ok) => { if (!ok) reintentarLuego(); }); },
+  renombrar: () => { if (!nube.hay) return; renombrar(); subirTravesia().then((ok) => { if (!ok) reintentarLuego(); }); },
 });
 
 // Los navegadores no dejan sonar nada hasta que la persona toca algo: la musica arranca con el primer toque o tecla

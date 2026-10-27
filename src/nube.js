@@ -13,6 +13,10 @@
 //   tablas(pista, version, codigos)    promesa de { codigo: { nombre, miembros, soy, tabla, faltan, pistas } o null (el club ya no existe) } o null
 //   travesia(nombre, km, auto)   manda el record de km de la Travesia. Promesa de { km, nuevo }, { error, estado } o null
 //   travesias(codigos)     los records de la Travesia de cada club: promesa de { codigo: { nombre, tabla: [{ j, nombre, km, auto, mio }] } o null } o null
+//   todos(pista, version)  la tabla del dia de TODOS los que corrieron la oficial (con o sin club): promesa de
+//                          { total, tabla: [{ puesto, id, j, nombre, t, c, auto, ab, ayuda, serio, mio }] (los primeros 100),
+//                          yo: tu fila o null, cerca: [tu puesto y los dos de arriba y abajo, si estas mas alla del 100] } o null
+//   nombre(apodo)          avisa el nombre nuevo: el servidor lo cambia en todo lo que ya tiene guardado de este aparato
 //   crearPista(nombre, apodo, club, hoja)   publica una pista armada en el creador. Promesa de { numero, version, nombre, autor, club, vence },
 //                          { error, estado } o null
 //   borrarPista(numero)    borra una pista de la comunidad (solo la puede borrar quien la armo). Promesa de { borrada }, { error, estado } o null
@@ -93,6 +97,12 @@ export function crearNube(base) {
       const r = await pedir('POST', '/tablas', { llave: llave(), pista, version, clubes: codigos });
       return r && r.clubes ? r.clubes : null;
     },
+    todos: async (pista, version) => {
+      if (!base) return null;
+      const r = await pedir('POST', '/todos', { llave: llave(), pista, version });
+      return r && !r.error && Array.isArray(r.tabla) ? r : null;
+    },
+    nombre: (apodo) => pedir('POST', '/nombre', { llave: llave(), apodo }),
     travesia: (nombre, km, auto) => pedir('POST', '/travesia', { llave: llave(), nombre, km, auto }),
     travesias: async (codigos) => {
       if (!base || !codigos.length) return null;

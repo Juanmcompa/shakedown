@@ -119,6 +119,7 @@ await b.cerrar();
 const c = await abrir({ ancho: 1280, alto: 720 });
 const C = c.pag;
 await C.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
+await C.evaluate(() => window.shakedown.club.ponerNombre('Solo'));   // (la oficial pide nombre)
 await correr(C);
 await fin(C);
 await C.waitForTimeout(300);

@@ -40,7 +40,8 @@ export async function abrir(opciones = {}) {
   // dia: hace de cuenta que hoy es el dia de esa pista (corre el reloj de la pagina)
   // Las pruebas son de alguien que ya vio el tutorial de la primera vez y la guia de la Travesia (si no, se abren y el auto no arranca).
   // Con "nuevo: true" queda como alguien que entra por primera vez.
-  if (!opciones.nuevo) await ctx.addInitScript(() => { try { if (!localStorage.getItem('shakedown')) localStorage.setItem('shakedown', JSON.stringify({ gustos: { tutorial: 1, travesiaGuia: 1 } })); } catch (e) { /* sin memoria */ } });
+  // (opciones.gustos: otros gustos de arranque, por ejemplo { vistaTabla: '' } para ver la tabla de amigos y no la de todos)
+  if (!opciones.nuevo) await ctx.addInitScript((mas) => { try { if (!localStorage.getItem('shakedown')) localStorage.setItem('shakedown', JSON.stringify({ gustos: { tutorial: 1, travesiaGuia: 1, ...mas } })); } catch (e) { /* sin memoria */ } }, opciones.gustos || {});
   if (opciones.dia) await ctx.addInitScript((dias) => { const ahora = Date.now, corre = dias * 86400000; Date.now = () => ahora() + corre; }, opciones.dia - 1);
   const pag = await ctx.newPage();
   // (con varios navegadores a la vez y graficos por software, una captura o una recarga pueden tardar mas de 30 s)
@@ -83,11 +84,19 @@ export async function irACard(pag, clave, dedos) {
 // Larga un modo desde el inicio, como lo haria quien juega: abre su panel y toca su boton. modo: hoy, subida, bajada, urbano,
 // practica, giulio, montana, travesia o tutorial. Si hace falta cargar otra pista, el juego se recarga y arranca solo: aca se
 // espera a que este corriendo (salvo travesia y tutorial: de esos se ocupa quien llama).
+// Si la oficial pide el nombre (cartel con uno sugerido), lo acepta de un toque; si ya esta corriendo, no hace nada.
+export async function aceptarNombre(pag, dedos) {
+  await pag.waitForFunction(() => { const c = document.getElementById('cartelNombre'); return (c && !c.hidden) || (window.shakedown && window.shakedown.estado().pantalla === 'jugando'); }, null, { timeout: 120000 });
+  if (await pag.evaluate(() => { const c = document.getElementById('cartelNombre'); return !!c && !c.hidden; })) await (dedos ? pag.tap('#cartelNombreListo') : pag.click('#cartelNombreListo'));
+}
 export async function largarDesdeHome(pag, modo, { dedos = false } = {}) {
   await irACard(pag, CARD_DE[modo], dedos);
   const boton = BOTON_DE[modo] || '[data-largar="c"][data-n="' + PISTA_DE[modo] + '"]';
   await (dedos ? pag.tap(boton) : pag.click(boton));
   if (modo === 'travesia' || modo === 'tutorial') return;
+  // la oficial sin nombre pide uno en un cartel: se acepta el sugerido, como quien juega
+  await pag.waitForFunction(() => { const c = document.getElementById('cartelNombre'); return (c && !c.hidden) || (window.shakedown && window.shakedown.estado().pantalla === 'jugando'); }, null, { timeout: 120000 });
+  if (await pag.evaluate(() => { const c = document.getElementById('cartelNombre'); return !!c && !c.hidden; })) await (dedos ? pag.tap('#cartelNombreListo') : pag.click('#cartelNombreListo'));
   await pag.waitForFunction((n) => window.shakedown && window.shakedown.estado().pantalla === 'jugando' && (n === null || window.shakedown.estado().pista === n), PISTA_DE[modo], { timeout: 120000 });
 }
 

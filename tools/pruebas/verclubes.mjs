@@ -30,13 +30,13 @@ const fichas = (pag) => pag.evaluate(() => [...document.querySelectorAll('#clube
 const texto = (pag, id) => pag.evaluate((id) => { const el = document.getElementById(id); return el.hidden ? '' : el.textContent; }, id);
 
 // ---------- A: arma un club, corre y comparte ----------
-const a = await abrir({ ruta: '?servidor=' + encodeURIComponent(API), contexto: permisos });
+const a = await abrir({ ruta: '?servidor=' + encodeURIComponent(API), contexto: permisos, gustos: { vistaTabla: '' } });
 if (!a.cargo) { console.log('A NO CARGO\n' + a.errores.join('\n')); process.exit(1); }
 const A = a.pag;
 await A.evaluate(() => window.shakedown.club.ponerNombre('Juanma'));
 await A.click('[data-panel="tabla"]');
 await A.waitForTimeout(300);
-ver('A: sin clubes, el boton dice "Armar un club"', JSON.stringify(await fichas(A)) === JSON.stringify(['Armar un club']), await fichas(A));
+ver('A: sin clubes, el boton dice "Armar un club"', JSON.stringify(await fichas(A)) === JSON.stringify(['Todos', 'Amigos*', 'Armar un club']), await fichas(A));
 await A.screenshot({ path: 'out/club-1-vacio.png' });
 await A.click('#clubes button.mas');
 await A.fill('#clubNombre', 'Los Pibes del Barro');
@@ -46,7 +46,7 @@ await A.waitForFunction(() => window.shakedown.club.clubes().length === 1, null,
 const clubA = await A.evaluate(() => window.shakedown.club.clubes()[0]);
 ver('A: crea el club', clubA && /^[0-9A-Za-z]{8}$/.test(clubA.codigo) && clubA.nombre === 'Los Pibes del Barro', clubA);
 await A.waitForTimeout(500);
-ver('A: queda parado en su club', (await fichas(A)).join('|') === 'Todos|Los Pibes del Barro*|', await fichas(A));
+ver('A: queda parado en su club', (await fichas(A)).join('|') === 'Todos|Amigos|Los Pibes del Barro*|', await fichas(A));
 ver('A: como ya tiene nombre, no se lo pide', await A.evaluate(() => document.getElementById('clubApodo').hidden));
 ver('A: le avisa que invite', /Invitá/.test(await texto(A, 'clubAviso')) && /vos solo/.test(await texto(A, 'clubDatos')), [await texto(A, 'clubAviso'), await texto(A, 'clubDatos')]);
 await A.screenshot({ path: 'out/club-3-creado.png' });
@@ -64,19 +64,21 @@ const ofA = await A.evaluate(() => { const o = window.shakedown.club.oficial(); 
 ver('A: la oficial se subio sola y tiene codigo corto', /^[0-9A-Za-z]{7}$/.test(ofA.id || ''), ofA);
 await A.click('#compartir');
 await A.waitForTimeout(600);
-const [mensajeA, linkA, firmaA, ...sobra] = (await A.evaluate(() => navigator.clipboard.readText())).split('\n');
-ver('A: el mensaje tiene tres renglones y el ultimo es el aviso de Early Access (sin quien hace el juego)', firmaA === '🚧 Early Access · App en desarrollo' && sobra.length === 0 && /^Shakedown #\d+ /.test(mensajeA) && / 🏁 🚙333$/.test(mensajeA), [mensajeA, firmaA, sobra]);
+const [mensajeA, ...restoA] = (await A.evaluate(() => navigator.clipboard.readText())).split('\n');
+// (el link va solo en su renglon, el aviso de Early Access al final y, si ya se sabe, el puesto entre todos en otro renglon)
+const linkA = restoA.find((x) => /#r=/.test(x)), firmaA = restoA[restoA.length - 1], sobra = restoA.filter((x) => x !== linkA && x !== firmaA && !/^🏆 \d+º de \d+$/.test(x));
+ver('A: el mensaje: el primer renglon de siempre, el link solo y el ultimo es el aviso de Early Access (sin quien hace el juego)', firmaA === '🚧 Early Access · App en desarrollo' && sobra.length === 0 && /^Shakedown #\d+ /.test(mensajeA) && / 🏁 🚙333$/.test(mensajeA), [mensajeA, firmaA, sobra]);
 ver('A: comparte con el link corto', linkA && linkA.endsWith('#r=' + ofA.id), linkA);
 console.log('     ' + mensajeA + ' | ' + linkA + '   (antes: ' + (linkA.length - ofA.id.length + ofA.largo) + ' letras; ahora: ' + linkA.length + ')');
 await A.screenshot({ path: 'out/club-4-fin-a.png' });
 
 // ---------- B: abre la invitacion (en un celular), ve a A, le corre al fantasma ----------
-const b = await abrir({ ancho: 390, alto: 844, ruta: '?servidor=' + encodeURIComponent(API) + '#club=' + clubA.codigo, contexto: { ...permisos, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } });
+const b = await abrir({ ancho: 390, alto: 844, ruta: '?servidor=' + encodeURIComponent(API) + '#club=' + clubA.codigo, contexto: { ...permisos, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }, gustos: { vistaTabla: '' } });
 if (!b.cargo) { console.log('B NO CARGO\n' + b.errores.join('\n')); process.exit(1); }
 const B = b.pag;
 await B.waitForFunction(() => !document.getElementById('panelTabla').hidden && window.shakedown.club.clubes().length === 1, null, { timeout: 15000 }).catch(() => {});
 await B.waitForTimeout(600);
-ver('B: la invitacion lo deja en el club, con la tabla abierta', (await fichas(B)).join('|') === 'Todos|Los Pibes del Barro*|' && /Ya estás en/.test(await texto(B, 'clubAviso')), [await fichas(B), await texto(B, 'clubAviso')]);
+ver('B: la invitacion lo deja en el club, con la tabla abierta', (await fichas(B)).join('|') === 'Todos|Amigos|Los Pibes del Barro*|' && /Ya estás en/.test(await texto(B, 'clubAviso')), [await fichas(B), await texto(B, 'clubAviso')]);
 ver('B: ve el tiempo de A con su fantasma', (await tabla(B)).length === 1 && (await tabla(B))[0].startsWith('Juanma') && (await tabla(B))[0].endsWith('[fantasma]'), await tabla(B));
 ver('B: la direccion queda limpia', !(await B.evaluate(() => location.hash)), await B.evaluate(() => location.hash));
 await B.screenshot({ path: 'out/club-5-invitado.png' });
@@ -108,13 +110,13 @@ await A.click('[data-panel="tabla"]');
 await A.waitForTimeout(500);
 const tA = await tabla(A);
 ver('A: en la tabla aparece B solo', tA.length === 2 && tA.some((x) => x.startsWith('Fede') && x.endsWith('[fantasma]')) && tA.some((x) => x.includes('(mio)')), tA);
-await A.click('#clubes button:nth-child(2)');
+await A.click('#clubes button:nth-child(3)');
 await A.waitForTimeout(300);
 ver('A: el club dice cuantos son', /2 corredores/.test(await texto(A, 'clubDatos')), await texto(A, 'clubDatos'));
 await A.screenshot({ path: 'out/club-7-tabla-a.png' });
 
 // ---------- C: se suma pero todavia no corre; A lo ve en "todavia no corrieron" ----------
-const c = await abrir({ ruta: '?servidor=' + encodeURIComponent(API), contexto: permisos });
+const c = await abrir({ ruta: '?servidor=' + encodeURIComponent(API), contexto: permisos, gustos: { vistaTabla: '' } });
 const C = c.pag;
 await C.evaluate(() => window.shakedown.club.ponerNombre('Caro'));
 // C abre el link corto de A (no la invitacion): corre contra A, y lo ve en su tabla
@@ -125,7 +127,7 @@ await C.waitForTimeout(800);
 ver('C: abre el link corto y corre contra A', (await C.evaluate(() => window.shakedown.estado().rival)) === 'Juanma', await C.evaluate(() => window.shakedown.estado()));
 await C.click('[data-panel="tabla"]');
 await C.waitForTimeout(300);
-ver('C: A esta en su tabla; todavia no hay clubes', (await tabla(C)).length === 1 && (await fichas(C)).join('|') === 'Armar un club', [await tabla(C), await fichas(C)]);
+ver('C: A esta en su tabla; todavia no hay clubes', (await tabla(C)).length === 1 && (await fichas(C)).join('|') === 'Todos|Amigos*|Armar un club', [await tabla(C), await fichas(C)]);
 await C.click('#cerrarPanel');
 // ahora si, la invitacion
 await C.goto(c.base + '?servidor=' + encodeURIComponent(API) + '#club=' + clubA.codigo);
@@ -146,17 +148,17 @@ await B.fill('#clubNombre', 'Diseño 3');
 await B.tap('#clubNuevo button');
 await B.waitForFunction(() => window.shakedown.club.clubes().length === 2, null, { timeout: 8000 }).catch(() => {});
 await B.waitForTimeout(800);
-ver('B: tiene dos clubes y queda en el nuevo', (await fichas(B)).join('|') === 'Todos|Los Pibes del Barro|Diseño 3*|', await fichas(B));
+ver('B: tiene dos clubes y queda en el nuevo', (await fichas(B)).join('|') === 'Todos|Amigos|Los Pibes del Barro|Diseño 3*|', await fichas(B));
 ver('B: su oficial ya figura en el club nuevo', (await tabla(B)).length === 1 && (await tabla(B))[0].includes('(mio)'), await tabla(B));
 await B.screenshot({ path: 'out/club-9-dos-clubes.png' });
-await B.tap('#clubes button:nth-child(2)');
+await B.tap('#clubes button:nth-child(3)');
 await B.waitForTimeout(200);
 await B.evaluate(() => document.getElementById('clubSalir').click());
 ver('B: salir pide confirmacion', /Seguro/.test(await B.evaluate(() => document.getElementById('clubSalir').textContent)), await B.evaluate(() => document.getElementById('clubSalir').textContent));
 await B.evaluate(() => document.getElementById('clubSalir').click());
 await B.waitForFunction(() => window.shakedown.club.clubes().length === 1, null, { timeout: 8000 }).catch(() => {});
 await B.waitForTimeout(400);
-ver('B: salio; de "Todos" se fue la gente de ese club', (await fichas(B)).join('|') === 'Todos*|Diseño 3|' && (await tabla(B)).length === 1, [await fichas(B), await tabla(B)]);
+ver('B: salio; de "Todos" se fue la gente de ese club', (await fichas(B)).join('|') === 'Todos|Amigos*|Diseño 3|' && (await tabla(B)).length === 1, [await fichas(B), await tabla(B)]);
 
 for (const [n, j] of [['A', a], ['B', b], ['C', c]]) ver(n + ': sin errores en la consola', j.errores.length === 0, [...new Set(j.errores)].slice(0, 4));
 await a.cerrar(); await b.cerrar(); await c.cerrar();
