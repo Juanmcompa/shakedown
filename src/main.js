@@ -45,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '38';
+const PAGINA = '39';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -506,7 +506,8 @@ let antes = performance.now(), resto = 0, reloj3d = 0, tactil = false, grabacion
 let rondas = 0, mejorRonda = null, mejoroAlgo = false;
 let conVoz = true, conFlechas = false, hayVolante = null;   // hayVolante: si el celular tiene sensor de inclinacion (null = todavia no se sabe)
 // la camara que se eligio la ultima vez (el boton muestra cual es)
-if (club.gusto('camara')) camara.cambiar(club.gusto('camara'));
+// (quien entra por primera vez arranca con la de tercera persona, detras del auto; a quien ya eligio otra, se le respeta)
+camara.cambiar(club.gusto('camara') || 'atras');
 hud.camara(camara.modo().id);
 const lugar = { x: 0, z: 0, rumbo: 0, alto: 0 };
 const ent = { x: 0, y: 0, mano: false }, QUIETO = { x: 0, y: 0, mano: true };
@@ -767,7 +768,7 @@ const APLICAR = {
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },
   pedales: (v) => { raiz.style.setProperty('--pedales', v); encuadrar(); },
-  efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); travesia.efectos(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
+  efectos: (v) => { conEfectos = !!v; fx.prender(conEfectos); huellas.relieve.value = conEfectos ? 1 : 0; mundo.efectos(conEfectos); travesia.efectos(conEfectos); ambiente.rafaga.value = conEfectos ? 0.7 + fuerzaDelViento : 0; post.prender(!!v && !consulta.has('simple')); },   // (?simple en la direccion tambien los saca)
   sonido: (v) => { if (sonido.mudo() === !!v) sonido.alternar(); hud.prendido('sonido', !!v); },
   musica: (v) => { hud.prendido('musica', !!v); const b = $('botonMusica'); b.firstElementChild.src = icono('musica', undefined, !v); b.classList.toggle('apagado', !v); b.setAttribute('aria-pressed', !!v); },
   voz: (v) => { conVoz = !!v; copiloto.voz(conVoz); travesia.voz(conVoz); hud.prendido('voz', conVoz); },
@@ -955,7 +956,7 @@ window.addEventListener('online', () => { if (pantalla !== 'jugando') alVolver()
 // Para probar desde la consola: shakedown.ir(400) lleva el auto al metro 400 del camino.
 // Solo en una copia local del juego: en el publicado seria una trampa de una linea.
 if (enCasa) window.shakedown = {
-  T, ref, menu, camara, teclas, partida, club, fx, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, recordesDeLosClubes, subirTravesia, tutorial, creador, comunidad, sonido, musica, papelitos,
+  T, ref, menu, camara, teclas, partida, club, fx, huellas, mundo, copiloto, escena, render, post, ajustar, gusto, trazada, ayuda, nube, tablasDeLosClubes, recordesDeLosClubes, subirTravesia, tutorial, creador, comunidad, sonido, musica, papelitos,
   auto: () => c,
   travesia: travesia.prueba, entrarTravesia: () => travesia.entrar(),
   dibujo: () => dibujo,

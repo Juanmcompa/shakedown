@@ -21,6 +21,8 @@ const POLVO_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.tierra.id]: 'tierra', [SU
 const EDADES_G = [[30, 1.1], [36, 0.9], [42, 0.66], [48, 0.4]];
 const POLVOS_G = { arena: ['#d49a58', '#e8b574', '#f6d29c'], ripio: ['#cda06a', '#e2bb86', '#f2d6a6'], tierra: ['#b07a4c', '#cb9768', '#e0b88a'] };
 const POLVO_G_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.arena.id]: 'arena', [SUELOS.feshfesh.id]: 'arena', [SUELOS.pedregal.id]: 'tierra', [SUELOS.tierra.id]: 'tierra' };
+// que tipo de huella deja cada suelo (ver huellas.js): 1 barro hondo, 2 surco de arena, 3 pasto aplastado, 4 tierra, 5 ripio
+const HUELLA_DE = { [SUELOS.barro.id]: 1, [SUELOS.pantano.id]: 1, [SUELOS.charco.id]: 1, [SUELOS.arena.id]: 2, [SUELOS.feshfesh.id]: 2, [SUELOS.pasto.id]: 3, [SUELOS.tierra.id]: 4, [SUELOS.sendero.id]: 4, [SUELOS.pedregal.id]: 4, [SUELOS.ripio.id]: 5, [SUELOS.gravilla.id]: 5 };
 const TRAMA = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 function nube(p, lado, tupida, tonos) {
   const c = (lado - 1) / 2;
@@ -133,7 +135,9 @@ export function crearEfectos(escena, huellas, seco = 1, viento = [0.5, 0.3], liv
       // huella: siempre que el piso sea blando, y bien marcada cuando la rueda resbala (hasta en el asfalto deja la goma)
       const fuerza = mojado ? 0 : Math.min(1, Math.max(s.blando * (0.7 + resbala * 0.6), w.barro * 0.5, resbala * 0.8));
       // donde el piso es blando, cada pasada de mas oscurece la marca; al derrapar el surco se ensancha
-      huellas.marcar(i, r.p[0], r.p[2], fuerza < 0.12 ? 0 : fuerza, activo && s.blando >= 0.3 ? Math.round(18 + s.blando * 40) : 0, activo && resbala > 0.55 && s.blando > 0);
+      // (con los efectos prendidos, en barro y arena el surco es doble: se hunde la rueda y la tierra se corre al costado)
+      const tipoH = HUELLA_DE[r.suelo] || 0;
+      huellas.marcar(i, r.p[0], r.p[2], fuerza < 0.12 ? 0 : fuerza, activo && s.blando >= 0.3 ? (tipoH === 5 ? 0 : tipoH === 4 ? 8 : Math.round(18 + s.blando * 40)) : 0, activo && ((resbala > 0.55 && s.blando > 0) || tipoH === 1 || tipoH === 2), tipoH);
 
       // polvo: una nube cada tantos metros, mas seguido cuanto mas rapido va y cuanto mas resbala la rueda.
       // Lo levantan sobre todo las ruedas de atras; en el asfalto solo hay humo de goma si se va muy cruzado.

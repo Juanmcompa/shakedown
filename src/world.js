@@ -11,6 +11,7 @@ import { ambiente, estilo } from './material.js';
 import { crearFlora } from './flora.js';
 import { crearUtileria } from './utileria.js';
 import { crearPublico } from './publico.js';
+import { crearAmbientacion } from './ambientacion.js';
 import { crearPueblo } from './pueblo.js';
 import { crearPublicidad } from './carteleria.js';
 import { crearClima } from './clima.js';
@@ -75,6 +76,8 @@ export const PISO = {
     uniform sampler2D uMapa;
     uniform sampler2DArray uPisos;
     uniform sampler2D uHuellas;   // por donde pasaron las ruedas (un dato por pixel del mundo)
+    uniform sampler2D uTipos;     // y sobre que suelo (1 barro, 2 arena, 3 pasto, 4 tierra, 5 ripio)
+    uniform float uRelieve;       // 1 = las huellas se pintan segun el suelo y con relieve falso (ajuste "efectos")
     uniform vec4 uCampo;          // origen del mapa (x, z) y cantidad de celdas
     uniform float uMojado;`,
   cuerpo: glslPixel(true) + `
@@ -104,7 +107,30 @@ export const PISO = {
     float marca = plano != 0 ? 0.0 : texelFetch(uHuellas, clamp(ivec2(pix) - ivec2(uCampo.xy) * 4, ivec2(0), ivec2(uCampo.zw) * 4 - 1), 0).r;
     // (los dos valores mas altos no son huellas sino pintura: blanca o amarilla, un poco gastada)
     if (marca > 0.994) { if (dado.x > 0.1) piso = mix(piso, marca > 0.998 ? vec3(0.66, 0.65, 0.6) : vec3(0.64, 0.42, 0.06), 0.85); }
-    else if (marca > 0.1) piso *= marca > 0.55 ? vec3(0.48, 0.43, 0.41) : marca > 0.3 ? vec3(0.6, 0.56, 0.54) : vec3(0.72, 0.69, 0.67);
+    else if (marca > 0.1) {
+      float tipoH = uRelieve > 0.5 ? floor(texelFetch(uTipos, clamp(ivec2(pix) - ivec2(uCampo.xy) * 4, ivec2(0), ivec2(uCampo.zw) * 4 - 1), 0).r * 255.0 + 0.5) : 0.0;
+      if (tipoH < 0.5) piso *= marca > 0.55 ? vec3(0.48, 0.43, 0.41) : marca > 0.3 ? vec3(0.6, 0.56, 0.54) : vec3(0.72, 0.69, 0.67);
+      else if (tipoH < 1.5) piso = mix(piso * vec3(0.5, 0.42, 0.38), vec3(0.2, 0.11, 0.07), 0.55 + 0.4 * marca) * (0.9 + 0.2 * dado.x);   // barro: hondo, oscuro y mojado
+      else if (tipoH < 2.5) piso *= marca > 0.55 ? vec3(0.74, 0.68, 0.6) : vec3(0.84, 0.8, 0.74);                                       // arena: surco
+      else if (tipoH < 3.5) piso = mix(piso, vec3(0.5, 0.46, 0.24), 0.3 + 0.2 * dado.y) * (marca > 0.5 ? 0.82 : 0.92);                      // pasto aplastado, con la tierra a la vista
+      else if (tipoH < 4.5) piso *= marca > 0.55 ? vec3(0.62, 0.56, 0.54) : vec3(0.76, 0.72, 0.7);                                       // tierra: marca suave
+      else piso *= vec3(0.93, 0.92, 0.9);                                                                                                // ripio: casi nada
+      // relieve falso: la tierra que sale del surco forma un lomito claro al costado, y la pared de abajo queda en sombra
+      if (uRelieve > 0.5 && tipoH > 0.5 && tipoH < 3.5) {
+        ivec2 q = clamp(ivec2(pix) - ivec2(uCampo.xy) * 4, ivec2(1), ivec2(uCampo.zw) * 4 - 2);
+        float arriba = texelFetch(uHuellas, q + ivec2(0, -1), 0).r;
+        if (arriba < 0.1) piso *= 0.8;
+      }
+    }
+    else if (uRelieve > 0.5) {
+      // al lado de una marca de barro o de arena: el montoncito que se corrio
+      ivec2 q = clamp(ivec2(pix) - ivec2(uCampo.xy) * 4, ivec2(1), ivec2(uCampo.zw) * 4 - 2);
+      float vecina = max(max(texelFetch(uHuellas, q + ivec2(1, 0), 0).r, texelFetch(uHuellas, q + ivec2(-1, 0), 0).r), max(texelFetch(uHuellas, q + ivec2(0, 1), 0).r, texelFetch(uHuellas, q + ivec2(0, -1), 0).r));
+      if (vecina > 0.1 && vecina < 0.99) {
+        float tv = floor(texelFetch(uTipos, q + ivec2(1, 0), 0).r * 255.0 + 0.5) + floor(texelFetch(uTipos, q + ivec2(-1, 0), 0).r * 255.0 + 0.5) + floor(texelFetch(uTipos, q + ivec2(0, 1), 0).r * 255.0 + 0.5) + floor(texelFetch(uTipos, q + ivec2(0, -1), 0).r * 255.0 + 0.5);
+        if (tv > 0.5 && tv < 8.5) piso *= 1.13;
+      }
+    }
     // curvas de nivel cada 2 metros (mas marcadas cada 10), de un pixel de ancho, solo donde el terreno es empinado
     float hx = dFdx(vMundo.y), hy = dFdy(vMundo.y);
     float salto = abs(det) > 1e-10 ? length(vec2(dyz.y * hx - dxz.y * hy, dxz.x * hy - dyz.x * hx) / det) * 0.25 : 0.0;
@@ -173,6 +199,9 @@ export function crearMundo(T, escena, liviano, huellas) {
   const clima = crearClima(T, escena, luz);   // (los faros, el haz, las luces traseras y los resplandores: ver clima.js)
   const flora = crearFlora(T, escena, esc, liviano), utileria = crearUtileria(T, escena, esc, clima), publico = crearPublico(T, escena, clima, luz), pueblo = crearPueblo(T, escena, clima, luz);
   const publicidad = crearPublicidad(T, escena, utileria.arcos);
+  // el ambiente (hojas, petalos, arena, polillas, animales): el viento es el mismo que levanta el polvo (ver main.js)
+  const soplo = ((T.etapa.semilla || 0) % 628) / 100, fuerzaViento = 0.35 + ((T.etapa.semilla || 0) % 7) * 0.08;
+  const ambientacion = crearAmbientacion(T, escena, { liviano, luz: () => luzActual, viento: [Math.sin(soplo) * fuerzaViento, Math.cos(soplo) * fuerzaViento] });
 
   // --- terreno, en pedazos de 64 x 64 metros para dibujar solo lo que se ve ---
   // el mapa que lee el shader: por celda, que suelo es, un tono (para que no quede todo parejo) y donde van los manchones
@@ -189,7 +218,7 @@ export function crearMundo(T, escena, liviano, huellas) {
   const tMapa = new THREE.DataTexture(mapa, nx, nz, THREE.RGBAFormat, THREE.UnsignedByteType);
   tMapa.needsUpdate = true;
   const mPiso = estilo(new THREE.MeshLambertMaterial(), { clave: 'piso', sombras: true, cabeza: PISO.cabeza, cuerpo: PISO.cuerpo,
-    datos: { uMapa: { value: tMapa }, uPisos: { value: texturaDePisos(T.biomas.map((id) => (BIOMAS[id] || BIOMAS.bosque).piso)) }, uHuellas: { value: huellas.textura }, uCampo: campo, uMojado: { value: luz.mojado } } });
+    datos: { uMapa: { value: tMapa }, uPisos: { value: texturaDePisos(T.biomas.map((id) => (BIOMAS[id] || BIOMAS.bosque).piso)) }, uHuellas: { value: huellas.textura }, uTipos: { value: huellas.texturaTipos }, uRelieve: huellas.relieve, uCampo: campo, uMojado: { value: luz.mojado } } });
   const TAM = 64, alto = (i, j) => H[Math.min(nz - 1, Math.max(0, j)) * nx + Math.min(nx - 1, Math.max(0, i))];
   for (let cz = 0; cz < nz - 1; cz += TAM) for (let cx = 0; cx < nx - 1; cx += TAM) {
     const w = Math.min(TAM, nx - 1 - cx), h = Math.min(TAM, nz - 1 - cz);
@@ -305,12 +334,16 @@ export function crearMundo(T, escena, liviano, huellas) {
     animar: (dt, t, c, indice) => {
       ambiente.tiempo.value = t;
       publico.animar(c, indice, dt, t);
+      ambientacion.actualizar(c, dt, t);
       clima.animar(dt, t, c);
       if (c.rompio.length) { c.rompio.length = 0; utileria.tirar(); pueblo.tirar(); }
       utileria.animar(t);
       publicidad.animar(c, dt);
       festival.animar(c, indice, dt, t);
     },
-    reiniciar: () => { utileria.reiniciar(); pueblo.reiniciar(); publicidad.reiniciar(); },
+    // el ajuste "efectos": lo nuevo del ambiente (hojas, petalos, arena, animales, antorchas y flashes) se prende o se apaga
+    efectos: (v) => { ambientacion.prender(v); publico.efectos(v); },
+    ambientacion, publico,
+    reiniciar: () => { ambientacion.limpiar(); publico.reiniciar(); utileria.reiniciar(); pueblo.reiniciar(); publicidad.reiniciar(); },
   };
 }

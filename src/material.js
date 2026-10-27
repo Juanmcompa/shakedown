@@ -71,14 +71,19 @@ export function estilo(mat, o = {}) {
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uBajo: ambiente.bajo, uHueco: ambiente.hueco, uTiempo: ambiente.tiempo, uTiempoV: ambiente.tiempo, uCentro: ambiente.centro, uNiebla: ambiente.niebla,
       uCamDer: ambiente.camDer, uCamAlto: ambiente.camAlto, uCamMira: ambiente.camMira, uRafaga: ambiente.rafaga }, o.datos);
-    let v = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMundo;' + (o.sprite ? SPRITE_CABEZA : ''));
+    let v = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMundo;' + (o.sprite ? SPRITE_CABEZA : '') + (o.uvInstancia ? '\nattribute vec4 aUv, aUv2;\nattribute vec2 aForma;\nattribute float aTop;' : ''));
     if (o.sprite) {
       // (la forma se calcula al principio, donde van las coordenadas del dibujo, porque de ella sale que cuadro se muestra)
       v = v.replace('#include <uv_vertex>', SPRITE_FORMA + '\n#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv = vec2(aUv.x + (uv.x + cuadroSprite) * aUv.z, 1.0 - aUv.y - (1.0 - uv.y) * aUv.w);\n#endif')
         .replace('#include <begin_vertex>', 'vMundo = transformed;')
         .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
     } else {
+      // uvInstancia: cada copia usa su pedazo del atlas (aUv = u, v desde arriba, ancho, alto), como los sprites pero con la forma que se le ponga.
+      // Los arboles llevan ademas un plano horizontal en la copa (aTop = 1): usa otro pedazo del atlas (aUv2, la copa vista de arriba) y se
+      // acomoda con aForma (a que altura va, de 0 a 1, y que tan ancho es), asi desde la camara alta se ve una copa redonda y no rayas
+      if (o.uvInstancia) v = v.replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vec4 ru = aTop > 0.5 ? aUv2 : aUv;\n vMapUv = vec2(ru.x + uv.x * ru.z, 1.0 - ru.y - (1.0 - uv.y) * ru.w);\n#endif');
       v = v.replace('#include <begin_vertex>', `#include <begin_vertex>
+        ${o.uvInstancia ? 'if (aTop > 0.5) { transformed.xz *= aForma.y; transformed.y = aForma.x; }' : ''}
         vec4 enMundo = vec4(transformed, 1.0);
         #ifdef USE_INSTANCING
           enMundo = instanceMatrix * enMundo;
@@ -103,7 +108,7 @@ export function estilo(mat, o = {}) {
     }
     sh.fragmentShader = f;
   };
-  mat.customProgramCacheKey = () => 'shakedown-' + (o.clave || '') + (o.calada ? 'c' : '') + (o.sprite ? 's' : '') + (o.soloForma ? 'f' : '') + (o.sombras ? 'p' : '');
+  mat.customProgramCacheKey = () => 'shakedown-' + (o.clave || '') + (o.calada ? 'c' : '') + (o.sprite ? 's' : '') + (o.uvInstancia ? 'u' : '') + (o.soloForma ? 'f' : '') + (o.sombras ? 'p' : '');
   return mat;
 }
 

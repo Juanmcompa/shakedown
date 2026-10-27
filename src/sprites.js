@@ -143,6 +143,40 @@ function reposera(p, color) {
   p.rect(1, 0, 1, 6, '#9aa0a8'); p.rect(1, 0, 4, 1, color); p.rect(2, 1, 3, 3, color); p.rect(2, 4, 5, 1, oscuro(color)); p.rect(6, 4, 1, 3, '#9aa0a8'); p.rect(2, 5, 1, 2, '#9aa0a8');
 }
 
+// una oveja de perfil: lana blanca sucia, cara y patas oscuras
+function oveja(p) {
+  const der = p.azar() < 0.5, X = (x, w = 1) => (der ? p.w - x - w : x);
+  p.rect(X(2, 6), 1, 6, 4, '#e6e0d0'); p.rect(X(3, 4), 0, 4, 1, '#f1ede2'); p.rect(X(2, 6), 4, 6, 1, '#cfc8b6');   // lana
+  for (let i = 0; i < 5; i++) p.punto(X(2 + Math.floor(p.azar() * 6)), 1 + Math.floor(p.azar() * 3), '#d3ccba');
+  p.rect(X(0, 3), 2, 3, 2, '#3a332d'); p.punto(X(0), 3, '#5a4a40');                               // cabeza
+  for (const x of [2, 4, 6, 7]) p.rect(X(x), 5, 1, 1, '#3a332d');                                  // patas
+}
+// un caballo de perfil, de pie
+function caballo(p, pelo = '#7a4a2c', crin = '#2a1c14') {
+  const der = p.azar() < 0.5, X = (x, w = 1) => (der ? p.w - x - w : x);
+  p.rect(X(4, 8), 3, 8, 3, pelo); p.rect(X(4, 8), 3, 8, 1, '#8f5a36');                              // cuerpo
+  p.rect(X(2, 3), 1, 2, 3, pelo); p.rect(X(0, 3), 0, 3, 2, pelo); p.punto(X(0), 1, '#3a2a22'); p.punto(X(1), 0, '#1b1b1d');   // cuello y cabeza
+  p.rect(X(3, 1), 0, 1, 3, crin);                                                                  // crin
+  for (const x of [4, 5, 10, 11]) p.rect(X(x), 6, 1, 4, x % 2 ? '#5e3820' : pelo);                  // patas
+  p.rect(X(12, 1), 3, 1, 4, crin); p.punto(X(12), 7, crin);                                         // cola
+}
+// un perro: de perfil, con la cola para arriba
+function perro(p) {
+  const der = p.azar() < 0.5, X = (x, w = 1) => (der ? p.w - x - w : x);
+  p.rect(X(2, 5), 1, 5, 2, '#b58a52'); p.rect(X(0, 3), 0, 3, 2, '#c29a62'); p.punto(X(0), 1, '#2a1c14'); p.punto(X(2), 0, '#7a5a34');
+  for (const x of [2, 3, 5, 6]) p.rect(X(x), 3, 1, 2, '#8a6a3c');
+  p.punto(X(7), 0, '#b58a52'); p.punto(X(7), 1, '#b58a52');
+}
+// el destello de un flash de camara: una estrella blanca (se dibuja con luz propia)
+function destello(p) {
+  const c = (p.w - 1) / 2;
+  p.rect(0, c, p.w, 1, '#fff8e0'); p.rect(c, 0, 1, p.h, '#fff8e0'); p.rect(c - 1, c - 1, 3, 3, '#ffffff'); p.punto(1, 1, '#fff1b8'); p.punto(p.w - 2, 1, '#fff1b8'); p.punto(1, p.h - 2, '#fff1b8'); p.punto(p.w - 2, p.h - 2, '#fff1b8');
+}
+// una antorcha en la mano (con luz propia): palo y llama
+function antorchaMano(p) {
+  p.rect(1, 3, 1, 4, '#4a3a30'); p.rect(0, 1, 3, 3, '#f07f1e'); p.rect(1, 0, 1, 3, '#ffc24a'); p.punto(1, 2, '#fff1a8'); p.punto(0, 1, '#d8402f'); p.punto(2, 2, '#d8402f');
+}
+
 const VERDES = {
   oscuro: ['#1c4426', '#28592e', '#356f37', '#48883f'],
   claro: ['#2f6a2a', '#458535', '#5c9c3e', '#80ba52'],
@@ -167,6 +201,7 @@ const DIBUJOS = {
   violetas: [8, 5, (p) => flores(p, VERDES.oscuro, ['#9c6fd0', '#c9a6ee'])],
   piedra: [7, 4, piedra], piedraGrande: [10, 6, piedra], tocon: [7, 6, tocon], tronco: [12, 4, tronco], piedrita: [4, 3, piedra], parrilla: [10, 7, parrilla],
   reposeraRoja: [7, 7, (p) => reposera(p, '#d8402f')], reposeraAzul: [7, 7, (p) => reposera(p, '#2f6fd0')],
+  oveja: [9, 6, oveja], caballo: [13, 10, (p) => caballo(p)], perro: [8, 5, perro], destello: [7, 7, destello], antorchaMano: [3, 7, antorchaMano],
   fogata: [9, 8, fogata], bengala: [3, 4, bengala], antorcha: [5, 12, antorcha],
   girasol: [5, 11, girasol], trigo: [8, 6, (p) => mata(p, ['#a08236', '#bfa048', '#d6ba60', '#e6d07e'], 6)],
   vacaOvera: [11, 8, (p) => vaca(p, '#e9e4d6', '#26262a', '#e9e4d6')], vacaColorada: [11, 8, (p) => vaca(p, '#8a4a2c', '#74391f', '#e9e4d6')],

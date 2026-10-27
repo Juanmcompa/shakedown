@@ -806,46 +806,129 @@ export const armarRoto = (n) => deLista(ROTOS, n);
 // un auto o camion de un equipo, limpio, estacionado en el festival de la largada
 export const armarDeEquipo = (n) => deLista(EQUIPOS, n);
 
-// --- el barro en la carrocería: a medida que anda por lo blando o por agua, se van pintando manchas de abajo hacia arriba ---
-// Se pinta sobre el mismo lienzo del auto (sin materiales ni objetos nuevos) y se avisa a la placa de video unas pocas veces por segundo.
-const MANCHA = { barro: ['#5a2f1b', '#6e3a22', '#4a2616', '#7d4a2c'], tierra: ['#8a5636', '#a06a44', '#74472b'], ripio: ['#a8946e', '#bba682', '#8f7d5c'], pasto: ['#6b6a3c', '#7d7c4a', '#58572f'], agua: ['#6e5a45', '#7d6a54', '#5c4a38'] };
+// --- la suciedad de la carrocería: se pinta sobre el mismo lienzo del auto (sin materiales ni objetos nuevos) ---
+// Hay tres capas, cada una con su color: barro (marron oscuro), polvo (ocre, de la tierra y el ripio) y arena (clara).
+//  - barro: ensucia mucho y rapido; sube de abajo hacia arriba (techo del barro = cuanto barro lleva) y salpica el capot y el techo.
+//  - tierra, ripio, sendero: ensucian poco y de polvo.     - pasto: casi nada.
+//  - arena: le saca un poco de barro (lo raspa) y se le pega una capa clara, sobre todo abajo.
+//  - agua (vado): lava desde abajo hasta la altura del agua; lo de mas arriba queda sucio.
+// Un mapa aparte guarda de que capa es cada pixel (asi se puede lavar o raspar lo que corresponde y medir cuanto hay).
+// Se avisa a la placa de video unas pocas veces por segundo.
+const NOMBRES = Object.keys(SUELOS);
+const CAPAS = { barro: 1, polvo: 2, arena: 3 };
+const MANCHA = {
+  [CAPAS.barro]: ['#4a2616', '#5a2f1b', '#6e3a22', '#3b1e11', '#7d4a2c'],
+  [CAPAS.polvo]: { tierra: ['#9a6a42', '#b07c52', '#84583a'], ripio: ['#b9a67f', '#cdbb94', '#a39070'], pasto: ['#7a7a45', '#8b8b55', '#68683a'], gris: ['#8a8680', '#9c9892', '#77736d'] },
+  [CAPAS.arena]: ['#e2cf9c', '#efdeb0', '#d4be86', '#f4e8c4'],
+};
+const SUELO_DE = { barro: 'barro', pantano: 'barro', charco: 'barro', arena: 'arena', feshfesh: 'arena', tierra: 'tierra', sendero: 'tierra', pedregal: 'tierra', ripio: 'ripio', gravilla: 'ripio', pasto: 'pasto', lecho: 'agua' };
 function ensuciador(h) {
-  const x = h.atlas.lienzo.getContext('2d'), zonas = ['px', 'nx', 'nz', 'pz', 'py'].map((k) => h.vistas[k]);
-  const PESO = [3, 3, 1.5, 1.5, 4], TOTAL = zonas.reduce((a, z, i) => a + z.w * z.h * 0.2 * (PESO[i] / 3), 0);   // cuantos pixeles de mancha tiene el auto totalmente sucio
-  let nivel = 0, pintado = 0, sin = 0, a = 12345;
+  const x = h.atlas.lienzo.getContext('2d'), nombres = ['px', 'nx', 'nz', 'pz', 'py'], zonas = nombres.map((k) => h.vistas[k]);
+  const PESO = [3, 3, 1.5, 1.5, 4], AREA = zonas.reduce((a, z, i) => a + z.w * z.h * PESO[i] / 3, 0), SUMA_PESO = PESO.reduce((a, v) => a + v, 0);
+  const AW = h.atlas.ancho, mapa = new Uint8Array(AW * h.atlas.alto), cuenta = [0, 0, 0, 0];   // de que capa es cada pixel del lienzo, y cuantos hay de cada una
+  let sin = 0, a = 12345, cambio = false, tierraDe = 'tierra';
   const azar = () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const eleg = (lista) => lista[Math.floor(azar() * lista.length)];
+  // cuanto vale una capa en pixeles cuando el auto esta totalmente cubierto de ella
+  const TOPE = { [CAPAS.barro]: 0.62, [CAPAS.polvo]: 0.42, [CAPAS.arena]: 0.4 };
+  const total = (capa) => AREA * TOPE[capa];
   function limpiar() {
-    nivel = pintado = sin = 0;
+    mapa.fill(0); cuenta.fill(0); sin = 0; cambio = false;
     x.clearRect(0, 0, h.atlas.ancho, h.atlas.alto); x.drawImage(h.limpio, 0, 0);
     h.atlas.textura().needsUpdate = true;
   }
+  // pinta (o lava, con capa 0) un pixel de la zona i
+  function poner(i, px, py, capa, color, soloDe = -1) {
+    const z = zonas[i];
+    if (px < 0 || py < 0 || px >= z.w || py >= z.h) return false;
+    const k = (z.y + py) * AW + z.x + px, antes = mapa[k];
+    if (antes === capa || (soloDe >= 0 && antes !== soloDe)) return false;
+    // el polvo no tapa al barro (apenas se le posa encima), la arena si lo cubre
+    if (capa === CAPAS.polvo && antes === CAPAS.barro && azar() < 0.8) return false;
+    if (capa === CAPAS.arena && antes === CAPAS.barro && azar() < 0.5) return false;   // la arena se pega sobre el barro solo a medias
+    cuenta[antes]--; cuenta[capa]++; mapa[k] = capa;
+    if (capa) { x.fillStyle = color; x.fillRect(z.x + px, z.y + py, 1, 1); }
+    else x.drawImage(h.limpio, z.x + px, z.y + py, 1, 1, z.x + px, z.y + py, 1, 1);
+    cambio = true;
+    return true;
+  }
+  // una mancha de la capa: elige donde (de abajo hacia arriba segun "alcance") y la pinta
+  function manchar(capa, alcance, paleta) {
+    let t = azar() * SUMA_PESO, i = 0;
+    while (i < 4 && (t -= PESO[i]) > 0) i++;
+    const z = zonas[i], arriba = i === 4, nivelBarro = Math.min(1, cuenta[CAPAS.barro] / total(CAPAS.barro));
+    // el techo y el capot solo se salpican con bastante barro; las ventanas de adelante, tambien
+    if (arriba && capa === CAPAS.barro && azar() > nivelBarro * 0.9) return;
+    if (i === 2 && capa === CAPAS.barro && azar() > 0.3 + nivelBarro) return;
+    const yy = arriba ? Math.floor(azar() * z.h) : z.h - 1 - Math.floor(Math.pow(azar(), 1.8) * z.h * alcance), xx = Math.floor(azar() * z.w), col = eleg(paleta);
+    poner(i, xx, yy, capa, col);
+    if (azar() < 0.3) poner(i, xx + 1, yy, capa, col);
+  }
+  // lava lo que esta por debajo de "hasta" (0 a 1 de la altura del costado), una parte por cada llamada
+  function lavar(hasta, parte) {
+    for (let i = 0; i < 4; i++) {
+      const z = zonas[i], banda = Math.max(1, Math.round(z.h * hasta)), n = Math.ceil(z.w * banda * parte);
+      for (let k = 0; k < n; k++) poner(i, Math.floor(azar() * z.w), z.h - 1 - Math.floor(azar() * banda), 0);
+    }
+  }
+  // saca un poco de una capa (la arena raspa el barro): busca pixeles de esa capa al azar
+  function raspar(capa, cuantos) {
+    for (let k = 0, intentos = cuantos * 6; k < intentos && cuenta[capa] > 0 && cuantos > 0; k++) {
+      const i = Math.floor(azar() * 5), z = zonas[i];
+      if (poner(i, Math.floor(azar() * z.w), Math.floor(azar() * z.h), 0, null, capa)) cuantos--;
+    }
+  }
   function sumar(c, dt) {
-    // cuanto se ensucia segun lo que pisa cada rueda (el barro, mucho; el agua y la tierra, menos) y la velocidad
-    const vh = Math.hypot(c.vel[0], c.vel[2]), rapido = Math.min(1, vh / 8);
-    let gana = 0, clase = 'barro';
+    const vh = Math.hypot(c.vel[0], c.vel[2]), rapido = Math.min(1, vh / 8) * dt;
+    let barro = 0, polvo = 0, arena = 0, toca = 0, tipoPolvo = 'tierra';
+    const mojado = c.agua > 0.05;
     for (const r of c.ruedas) {
       if (!r.toca) continue;
-      const s = SUELO[r.suelo], g = s.blando >= 0.9 ? (c.agua > 0.05 ? 0.7 : 1.4) : c.agua > 0.05 ? 0.6 : s.id === SUELOS.tierra.id ? 0.35 : s.id === SUELOS.pasto.id ? 0.12 : s.id === SUELOS.ripio.id || s.id === SUELOS.gravilla.id ? 0.15 : s.id === SUELOS.sendero.id ? 0.3 : 0;
-      if (g > 0) { gana += g; clase = c.agua > 0.05 ? 'agua' : s.id === SUELOS.tierra.id || s.id === SUELOS.sendero.id ? 'tierra' : s.id === SUELOS.pasto.id ? 'pasto' : s.id === SUELOS.ripio.id || s.id === SUELOS.gravilla.id ? 'ripio' : 'barro'; }
+      toca++;
+      const s = SUELO[r.suelo], q = SUELO_DE[NOMBRES[r.suelo]] || 'otro';
+      if (q === 'barro') barro += s.id === SUELOS.charco.id ? 1.0 : 1.5;
+      else if (q === 'arena') arena += s.id === SUELOS.feshfesh.id ? 0.7 : 0.55;
+      else if (q === 'tierra') { polvo += s.id === SUELOS.sendero.id ? 0.3 : 0.34; if (s.id === SUELOS.sendero.id) barro += 0.1; tipoPolvo = 'tierra'; }
+      else if (q === 'ripio') { polvo += 0.16; tipoPolvo = 'ripio'; }
+      else if (q === 'pasto') { polvo += 0.035; tipoPolvo = 'pasto'; }
     }
-    nivel = Math.min(1, nivel + gana * rapido * dt * 0.02);
     sin += dt;
-    if (sin < 0.25 || nivel * TOTAL - pintado < 1) return;   // como mucho 4 veces por segundo
+    // arena: raspa un poco del barro que ya lleva (y se le pega arena, mas abajo)
+    if (arena > 0 && !mojado) raspar(CAPAS.barro, Math.ceil(cuenta[CAPAS.barro] * arena * rapido * 0.04));
+    // cuanto de cada capa falta pintar (en pixeles)
+    const quiere = (capa, gana, ritmo) => Math.min(total(capa) - cuenta[capa], gana * rapido * ritmo * total(capa));
+    if (!mojado) { barro = Math.max(0, quiere(CAPAS.barro, barro, 0.04)); polvo = Math.max(0, quiere(CAPAS.polvo, polvo, 0.05)); arena = Math.max(0, quiere(CAPAS.arena, arena, 0.05)); }
+    else { barro = polvo = arena = 0; lavar(Math.min(0.95, 0.18 + c.agua * 0.9), Math.min(0.9, (0.25 + rapido * 5) * dt * 3)); }
+    pend.barro += barro; pend.polvo += polvo; pend.arena += arena; tierraDe = tipoPolvo;
+    if (sin < 0.2) return;   // como mucho 5 veces por segundo
     sin = 0;
-    const paleta = MANCHA[clase], cuantos = Math.min(40, Math.floor(nivel * TOTAL - pintado));
-    for (let n = 0; n < cuantos; n++) {
-      let t = azar() * 13, i = 0;
-      while (i < 4 && (t -= PESO[i]) > 0) i++;
-      const z = zonas[i], arriba = i === 4;
-      // de abajo hacia arriba: cuanto mas sucio, mas alto llegan; la mayoria queda cerca del piso
-      const techo = arriba ? 1 : 0.18 + 0.5 * nivel, yy = arriba ? Math.floor(azar() * z.h) : z.h - 1 - Math.floor(azar() * azar() * z.h * techo);
-      x.fillStyle = paleta[Math.floor(azar() * paleta.length)];
-      x.fillRect(z.x + Math.floor(azar() * z.w), z.y + yy, azar() < 0.25 ? 2 : 1, 1);
+    const alcance = (cap) => cap === CAPAS.barro ? 0.2 + 0.8 * Math.min(1, cuenta[CAPAS.barro] / total(CAPAS.barro) * 1.4) : cap === CAPAS.arena ? 0.3 + 0.3 * Math.min(1, cuenta[CAPAS.arena] / total(CAPAS.arena)) : 0.4 + 0.5 * Math.min(1, cuenta[CAPAS.polvo] / total(CAPAS.polvo));
+    for (const [nombre, capa] of [['barro', CAPAS.barro], ['polvo', CAPAS.polvo], ['arena', CAPAS.arena]]) {
+      const n = Math.min(220, Math.floor(pend[nombre]));
+      pend[nombre] -= n;
+      for (let k = 0; k < n; k++) manchar(capa, alcance(capa), capa === CAPAS.polvo ? MANCHA[capa][tierraDe] || MANCHA[capa].gris : MANCHA[capa]);
     }
-    pintado += cuantos;
-    h.atlas.textura().needsUpdate = true;
+    if (cambio) { h.atlas.textura().needsUpdate = true; cambio = false; }
   }
-  return { sumar, limpiar };
+  const pend = { barro: 0, polvo: 0, arena: 0 };
+  // para las pruebas: cuanta suciedad hay de cada capa y cuanta en la mitad de abajo y de arriba de los costados
+  function medir() {
+    const r = { barro: cuenta[1], polvo: cuenta[2], arena: cuenta[3], bajo: 0, alto: 0, total: AREA | 0, pixeles: 0, color: {} };
+    const suma = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let i = 0; i < 5; i++) {
+      const z = zonas[i], img = x.getImageData(z.x, z.y, z.w, z.h).data;
+      for (let py = 0; py < z.h; py++) for (let px = 0; px < z.w; px++) {
+        const c = mapa[(z.y + py) * AW + z.x + px];
+        if (!c) continue;
+        if (i < 4) { if (py < z.h / 2) r.alto++; else r.bajo++; }   // (el techo no cuenta: solo los costados, el frente y la cola)
+        const o = (py * z.w + px) * 4; suma[c][0] += img[o]; suma[c][1] += img[o + 1]; suma[c][2] += img[o + 2];
+      }
+    }
+    for (const [nombre, c] of [['barro', 1], ['polvo', 2], ['arena', 3]]) r.color[nombre] = cuenta[c] ? suma[c].map((v) => Math.round(v / cuenta[c])) : null;
+    r.pixeles = cuenta[1] + cuenta[2] + cuenta[3];
+    return r;
+  }
+  return { sumar, limpiar, medir, poner: (capa, cuantos) => { for (let k = 0; k < cuantos; k++) manchar(capa, 1, capa === CAPAS.polvo ? MANCHA[capa].tierra : MANCHA[capa]); h.atlas.textura().needsUpdate = true; } };
 }
 
 const mFreno = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 0.22, 0.12) });   // tan fuerte que deja resplandor
@@ -875,7 +958,7 @@ export function crearDibujo(escena, C) {
     });
     frenos.visible = c.frenando;
   }
-  return { grupo, actualizar, limpiar: suciedad.limpiar };
+  return { grupo, actualizar, limpiar: suciedad.limpiar, suciedad };
 }
 
 // El fantasma del rival: su auto, translucido y sin sombra, con su nombre arriba.

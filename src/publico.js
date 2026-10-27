@@ -36,6 +36,24 @@ export function crearPublico(T, escena, clima, luz) {
     fuegos.poner('bengala', g.x, g.y + 1.9, g.z, { escala: 1.3, azar: g.fase, mueve: 0.12 });
     clima.resplandor(g.x, g.y, g.z, 4.2, 0xff3320, 0.3);
   }
+  // con poca luz, otros llevan una antorcha en la mano; y con luz o sin ella, algunos sacan fotos: cuando pasa el auto, un flash.
+  // (es lo nuevo: se apaga con el ajuste "efectos". Se sortea aparte, con la gente ya puesta: no cambia nada de lo de antes)
+  const nuevos = crearLoteDeSprites(), destellos = crearLoteDeSprites(), rf = azar((T.etapa.semilla || 1) + 191);
+  for (const g of gente) {
+    const u = (g.fase * 131) % 1;
+    if (luz.fuego && (g.fase * 97) % 1 > 0.2 && u < 0.3) {
+      nuevos.poner('antorchaMano', g.x + 0.45, g.y + 1.25, g.z, { escala: 1.25, azar: g.fase, mueve: 0.12 });
+    } else if (u > 0.62) {
+      g.foto = true; g.disparo = 12 + rf() * 40; g.otro = rf() < 0.4; g.disparado = false; g.flash = 0;
+      g.destello = destellos.poner('destello', g.x + 0.35, g.y + 1.3, g.z, { escala: 1.1, azar: g.fase, mueve: 0 });
+    }
+  }
+  const mNuevos = nuevos.cuantos() ? nuevos.malla(false, true) : null, mDestellos = destellos.cuantos() ? destellos.malla(false, true) : null;
+  for (const m of [mNuevos, mDestellos]) if (m) { m.frustumCulled = false; escena.add(m); }
+  const tamDestello = mDestellos ? mDestellos.geometry.getAttribute('aTam') : null, tamBase = tamDestello ? Float32Array.from(tamDestello.array) : null;
+  if (tamDestello) { tamDestello.setUsage(THREE.DynamicDrawUsage); tamDestello.array.fill(0); tamDestello.needsUpdate = true; }
+  let activo = true, flashes = 0;
+  const flashear = (g, hasta) => { g.flash = hasta; flashes++; };
   if (fuegos.cuantos()) { const m = fuegos.malla(false, true); m.frustumCulled = false; escena.add(m); }
   const malla = lote.cuantos() ? lote.malla(true) : null;
   if (malla) { malla.frustumCulled = false; escena.add(malla); }
@@ -59,6 +77,26 @@ export function crearPublico(T, escena, clima, luz) {
       }
     });
     if (parrillas.length) humo.instanceMatrix.needsUpdate = true;
+    // los flashes: cada fotografo dispara una vez cuando el auto viene llegando (y algunos, otra un instante despues)
+    if (tamDestello) {
+      let hay = false;
+      for (const g of gente) {
+        if (!g.foto) continue;
+        let falta = g.i - indice;
+        if (L) falta = ((falta % L) + L + L / 2) % L - L / 2;
+        if (activo) {
+          if (!g.disparado && falta < g.disparo && falta > -6) { g.disparado = true; flashear(g, t + 0.14); g.segundo = g.otro ? t + 0.55 : 0; }
+          else if (g.segundo && t >= g.segundo) { g.segundo = 0; flashear(g, t + 0.12); }
+          if (g.disparado && falta > g.disparo + 60) g.disparado = false;   // (en una vuelta, el auto vuelve a pasar)
+        }
+        const prendido = activo && g.flash > t ? 1 : 0;
+        if ((tamDestello.array[g.destello * 2] > 0) !== !!prendido) {
+          tamDestello.array[g.destello * 2] = prendido * tamBase[g.destello * 2]; tamDestello.array[g.destello * 2 + 1] = prendido * tamBase[g.destello * 2 + 1];
+          hay = true;
+        }
+      }
+      if (hay) tamDestello.needsUpdate = true;
+    }
     if (!base) return;
     let cambio = false;
     for (const g of gente) {
@@ -82,5 +120,8 @@ export function crearPublico(T, escena, clima, luz) {
     if (cambio) { base.needsUpdate = true; dato.needsUpdate = true; }
   }
   // (humo: el de las parrillas, para poder apagarlo con el ajuste "efectos")
-  return { animar, cuantos: gente.length, humo };
+  // efectos: prendido o apagado. reiniciar: al largar de nuevo, los fotografos vuelven a esperar al auto
+  const efectos = (v) => { activo = !!v; for (const m of [mNuevos, mDestellos]) if (m) m.visible = activo; };
+  const reiniciar = () => { for (const g of gente) if (g.foto) { g.disparado = false; g.flash = 0; g.segundo = 0; } if (tamDestello) { tamDestello.array.fill(0); tamDestello.needsUpdate = true; } };
+  return { animar, efectos, reiniciar, lista: () => gente, probarFlash: (si) => { for (const g of gente) if (g.foto) g.flash = si ? 1e9 : 0; }, cuantos: gente.length, humo, fotografos: () => gente.filter((g) => g.foto).length, antorchas: () => nuevos.cuantos(), flashes: () => flashes, destellosPrendidos: () => (tamDestello ? Array.from({ length: tamDestello.array.length / 2 }, (_, i) => tamDestello.array[i * 2] > 0).filter(Boolean).length : 0) };
 }

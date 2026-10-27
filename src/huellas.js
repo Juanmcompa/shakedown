@@ -14,6 +14,13 @@ export function crearHuellas(T, render) {
   const hacer = () => { const t = new THREE.DataTexture(datos, W, H, THREE.RedFormat, THREE.UnsignedByteType); t.unpackAlignment = 1; return t; };
   const textura = hacer(), origen = hacer();
   textura.needsUpdate = true;
+  // el tipo de suelo de cada marca (1 barro, 2 arena, 3 pasto, 4 tierra, 5 ripio): con eso el piso pinta cada huella a su manera.
+  // Es un mapa aparte: lo que valen las marcas (datos) no cambia.
+  const tipos = new Uint8Array(W * H);
+  const hacerT = () => { const t = new THREE.DataTexture(tipos, W, H, THREE.RedFormat, THREE.UnsignedByteType); t.unpackAlignment = 1; return t; };
+  const texturaTipos = hacerT(), origenTipos = hacerT();
+  texturaTipos.needsUpdate = true;
+  const relieve = { value: 1 };   // el ajuste "efectos": apagado, el piso usa las marcas de siempre
   const caja = new THREE.Box2(), donde = new THREE.Vector2();
   let x0 = W, y0 = H, x1 = -1, y1 = -1;                 // rectangulo que cambio desde la ultima subida
   const ultimo = [null, null, null, null];              // ultimo pixel marcado por cada rueda
@@ -83,6 +90,7 @@ export function crearHuellas(T, render) {
 
   // suma: si el pixel ya tenia una huella (otra pasada), se oscurece un poco mas, sin pasar de TOPE
   const TOPE = 200;
+  let tipoAhora = 0;
   function punto(x, y, v, suma = 0) {
     if (x < 0 || y < 0 || x >= W || y >= H) return;
     const k = y * W + x;
@@ -90,14 +98,15 @@ export function crearHuellas(T, render) {
       if (!suma || datos[k] === 0 || datos[k] >= TOPE) return;
       v = Math.min(TOPE, datos[k] + suma);
     }
-    datos[k] = v;
+    datos[k] = v; tipos[k] = tipoAhora;
     if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
   }
 
   return {
-    textura, pintar,
+    textura, texturaTipos, relieve, pintar,
     // marca el paso de la rueda i por el punto (x, z) del mundo. fuerza: de 0 a 1.
-    marcar: (i, x, z, fuerza, suma = 0, ancho = false) => {
+    marcar: (i, x, z, fuerza, suma = 0, ancho = false, tipo = 0) => {
+      tipoAhora = tipo;
       const px = Math.floor(x * 4) - X0, py = Math.floor(z * 4) - Z0, v = Math.min(HUELLA_MAXIMA, Math.round(fuerza * 255)), u = ultimo[i];
       if (!u) { ultimo[i] = [px, py]; if (v > 0) punto(px, py, v); return; }
       if (u[0] === px && u[1] === py) { if (v > 0) punto(px, py, v); return; }
@@ -116,16 +125,19 @@ export function crearHuellas(T, render) {
       }
       u[0] = px; u[1] = py;
     },
+    // (para las pruebas) que hay en el punto (x, z) del mundo: [marca, tipo de suelo]
+    leer: (x, z) => { const px = Math.floor(x * 4) - X0, py = Math.floor(z * 4) - Z0; return px < 0 || py < 0 || px >= W || py >= H ? [0, 0] : [datos[py * W + px], tipos[py * W + px]]; },
     // la rueda i quedo en el aire o la camioneta se movio de lugar: la proxima marca no se une con la anterior
     soltar: (i) => { ultimo[i] = null; },
     cortar: () => { ultimo.fill(null); },
     // borra todo (al largar de nuevo)
-    limpiar: () => { datos.fill(0); for (let k = 0; k < pintado.length; k += 2) datos[pintado[k]] = pintado[k + 1]; ultimo.fill(null); x0 = W; y0 = H; x1 = y1 = -1; textura.needsUpdate = true; },
+    limpiar: () => { datos.fill(0); tipos.fill(0); texturaTipos.needsUpdate = true; for (let k = 0; k < pintado.length; k += 2) datos[pintado[k]] = pintado[k + 1]; ultimo.fill(null); x0 = W; y0 = H; x1 = y1 = -1; textura.needsUpdate = true; },
     // sube a la placa de video lo que cambio. Se llama una vez por cuadro.
     subir: () => {
       if (x1 < 0) return;
       caja.min.set(x0, y0); caja.max.set(x1 + 1, y1 + 1); donde.set(x0, y0);
       render.copyTextureToTexture(origen, textura, caja, donde);
+      render.copyTextureToTexture(origenTipos, texturaTipos, caja, donde);
       x0 = W; y0 = H; x1 = y1 = -1;
     },
     ancho: W, alto: H,

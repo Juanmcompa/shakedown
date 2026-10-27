@@ -1,10 +1,8 @@
-// La vegetacion: los arboles (hechos de bloques) y todo lo chico que crece al costado del camino
+// La vegetacion: los arboles (planos cruzados, ver arboles.js) y todo lo chico que crece al costado del camino
 // (arbustos, matas, flores, yuyos y piedras sueltas), que son sprites.
-import * as THREE from '../vendor/three.module.js';
 import { crearRuido, azar } from './noise.js';
-import { crearLote } from './pixel.js';
+import { crearLoteDeArboles } from './arboles.js';
 import { crearLoteDeSprites } from './sprites.js';
-import { estilo } from './material.js';
 import { SUELOS } from './config.js';
 
 const ZONA = 80;   // el mundo se parte en zonas de 80 metros, para dibujar solo las que se ven
@@ -62,10 +60,9 @@ const EXTRAS = {
 // Arma la vegetacion y la agrega a la escena. Devuelve las celdas del mapa que quedan debajo de un arbol.
 export function crearFlora(T, escena, esc, liviano) {
   const { nx, nz, x0, z0, H, S } = T;
-  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), P4 = new THREE.Vector3(0.25, 0.25, 0.25), ARRIBA = new THREE.Vector3(0, 1, 0);
   const zonas = new Map(), zona = (x, z) => {
     const k = Math.floor(x / ZONA) * 4096 + Math.floor(z / ZONA);
-    if (!zonas.has(k)) zonas.set(k, { copas: crearLote(), troncos: crearLote(), yuyos: crearLoteDeSprites() });
+    if (!zonas.has(k)) zonas.set(k, { arboles: crearLoteDeArboles(liviano), yuyos: crearLoteDeSprites() });
     return zonas.get(k);
   };
   const monte = new Uint8Array(nx * nz);
@@ -79,20 +76,13 @@ export function crearFlora(T, escena, esc, liviano) {
       z.yuyos.poner(dibujo, o.x, o.y - 0.05, o.z, { escala: 1.15 + r() * 0.5, azar: r(), mueve: 0.04 });
       continue;
     }
-    // las lengas, en otoño: unas rojas y otras amarillas
-    const tipo = o.tipo === 'lenga' && r() < 0.34 ? 'nire' : o.tipo, f = (FORMAS[o.tipo] || FORMAS.lenga)(o.alto, r);
-    const pintura = (w, h) => ({ arriba: esc.copa(tipo, w), lados: esc.follaje(tipo, h), abajo: liviano ? null : esc.debajo(tipo) });
-    M.compose(V.set(o.x, o.y, o.z), Q.setFromAxisAngle(ARRIBA, o.vuelta), P4);
-    let y = f.pie;
-    for (const [w, h, cx, cz] of f.pisos) {
-      z.copas.bloque(M, [cx - w / 2, y, cz - w / 2, cx + w / 2, y + h, cz + w / 2], pintura(w, h), r);
-      y += o.tipo === 'pino' || o.tipo === 'pinoAlto' ? h - 1 : h;   // en los pinos, cada piso tapa un poco al de abajo
-    }
-    if (f.brazo) {   // una rama gruesa al costado
-      const [w, h] = f.pisos[0], wb = par(w * 0.5), hb = par(h * 0.6), lado = r() < 0.5 ? -1 : 1, enX = r() < 0.5, corre = lado * (w / 2), yb = f.pie + (r() < 0.5 ? 0 : 1);
-      z.copas.bloque(M, [(enX ? corre : 0) - wb / 2, yb, (enX ? 0 : corre) - wb / 2, (enX ? corre : 0) + wb / 2, yb + hb, (enX ? 0 : corre) + wb / 2], pintura(wb, hb), r);
-    }
-    z.troncos.bloque(M, [-1, -2, -1, 1, f.pie + 1, 1], { lados: esc.corteza(o.tipo), arriba: null, abajo: null }, r);
+    // las lengas, en otoño: unas rojas y otras amarillas. Alguna esta seca en la montaña, y algun alamo del campo es un sauce.
+    // (la forma de bloques solo se usa para saber cuanto monte le queda debajo, igual que antes: el sorteo no cambia)
+    const donde = T.biomaEn(o.x, o.z), f = (FORMAS[o.tipo] || FORMAS.lenga)(o.alto, r), sorteo = r(), sorteo2 = r();
+    let tipo = o.tipo === 'lenga' && sorteo < 0.34 ? 'nire' : o.tipo;
+    if (tipo === 'lenga' && (donde === 'montana' || donde === 'sierra') && sorteo2 < 0.3) tipo = 'seco';
+    if (tipo === 'alamo' && donde === 'campo' && sorteo2 < 0.25) tipo = 'sauce';
+    z.arboles.poner(tipo, o.x, o.y, o.z, o.vuelta, o.alto, r());
     // el piso de abajo queda como monte
     const radio = f.pisos[0][0] / 8 + 1.2, gx = Math.round(o.x - x0), gz = Math.round(o.z - z0), n = Math.ceil(radio);
     for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
@@ -139,18 +129,11 @@ export function crearFlora(T, escena, esc, liviano) {
   for (const v of T.vacas) zona(v.x, v.z).yuyos.poner(v.n % 3 ? 'vacaOvera' : 'vacaColorada', v.x, v.y - 0.05, v.z, { escala: 1.25, azar: v.fase, mueve: 0 });
 
   // --- a la escena ---
-  const dibujo = esc.atlas.textura();
-  const mCopa = estilo(new THREE.MeshLambertMaterial({ map: dibujo }), { calada: true }), mTronco = estilo(new THREE.MeshLambertMaterial({ map: dibujo }));
   let arboles = 0, yuyos = 0;
   for (const z of zonas.values()) {
-    for (const [lote, mat] of [[z.copas, mCopa], [z.troncos, mTronco]]) {
-      if (lote.vacio()) continue;
-      const m = new THREE.Mesh(lote.geometria(esc.atlas), mat);
-      m.castShadow = true;
-      escena.add(m);
-      arboles++;
-    }
+    const m = z.arboles.malla();
+    if (m) { escena.add(m); arboles += z.arboles.cuantos(); }
     if (z.yuyos.cuantos()) { escena.add(z.yuyos.malla(!liviano)); yuyos += z.yuyos.cuantos(); }
   }
-  return { monte, yuyos, zonas: zonas.size };
+  return { monte, yuyos, arboles, zonas: zonas.size };
 }

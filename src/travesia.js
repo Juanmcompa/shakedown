@@ -541,7 +541,7 @@ export function crearModoTravesia(o) {
     if (costo) { textoCosto = costo.textContent; costo.textContent = '+' + TRAVESIA.danoAlVolver; }
     restaurarNiebla = mundo.activar();
     fx.prender(o.efectos ? o.efectos() : true);   // (el ajuste "efectos": sin el, no hay polvareda grande ni huellas que se oscurecen)
-    { const id = o.camara(); if (id) camara.cambiar(id); }
+    { camara.cambiar(o.camara() || 'atras'); }
     nuevaCorrida();
     // la primera vez: la guia, con la cuenta regresiva esperando
     if (!vistaLaGuia()) { fase = 'guia'; guia.abrir(); }

@@ -34,6 +34,8 @@ const par = (v) => Math.max(2, Math.round(v / 2) * 2);   // medida par, en pixel
 const LUZ = { ...LUCES.sol, sol: [0xffc994, 2.75, [-0.82, 0.34, -0.3]], bruma: [0xe6bb8f, 58, 250], cielo: [0xdccbc4, 0x9a7656, 1.0], sombra: 0.82 };
 // el piso, igual que el de las pistas pero con un tinte mas: en la capa azul del mapa viene cuanto mira cada lugar al sol, y el piso se ve
 // calido y claro de ese lado y frio y oscuro del otro (en las pistas esa capa no se usa si no hay manchones, y aca nunca los hay)
+const SIN_TIPOS = new THREE.DataTexture(new Uint8Array(1), 1, 1, THREE.RedFormat, THREE.UnsignedByteType);
+SIN_TIPOS.needsUpdate = true;
 const PISO_T = { cabeza: PISO.cabeza, cuerpo: PISO.cuerpo.replace('diffuseColor.rgb = piso;', `
     // el ripio del camino, mas calido (con la luz baja se le va el color)
     if (capa == ${SUELOS.ripio.id}.0) piso *= vec3(1.1, 0.99, 0.82);
@@ -118,7 +120,7 @@ export function crearMundoTravesia(escena, liviano) {
     tMapa.needsUpdate = true;
     const campo = { value: new THREE.Vector4(t.x0, t.z0, NV, NV) };
     const mPiso = estilo(new THREE.MeshLambertMaterial(), { clave: 'pisoT', sombras: true, cabeza: PISO_T.cabeza, cuerpo: PISO_T.cuerpo,
-      datos: { uMapa: { value: tMapa }, uPisos: { value: pisos }, uHuellas: { value: huellas.registrar(t) }, uCampo: campo, uMojado: { value: 0 } } });
+      datos: { uMapa: { value: tMapa }, uPisos: { value: pisos }, uHuellas: { value: huellas.registrar(t) }, uTipos: { value: SIN_TIPOS }, uRelieve: { value: 0 }, uCampo: campo, uMojado: { value: 0 } } });   // (los tipos de huella y el relieve falso son del piso de la pista del dia: aca, apagados)
     const piso = new THREE.Mesh(g, mPiso);
     piso.receiveShadow = true; piso.castShadow = true;
     grupo.add(piso);
