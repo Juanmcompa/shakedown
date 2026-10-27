@@ -51,6 +51,14 @@ const YUYOS = {
   },
 };
 
+// lo que se suma donde la naturaleza es mas rica (t.natura mayor que 1): flores, matas, troncos y piedritas
+const EXTRAS = {
+  bosque: [['tronco', 2, 0], ['piedrita', 2, 1], ['violetas', 2, 2], ['amancay', 2, 3], ['helecho', 2, 1], ['tocon', 0.6, 0]],
+  campo: [['piedrita', 1.5, 1], ['margaritas', 3, 2], ['amarillas', 3, 3], ['tronco', 0.8, 0], ['cardo', 1, 4]],
+  montana: [['piedrita', 4, 1], ['piedra', 2, 1], ['mataSeca', 2, 0], ['amarillas', 1, 3], ['tronco', 0.5, 0]],
+  sierra: [['piedrita', 4, 1], ['piedra', 2, 1], ['mataSeca', 2, 0]],
+};
+
 // Arma la vegetacion y la agrega a la escena. Devuelve las celdas del mapa que quedan debajo de un arbol.
 export function crearFlora(T, escena, esc, liviano) {
   const { nx, nz, x0, z0, H, S } = T;
@@ -118,10 +126,13 @@ export function crearFlora(T, escena, esc, liviano) {
       continue;
     }
     const banda = b < 3.5 ? 0 : b < 12 ? 1 : 2, lista = listas[T.zona ? T.zona[k] : 0];
-    if (a > lista.cuanto[banda] * (monte[k] ? 0.45 : 1)) continue;
+    const nat = T.natura ? T.natura[k] / 64 : 1;   // cuanta naturaleza lleva este pedazo (t.natura de la pista: 1 = lo normal)
+    if (a > lista.cuanto[banda] * (monte[k] ? 0.45 : 1) * nat) continue;
     if (T.claros.some((q) => (q.x - px) ** 2 + (q.z - pz) ** 2 < (q.r - 1) * (q.r - 1))) continue;
-    const dibujo = elegir(banda === 0 ? lista.cerca : banda === 1 ? lista.medio : lista.lejos, px, pz);
-    zona(px, pz).yuyos.poner(dibujo, px, T.altura(px, pz) - 0.04, pz, { escala: 0.85 + r() * 0.45, azar: r(), mueve: dibujo.startsWith('piedra') || dibujo === 'tocon' ? 0 : 0.03 + r() * 0.05 });
+    // donde la naturaleza es mas rica, parte de lo que sale son flores, matas, troncos caidos y piedritas
+    const extra = nat > 1.15 && banda < 2 && r() < Math.min(0.6, (nat - 1) * 0.55);
+    const dibujo = extra ? elegir(EXTRAS[T.biomaEn(px, pz)] || EXTRAS.bosque, px, pz) : elegir(banda === 0 ? lista.cerca : banda === 1 ? lista.medio : lista.lejos, px, pz);
+    zona(px, pz).yuyos.poner(dibujo, px, T.altura(px, pz) - 0.04, pz, { escala: 0.85 + r() * 0.45, azar: r(), mueve: dibujo.startsWith('piedra') || dibujo === 'tocon' || dibujo === 'tronco' ? 0 : 0.03 + r() * 0.05 });
   }
 
   // --- las vacas del campo ---

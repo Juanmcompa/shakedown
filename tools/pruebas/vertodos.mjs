@@ -11,7 +11,7 @@
 // Capturas en out/: nombre-cartel, todos-inicio (celu), todos-resultado, todos-tabla, todos-inicio-compu.
 import { abrir } from './ver.mjs';
 import { crearTerreno } from '../../src/terrain.js';
-import { generarPista } from '../../src/generador.js';
+import { generarPista, VERSION } from '../../src/generador.js';
 import { crearGrabacion } from '../../src/fantasma.js';
 import { hoy } from '../../src/dia.js';
 const API = process.argv[2] || 'http://127.0.0.1:8787';
@@ -120,7 +120,7 @@ await esperarFin(A);
 const noEntro = await A.waitForFunction(() => { const o = window.shakedown.club.oficial(); return !!o && o.noSube === true; }, null, { timeout: 25000 }).then(() => true).catch(() => false);
 ver('A2: la segunda oficial no entra (el servidor dice que ya tiene una y no se insiste)', noEntro && finA2.estado === 'llegada', finA2.estado);
 await A.waitForTimeout(1500);
-const todosA2 = await A.evaluate(async () => { const t = await window.shakedown.nube.todos(window.shakedown.T.etapa.numero, 1); return { total: t.total, tiempos: t.tabla.map((x) => x.t), yo: t.yo && t.yo.t }; });
+const todosA2 = await A.evaluate(async () => { const t = await window.shakedown.nube.todos(window.shakedown.T.etapa.numero, (await import('/src/generador.js')).VERSION); return { total: t.total, tiempos: t.tabla.map((x) => x.t), yo: t.yo && t.yo.t }; });
 ver('A2: en la tabla de todos sigue la primera, una sola vez', todosA2.total === 1 && Math.abs(todosA2.yo - tiempoA) < 0.02, todosA2);
 await j.cerrar();
 
@@ -220,7 +220,7 @@ const pasadaDe = async (nombre, t) => {
   for (let k = 0; k < n; k++) { const i = Math.min(P.n - 2, T.largada.i + Math.round(k * 7)); g.muestra(k * 0.5, { pos: [P.X[i], T.altura(P.X[i], P.Z[i]), P.Z[i]], adelante: [P.HX[i], 0, P.HZ[i]] }); }
   return g.codigo(r, []);
 };
-const tiemposC = await (async () => { const f = await fetch(API + '/todos', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ pista: N, version: 1 }) }); const t = await f.json(); return t.tabla.map((x) => x.t); })();
+const tiemposC = await (async () => { const f = await fetch(API + '/todos', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ pista: N, version: VERSION }) }); const t = await f.json(); return t.tabla.map((x) => x.t); })();
 const masLento = Math.max(...tiemposC);
 for (let k = 0; k < 9; k++) {
   const t = Math.max(20, masLento - 3 - k * 0.7);

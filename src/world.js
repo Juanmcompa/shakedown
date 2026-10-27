@@ -14,6 +14,7 @@ import { crearPublico } from './publico.js';
 import { crearPueblo } from './pueblo.js';
 import { crearPublicidad } from './carteleria.js';
 import { crearClima } from './clima.js';
+import { crearFestival } from './festival.js';
 
 // --- la luz de cada clima ---
 // sol: color, fuerza y desde donde viene.  cielo / piso: la luz pareja que llega de arriba y la que rebota de abajo.
@@ -26,6 +27,47 @@ export const LUCES = {
   lluvia: { sol: [0xd4dde6, 1.1, [-0.4, 0.85, -0.2]],  cielo: [0xbcc7d2, 0x5f5c55, 1.45], bruma: [0xb1bcc2, 48, 230],  sombra: 0.45, mojado: 1, faros: 26, lluvia: 1 },
   niebla: { sol: [0xf2ead8, 1.3, [-0.5, 0.8, -0.2]],   cielo: [0xdfe3e2, 0x6e6a5c, 1.4],  bruma: [0xd9dcd6, 44, 210],  sombra: 0.4,  mojado: 0.35, faros: 30 },
 };
+
+// --- la hora del dia ---
+// La pista del dia es siempre de noche; las practicas, los circuitos y las pistas de la comunidad pueden ser a cualquier hora.
+// "hora" no cambia la pista ni como se maneja: solo la luz. Una pista sin hora (los circuitos de siempre) usa LUCES tal cual.
+// estrellas: se ve el cielo con estrellas y luna.  farosAlcance / farosApertura / farosPunta: hasta donde llega el haz de los faros,
+// que tan abierto es (radianes) y a cuantos metros adelante apunta.  haz: cuanta luz tiene el cono visible del haz (0 = ninguno).
+export const HORAS = {
+  manana:    { nombre: 'Mañana', emoji: '🌅', sol: [0xffd7a4, 2.1, [0.62, 0.5, -0.3]], cielo: [0xc6d4ec, 0x7a7780, 1.4], bruma: [0xdde2e6, 50, 280], sombra: 0.74, brillo: 0.95 },
+  mediodia:  { nombre: 'Mediodía', emoji: '☀️', sol: [0xfff4de, 2.9, [-0.12, 1, -0.08]], cielo: [0xdfe6f6, 0x8c8478, 1.3], bruma: [0xeee5d3, 64, 340], sombra: 0.85, brillo: 1 },
+  tarde:     { nombre: 'Tarde', emoji: '🌤️', sol: [0xffe3b4, 2.5, [-0.72, 0.62, -0.3]], cielo: [0xd2d8ee, 0x86736c, 1.4], bruma: [0xeadcc0, 60, 320], sombra: 0.78, brillo: 1 },
+  atardecer: { nombre: 'Atardecer', emoji: '🌇', sol: LUCES.tarde.sol, cielo: LUCES.tarde.cielo, bruma: LUCES.tarde.bruma, sombra: LUCES.tarde.sombra, brillo: 0.9, faros: 55, fuego: true },
+};
+// la noche, segun el clima: luna fria, casi nada de luz de cielo y faros que de verdad alumbran el camino
+const NOCHES = {
+  sol:    { sol: [0x91a8dc, 0.75, [-0.45, 0.75, -0.3]], cielo: [0x2c3d72, 0x0d1019, 1.25], bruma: [0x070b18, 40, 190], sombra: 0.5, mojado: 0 },
+  lluvia: { sol: [0x7a8fbc, 0.5, [-0.4, 0.8, -0.25]], cielo: [0x243260, 0x0a0c14, 0.9], bruma: [0x080c16, 32, 150], sombra: 0.35, mojado: 1, lluvia: 1 },
+  niebla: { sol: [0x8da0cc, 0.6, [-0.45, 0.75, -0.3]], cielo: [0x2a3862, 0x0c0e16, 0.95], bruma: [0x0d1424, 24, 105], sombra: 0.3, mojado: 0.35 },
+};
+const FAROS_NOCHE = { faros: 72, fuego: true, estrellas: 1, farosAlcance: 118, farosApertura: 0.62, farosPunta: 20, haz: 0.3 };
+export function luzDe(clima, hora) {
+  const base = LUCES[clima] || LUCES.sol;
+  if (!hora) return base;
+  if (hora === 'noche') {
+    const n = NOCHES[clima] || NOCHES.sol, o = { ...FAROS_NOCHE, ...n };
+    if (clima === 'niebla') o.farosAlcance = 80;
+    return o;
+  }
+  const h = HORAS[hora] || HORAS.mediodia;
+  // de dia con lluvia o niebla, manda el clima (cielo tapado) pero con el tono de la hora
+  if (clima === 'lluvia' || clima === 'niebla') {
+    const o = { ...base, sol: [h.sol[0], base.sol[1] * 0.9, h.sol[2]] };
+    if (h.brillo < 1) o.bruma = [base.bruma[0], base.bruma[1], base.bruma[2]];
+    if (hora === 'atardecer') { o.faros = base.faros || 40; o.fuego = true; }
+    return o;
+  }
+  const o = { sol: h.sol, cielo: h.cielo, bruma: h.bruma, sombra: h.sombra, mojado: 0 };
+  if (h.faros) { o.faros = h.faros; o.fuego = true; }
+  return o;
+}
+// que revelado (post.js) le toca a cada hora
+export const revelado = (clima, hora) => (hora === 'noche' ? 'noche' : hora === 'atardecer' ? 'tarde' : hora === 'manana' ? 'sol' : hora === 'mediodia' || hora === 'tarde' ? (clima === 'tarde' ? 'sol' : clima) : clima);
 
 // El piso: cada pixel mide 25 cm y esta alineado con el mundo. El suelo de cada pixel sale de un mapa (una celda por metro).
 export const PISO = {
@@ -100,14 +142,35 @@ export const AGUA = {
     diffuseColor = vec4(agua, alfa);`,
 };
 
+// Estrellas y luna: una cupula de puntos (ruido fijo, siempre las mismas) y un disco pálido. No les afecta la niebla.
+function cieloDeNoche(haciaLaLuna) {
+  const g = new THREE.Group(), N = 420, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  let a = 12345;
+  const r = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+  for (let i = 0; i < N; i++) {
+    const az = r() * Math.PI * 2, el = Math.asin(0.04 + r() * 0.96), R = 430;
+    pos[i * 3] = Math.cos(az) * Math.cos(el) * R; pos[i * 3 + 1] = Math.sin(el) * R; pos[i * 3 + 2] = Math.sin(az) * Math.cos(el) * R;
+    const b = 0.45 + r() * 0.55, tinte = r();
+    col[i * 3] = b * (tinte > 0.8 ? 1 : 0.85); col[i * 3 + 1] = b * 0.9; col[i * 3 + 2] = b * (tinte < 0.25 ? 0.8 : 1);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const estrellas = new THREE.Points(geo, new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, fog: false, depthWrite: false }));
+  estrellas.frustumCulled = false; estrellas.renderOrder = -2;
+  const luna = new THREE.Mesh(new THREE.CircleGeometry(16, 20), new THREE.MeshBasicMaterial({ color: 0xe6ecff, fog: false, depthWrite: false, side: THREE.DoubleSide }));
+  luna.position.copy(haciaLaLuna).multiplyScalar(420); luna.renderOrder = -1; luna.frustumCulled = false;
+  g.add(estrellas, luna); g.visible = false; g.frustumCulled = false;
+  return { grupo: g, luna };
+}
+
 export function crearMundo(T, escena, liviano, huellas) {
-  const { nx, nz, H, S, celda, x0, z0 } = T, luz = LUCES[T.etapa.clima] || LUCES.sol;
+  const { nx, nz, H, S, celda, x0, z0 } = T, luz = luzDe(T.etapa.clima, T.etapa.hora);
   const V = new THREE.Vector3(), ARRIBA = new THREE.Vector3(0, 1, 0);
   const campo = { value: new THREE.Vector4(x0, z0, nx, nz) };
 
   // --- lo que hay sobre el terreno ---
   const esc = crearEscenografia();
-  const clima = crearClima(T, escena, luz);
+  const clima = crearClima(T, escena, luz);   // (los faros, el haz, las luces traseras y los resplandores: ver clima.js)
   const flora = crearFlora(T, escena, esc, liviano), utileria = crearUtileria(T, escena, esc, clima), publico = crearPublico(T, escena, clima, luz), pueblo = crearPueblo(T, escena, clima, luz);
   const publicidad = crearPublicidad(T, escena, utileria.arcos);
 
@@ -168,12 +231,13 @@ export function crearMundo(T, escena, liviano, huellas) {
     escena.add(m);
   }
 
-  // --- la luz del clima: cielo + sol con sombras que siguen a la camara ---
+  // --- la luz del clima y de la hora: cielo + sol (o luna) con sombras que siguen a la camara ---
   const fondo = new THREE.Color(luz.bruma[0]);
   escena.background = fondo;
   escena.fog = new THREE.Fog(luz.bruma[0], luz.bruma[1], luz.bruma[2]);
   ambiente.niebla.value.set(fondo.r, fondo.g, fondo.b, T.clima.niebla || 0);
-  escena.add(new THREE.HemisphereLight(luz.cielo[0], luz.cielo[1], luz.cielo[2]));
+  const cielo = new THREE.HemisphereLight(luz.cielo[0], luz.cielo[1], luz.cielo[2]);
+  escena.add(cielo);
   const sol = new THREE.DirectionalLight(luz.sol[0], luz.sol[1]), haciaElSol = new THREE.Vector3(...luz.sol[2]).normalize();
   sol.castShadow = true;
   const lado = liviano ? 1024 : 2048;   // tamano del mapa de sombras
@@ -182,11 +246,35 @@ export function crearMundo(T, escena, liviano, huellas) {
   sc.left = sc.bottom = -R; sc.right = sc.top = R; sc.near = 10; sc.far = 520;
   sol.shadow.bias = -0.0005; sol.shadow.normalBias = 0.5; sol.shadow.intensity = luz.sombra;
   escena.add(sol, sol.target);
-  const ejeX = new THREE.Vector3().crossVectors(ARRIBA, haciaElSol).normalize(), ejeY = new THREE.Vector3().crossVectors(haciaElSol, ejeX);
+  const ejeX = new THREE.Vector3(), ejeY = new THREE.Vector3();
   const paso = 2 * R / lado, D = new THREE.Vector3();
+  const acomodarSol = () => { ejeX.crossVectors(ARRIBA, haciaElSol).normalize(); ejeY.crossVectors(haciaElSol, ejeX); };
+  acomodarSol();
+  // el cielo de noche: estrellas y luna en una cupula que acompaña a la camara (solo se ve donde no hay mundo: el horizonte)
+  const cupula = cieloDeNoche(haciaElSol);
+  escena.add(cupula.grupo);
+  // cambia la luz de toda la escena (la pista del dia es de noche; las practicas pueden ser a otra hora)
+  function aplicarLuz(L) {
+    fondo.set(L.bruma[0]);
+    escena.fog.color.set(L.bruma[0]); escena.fog.near = L.bruma[1]; escena.fog.far = L.bruma[2];
+    ambiente.niebla.value.set(fondo.r, fondo.g, fondo.b, T.clima.niebla || 0);
+    cielo.color.set(L.cielo[0]); cielo.groundColor.set(L.cielo[1]); cielo.intensity = L.cielo[2];
+    sol.color.set(L.sol[0]); sol.intensity = L.sol[1]; sol.shadow.intensity = L.sombra;
+    haciaElSol.set(...L.sol[2]).normalize(); acomodarSol();
+    cupula.grupo.visible = !!L.estrellas; cupula.luna.position.copy(haciaElSol).multiplyScalar(420);
+    clima.poner(L);
+  }
+  const festival = crearFestival(escena, liviano);
+  festival.poner(T, clima, luz);   // (largada y llegada de fiesta: ver festival.js)
+  let luzActual = luz;
+  clima.poner(luz);
+  cupula.grupo.visible = !!luz.estrellas;
 
   return {
-    luz, flora, publico, publicidad,
+    luz, flora, publico, publicidad, festival, clima,
+    // cambia la hora del dia (ver HORAS): "noche", "manana", "mediodia", "tarde", "atardecer" (o nada: la luz del clima, como siempre)
+    hora: (h) => { luzActual = luzDe(T.etapa.clima, h); aplicarLuz(luzActual); return luzActual; },
+    luzActual: () => luzActual,
     // Una vez por cuadro: acomoda lo que depende de donde esta la camara y de donde esta el auto.
     //   las sombras siguen a la camara; lo que queda abajo del auto se oscurece; las copas se calan sobre el auto;
     //   y los sprites se dan vuelta para mirar a la camara.
@@ -199,6 +287,7 @@ export function crearMundo(T, escena, liviano, huellas) {
       sol.target.position.copy(V);
       sol.position.copy(V).addScaledVector(haciaElSol, 250);
       ambiente.bajo.value = e.y;
+      if (cupula.grupo.visible) { cupula.grupo.position.set(e.x, e.y, e.z); cupula.grupo.updateMatrixWorld(); cupula.luna.lookAt(cam.position); }
       ambiente.centro.value.set(c.pos[0], c.pos[1], c.pos[2]);
       // donde esta el auto en la pantalla (en pixeles) y que radio ocupa: ahi se calan las copas
       const lejos = Math.hypot(cam.position.x - c.pos[0], cam.position.y - c.pos[1], cam.position.z - c.pos[2]);
@@ -220,6 +309,7 @@ export function crearMundo(T, escena, liviano, huellas) {
       if (c.rompio.length) { c.rompio.length = 0; utileria.tirar(); pueblo.tirar(); }
       utileria.animar(t);
       publicidad.animar(c, dt);
+      festival.animar(c, indice, dt, t);
     },
     reiniciar: () => { utileria.reiniciar(); pueblo.reiniciar(); publicidad.reiniciar(); },
   };

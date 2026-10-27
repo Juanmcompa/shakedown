@@ -19,7 +19,8 @@ for (const [nombre, forma] of [['pc', { ancho: 1280, alto: 720 }], ['notebook', 
   if (conFotos) await pag.screenshot({ path: 'out/portada-firma-' + nombre + '.png' });
   ver(nombre + ': en la portada, debajo de la marca, entera en pantalla', e.visible && e.texto === 'Desarrollado por Juan M. Comparini' && e.adentro && e.debajo && e.centrada, e);
   ver(nombre + ': mientras carga no aparece', !mientras);
-  await pag.evaluate(() => { window.shakedown.largar(); window.shakedown.avanzar(1.2); });
+  // (con nombre: sin nombre, la oficial no larga y pide uno)
+  await pag.evaluate(() => { window.shakedown.club.ponerNombre('Prueba'); window.shakedown.largar(); window.shakedown.avanzar(1.2); });
   await pag.waitForTimeout(500);
   const largando = await pag.evaluate(() => ({ firma: document.getElementById('firma').getBoundingClientRect().height > 0 && !document.getElementById('portada').hidden, sello: document.getElementById('sello').innerText }));
   ver(nombre + ': en la largada no esta (y el cartel no la dice)', !largando.firma && !/Comparini/.test(largando.sello), largando);

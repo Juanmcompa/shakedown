@@ -17,7 +17,7 @@ import { crearNube } from './nube.js';
 import { crearMenu } from './menu.js';
 import { crearCreador } from './creador.js';
 import { crearTutorial } from './tutorial.js';
-import { crearMundo } from './world.js';
+import { crearMundo, revelado } from './world.js';
 import { crearPost } from './post.js';
 import { crearDibujo, crearEspectro } from './autos.js';
 import { crearCamara } from './camera.js';
@@ -45,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '36';
+const PAGINA = '37';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -188,6 +188,7 @@ const trazada = crearTrazada(T, escena, ref);   // la linea para seguir (se pren
 const soplo = (etapa.semilla % 628) / 100, fuerzaDelViento = 0.35 + (etapa.semilla % 7) * 0.08;
 const camara = crearCamara(T), fx = crearEfectos(escena, huellas, 1 - mundo.luz.mojado, [Math.sin(soplo) * fuerzaDelViento, Math.cos(soplo) * fuerzaDelViento], liviano), sonido = crearSonido(), musica = crearMusica(), hud = crearHud();
 const post = crearPost(render, etapa.clima, liviano);
+post.revelar(revelado(etapa.clima, etapa.hora));
 const papelitos = crearPapelitos($('papelitos'));   // (los de la meta)
 // lo que cada uno eligio en la configuracion (y si nunca la toco, lo que viene de fabrica).
 // La trazada, mientras nadie la toque, acompaña a la ayuda de manejo: con ayuda se ve, para entender por donde va a ir el auto.
@@ -523,6 +524,13 @@ function mandosDeCelular() {
   if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
 }
 
+// La hora del dia de cada pasada. La pista del dia oficial es siempre de noche; en las practicas de esa misma pista se sortea
+// la hora (mañana, mediodia, tarde, atardecer o noche). Los circuitos y las pistas de la comunidad llevan la suya fija.
+// Es solo la luz: no cambia la pista ni como se maneja.
+const HORAS_DE_PRACTICA = ['manana', 'mediodia', 'tarde', 'atardecer', 'noche'];
+const horaDeLaPasada = () => (modo === 'practica' && etapa.practicaLibre ? HORAS_DE_PRACTICA[Math.floor(Math.random() * HORAS_DE_PRACTICA.length)] : etapa.hora);
+function ponerLaHora(h) { mundo.hora(h); post.revelar(revelado(etapa.clima, h)); }
+
 // Correr una pista desde el inicio. Las pistas no se cambian en caliente (el terreno se arma una vez): si la que se pidio no es la
 // que esta cargada, se abre su direccion con "#largar" y al terminar de cargar empieza sola, como si se hubiera tocado de nuevo.
 function correr(n, dir, nombre) {
@@ -546,6 +554,7 @@ function largar(conTutorial) {
   const explicar = conTutorial === true || club.esNuevo();
   modo = club.sePuedeOficial() && !(sinNombre && conTutorial === true) ? 'oficial' : 'practica';
   raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
+  ponerLaHora(horaDeLaPasada());
   pantalla = 'jugando';
   tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio;
   rondas = 0; mejorRonda = null; mejoroAlgo = false;
@@ -675,7 +684,7 @@ const VUELTA = { caida: 'Te fuiste al vacío', afuera: 'Te fuiste lejos del cami
 const CUENTA = ['', 'uno', 'dos', 'tres'];
 function atender(e) {
   if (e.tipo === 'cuenta') { hud.grande(String(e.dato), 0.95, 'cuenta'); copiloto.hablar(CUENTA[e.dato]); }
-  else if (e.tipo === 'ya') { hud.grande('¡YA!', 0.9, 'ya'); hud.sello(false); if (modo === 'oficial') club.empezarOficial(club.auto()); }
+  else if (e.tipo === 'ya') { hud.grande('¡YA!', 0.9, 'ya'); sonido.griterio(); hud.sello(false); if (modo === 'oficial') club.empezarOficial(club.auto()); }
   else if (e.tipo === 'sector') {
     const n = partida.sectores.length, par = ref.sectores[e.dato.numero], dif = e.dato.tiempo - par;
     if (n) hud.sectores(partida.colores(), n);   // (en una vuelta cerrada, al cerrar el ultimo sector ya arranco la ronda siguiente)
@@ -936,7 +945,7 @@ if (enCasa) window.shakedown = {
   travesia: travesia.prueba, entrarTravesia: () => travesia.entrar(),
   dibujo: () => dibujo,
   estado: () => ({ pantalla, modo, nitidez, pista: numero, estado: partida.estado, tiempo: partida.tiempo, indice: partida.indice, sector: partida.sector, colores: partida.colores(), roto: partida.roto, vueltas: partida.vueltas, rival: rival && rival.nombre, ...(T.vuelta ? { rondas, mejor: mejorRonda && mejorRonda.r.t } : {}) }),
-  largar,
+  largar, ponerLaHora,
   saltearEspera: () => { if (tFin > 0) tFin = 0.001; },   // (para las pruebas) muestra el resultado sin esperar
   // (para las pruebas) maneja unos segundos con el volante y el pedal fijos, con la camara y los efectos siguiendolo
   simular: (seg, x, y, mano = false) => { for (let i = 0; i < seg / JUEGO.paso; i++) { c.paso({ x, y, mano }, JUEGO.paso); if (i % 2) { fx.actualizar(c, JUEGO.paso * 2); dibujo.actualizar(c, JUEGO.paso * 2, conEfectos); camara.seguir(c, JUEGO.paso * 2); } } },

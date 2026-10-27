@@ -78,6 +78,27 @@ await A.click('#crAmbiente button[data-valor="montana"]');
 await A.click('#crClima button[data-valor="lluvia"]');
 await A.waitForTimeout(300);
 ver('A: en la montaña aparecen la cornisa y las lajas, y el camino es el mismo', await A.evaluate(() => !document.querySelector('[data-pieza="co"]').hidden) && (await notas(A)).length === PISTA.length + 2, await notas(A));
+// el camino de cada tramo (tipo, ancho, deformacion, relieve) y la hora del dia
+{
+  const antes = (await notas(A)).length, largoAntes = await texto(A, 'crLargo');
+  ver('A: estan los botones de tipo de camino, ancho, deformacion y relieve (20)', await A.evaluate(() => document.querySelectorAll('#crAjustes .cr-pieza:not([hidden])').length) === 20, await A.evaluate(() => document.querySelectorAll('#crAjustes .cr-pieza').length));
+  ver('A: la hora del dia tiene cinco botones y no hay "noche" entre los climas', await A.evaluate(() => document.querySelectorAll('#crHora button').length === 5 && ![...document.querySelectorAll('#crClima button')].some((b) => b.dataset.valor === 'noche')));
+  await tocar(A, ['Th', 'Z3', 'A1', 'L3']);
+  await A.click('#crHora button[data-valor="atardecer"]');
+  await A.waitForTimeout(300);
+  ver('A: los ajustes se suman como notas chicas, sin cambiar el largo ni la cuenta', (await notas(A)).length === antes + 4 && await texto(A, 'crLargo') === largoAntes, [(await notas(A)).length, antes, await texto(A, 'crLargo'), largoAntes]);
+  ver('A: la hora elegida queda marcada y se guarda en el borrador', await A.evaluate(() => document.querySelector('#crHora .elegido').dataset.valor === 'atardecer' && window.shakedown.club.borrador().hoja.h === 'atardecer'));
+  const sigue = await A.evaluate(() => { const c = [...document.querySelectorAll('#crAjustes .cr-pieza')]; return c.filter((b) => !b.hidden && !b.classList.contains('no-entra')).length; });
+  ver('A: los ajustes nunca se apagan', sigue === 20, sigue);
+  await tocar(A, ['Tu', 'A5', 'Z1']);
+  await A.evaluate(() => document.getElementById('creador').scrollTo(0, 400));
+  await A.waitForTimeout(150);
+  await A.screenshot({ path: 'out/creador-tramo.png' });
+  for (let k = 0; k < 7; k++) { await A.click('#crBorrar'); await A.waitForTimeout(60); }
+  await A.click('#crHora button[data-valor="atardecer"]');
+  await A.waitForTimeout(200);
+  ver('A: se borran los ajustes con "borrar la ultima" y la hora se saca tocandola de nuevo', (await notas(A)).length === antes && await A.evaluate(() => window.shakedown.club.borrador().hoja.h === undefined), (await notas(A)).length);
+}
 await A.screenshot({ path: 'out/creador-2-armada.png', fullPage: false });
 await A.evaluate(() => document.getElementById('creador').scrollTo(0, 9999));
 await A.waitForTimeout(150);

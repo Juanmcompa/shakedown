@@ -825,8 +825,8 @@ function ensuciador(h) {
     let gana = 0, clase = 'barro';
     for (const r of c.ruedas) {
       if (!r.toca) continue;
-      const s = SUELO[r.suelo], g = s.blando >= 0.9 ? (c.agua > 0.05 ? 0.7 : 1.4) : c.agua > 0.05 ? 0.6 : s.id === SUELOS.tierra.id ? 0.35 : s.id === SUELOS.pasto.id ? 0.12 : s.id === SUELOS.ripio.id ? 0.15 : 0;
-      if (g > 0) { gana += g; clase = c.agua > 0.05 ? 'agua' : s.id === SUELOS.tierra.id ? 'tierra' : s.id === SUELOS.pasto.id ? 'pasto' : s.id === SUELOS.ripio.id ? 'ripio' : 'barro'; }
+      const s = SUELO[r.suelo], g = s.blando >= 0.9 ? (c.agua > 0.05 ? 0.7 : 1.4) : c.agua > 0.05 ? 0.6 : s.id === SUELOS.tierra.id ? 0.35 : s.id === SUELOS.pasto.id ? 0.12 : s.id === SUELOS.ripio.id || s.id === SUELOS.gravilla.id ? 0.15 : s.id === SUELOS.sendero.id ? 0.3 : 0;
+      if (g > 0) { gana += g; clase = c.agua > 0.05 ? 'agua' : s.id === SUELOS.tierra.id || s.id === SUELOS.sendero.id ? 'tierra' : s.id === SUELOS.pasto.id ? 'pasto' : s.id === SUELOS.ripio.id || s.id === SUELOS.gravilla.id ? 'ripio' : 'barro'; }
     }
     nivel = Math.min(1, nivel + gana * rapido * dt * 0.02);
     sin += dt;

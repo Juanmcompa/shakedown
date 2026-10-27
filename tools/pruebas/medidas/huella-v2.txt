@@ -1,0 +1,10 @@
+#1 tramos 1d541561da3a camino 0914086423f1 alturas 2b1a46f1733a suelos 7518d2122e06 cosas 3439:5fbb040698d8 publico 82 ref 152.97
+#2 tramos b96aa6ea80f3 camino e9e20f79379c alturas a7f2f713dfed suelos 30879cffcf5a cosas 1149:b71a5c77318e publico 47 ref 106.06
+#3 tramos 4be475820d9b camino 8ea753cb7081 alturas 1072bfa15a2d suelos d9002f5d0161 cosas 7709:006826ca7ca0 publico 50 ref 131.82
+#4 tramos e89d9201fe94 camino 338e6f61ad23 alturas a300f40275f3 suelos 5552244c6b8e cosas 1411:1ae7e333baae publico 62 ref 123.20
+#5 tramos d45c785e2d84 camino 1627c59903a3 alturas 58bd7200b2c7 suelos 49e864859b9a cosas 2477:ec4a027802e4 publico 58 ref 117.35
+#6 tramos ad6190745551 camino 52dfd65b7ced alturas 11f1d587b0bb suelos 3be1c9440ca8 cosas 8429:274b93f9e844 publico 75 ref 125.85
+#7 tramos aacaa714c345 camino b776379b1a81 alturas 501a5be39a30 suelos f2688ac89836 cosas 7888:8acbf4ede581 publico 55 ref 112.54
+#8 tramos 674143d4b0b4 camino f8042b6968af alturas 764f0db399c6 suelos 68e6305d399e cosas 3404:6a32a26a1e0d publico 63 ref 129.07
+#9 tramos 5e6bbfd313b7 camino 715e1d40444e alturas 4ea7a9a7d57d suelos 34c238e5a903 cosas 3243:b83f52956056 publico 49 ref 130.05
+#10 tramos e0742ee69443 camino e565739f6cfc alturas 09553435b648 suelos 425ced3d481b cosas 7512:50acfb1d9146 publico 57 ref 115.00

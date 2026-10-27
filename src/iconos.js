@@ -166,6 +166,41 @@ const ICONOS = {
   bateria: [['............', '.###....###.', '.###....###.', '############', '#..........#', '#...#......#', '#..###..##.#', '#...#......#', '#..........#', '############', '............', '............'], BLANCO],
   carta: [['..########..', '.#........#.', '.#.##.##..#.', '.#.##.##..#.', '.#........#.', '.#..####..#.', '.#..####..#.', '.#........#.', '.#..##.##.#.', '.#........#.', '..########..', '............'], BLANCO],
 };
+// --- los iconos del creador para el tipo de camino, el ancho, la deformacion y el relieve (se arman con cuentas) ---
+{
+  const vacio = () => Array.from({ length: 12 }, () => Array(12).fill('.'));
+  const texto = (g) => g.map((f) => f.join(''));
+  const poner = (g, pts, c = '#') => { for (const [x, y] of pts) if (x >= 0 && x < 12 && y >= 0 && y < 12) g[y][x] = c; };
+  // tipo de camino: dos bordes y un detalle propio
+  const via = (detalle) => { const g = vacio(); for (let y = 0; y < 12; y++) { g[y][1] = '#'; g[y][10] = '#'; } detalle(g); return texto(g); };
+  ICONOS['camino-huella'] = [via((g) => { for (let y = 0; y < 12; y++) { g[y][4] = '='; g[y][7] = '='; if (y % 4 === 1) { g[y][2] = '+'; g[y][9] = '+'; } } }), VERDE];
+  ICONOS['camino-campo'] = [via((g) => { for (const y of [1, 4, 7, 10]) { poner(g, [[0, y], [0, y + 1], [11, y], [11, y + 1]]); } for (let y = 2; y < 10; y += 3) g[y][5] = '='; }), BARRO];
+  ICONOS['camino-ripio'] = [via((g) => poner(g, [[3, 1], [6, 2], [8, 4], [4, 5], [7, 7], [3, 8], [6, 10], [5, 3], [8, 9]], '=')), '#c9bfa8'];
+  ICONOS['camino-ruta'] = [via((g) => { for (const y of [0, 1, 5, 6, 10, 11]) { g[y][5] = 'a'; g[y][6] = 'a'; } }), BLANCO];
+  ICONOS['camino-barrial'] = [via((g) => poner(g, [[3, 1], [4, 1], [3, 2], [6, 3], [7, 3], [7, 4], [4, 6], [5, 6], [4, 7], [7, 8], [8, 8], [3, 10], [4, 10], [6, 10]], '=')), BARRO];
+  ICONOS['camino-pasto'] = [via((g) => { for (const [x, y] of [[3, 2], [7, 4], [4, 7], [8, 9], [5, 11]]) poner(g, [[x, y], [x - 1, y - 1], [x + 1, y - 1], [x, y - 1]]); }), VERDE];
+  // ancho: cinco anchos, de una huella a un playon
+  for (let k = 1; k <= 5; k++) {
+    const g = vacio(), medio = 1 + k * 2 - 1, izq = Math.floor((12 - medio) / 2), der = izq + medio - 1;
+    for (let y = 0; y < 12; y++) { g[y][Math.max(0, izq - 1)] = '#'; g[y][Math.min(11, der + 1)] = '#'; }
+    for (let y = 1; y < 12; y += 4) poner(g, [[5, y], [6, y]], '=');
+    ICONOS['ancho-' + k] = [texto(g), AMARILLO];
+  }
+  // deformacion: el piso cada vez mas roto (0 liso ... 4 muy roto)
+  for (let k = 0; k <= 4; k++) {
+    const g = vacio();
+    for (let x = 0; x < 12; x++) { const y = 5 + Math.round(Math.sin(x * 1.3) * k * 0.9); poner(g, [[x, y], [x, y + 1]]); }
+    for (let n = 0; n < k; n++) poner(g, [[2 + n * 3 % 9, 9], [3 + n * 3 % 9, 9], [2 + n * 3 % 9, 10]], '=');
+    ICONOS['rotura-' + k] = [texto(g), BARRO];
+  }
+  // relieve: plano, normal, lomas fuertes, medanos
+  const perfil = [() => 6, (x) => 6 + Math.round(Math.sin(x / 2) * 1.2), (x) => 6 + Math.round(Math.sin(x / 2.2) * 3.5), (x) => 3 + Math.abs(((x * 1.5) % 8) - 4) * 1.5];
+  perfil.forEach((f, k) => {
+    const g = vacio();
+    for (let x = 0; x < 12; x++) { const y = Math.max(0, Math.min(11, Math.round(f(x)))); for (let yy = y; yy < Math.min(12, y + 2); yy++) g[yy][x] = '#'; for (let yy = y + 2; yy < 12; yy += 2) g[yy][x] = '='; }
+    ICONOS['relieve-' + k] = [texto(g), VERDE];
+  });
+}
 export const NOMBRES = () => Object.keys(ICONOS);
 // Devuelve la direccion de imagen de un icono, del color pedido (por defecto, el suyo).
 // tachado: el dibujo queda tenue y cruzado por una raya roja (para lo que esta apagado).

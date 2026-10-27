@@ -106,9 +106,11 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Píxeles: el mundo se dibuja en píxeles grandes con paleta limitada y trama, opción en Configuración (no / medio / fuerte, medio por defecto); además alivia al celular
 - [x] Pantallas y controles: sin pixelado; inicio sin cards (pista del día grande con su tabla, Pistas anteriores bien visible y fila de modos); al cambiar de pista se larga directo sin volver al menú; tablero revisado en celulares chicos (desde 320 px) y al girar; tipografía nueva (Pixelify Sans, VT323, Atkinson Hyperlegible); de fábrica flechas y trazada, sin ayuda ni rally serio, con ofertas al terminar (muy rápido → rally serio, muy lento → ayuda); camarita en el botón de la vista
 - [x] Tabla de todos: la oficial de cada uno queda en el servidor con o sin club; se ve en el inicio, el panel Tabla, el resultado ("37º de 412") y Pistas anteriores; nombre obligatorio antes de la oficial, con uno sugerido
+- [x] Motor de pistas (VERSION 2): seis tipos de camino, anchos variables, relieve, deformaciones (rodadas, pozos, ondas, badenes, charcos), pueblitos, rastros de otros autos y salidas de pista; festival en largada y llegada; suelos nuevos (asfalto viejo, gravilla, sendero); la pista del día siempre de noche con faros, prácticas y circuitos con su hora; el creador elige camino, ancho, deformación, relieve y hora
 
 ## Lo que sigue
 
+- Festival más grande en los circuitos fijos y las pistas de la comunidad cuando hay bosque cerrado (hoy no se despejan árboles ahí); más pueblos en la pista del día; horas distintas en la Travesía.
 - Moderar los nombres de la tabla de todos (hoy solo se limpian caracteres raros) y, si crece la gente, guardar en caché la tabla para no leer la base en cada pedido.
 - Que la card de la pista del día pida al servidor las tablas de hoy aunque esté cargado un circuito (ahora muestra lo último guardado en el aparato).
 - Que el servidor guarde la marca de "rally serio" (hoy las tablas de los clubes no muestran el casco).

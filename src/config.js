@@ -27,6 +27,14 @@ export const SUELOS = {
   feshfesh: { id: 13, nombre: 'Fesh-fesh', agarre: 0.34, suelto: 3.6, freno: 0.12, pasta: 105, rugoso: [0.03, 5],  blando: 1,   polvo: 1.5,  color: 0xe8d6ab },
   // piedras negras sueltas sobre tierra oscura: agarra poco y traquetea (Travesia)
   pedregal: { id: 14, nombre: 'Pedregal', agarre: 0.6, suelto: 2.6, freno: 0.06, pasta: 6, rugoso: [0.12, 1.6], blando: 0.1, polvo: 0.7, color: 0x3b332e },
+  // los de las pistas nuevas de la pista del dia (ruta vieja, ripio de montaña, huella de bosque). Van al final: el numero de
+  // cada suelo es su lugar, y los de antes (con sus numeros) no cambian.
+  // asfalto viejo: firme y con mucho agarre (casi como el nuevo), pero lleno de grietas, parches y bachecitos
+  asfaltoViejo: { id: 15, nombre: 'Asfalto viejo', agarre: 0.9, suelto: 1.12, freno: 0.022, pasta: 0, rugoso: [0.035, 2.2], blando: 0, polvo: 0.1, color: 0x55575a },
+  // gravilla: ripio suelto de montaña. Agarra poco de costado, vibra y da saltitos (las piedras sueltas del camino)
+  gravilla: { id: 16, nombre: 'Gravilla', agarre: 0.62, suelto: 3.1, freno: 0.045, pasta: 2, rugoso: [0.085, 1.5], blando: 0.15, polvo: 0.8, color: 0xb5b0a4 },
+  // sendero: la tierra humeda y oscura del bosque, con hojarasca. Agarra menos que la tierra seca y casi no levanta polvo
+  sendero: { id: 17, nombre: 'Sendero', agarre: 0.68, suelto: 2.8, freno: 0.055, pasta: 1.5, rugoso: [0.06, 3.5], blando: 0.55, polvo: 0.3, color: 0x5a4631 },
 };
 export const SUELO = Object.values(SUELOS); // lista ordenada por id
 

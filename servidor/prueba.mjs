@@ -4,7 +4,7 @@
 import servidor, { LIMITES } from './worker.js';
 import { baseLocal } from './local.mjs';
 import { crearTerreno } from '../src/terrain.js';
-import { generarPista, anotarPista } from '../src/generador.js';
+import { generarPista, anotarPista, VERSION } from '../src/generador.js';
 import { armarHoja } from '../src/hoja.js';
 import { COMUNIDAD } from '../src/circuitos.js';
 import { crearGrabacion } from '../src/fantasma.js';
@@ -106,7 +106,7 @@ r = await pedir('POST', '/pasadas', { llave: LB, codigo: await pasada(T, { nombr
 const idP2 = r.cosa && r.cosa.id;
 ver('las practicas son pasadas aparte', idP1 && idP2 && idP1 !== idP2 && idP1 !== idB, [idB, idP1, idP2]);
 
-r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: 1, clubes: [club, 'noexiste1'] });
+r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: VERSION, clubes: [club, 'noexiste1'] });
 const t = r.cosa && r.cosa.clubes && r.cosa.clubes[club];
 ver('la tabla del club contesta', r.estado === 200 && t && t.miembros === 3 && t.soy === true, r.cosa);
 if (t) {
@@ -118,16 +118,16 @@ if (t) {
 ver('un club que no existe vuelve vacio', r.cosa && r.cosa.clubes.noexiste1 === null, r.cosa && r.cosa.clubes);
 // el apodo que vale es el de ahora: si alguien se lo cambia (sin volver a correr), cambia en la tabla
 await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Betito' });
-r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: 1, clubes: [club] });
+r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: VERSION, clubes: [club] });
 ver('la tabla muestra el apodo de ahora', r.estado === 200 && r.cosa.clubes[club].miembros === 3 && r.cosa.clubes[club].tabla.filter((x) => !x.mio).length === 2 && r.cosa.clubes[club].tabla.filter((x) => !x.mio).every((x) => x.nombre === 'Betito'), r.cosa);
 await pedir('POST', '/clubes/' + club + '/entrar', { llave: LB, apodo: 'Beto' });
-r = await pedir('POST', '/tablas', { llave: LC, pista: N + 1, version: 1, clubes: [club] });
+r = await pedir('POST', '/tablas', { llave: LC, pista: N + 1, version: VERSION, clubes: [club] });
 ver('otra pista: tabla vacia y faltan los otros dos', r.estado === 200 && r.cosa.clubes[club].tabla.length === 0 && r.cosa.clubes[club].faltan.length === 2, r.cosa);
 
 // el tiempo de un corredor vale para todos sus clubes, tambien los que arma despues
 r = await pedir('POST', '/clubes', { llave: LB, nombre: 'Diseño 3', apodo: 'Beto' });
 const otro = r.cosa && r.cosa.codigo;
-r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: 1, clubes: [club, otro] });
+r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: VERSION, clubes: [club, otro] });
 ver('la oficial de B figura en sus dos clubes', r.estado === 200 && r.cosa.clubes[otro].tabla.some((x) => x.id === idB && x.mio) && r.cosa.clubes[club].tabla.some((x) => x.id === idB && x.mio), r.cosa);
 ver('cada club tiene su gente', r.cosa.clubes[otro].miembros === 1 && r.cosa.clubes[club].miembros === 3, r.cosa);
 
@@ -214,7 +214,7 @@ if (!BASE) {
   ver('una pista vencida da 410', r.estado === 410, r);
   r = await pedir('POST', '/pasadas', { llave: LA, codigo: await pasada(crearTerreno(etapaClub), { nombre: 'Anita', t: 79, practica: true }) });
   ver('en una pista vencida ya no se suben pasadas', r.estado === 410, r);
-  r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: 1, clubes: [club] });
+  r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: VERSION, clubes: [club] });
   ver('y del club se va', r.cosa.clubes[club].pistas.length === 0, r.cosa.clubes[club].pistas);
   const rango = { desde: COMUNIDAD.desde, hasta: COMUNIDAD.hasta };
   COMUNIDAD.desde = COMUNIDAD.hasta = pistaClub;   // (solo queda libre ese numero)
@@ -236,7 +236,7 @@ if (!BASE) {
   r = await pedir('POST', '/pistas/' + pistaClub + '/borrar', { llave: LB });
   r = await pedir('POST', '/pistas', { llave: LB, nombre: 'Otra mas', apodo: 'Beto', hoja: HOJA });
   ver('pero si borra una, puede publicar otra', r.estado === 200, r);
-  r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: 1, clubes: [club] });
+  r = await pedir('POST', '/tablas', { llave: LB, pista: N, version: VERSION, clubes: [club] });
   ver('y la que borro ya no figura en el club', r.cosa.clubes[club].pistas.length === 0, r.cosa.clubes[club].pistas);
   LIMITES.pistasPorJugador = topes.pistasPorJugador;
   LIMITES.pistasPorConexion = 1;
@@ -298,7 +298,7 @@ if (!BASE) {
   ver('quien sale del club ya no figura en su tabla de la Travesia', !r.cosa.clubes[club].tabla.some((x) => x.nombre === 'Caro'), r.cosa.clubes[club].tabla);
   await pedir('POST', '/clubes/' + club + '/entrar', { llave: LC, apodo: 'Caro' });
   // las tablas viejas siguen andando igual: la Travesia no toca la tabla de pasadas
-  r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: 1, clubes: [club] });
+  r = await pedir('POST', '/tablas', { llave: LA, pista: N, version: VERSION, clubes: [club] });
   ver('la tabla de la pista del dia sigue como siempre', r.estado === 200 && r.cosa.clubes[club] && Array.isArray(r.cosa.clubes[club].tabla), r.estado);
   // la base que ya estaba publicada gana la tabla sola, sin migracion (solo con el programa directo: ahi se ve la base)
   if (!BASE) {
@@ -328,7 +328,7 @@ if (!BASE) {
 // --- la tabla de todos: la oficial de cada corredor, con o sin club ---
 {
   const topes = { ...LIMITES }, ayer = N - 1, Ty = crearTerreno(generarPista(ayer)), [LX, LY, LZ, LW] = ['x', 'y', 'z', 'w'].map((x) => x.repeat(24) + 'T' + sufijo);
-  const todos = (quien, pista = ayer) => pedir('POST', '/todos', { llave: quien, pista, version: 1 });
+  const todos = (quien, pista = ayer) => pedir('POST', '/todos', { llave: quien, pista, version: VERSION });
   r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: '', t: 100 }) });
   ver('la oficial sin nombre no entra', r.estado === 400 && /nombre/i.test(r.cosa.error), r);
   r = await pedir('POST', '/pasadas', { llave: LX, codigo: await pasada(Ty, { pista: ayer, nombre: '‏\u0007  ', t: 100 }) });
@@ -375,7 +375,7 @@ if (!BASE) {
   const estadosMalos = [];
   for (const [pista, version] of malas) estadosMalos.push((await pedir('POST', '/todos', { llave: LX, pista, version })).estado);
   ver('pistas sin oficial no tienen tabla de todos', estadosMalos.every((x) => x === 400), estadosMalos);
-  r = await pedir('POST', '/todos', { llave: LX, pista: N, version: 1 });
+  r = await pedir('POST', '/todos', { llave: LX, pista: N, version: VERSION });
   ver('la de hoy si', r.estado === 200 && r.cosa.total >= 2, r);
   // con tope: los primeros, mi puesto y los dos de arriba y de abajo
   if (!BASE) {

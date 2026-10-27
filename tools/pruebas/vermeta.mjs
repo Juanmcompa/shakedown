@@ -40,7 +40,7 @@ if (!a.cargo) { console.log('NO CARGO\n' + a.errores.join('\n')); process.exit(1
 const A = a.pag;
 await A.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
 await A.evaluate(() => window.shakedown.club.ponerNombre('Juanma'));
-await amigos(A, [['Caro', 118], ['Beto', 120.5]]);   // (el piloto "bueno" en la pista de hoy hace 1:59:17)
+await amigos(A, [['Caro', 144.5], ['Beto', 147]]);   // (el piloto "bueno" en la pista de hoy hace 2:25:73)
 await espiar(A);
 const e1 = await correr(A);
 ver('llega a la meta', e1.estado === 'llegada', e1);
@@ -99,7 +99,7 @@ const b = await abrir({ ancho: 390, alto: 844, dia: A_LA_3, contexto: { hasTouch
 const B = b.pag;
 await B.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
 await B.evaluate(() => window.shakedown.club.ponerNombre('Juanma'));
-await amigos(B, [['Caro', 124.3], ['Beto', 131.9]]);
+await amigos(B, [['Caro', 150.9], ['Beto', 158.5]]);
 await espiar(B);
 const e4 = await correr(B);
 await fin(B);

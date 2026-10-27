@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="36" class="cargando">
+<html lang="es" data-pagina="37" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -236,7 +236,7 @@
   // de publicidad lo frenan y el juego no carga. Ya paso: ver src/carteleria.js.)
   // (Un navegador que no entiende este mapa igual anda: pide los archivos sin el numero.)
   const V = Date.now();
-  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'musica', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'travesiafiesta', 'cartas', 'travesiaguia', 'travesiaenlace'];
+  const modulos = ['main', 'config', 'dia', 'generador', 'terrain', 'referencia', 'vehicle', 'reglas', 'ayuda', 'copiloto', 'fantasma', 'club', 'menu', 'world', 'clima', 'post', 'material', 'flora', 'utileria', 'publico', 'pueblo', 'edificios', 'circuitos', 'sprites', 'autos', 'camera', 'fx', 'audio', 'musica', 'input', 'hud', 'iconos', 'noise', 'pixel', 'arte', 'huellas', 'parodias', 'carteleria', 'trazada', 'nube', 'equipo', 'tutorial', 'hoja', 'creador', 'papelitos', 'partes', 'vitrina', 'travesia', 'travesiaterreno', 'travesiamundo', 'travesiatrazada', 'travesiaflora', 'travesiahuellas', 'travesiafiesta', 'festival', 'cartas', 'travesiaguia', 'travesiaenlace'];
   const mapa = {};
   for (const m of modulos) mapa['./src/' + m + '.js'] = './src/' + m + '.js?v=' + V;
   document.write('<link rel="stylesheet" href="style.css?v=' + V + '">');
@@ -580,6 +580,7 @@
     <div class="cr-lugar">
       <div id="crAmbiente" class="opciones" role="radiogroup" aria-label="Ambiente"></div>
       <div id="crClima" class="opciones" role="radiogroup" aria-label="Clima"></div>
+      <div id="crHora" class="opciones" role="radiogroup" aria-label="Hora del día"></div>
     </div>
     <div class="cr-tu-pista">
       <div id="crHoja" class="cr-hoja" role="img"></div>
@@ -593,6 +594,7 @@
       <div id="crCurvas" class="cr-grupo" aria-label="Curvas"></div>
       <div id="crCamino" class="cr-grupo" aria-label="Rectas y camino"></div>
       <div id="crCostado" class="cr-grupo" aria-label="Al costado del camino"></div>
+      <div id="crAjustes" class="cr-grupo cr-ajustes" aria-label="Cómo es el camino de ahí en adelante: tipo, ancho, deformación y relieve"></div>
     </div>
     <div class="cr-fin">
       <label for="crNombre">Nombre de la pista</label>

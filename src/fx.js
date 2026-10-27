@@ -15,7 +15,7 @@ const POLVOS = {
   gris: ['#a5a29c', '#c2bfb8', '#dbd8d1'], pasto: ['#99906a', '#b5ac84', '#cdc5a0'],
   arena: ['#c9ae7a', '#dcc592', '#ecdbb2'],   // (la Travesia: va al final para no mover los dibujos de antes en el atlas)
 };
-const POLVO_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.tierra.id]: 'tierra', [SUELOS.pasto.id]: 'pasto', [SUELOS.arena.id]: 'arena', [SUELOS.feshfesh.id]: 'arena' };   // el resto, gris
+const POLVO_DE = { [SUELOS.ripio.id]: 'ripio', [SUELOS.tierra.id]: 'tierra', [SUELOS.pasto.id]: 'pasto', [SUELOS.arena.id]: 'arena', [SUELOS.feshfesh.id]: 'arena', [SUELOS.gravilla.id]: 'ripio', [SUELOS.sendero.id]: 'tierra' };   // el resto, gris
 // la polvareda grande de la Travesia (opcion "grande" de crearEfectos): nubes de hasta 5 m de lado, que quedan flotando atras del auto.
 // Mismo estilo (pocos pixeles, a 8 por metro) pero con edades mas grandes, y solo en los colores de la arena, la tierra y el ripio.
 const EDADES_G = [[30, 1.1], [36, 0.9], [42, 0.66], [48, 0.4]];

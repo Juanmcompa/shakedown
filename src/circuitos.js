@@ -11,20 +11,20 @@ const RAD = Math.PI / 180;
 // detalle: lo que dice la portada del circuito. breve: lo que dice su renglon en la lista de circuitos.
 // real: true = esta basado en un tramo de verdad (se agrupa aparte en el panel de circuitos); no cambia la pista.
 export const CIRCUITOS = [
-  { id: 'subida', numero: 16001, version: 1, nombre: 'Subida a Mina Vieja', corto: 'Subida', emoji: '⛰️', bioma: 'montana', clima: 'sol', caracter: 'tecnica', lugar: '38°51′S 70°58′O',
+  { id: 'subida', numero: 16001, version: 1, nombre: 'Subida a Mina Vieja', corto: 'Subida', emoji: '⛰️', bioma: 'montana', clima: 'sol', hora: 'manana', caracter: 'tecnica', lugar: '38°51′S 70°58′O',
     detalle: 'Angosta y empinada, con puentes y lajas. No hay velocidad: es pura técnica.', breve: 'Montaña angosta: pura técnica' },
-  { id: 'bajada', numero: 16002, version: 1, nombre: 'Bajada del Portezuelo', corto: 'Bajada', emoji: '🦅', bioma: 'montana', clima: 'tarde', caracter: 'rapida', lugar: '38°44′S 71°02′O',
+  { id: 'bajada', numero: 16002, version: 1, nombre: 'Bajada del Portezuelo', corto: 'Bajada', emoji: '🦅', bioma: 'montana', clima: 'tarde', hora: 'atardecer', caracter: 'rapida', lugar: '38°44′S 71°02′O',
     detalle: 'Ancha, rápida y en bajada, toda de ripio suelto. Hay que llevarlo cruzado.', breve: 'Ripio en bajada: la más rápida' },
-  { id: 'urbano', numero: 16003, version: 1, nombre: 'Callejero de Villa Cañada', corto: 'Urbano', emoji: '🏘️', bioma: 'campo', clima: 'sol', caracter: 'tecnica', lugar: '35°12′S 60°41′O',
+  { id: 'urbano', numero: 16003, version: 1, nombre: 'Callejero de Villa Cañada', corto: 'Urbano', emoji: '🏘️', bioma: 'campo', clima: 'sol', hora: 'noche', caracter: 'tecnica', lugar: '35°12′S 60°41′O',
     detalle: 'Entre las casas del pueblo: esquinas de 90 grados, la plaza, un pasaje angosto y cosas para esquivar.', breve: 'Esquinas de 90 entre las casas' },
   // vuelta: true = es una vuelta cerrada: no tiene llegada, se dan las vueltas que se quieran y queda la mejor.
-  { id: 'practica', numero: 16004, version: 1, vuelta: true, nombre: 'Vuelta del Club', corto: 'Práctica', emoji: '🔁', bioma: 'campo', clima: 'sol', caracter: 'mixta', lugar: '37°46′S 68°12′O',
+  { id: 'practica', numero: 16004, version: 1, vuelta: true, nombre: 'Vuelta del Club', corto: 'Práctica', emoji: '🔁', bioma: 'campo', clima: 'sol', hora: 'tarde', horaLibre: true, caracter: 'mixta', lugar: '37°46′S 68°12′O',
     detalle: 'Una vuelta cerrada para practicar: sale por la ruta, cruza el pueblo, se mete en el bosque, trepa al cerro y vuelve. Das las vueltas que quieras y queda la mejor.', breve: 'Vuelta cerrada: queda la mejor' },
-  { id: 'giulio', numero: 16005, version: 1, real: true, maximo: 1500, nombre: 'Mina Clavero – Giulio Cesare', corto: 'Giulio Cesare', emoji: '🏔️', bioma: 'sierra', clima: 'sol', caracter: 'mixta', lugar: '31°43′S 64°58′O',
+  { id: 'giulio', numero: 16005, version: 1, real: true, maximo: 1500, nombre: 'Mina Clavero – Giulio Cesare', corto: 'Giulio Cesare', emoji: '🏔️', bioma: 'sierra', clima: 'sol', hora: 'mediodia', caracter: 'mixta', lugar: '31°43′S 64°58′O',
     detalle: 'Casi 20 kilómetros de la pampa de altura al pueblo: horquillas arriba, rectas rápidas con saltos, curvas entre el granito, cuestas con pirca, un arroyo y las esquinas de Mina Clavero.', breve: '19 km: de la sierra al pueblo' },
   // La Montaña del Sufrimiento: de pura fantasia (no existe), pero va con los reales. Se corre con el auto del garaje, como todas.
   // Es la que estrena el camino deformado (rodadas hondas, barro, badenes): ver "surcos" en terrain.js. Va al final de la lista, como siempre.
-  { id: 'montana', numero: 16006, version: 5, real: true, maximo: 900, nombre: 'La Montaña del Sufrimiento', corto: 'Montaña del Sufrimiento', emoji: '🪨', bioma: 'montana', clima: 'niebla', caracter: 'tecnica', lugar: '41°09′S 71°18′O',
+  { id: 'montana', numero: 16006, version: 5, real: true, maximo: 900, nombre: 'La Montaña del Sufrimiento', corto: 'Montaña del Sufrimiento', emoji: '🪨', bioma: 'montana', clima: 'niebla', hora: 'manana', caracter: 'tecnica', lugar: '41°09′S 71°18′O',
     detalle: 'Un camino todo deformado y angosto: rodadas hondas que te agarran las ruedas, barro, badenes, una escalada de piedras, una cornisa cortada por una cascada y una bajada que no perdona. Eses, curvas y contracurvas todo el camino.', breve: 'Camino deformado: rodadas, barro y precipicio' },
 ];
 export const esCircuito = (numero) => CIRCUITOS.some((c) => c.numero === numero);
@@ -865,5 +865,5 @@ export function armarCircuito(numero) {
   });
   // (biomas: los ambientes por los que pasa, en el orden en que aparecen; casi siempre es uno solo)
   const biomas = [...new Set(tramos.map((t) => t.bioma || c.bioma))];
-  return { numero, fijo: c.id, vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1, maximo: c.maximo };
+  return { numero, fijo: c.id, vuelta: !!c.vuelta, nombre: c.nombre, lugar: c.lugar, bioma: c.bioma, biomas, clima: c.clima, hora: c.hora, practicaLibre: !!c.horaLibre, caracter: c.caracter, semilla: 7700 + numero, rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1, maximo: c.maximo };
 }

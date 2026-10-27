@@ -45,6 +45,33 @@ const PISOS = {
     p.motas('#5f626a', 60); p.motas('#383a3f', 46);
     veces(5, () => grieta(p, '#2b2c30', entero(p, 8, 16)));
   },
+  // los suelos de las pistas nuevas: asfalto viejo (parches y grietas), gravilla (piedritas sueltas) y sendero de bosque (hojarasca)
+  asfaltoViejo: (p) => {
+    p.fondo('#56585b');
+    veces(10, () => mancha(p, '#605f5c', entero(p, 5, 9)));
+    veces(8, () => mancha(p, '#4a4b4f', entero(p, 4, 8)));
+    for (let k = 0; k < 3; k++) p.rect(entero(p, 0, p.w - 14), entero(p, 0, p.h - 10), entero(p, 8, 14), entero(p, 5, 9), '#4b4c51');   // parches de bacheo
+    p.motas('#82807a', 60, 2, 1); p.motas('#3a3b3f', 40);
+    veces(11, () => grieta(p, '#27282b', entero(p, 10, 22)));
+    veces(8, () => piedrita(p, '#a29e94', '#3d3c3a'));
+  },
+  gravilla: (p) => {
+    p.fondo('#b2ada1');
+    veces(12, () => mancha(p, '#a29d91', entero(p, 4, 8)));
+    veces(8, () => mancha(p, '#c2bdb0', entero(p, 3, 6)));
+    veces(70, () => piedrita(p, '#e6e1d4', '#7a756a'));
+    veces(34, () => piedrita(p, '#8f8a7e', '#4b473f'));
+    veces(10, () => canto(p, ['#8a867c', '#a39f94', '#bdb8ab'], '#6a665c'));
+    p.motas('#d4cfc2', 40);
+  },
+  sendero: (p) => {
+    p.fondo('#5a4631');
+    veces(16, () => mancha(p, '#4c3b29', entero(p, 4, 8)));
+    veces(10, () => mancha(p, '#6b5439', entero(p, 3, 6)));
+    p.motas('#3b4a28', 34, 2, 1); p.motas('#8d6b36', 40, 2, 1); p.motas('#2f2418', 36);
+    veces(6, () => grieta(p, '#3d2e1e', entero(p, 4, 8)));
+    veces(6, () => piedrita(p, '#8f8472', '#3b3226'));
+  },
   ripio: (p) => {   // ripio
     p.fondo('#d0b88c');
     veces(14, () => mancha(p, '#dac398', entero(p, 4, 7)));

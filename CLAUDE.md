@@ -54,10 +54,12 @@ Devuelven un resumen corto: qué cambiaron, qué pruebas corrieron y cómo salie
 Se corren desde la raíz del repo. Abren el juego en un Chromium sin pantalla (Playwright) y dejan capturas en `out/`.
 Las que usan servidor necesitan antes uno limpio: `node servidor/local.mjs 8787` (se reinicia entre una prueba y otra).
 
-- `node tools/pruebas/huella.mjs 1 10 tools/pruebas/medidas/huella-v1.txt` (y `16001 3 …huella-circuitos-v1.txt`,
+- `node tools/pruebas/huella.mjs 1 10 tools/pruebas/medidas/huella-v2.txt` (y `16001 3 …huella-circuitos-v1.txt`,
   `16004 1 …huella-practica-v1.txt`, `16005 1 …huella-giulio-v1.txt`, `16006 1 …huella-montana-v5.txt`): tienen que decir **IGUAL**. Si no, cambió cómo se maneja o cómo es la pista.
-- `node servidor/prueba.mjs`: el servidor (129 pruebas).
+- `node servidor/prueba.mjs`: el servidor (153 pruebas).
 - La Montaña (camino deformado, con el auto): `vermontana.mjs`.
+- El motor de pistas: `node tools/pruebas/vermotor.mjs` (20 días seguidos: variedad, noche, festival y que el piloto llegue).
+- `vertodos.mjs` y `vercreador.mjs` necesitan un servidor local limpio en cada corrida.
 - Las demás `ver*.mjs` prueban cada parte; el comentario del principio de cada una dice qué y cómo.
 
 Con gráficos por software todo anda lento (1 cuadro por segundo): las pruebas usan `shakedown.avanzar(segundos)` en vez

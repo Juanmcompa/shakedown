@@ -10,18 +10,23 @@
 //   camino   'sa' salto, 'va' vado, 'pu' puente, 'ba' barro, 'an' angosto, 'lo' lomo de burro, 'pb' pueblo;
 //            en la montaña, ademas, 'co' cornisa y 'la' lajas
 //   objetos  'ge' publico, 'pi' piedras, 'cn' conos, 'fa' fardos. No son camino: van en la pieza de antes.
+//   ajustes  cambian como son las piezas que vienen DESPUES (hasta el proximo ajuste del mismo tipo). No miden nada:
+//            tipo de camino 'Th' huella de bosque, 'Tc' camino de campo, 'Tr' ripio de montaña, 'Tu' ruta vieja, 'Tb' barrial, 'Tp' pasto;
+//            ancho 'A1' (una huella) a 'A5' (un playon), 'A3' es el normal;   deformacion 'Z0' (liso) a 'Z4' (muy roto);
+//            relieve 'L0' (plano), 'L1' normal, 'L2' lomas fuertes, 'L3' medanos (subidas y bajadas seguidas).
+//   La hoja puede traer tambien "h": la hora del dia (manana, mediodia, tarde, atardecer o noche). Es solo la luz.
 // Antes de la primera pieza va la largada y despues de la ultima, la llegada: las pone esto solo.
 //
 // El camino no se puede cruzar con si mismo ni salirse del campo (lo mismo que cuida el generador): una pieza que no entra
 // se rechaza. Asi el creador sabe enseguida si la nota que se eligio va o no.
-import { BIOMAS, CLIMAS, CURVAS, trazar, crearOcupado, semilla, elegir, entre, redondo } from './generador.js';
+import { BIOMAS, CLIMAS, CURVAS, VIAS, trazar, crearOcupado, semilla, elegir, entre, redondo, deformarTramo } from './generador.js';
 import { piedras, casas, arbolado } from './circuitos.js';
 import { azar } from './noise.js';
 
 const RAD = Math.PI / 180;
 export const VERSION_DE_HOJA = 1;
 // lo que entra en una hoja
-export const TOPES = { piezas: 40, objetos: 30, minimo: 700, maximo: 3200 };   // piezas de camino, objetos, metros de camino (con largada y llegada)
+export const TOPES = { piezas: 40, objetos: 30, ajustes: 30, minimo: 700, maximo: 3200 };   // piezas de camino, objetos, metros de camino (con largada y llegada)
 // De donde no se puede salir, y cuanto tienen que quedar separadas dos partes del camino. Es mas grande y un poco menos
 // exigente que en el generador: el que arma una pista no ve el mapa, y con el campo del generador se encerraba enseguida.
 // La pista arranca en el (0, 0) mirando al norte (z negativo), que es para donde suele ir: por eso el campo es largo.
@@ -64,6 +69,15 @@ Object.assign(PIEZAS, {
   cn: { grupo: 'objetos', icono: 'cono', nombre: 'Conos' },
   fa: { grupo: 'objetos', icono: 'fardo', nombre: 'Fardos' },
 });
+// los ajustes: tipo de camino, ancho, deformacion y relieve de las piezas que siguen
+export const HORAS_DE_HOJA = ['manana', 'mediodia', 'tarde', 'atardecer', 'noche'];
+const AJUSTE_VIA = { Th: 'huella', Tc: 'campo', Tr: 'ripio', Tu: 'ruta', Tb: 'barrial', Tp: 'pasto' };
+for (const id in AJUSTE_VIA) PIEZAS[id] = { grupo: 'ajustes', ajuste: 'via', valor: AJUSTE_VIA[id], icono: 'camino-' + AJUSTE_VIA[id], nombre: VIAS[AJUSTE_VIA[id]].nombre };
+['Una huella (muy angosto)', 'Angosto', 'Normal', 'Ancho', 'Playón (muy ancho)'].forEach((n, k) => { PIEZAS['A' + (k + 1)] = { grupo: 'ajustes', ajuste: 'ancho', valor: k, icono: 'ancho-' + (k + 1), nombre: 'Ancho: ' + n }; });
+['Liso', 'Algo de rodada', 'Rodadas y pozos', 'Muy roto', 'Un desastre'].forEach((n, k) => { PIEZAS['Z' + k] = { grupo: 'ajustes', ajuste: 'rot', valor: k, icono: 'rotura-' + k, nombre: 'Deformación: ' + n }; });
+['Plano', 'Normal', 'Lomas fuertes', 'Médanos'].forEach((n, k) => { PIEZAS['L' + k] = { grupo: 'ajustes', ajuste: 'rel', valor: k, icono: 'relieve-' + k, nombre: 'Relieve: ' + n }; });
+const ROTURA = [0, 0.2, 0.45, 0.72, 1], ANCHOS = [3.9, 5.4, 0, 9.6, 14], RELIEVE = [0.35, 1, 1.8, 1];
+export const esAjuste = (id) => !!PIEZAS[id] && PIEZAS[id].grupo === 'ajustes';
 const esObjeto = (id) => PIEZAS[id] && PIEZAS[id].grupo === 'objetos';
 export const sePuede = (id, ambiente) => !!PIEZAS[id] && (!PIEZAS[id].solo || PIEZAS[id].solo === ambiente);
 
@@ -73,9 +87,10 @@ export function leerHoja(x) {
   if (!x || typeof x !== 'object' || x.v !== VERSION_DE_HOJA || !BIOMAS[x.a] || !CLIMAS[x.c] || !Array.isArray(x.p)) return null;
   const p = x.p.filter((id) => typeof id === 'string' && sePuede(id, x.a));
   if (p.length !== x.p.length) return null;
-  const objetos = p.filter(esObjeto).length;
-  if (p.length - objetos > TOPES.piezas || objetos > TOPES.objetos) return null;
-  return { v: VERSION_DE_HOJA, a: x.a, c: x.c, p };
+  const objetos = p.filter(esObjeto).length, ajustes = p.filter(esAjuste).length;
+  if (p.length - objetos - ajustes > TOPES.piezas || objetos > TOPES.objetos || ajustes > TOPES.ajustes) return null;
+  if (x.h !== undefined && !HORAS_DE_HOJA.includes(x.h)) return null;
+  return x.h ? { v: VERSION_DE_HOJA, a: x.a, c: x.c, p, h: x.h } : { v: VERSION_DE_HOJA, a: x.a, c: x.c, p };
 }
 // la huella de una hoja: un numero que sale siempre igual de la misma hoja (es la semilla de su azar)
 export function huellaDeHoja(h) {
@@ -105,23 +120,35 @@ export function armarHoja(entrada, numero = 0, nombre = '') {
   const caja = { x0: 0, x1: 0, z0: 0, z1: 0 };   // el rectangulo que ocupa lo ya trazado
   let suelo = elegir(r, bioma.suelos), cambiaSuelo = entre(r, 140, 380);
   let pend = 0, alto = 0, cornisa = 0, ladoCornisa = 1;
+  // los ajustes (ver arriba): lo que siguen valiendo para las piezas que vienen. Sin ajustes, todo sale como siempre.
+  const aj = { via: null, ancho: null, rot: null, rel: null };
+  let anchoAhora = 0, signo = 1;
   // lo que cambia al armar una pieza, para poder deshacerla si no entra
-  const foto = () => ({ suelo, cambiaSuelo, pend, alto, cornisa });
-  const volver = (f) => ({ suelo, cambiaSuelo, pend, alto, cornisa } = f);
+  const foto = () => ({ suelo, cambiaSuelo, pend, alto, cornisa, anchoAhora, signo });
+  const volver = (f) => ({ suelo, cambiaSuelo, pend, alto, cornisa, anchoAhora, signo } = f);
 
   // --- lo mismo que hace el generador para cada tramo: suelo, ancho, pendiente y, en la cornisa, la pared y el vacio ---
   function pendiente(factor = 1) {
-    const [paso, maxima] = bioma.pendiente;
-    pend = pend * 0.6 + (r() * 2 - 1) * paso - alto / 26;
-    pend = Math.max(-maxima, Math.min(maxima, pend)) * factor;
+    const [paso, maxima] = bioma.pendiente, rel = aj.rel === null ? 1 : RELIEVE[aj.rel];
+    pend = pend * 0.6 + (r() * 2 - 1) * paso * rel - alto / 26;
+    pend = Math.max(-maxima * Math.max(1, rel), Math.min(maxima * Math.max(1, rel), pend)) * factor;
     return redondo(pend);
   }
   function base(largo, extra) {
     const t = Object.assign({ largo: Math.round(largo), suelo, ancho: redondo(anchoBase + (r() - 0.5) * 0.8) }, extra);
-    if (t.pendiente === undefined) t.pendiente = pendiente();
+    if (aj.ancho !== null) {   // el ancho elegido, con transicion (como mucho 14 cm por metro)
+      const meta = aj.ancho === 2 ? anchoBase : ANCHOS[aj.ancho];
+      anchoAhora = anchoAhora ? anchoAhora + Math.max(-0.14 * largo, Math.min(0.14 * largo, meta - anchoAhora)) : meta;
+      if (extra === undefined || extra.ancho === undefined) t.ancho = redondo(anchoAhora);
+    }
+    if (aj.via) { t.via = aj.via; t.rot = ROTURA[aj.rot === null ? 1 : aj.rot]; }
+    else if (aj.rot !== null) { t.via = bioma.vias[0][0]; t.rot = ROTURA[aj.rot]; }
+    if (t.pendiente === undefined) t.pendiente = aj.rel === 3 && !t.agua ? (signo = -signo) * redondo(entre(r, 4, 7)) : pendiente();
     alto += Math.tan(t.pendiente * RAD) * t.largo;
-    cambiaSuelo -= t.largo;
-    if (cambiaSuelo <= 0) { suelo = elegir(r, bioma.suelos.filter((s) => s[0] !== suelo)); cambiaSuelo = entre(r, 140, 380); }
+    if (!aj.via) {
+      cambiaSuelo -= t.largo;
+      if (cambiaSuelo <= 0) { suelo = elegir(r, bioma.suelos.filter((s) => s[0] !== suelo)); cambiaSuelo = entre(r, 140, 380); }
+    }
     if (cornisa > 0 && !t.agua && !t.puente && !t.vereda) {
       const pared = [redondo(entre(r, 11, 18)), 9], vacio = [-redondo(entre(r, 20, 34)), 8];
       t.izq = ladoCornisa > 0 ? pared : vacio; t.der = ladoCornisa > 0 ? vacio : pared; t.hombro = 1.5;
@@ -259,6 +286,12 @@ export function armarHoja(entrada, numero = 0, nombre = '') {
   for (let k = 0; k < hoja.p.length; k++) {
     const id = hoja.p[k];
     if (esObjeto(id)) { ponerObjeto(id); continue; }
+    if (esAjuste(id)) {   // no mide nada: cambia las piezas que siguen
+      const A = PIEZAS[id];
+      aj[A.ajuste] = A.valor;
+      if (A.ajuste === 'via') { suelo = elegir(r, VIAS[A.valor].suelos); cambiaSuelo = 1e9; }
+      continue;
+    }
     deCamino++;
     const P = PIEZAS[id];
     let tramos = null, t = null;
@@ -288,8 +321,11 @@ export function armarHoja(entrada, numero = 0, nombre = '') {
   // --- pozos y charcos, como en las pistas del dia, y los cuatro controles que parten la pista en cinco sectores ---
   const tramos = [];
   for (const p of piezas) for (const t of p) tramos.push(t);
+  // (los tramos con un tipo de camino elegido en el creador: sus rodadas, pozos, ondas y manchas, como en las pistas del dia)
+  const rd = azar(semilla(huella, 5151));
+  for (const t of tramos) if (t.via) deformarTramo(t, rd, clima, idBioma, !(t.agua || t.puente || t.vereda || t.largo < 24 || t === largada || t === llegada));
   for (const t of tramos) {
-    if (t.agua || t.puente || t.vereda || t.suelo === 'barro' || t.suelo === 'roca' || t.largo < 24 || t === largada || t === llegada) continue;
+    if (t.via || t.agua || t.puente || t.vereda || t.suelo === 'barro' || t.suelo === 'roca' || t.largo < 24 || t === largada || t === llegada) continue;
     const pozos = t.pozos || [];
     if ((t.suelo === 'asfalto' || t.suelo === 'ripio') && r() < 0.3) for (let k = 0, n = 1 + Math.floor(r() * 3); k < n; k++) pozos.push([redondo(entre(r, 5, t.largo - 5)), redondo((r() - 0.5) * (t.ancho - 3.4)), redondo(entre(r, 1.1, 1.7)), redondo(entre(r, 0.16, 0.3), 100), 'tierra']);
     if (clima.charcos > 0 && r() < 0.42 * clima.charcos) for (let k = 0, n = 1 + Math.floor(r() * 2); k < n; k++) pozos.push([redondo(entre(r, 5, t.largo - 5)), redondo((r() - 0.5) * (t.ancho - 3)), redondo(entre(r, 1.5, 2.6)), 0.14, 'charco']);
@@ -309,6 +345,7 @@ export function armarHoja(entrada, numero = 0, nombre = '') {
   const etapa = {
     numero, comunidad: true, nombre: nombre || 'Pista sin nombre', lugar: '', bioma: idBioma, biomas: [idBioma], clima: idClima, caracter,
     semilla: semilla(huella, 77), rumbo: 0, largo: total, tramos, vueltasAtras: 0, intentos: 1,
+    hora: hoja.h,   // (la hora del dia que eligio su creador: solo la luz; sin eso, la luz del clima de siempre)
   };
   return total < TOPES.minimo ? { error: 'corta', cual: -1, etapa, largo: total, piezas: deCamino } : { etapa, largo: total, piezas: deCamino };
 }

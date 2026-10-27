@@ -9,7 +9,7 @@
 // (El HTML esta en index.html, en la seccion "creador".)
 import { BIOMAS, CLIMAS } from './generador.js';
 import { COMUNIDAD } from './circuitos.js';
-import { PIEZAS, TOPES, VERSION_DE_HOJA, armarHoja, leerHoja, sePuede } from './hoja.js';
+import { PIEZAS, TOPES, VERSION_DE_HOJA, HORAS_DE_HOJA, armarHoja, leerHoja, sePuede, esAjuste } from './hoja.js';
 import { iconoDeNota, textoDeNota, icono, ponerIconos } from './iconos.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,10 +22,15 @@ const GRUPOS = [
   { id: 'crCurvas', filas: [['i6', 'i5', 'i4', 'i3', 'i2', 'i1', 'ih', 'ie'], ['d6', 'd5', 'd4', 'd3', 'd2', 'd1', 'dh', 'de']] },
   { id: 'crCamino', filas: [['r1', 'r2', 'r3', 'sa', 'va', 'pu', 'ba', 'an', 'lo', 'pb', 'co', 'la']] },
   { id: 'crCostado', filas: [['ge', 'pi', 'cn', 'fa']] },
+  // como es el camino de ahi en adelante: tipo, ancho, deformacion y relieve (una fila para cada cosa)
+  { id: 'crAjustes', filas: [['Th', 'Tc', 'Tr', 'Tu', 'Tb', 'Tp'], ['A1', 'A2', 'A3', 'A4', 'A5'], ['Z0', 'Z1', 'Z2', 'Z3', 'Z4'], ['L0', 'L1', 'L2', 'L3']] },
 ];
+// la hora del dia (solo es la luz): su emoji y su nombre
+const HORA_DE = { manana: ['🌅', 'Mañana'], mediodia: ['☀️', 'Mediodía'], tarde: ['🌇', 'Tarde'], atardecer: ['🌆', 'Atardecer'], noche: ['🌙', 'Noche'] };
 // lo que dice cada boton debajo del dibujo (las curvas, su numero: 6, 5... H, 90)
-const ROTULO = { r1: '50', r2: '100', r3: '180', sa: 'salto', va: 'vado', pu: 'puente', ba: 'barro', an: 'angosto', lo: 'lomo', pb: 'pueblo', co: 'cornisa', la: 'lajas', ge: 'público', pi: 'piedras', cn: 'conos', fa: 'fardos' };
+const ROTULO = { r1: '50', r2: '100', r3: '180', Th: 'bosque', Tc: 'campo', Tr: 'ripio', Tu: 'ruta', Tb: 'barro', Tp: 'pasto', A1: '1', A2: '2', A3: '3', A4: '4', A5: '5', Z0: '0', Z1: '1', Z2: '2', Z3: '3', Z4: '4', L0: '0', L1: '1', L2: '2', L3: '3', sa: 'salto', va: 'vado', pu: 'puente', ba: 'barro', an: 'angosto', lo: 'lomo', pb: 'pueblo', co: 'cornisa', la: 'lajas', ge: 'público', pi: 'piedras', cn: 'conos', fa: 'fardos' };
 const rotuloDe = (id) => ROTULO[id] || textoDeNota(PIEZAS[id].nota);
+const esAjusteId = (id) => esAjuste(id);
 const dibujoDe = (id) => (PIEZAS[id].nota ? iconoDeNota(PIEZAS[id].nota) : icono(PIEZAS[id].icono));
 const esObjeto = (id) => PIEZAS[id].grupo === 'objetos';
 const nueva = () => ({ v: VERSION_DE_HOJA, a: 'bosque', c: 'sol', p: [] });
@@ -53,7 +58,8 @@ export function crearCreador(o) {
       return b;
     };
     for (const id in BIOMAS) if (!BIOMAS[id].fijo) opcion($('crAmbiente'), BIOMAS[id].emoji, BIOMAS[id].nombre, () => elegirAmbiente(id)).dataset.valor = id;
-    for (const id in CLIMAS) opcion($('crClima'), CLIMAS[id].emoji, CLIMAS[id].nombre, () => { hoja = { ...hoja, c: id }; dice = ''; cambio(); }).dataset.valor = id;
+    for (const id in CLIMAS) if (id !== 'noche') opcion($('crClima'), CLIMAS[id].emoji, CLIMAS[id].nombre, () => { hoja = { ...hoja, c: id }; dice = ''; cambio(); }).dataset.valor = id;
+    for (const h of HORAS_DE_HOJA) opcion($('crHora'), HORA_DE[h][0], HORA_DE[h][1], () => { const { h: _, ...sin } = hoja; hoja = hoja.h === h ? sin : { ...hoja, h }; dice = ''; cambio(); }).dataset.valor = h;
     for (const g of GRUPOS) {
       const caja = $(g.id);
       for (const fila of g.filas) {
@@ -82,7 +88,7 @@ export function crearCreador(o) {
   }
 
   // --- cuentas ---
-  const deCamino = () => hoja.p.filter((id) => !esObjeto(id)).length;
+  const deCamino = () => hoja.p.filter((id) => !esObjeto(id) && !esAjuste(id)).length;
   const largo = () => (armado && armado.largo) || 0;
   const sePuedeCorrer = () => armado && !armado.error;
 
@@ -97,6 +103,7 @@ export function crearCreador(o) {
   // --- pintar ---
   function pintar() {
     for (const b of $('crAmbiente').children) { const si = b.dataset.valor === hoja.a; b.classList.toggle('elegido', si); b.setAttribute('aria-checked', si); }
+    for (const b of $('crHora').children) { const si = b.dataset.valor === (hoja.h || ''); b.classList.toggle('elegido', si); b.setAttribute('aria-checked', si); }
     for (const b of $('crClima').children) { const si = b.dataset.valor === hoja.c; b.classList.toggle('elegido', si); b.setAttribute('aria-checked', si); }
     for (const id in botones) botones[id].hidden = !sePuede(id, hoja.a);   // (la cornisa y las lajas, solo en la montaña)
     // la hoja: la largada, las notas elegidas (lo del costado, mas chico) y la llegada, que se pone sola
@@ -110,7 +117,7 @@ export function crearCreador(o) {
       caja.append(n);
     };
     nota(icono('bandera'), '', 'Largada', 'cr-punta');
-    hoja.p.forEach((id, k) => nota(dibujoDe(id), esObjeto(id) || PIEZAS[id].grupo === 'camino' ? '' : rotuloDe(id), PIEZAS[id].nombre, (esObjeto(id) ? 'cr-objeto' : '') + (k === hoja.p.length - 1 ? ' cr-ultima' : '')));
+    hoja.p.forEach((id, k) => nota(dibujoDe(id), esObjeto(id) || esAjuste(id) || PIEZAS[id].grupo === 'camino' ? '' : rotuloDe(id), PIEZAS[id].nombre, (esObjeto(id) || esAjuste(id) ? 'cr-objeto' : '') + (k === hoja.p.length - 1 ? ' cr-ultima' : '')));
     nota(iconoDeNota({ tipo: 'meta' }), '', 'Llegada', 'cr-punta');
     caja.setAttribute('aria-label', 'Tu pista: ' + (hoja.p.length ? hoja.p.map((id) => PIEZAS[id].nombre).join(', ') : 'todavía sin notas'));
     caja.scrollTop = caja.scrollHeight;
@@ -177,12 +184,13 @@ export function crearCreador(o) {
     const mio = ++turno;
     setTimeout(() => {
       if (mio !== turno) return;
-      const camino = deCamino(), objetos = hoja.p.length - camino;
+      const camino = deCamino(), objetos = hoja.p.filter(esObjeto).length, ajustes = hoja.p.filter(esAjuste).length;
       for (const id in botones) {
         const b = botones[id];
         let si = false;
         if (b.hidden) si = false;
         else if (esObjeto(id)) si = objetos < TOPES.objetos;
+        else if (esAjuste(id)) si = ajustes < TOPES.ajustes;   // (un ajuste siempre vale: no mide nada)
         else if (camino < TOPES.piezas) { const x = armarHoja({ ...hoja, p: [...hoja.p, id] }); si = !x.error || x.error === 'corta'; }
         b.classList.toggle('no-entra', !si);
       }
@@ -196,7 +204,11 @@ export function crearCreador(o) {
   // --- tocar una nota: va al final, si entra ---
   function tocar(id) {
     if (ocupado) return;
-    const camino = deCamino(), objetos = hoja.p.length - camino;
+    const camino = deCamino(), objetos = hoja.p.filter(esObjeto).length;
+    if (esAjuste(id)) {
+      if (hoja.p.filter(esAjuste).length >= TOPES.ajustes) return decir('Ya cambiaste el camino ' + TOPES.ajustes + ' veces: es el máximo.');
+      hoja = { ...hoja, p: [...hoja.p, id] }; dice = ''; return cambio();
+    }
     if (esObjeto(id) && objetos >= TOPES.objetos) return decir('Ya pusiste ' + TOPES.objetos + ' cosas al costado: es el máximo.');
     if (!esObjeto(id) && camino >= TOPES.piezas) return decir('Llegaste al máximo: ' + TOPES.piezas + ' notas. Probala o publicala así.');
     const p = [...hoja.p, id], x = armarHoja({ ...hoja, p });

@@ -96,6 +96,11 @@ function tocon(p) {
   p.rect(1, 0, p.w - 2, 2, '#c9a878'); p.rect(2, 0, p.w - 4, 1, '#dcc092'); p.punto(Math.floor(p.w / 2), 1, '#a8834f');
   p.punto(0, p.h - 1, '#473021'); p.punto(p.w - 1, p.h - 1, '#473021');
 }
+// tronco: un tronco caido, de costado, con la punta cortada
+function tronco(p) {
+  p.rect(0, 1, p.w, p.h - 1, '#5c4130'); p.rect(0, 1, p.w, 1, '#75573f'); p.rect(0, p.h - 1, p.w, 1, '#473021');
+  p.rect(0, 1, 2, p.h - 1, '#c9a878'); p.punto(1, 2, '#a8834f'); p.punto(5, 2, '#473021'); p.punto(8, 1, '#3b4a28'); p.punto(9, 1, '#3b4a28');
+}
 // la parrilla del asado, con sus brasas
 function parrilla(p) {
   p.rect(1, 3, 8, 1, '#1e1f23'); p.rect(1, 2, 8, 1, '#8a3a22'); p.punto(3, 2, '#f07f1e'); p.punto(6, 2, '#ffc24a'); p.punto(4, 2, '#d8402f');
@@ -160,7 +165,7 @@ const DIBUJOS = {
   cortadera: [13, 19, (p) => espigas(p, ['#5c7a4a', '#7a9a5c', '#9ab874', '#b9d490'], ['#e9e2c8', '#f7f2de', '#fffdf0'], 4, 7)],
   margaritas: [9, 5, (p) => flores(p, VERDES.claro, ['#ffffff', '#f1efe0', '#f2d24a'])], amarillas: [9, 5, (p) => flores(p, VERDES.claro, ['#f2c200', '#ffe27a'])],
   violetas: [8, 5, (p) => flores(p, VERDES.oscuro, ['#9c6fd0', '#c9a6ee'])],
-  piedra: [7, 4, piedra], piedraGrande: [10, 6, piedra], tocon: [7, 6, tocon], parrilla: [10, 7, parrilla],
+  piedra: [7, 4, piedra], piedraGrande: [10, 6, piedra], tocon: [7, 6, tocon], tronco: [12, 4, tronco], piedrita: [4, 3, piedra], parrilla: [10, 7, parrilla],
   reposeraRoja: [7, 7, (p) => reposera(p, '#d8402f')], reposeraAzul: [7, 7, (p) => reposera(p, '#2f6fd0')],
   fogata: [9, 8, fogata], bengala: [3, 4, bengala], antorcha: [5, 12, antorcha],
   girasol: [5, 11, girasol], trigo: [8, 6, (p) => mata(p, ['#a08236', '#bfa048', '#d6ba60', '#e6d07e'], 6)],

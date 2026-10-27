@@ -22,11 +22,21 @@ export function crearClima(T, escena, luz) {
   const V = new THREE.Vector3(), M = new THREE.Matrix4(), Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2), E = new THREE.Vector3(), tinta = new THREE.Color();
 
   // --- faros del auto: una luz que va adelante, un poco alta para que el camino se vea iluminado desde arriba ---
-  let faros = null;
-  if (luz.faros) {
-    faros = new THREE.SpotLight(0xfff0c8, luz.faros, 64, 0.6, 0.8, 1);
-    escena.add(faros, faros.target);
-  }
+  // (se arma siempre y se prende o apaga segun la hora: ver poner). De noche el haz es largo y abierto, y ademas se dibuja
+  // un cono de luz apenas visible (como el haz en el polvo y la humedad) y un resplandor en el piso delante del auto.
+  const faros = new THREE.SpotLight(0xfff0c8, 0, 64, 0.6, 0.8, 1);
+  faros.visible = false;
+  escena.add(faros, faros.target);
+  let pFaros = { fuerza: 0, alcance: 64, apertura: 0.6, punta: 17, haz: 0 };
+  const haz = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 20, 1, true).translate(0, -0.5, 0).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
+    uniforms: { uFuerza: { value: 0.3 } },
+    vertexShader: 'varying float vT; varying vec3 vN; void main() { vT = position.z; vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    // se apaga hacia la punta y hacia el borde del cono (visto de costado casi no se ve; de frente, un poco mas)
+    fragmentShader: 'uniform float uFuerza; varying float vT; varying vec3 vN; void main() { float borde = abs(dot(normalize(vN), vec3(0.0, 0.0, 1.0))); float a = pow(1.0 - vT, 1.5) * smoothstep(0.0, 0.2, vT) * (0.35 + 0.65 * (1.0 - borde)) * uFuerza; gl_FragColor = vec4(vec3(1.0, 0.93, 0.74) * a, a); }',
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+  }));
+  haz.visible = false; haz.frustumCulled = false; haz.renderOrder = 3;
+  escena.add(haz);
 
   // --- resplandores en el piso ---
   const MAX = 200, donde = [];
@@ -65,7 +75,23 @@ export function crearClima(T, escena, luz) {
     escena.add(lluvia);
   }
 
+  // las luces del auto sobre el piso: dos delanteras (un halo chico) y dos traseras rojas (mas fuertes al frenar)
+  const iDel = [], iTra = [];
+  const luzDeAuto = (lista, color, radio, titila) => { for (let k = 0; k < 2; k++) { donde.push({ x: 0, y: -999, z: 0, radio, base: radio, color: new THREE.Color(color), titila, fase: k * 2, auto: true }); lista.push(donde.length - 1); } pozos.count = donde.length; };
+  luzDeAuto(iDel, 0xfff0c8, 1.7, 0.02); luzDeAuto(iTra, 0xff2410, 0.8, 0.03);
+  let conLuces = false;
+
   return {
+    // prende o apaga los faros, el haz y los resplandores segun la luz de la hora (ver luzDe en world.js)
+    poner: (L) => {
+      const f = L.faros || 0;
+      pFaros = { fuerza: f, alcance: L.farosAlcance || 64, apertura: L.farosApertura || 0.6, punta: L.farosPunta || 17, haz: L.haz || 0 };
+      faros.visible = f > 0; faros.intensity = f; faros.distance = pFaros.alcance; faros.angle = pFaros.apertura;
+      faros.penumbra = L.farosAlcance ? 0.85 : 0.8; faros.decay = L.farosAlcance ? 0.6 : 1;
+      haz.visible = f > 0 && pFaros.haz > 0; haz.material.uniforms.uFuerza.value = 0.34 * pFaros.haz;
+      conLuces = f > 0 && !!L.farosAlcance;   // las luces del auto en el piso: solo de noche
+      for (const k of [...iDel, ...iTra]) if (!conLuces) donde[k].y = -999;
+    },
     // agrega un resplandor en el piso. Devuelve su numero (para moverlo o apagarlo con mover()).
     resplandor: (x, y, z, radio, color, titila = 0.12) => {
       if (donde.length >= MAX) return -1;
@@ -75,10 +101,25 @@ export function crearClima(T, escena, luz) {
     },
     mover: (n, x, y, z) => { const d = donde[n]; if (d) { d.x = x; d.y = y; d.z = z; } },
     animar: (dt, t, c) => {
-      if (faros) {
-        const f = c.adelante;
+      if (faros.visible) {
+        const f = c.adelante, p = pFaros.punta;
         faros.position.set(c.pos[0] + f[0] * 1.5, c.pos[1] + 4.2, c.pos[2] + f[2] * 1.5);
-        faros.target.position.set(c.pos[0] + f[0] * 17, c.pos[1] - 0.5 + f[1] * 17, c.pos[2] + f[2] * 17);
+        faros.target.position.set(c.pos[0] + f[0] * p, c.pos[1] - 0.5 + f[1] * p, c.pos[2] + f[2] * p);
+        if (haz.visible) {
+          // el cono sale del frente del auto, un metro alto, y se abre hacia adelante y un poco hacia abajo
+          const largo = Math.min(pFaros.alcance * 0.5, 42);
+          haz.position.set(c.pos[0] + f[0] * 1.9, c.pos[1] + 0.85, c.pos[2] + f[2] * 1.9);
+          haz.lookAt(c.pos[0] + f[0] * 20, c.pos[1] + 0.2 + f[1] * 20, c.pos[2] + f[2] * 20);
+          haz.scale.set(Math.tan(pFaros.apertura * 0.8) * largo, Math.tan(pFaros.apertura * 0.8) * largo * 0.55, largo);
+        }
+      }
+      if (conLuces) {
+        const f = c.adelante, d = c.derecha || [-f[2], 0, f[0]], fre = c.frenando ? 1.7 : 1;
+        for (let k = 0; k < 2; k++) {
+          const s = k ? 0.62 : -0.62, a = donde[iDel[k]], b = donde[iTra[k]];
+          a.x = c.pos[0] + f[0] * 2.3 + d[0] * s; a.z = c.pos[2] + f[2] * 2.3 + d[2] * s; a.y = c.pos[1] - 0.1;
+          b.x = c.pos[0] - f[0] * 2.0 + d[0] * s; b.z = c.pos[2] - f[2] * 2.0 + d[2] * s; b.y = c.pos[1] - 0.1; b.radio = b.base * fre;
+        }
       }
       donde.forEach((d, i) => {
         const s = d.radio * (1 + Math.sin(t * 9 + d.fase) * d.titila + Math.sin(t * 23 + d.fase * 3) * d.titila * 0.5);

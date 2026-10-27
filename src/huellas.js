@@ -3,6 +3,7 @@
 // En el mismo mapa va la pintura del piso (las lineas de la ruta, las sendas, la raya de largada y la de meta):
 // son dos valores que las huellas no usan nunca, y por eso una huella no las tapa.
 import * as THREE from '../vendor/three.module.js';
+import { SUELOS } from './config.js';
 
 export const PINTURA = { blanca: 255, amarilla: 254 }, HUELLA_MAXIMA = 250;
 
@@ -35,6 +36,30 @@ export function crearHuellas(T, render) {
         const x = P.X[i] + P.HX[i] * f * 0.25 - P.HZ[i] * de, z = P.Z[i] + P.HZ[i] * f * 0.25 + P.HX[i] * de, w = T.enSurco(x, z);
         if (w > 0.12) pinta(x, z, w > 0.7 ? 150 : w > 0.4 ? 100 : 60);
       }
+    }
+    // las huellas de otros autos que pasaron antes (t.pasaron = [{ u0, u1, lado, fuerza, culebra }]: rodadas paralelas, una por rueda)
+    // y las salidas de pista (T.salidas: la rodada que se va afuera y, a veces, marcas de trompo). Solo se ven: no cambian el suelo.
+    const PEGA = [SUELOS.asfalto.id, SUELOS.asfaltoViejo.id, SUELOS.adoquin.id, SUELOS.vereda.id, SUELOS.madera.id, SUELOS.roca.id];
+    for (const t of T.etapa.tramos) for (const q of t.pasaron || []) {
+      if (PEGA.includes(SUELOS[t.suelo].id)) continue;
+      const fase = (q.lado * 7.3 + t.desde) % 6.28;
+      for (let i = t.desde + Math.max(0, q.u0); i < Math.min(t.hasta, t.desde + q.u1); i++) {
+        const dentro = Math.min(i - t.desde - q.u0, t.desde + q.u1 - i), v = Math.round((q.fuerza || 0.4) * 255 * Math.min(1, 0.4 + dentro / 8));
+        const centro = q.lado + (q.culebra || 0.25) * Math.sin(i / 10 + fase);
+        for (const rueda of [-0.72, 0.72]) for (let f = 0; f < 4; f++) {
+          if (((i * 4 + f) * 2654435761 >>> 0) % 11 === 0) continue;   // (la marca se corta aca y alla)
+          const de = centro + rueda;
+          if (Math.abs(de) < P.W[i] / 2 - 0.2) en(i, f * 0.25, de, v);
+        }
+      }
+    }
+    for (const sa of T.salidas || []) {
+      const marca = (x, z, v) => pinta(x, z, v);
+      for (let k = 1; k < sa.pts.length; k++) {
+        const [x1, z1] = sa.pts[k - 1], [x2, z2] = sa.pts[k], dx = x2 - x1, dz = z2 - z1, l = Math.hypot(dx, dz) || 1, nx = -dz / l, nz = dx / l;
+        for (let f = 0; f < 2; f++) for (const rueda of [-0.72, 0.72]) marca(x1 + dx * f / 2 + nx * rueda, z1 + dz * f / 2 + nz * rueda, k > sa.pts.length - 4 ? 200 : 150);
+      }
+      if (sa.trompo) for (let a = 0; a < 6.28; a += 0.07) for (const r of [1.9, 2.6]) { const rr = r + 0.25 * Math.sin(a * 3); marca(sa.fin.x + Math.cos(a) * rr, sa.fin.z + Math.sin(a) * rr, 120); }
     }
     for (const t of T.etapa.tramos) {
       // los lomos de burro, a rayas amarillas cruzadas

@@ -256,7 +256,8 @@ export function crearSonido() {
   const voltear = (cosas, v = 10) => { if (puede()) cosas.slice(0, 4).forEach((o, k) => golpes.voltear(ctx.currentTime + k * 0.04, o.clase === 'objeto' ? o.tipo : o.clase, v / 20)); };
   const caida = (motivo) => { if (puede()) golpes.caida(ctx.currentTime, motivo); };
   const meta = () => { if (puede()) golpes.meta(ctx.currentTime + 0.05); };
+  const griterio = meta;   // en la largada tambien grita la gente (el mismo griterio, con corneta y silbidos)
 
   // alternar: prende o apaga el sonido, y devuelve si quedo apagado
-  return { iniciar, actualizar, toque, voltear, caida, meta, alternar: () => { mudo = !mudo; return mudo; }, mudo: () => mudo };
+  return { iniciar, actualizar, toque, voltear, caida, meta, griterio, alternar: () => { mudo = !mudo; return mudo; }, mudo: () => mudo };
 }

@@ -41,7 +41,8 @@ export function crearFiestaDeTravesia(escena, liviano) {
   }
 
   // Arma todo el festival de este terreno. Se llama despues de armar los pedazos de terreno de alrededor (asi las alturas salen rapido).
-  function poner(terreno) {
+  // ext (solo en las pistas: ver festival.js): { clima, luz } para que la gente prenda fogones y las carpas tengan luz de noche
+  function poner(terreno, ext = {}) {
     quitar();
     T = terreno;
     const F = T.fiesta, P = T.camino, alt = (x, z) => T.altura(x, z);
@@ -58,23 +59,25 @@ export function crearFiestaDeTravesia(escena, liviano) {
     const cintas = F.cintas.map((c) => ({ ...c, y1: alt(c.x1, c.z1), y2: alt(c.x2, c.z2) }));
     const falso = {
       camino: P, vuelta: null, etapa: { semilla: T.semilla, tramos: [] }, altura: alt, aguas: [], suelo: () => ({ agua: 0 }), cosasCerca: T.cosasCerca,
-      cintas, publico: gente, claros: [], vacas: [], largada: { i: F.desde }, salida: { i: F.arco.i }, meta: null,
+      cintas, publico: gente, claros: [], vacas: [], largada: { i: F.desde }, salida: { i: F.arco ? F.arco.i : F.desde }, meta: null,
     };
     const gP = nuevo(false);
-    publico = crearPublico(falso, gP, { resplandor() {} }, { fuego: false });
+    publico = crearPublico(falso, gP, ext.clima || { resplandor() {} }, ext.luz || { fuego: false });
     publico.humo.visible = conEfectos;
 
     // --- el arco de largada (mismo dibujo que en la pista del dia) y, sobre el, las marcas ---
     const esc = crearEscenografia(), fijos = crearLote();
-    const a = F.arco, medio = Math.round((a.ancho / 2 + 0.9) * 8), alto = 34, palo = { lados: esc.liso('#26262a'), arriba: esc.liso('#26262a'), abajo: null };
-    const tela = esc.tela('LARGADA', medio * 2, '#d8402f', '#ffffff', '#f2c200');
-    M.compose(V.set(a.x, alt(a.x, a.z), a.z), Q.setFromAxisAngle(ARRIBA, -a.rumbo), P8);
-    for (const s of [-1, 1]) fijos.bloque(M, [s * medio - 1, -8, -1, s * medio + 1, alto + 10, 1], palo);
-    fijos.caja(M, [-medio, alto, -0.5, medio, alto + 9, 0.5], (cara, e) => {
-      if (cara !== 'pz' && cara !== 'nz') { const z = esc.liso('#26262a'); return [z.x + 0.5, z.y + 0.5]; }
-      const u = cara === 'pz' ? (e.x + medio) / (2 * medio) : (medio - e.x) / (2 * medio);
-      return [tela.x + u * tela.w, tela.y + (alto + 9 - e.y) / 9 * tela.h];
-    });
+    const a = F.arco, medio = a ? Math.round((a.ancho / 2 + 0.9) * 8) : 0, alto = 34, palo = { lados: esc.liso('#26262a'), arriba: esc.liso('#26262a'), abajo: null };
+    if (a) {   // (en las pistas el arco ya lo pone utileria.js)
+      const tela = esc.tela('LARGADA', medio * 2, '#d8402f', '#ffffff', '#f2c200');
+      M.compose(V.set(a.x, alt(a.x, a.z), a.z), Q.setFromAxisAngle(ARRIBA, -a.rumbo), P8);
+      for (const s of [-1, 1]) fijos.bloque(M, [s * medio - 1, -8, -1, s * medio + 1, alto + 10, 1], palo);
+      fijos.caja(M, [-medio, alto, -0.5, medio, alto + 9, 0.5], (cara, e) => {
+        if (cara !== 'pz' && cara !== 'nz') { const z = esc.liso('#26262a'); return [z.x + 0.5, z.y + 0.5]; }
+        const u = cara === 'pz' ? (e.x + medio) / (2 * medio) : (medio - e.x) / (2 * medio);
+        return [tela.x + u * tela.w, tela.y + (alto + 9 - e.y) / 9 * tela.h];
+      });
+    }
 
     // --- cintas: dos estacas y la cinta entre ellas ---
     for (const c of cintas) {
@@ -91,7 +94,7 @@ export function crearFiestaDeTravesia(escena, liviano) {
 
     // --- banderines colgados entre palos, a los dos lados, cerca del arco ---
     const r = azar((T.semilla ^ 0x3c6ef372) >>> 0);
-    for (const lado of [-1, 1]) {
+    if (F.banderines !== false) for (const lado of [-1, 1]) {
       let antes = null;
       for (let i = F.desde - 2; i <= F.desde + 150; i += 7) {
         const d = lado * (P.W[i] / 2 + 1.5), x = P.X[i] - P.HZ[i] * d, z = P.Z[i] + P.HX[i] * d, y = alt(x, z), rumbo = Math.atan2(P.HX[i], -P.HZ[i]);
@@ -129,6 +132,7 @@ export function crearFiestaDeTravesia(escena, liviano) {
       fijos.bloque(M, [11, -2, 8.5, 12, 46, 9.5], { lados: palos, arriba: palos, abajo: null });
       fijos.bloque(M, [12, 36, 8.7, 24, 45, 9.3], { lados: techo, arriba: techo, abajo: techo });
     }
+    if (ext.luz && ext.luz.fuego && ext.clima) for (const q of F.carpas) ext.clima.resplandor(q.x, alt(q.x, q.z), q.z, 7.5, 0xffc878, 0.05);   // la lampara de cada carpa
     const gF = nuevo(true);
     if (!fijos.vacio()) {
       const malla = new THREE.Mesh(fijos.geometria(esc.atlas), estilo(new THREE.MeshLambertMaterial({ map: esc.atlas.textura(), alphaTest: 0.5 })));
@@ -138,7 +142,7 @@ export function crearFiestaDeTravesia(escena, liviano) {
 
     // --- las marcas de mentira: banderas, chapas contra las cintas y una tira sobre el arco ---
     const gM = nuevo(true);
-    publicidad = crearPublicidad(falso, gM, [{ p: { x: a.x, z: a.z, rumbo: a.rumbo, ancho: a.ancho, i: a.i }, alto, medio }]);
+    publicidad = crearPublicidad(falso, gM, a ? [{ p: { x: a.x, z: a.z, rumbo: a.rumbo, ancho: a.ancho, i: a.i }, alto, medio }] : []);
 
     // --- los autos: de los equipos y de la gente (estacionados atras). Son los mismos dibujos que en la pista del dia ---
     const gA = nuevo(false);
@@ -158,7 +162,7 @@ export function crearFiestaDeTravesia(escena, liviano) {
     // una vez por cuadro. c: el auto. indice: por que metro del camino va.
     animar: (c, indice, dt, t) => {
       if (!raiz) return;
-      const cerca = indice < FIESTA_FIN + 250;   // ya paso: ni se dibuja
+      const cerca = T.fiesta.visible ? T.fiesta.visible(indice) : indice < FIESTA_FIN + 250;   // ya paso: ni se dibuja
       raiz.visible = cerca;
       if (!cerca) return;
       publico.animar(c, indice, dt, t);

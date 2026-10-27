@@ -94,6 +94,7 @@ export function crearTerreno(etapa) {
   x1 = x0 + (nx - 1) * celda; z1 = z0 + (nz - 1) * celda;
   const H = new Float32Array(nx * nz), S = new Uint8Array(nx * nz).fill(255), BORDE = new Float32Array(nx * nz);
   const ORILLA = new Uint8Array(nx * nz), CULTIVO = new Uint8Array(nx * nz);   // la banquina, y que se sembro en cada celda (solo en el campo)
+  const NATURA = new Uint8Array(nx * nz).fill(64);                            // cuanta vegetacion y cosas chicas lleva cada lugar (64 = lo normal; ver t.natura)
   const PELADO = new Uint8Array(nx * nz);                                      // donde no crece nada: calles, veredas y lo que ocupa un edificio
 
   // --- 1. Relieve general: se interpola la altura del camino y de sus laderas ---
@@ -299,6 +300,12 @@ export function crearTerreno(etapa) {
       else if (orillaSuelo >= 0) S[k] = orillaSuelo;
       else if (t.vereda && d < medio + 0.6 + t.vereda) { S[k] = SUELOS.vereda.id; PELADO[k] = 1; }
       else if (d < medio + 1.9 && !t.agua) ORILLA[k] = 1;
+      // manchas: charcos, pedregullo o tierra pelada al costado del camino (t.manchas = [{ suelo, cuanto, desde, hasta, escala, hondo }]; metros desde el borde)
+      if (t.manchas && d >= medio + 0.6 && S[k] === 255) for (const m of t.manchas) {
+        const e = d - medio;
+        if (e >= m.desde && e <= m.hasta && ruido.n2(x / m.escala + m.sem, z / m.escala - m.sem) > 1 - m.cuanto) { S[k] = SUELOS[m.suelo].id; ORILLA[k] = 0; h -= m.hondo || 0; break; }
+      }
+      if (t.natura !== undefined) NATURA[k] = Math.max(0, Math.min(255, Math.round(t.natura * 64)));
     }
     H[k] = h; BORDE[k] = borde;
   }
@@ -440,7 +447,7 @@ export function crearTerreno(etapa) {
     }
   }
   const publico = [], cintas = [], carteles = [], mojones = [], autos = [], fardos = [], claros = [], estacionados = [];
-  const casas = [], objetos = [], barandas = [], pircas = [], estorbos = [];
+  const casas = [], objetos = [], barandas = [], pircas = [], estorbos = [], salidas = [], rotos = [];
   // una caja que se puede chocar, apoyada en (x, z) y girada "rumbo" (su frente mira hacia ese rumbo)
   const caja = (x, z, rumbo, hx, hz, mas) => Object.assign({ x, z, y: altura(x, z), hx, hz, ux: Math.cos(rumbo), uz: Math.sin(rumbo), rumbo, alto: 1, duro: 1 }, mas);
   // lo que queda metido en el camino se anota aparte: la trazada de referencia tiene que esquivarlo
@@ -570,6 +577,38 @@ export function crearTerreno(etapa) {
       claros.push({ x: l.x, z: l.z, r: 2.4 });
       estorba(l.i, a[1], a[2] || 0, 0.85, 1.9);
     }
+    // salidas de pista: un auto que paso antes se fue afuera. Queda la rodada que sale del camino (se pinta en huellas.js), el pasto
+    // arrancado donde frenó, a veces marcas de trompo, una valla tirada, unas cubiertas y, a veces, el auto roto ahi (se lo choca).
+    // t.salidas = [{ u, lado (1 der / -1 izq), angulo (grados con el camino), fuera (metros mas alla del borde), giro, trompo, roto, valla, cubiertas }]
+    for (const sa of t.salidas || []) {
+      const l0 = lugar(t, sa.u, 0), W = P.W[l0.i], lado = sa.lado < 0 ? -1 : 1, ang = (sa.angulo || 35) * RAD, largo = Math.max(4, (sa.fuera || 5) / Math.sin(ang));
+      let rr = l0.rumbo + lado * ang, x = P.X[l0.i] - P.HZ[l0.i] * lado * (W / 2 - 1.2), z = P.Z[l0.i] + P.HX[l0.i] * lado * (W / 2 - 1.2);
+      const pts = [[x, z]];
+      for (let m = 0; m < largo; m += 0.5) { rr += lado * (sa.giro || 0) * RAD * 0.5 / largo; x += Math.sin(rr) * 0.5; z -= Math.cos(rr) * 0.5; pts.push([x, z]); }
+      const fin = { x, z, y: altura(x, z), rumbo: rr + (sa.giroFinal || 0) };
+      salidas.push({ pts, fin, trompo: !!sa.trompo, i: l0.i });
+      // el pasto arrancado: tierra pelada donde frenó
+      const rad = sa.trompo ? 3.2 : 2.3;
+      for (let j = Math.floor(z - z0 - rad); j <= Math.ceil(z - z0 + rad); j++) for (let ii = Math.floor(x - x0 - rad); ii <= Math.ceil(x - x0 + rad); ii++) {
+        if (ii < 0 || j < 0 || ii >= nx || j >= nz) continue;
+        const kk = j * nx + ii, dd = Math.hypot(x0 + ii - x, z0 + j - z);
+        if (dd < rad * (0.75 + 0.25 * ruido.n2(ii / 2.5, j / 2.5)) && S[kk] === SUELOS.pasto.id) { S[kk] = SUELOS.tierra.id; PELADO[kk] = 1; }
+      }
+      claros.push({ x, z, r: rad + 1.2 });
+      if (sa.roto) {
+        const o = caja(x, z, fin.rumbo, 0.85, 1.9, { clase: 'auto', roto: true, n: rotos.length + Math.floor(rnd() * 6) });
+        o.roll = (rnd() - 0.5) * 0.5; o.pitch = (rnd() - 0.5) * 0.16;
+        anotar(o); rotos.push(o);
+      }
+      const suelta = (tipo, dx, dz, giro) => {
+        const O = OBJETOS[tipo], ox = x + dx, oz = z + dz, mas = { clase: 'objeto', tipo, alto: O.alto, duro: O.duro, cede: !!O.cede, n: objetos.length, lado: 0 };
+        const o = O.hx ? caja(ox, oz, giro, O.hx, O.hz, mas) : Object.assign({ x: ox, z: oz, y: altura(ox, oz), r: O.r, rumbo: giro }, mas);
+        anotar(o); objetos.push(o);
+      };
+      if (sa.valla) suelta('valla', Math.sin(rr) * -3 + lado * 1.2, Math.cos(rr) * 3, rr + 1.2);
+      if (sa.cubiertas) suelta('cubiertas', Math.cos(rr) * 2.2, Math.sin(rr) * 2.2, rr);
+      if (sa.cono) { suelta('cono', -Math.sin(rr) * 5, Math.cos(rr) * 5, 0); suelta('cono', Math.cos(rr) * 4.4, Math.sin(rr) * 3, 0); }
+    }
     // mojones blancos al borde de los precipicios
     for (const lado of [1, -1]) {
       const ladera = lado > 0 ? t.der : t.izq;
@@ -584,10 +623,10 @@ export function crearTerreno(etapa) {
   }
   // alambrado: en el campo, una fila de postes a cada lado del camino. Ceden si se los choca.
   const postes = [];
-  if (BIO.some((b) => b.alambrado)) {
+  if (BIO.some((b) => b.alambrado) || etapa.tramos.some((t) => t.alambrado)) {
     for (let i = 6; i < P.n - 4; i += 7) {
       const t = etapa.tramos[P.T[i]];
-      if (t.agua || t.izq || t.der || t.plano || t.puente || !BIO[zonaDeTramo[P.T[i]]].alambrado) continue;
+      if (t.agua || t.izq || t.der || t.plano || t.puente || t.alambrado === false || !(t.alambrado || BIO[zonaDeTramo[P.T[i]]].alambrado)) continue;
       for (const lado of [-1, 1]) {
         const d = lado * (P.W[i] / 2 + 4.6), x = P.X[i] - P.HZ[i] * d, z = P.Z[i] + P.HX[i] * d;
         if (claros.some((c) => (c.x - x) ** 2 + (c.z - z) ** 2 < (c.r + 1.5) ** 2) || agua(x, z, altura(x, z)) > 0) continue;
@@ -648,11 +687,22 @@ export function crearTerreno(etapa) {
 
   // --- 7. Arboles y piedras sueltas ---
   // (lo que crece depende del ambiente de cada lugar)
+  // En la pista del dia (etapa.fiesta) se deja sin arboles ni piedras suelta la zona donde va el festival: a los lados de la largada
+  // y de la llegada. Es un hueco aparte de los "claros" (que son lugares ya ocupados) para que la fiesta pueda usarlo.
+  const despejados = [];
+  if (etapa.fiesta) {
+    const zonas = [[0, Math.min(P.n - 1, 250)], [Math.max(0, P.n - 200), P.n - 1]];
+    for (const [a, b] of zonas) for (let i = a; i <= b; i += 6) for (const lado of [-1, 1]) for (const d of [3.5, 9, 14.5]) {
+      const dd = lado * (P.W[i] / 2 + d);
+      despejados.push({ x: P.X[i] - P.HZ[i] * dd, z: P.Z[i] + P.HX[i] * dd, r: 5.5 });
+    }
+  }
   const VERDE = BIO.map((b) => ({ tipos: b.arboles, pesoTotal: b.arboles.reduce((s, t) => s + t[1], 0), umbral: 0.78 - b.monte * 0.78, prob: 0.4 + b.monte * 0.5, borde: b.borde, piedras: b.piedras }));
   for (let z = z0 + 6; z < z1 - 6; z += 4.4) for (let x = x0 + 6; x < x1 - 6; x += 4.4) {
     const px = x + (rnd() - 0.5) * 4, pz = z + (rnd() - 0.5) * 4, a = rnd(), b = rnd(), c = rnd();
     const k = Math.round((pz - z0) / celda) * nx + Math.round((px - x0) / celda);
     if (grueso(LEJOS, px, pz) > 86 || BORDE[k] < 1.8 || PELADO[k] || agua(px, pz, H[k]) > 0) continue;
+    if (despejados.length && despejados.some((q) => (q.x - px) ** 2 + (q.z - pz) ** 2 < q.r * q.r)) continue;   // (el lugar de la fiesta)
     let o = null;
     const { tipos, pesoTotal, umbral, prob, borde: bordeDelMonte, piedras: sueltas } = VERDE[varios ? ZONA[k] : 0];
     const empinado = Math.hypot(H[k + 1] - H[k - 1], H[k + nx] - H[k - nx]) / (2 * celda) > 0.36;   // sin arboles en las laderas: se tiene que ver la caida
@@ -718,8 +768,8 @@ export function crearTerreno(etapa) {
     etapa, bioma, clima, camino: C, x0, z0, x1, z1, nx, nz, celda, H, S, borde: BORDE,
     // los ambientes por los que pasa la pista (el primero es el de la etapa), en cual esta cada celda (zona: null si hay uno solo)
     // y cual toca en un lugar del mapa
-    biomas, zona: ZONA, biomaEn: (x, z) => (ZONA ? biomas[ZONA[Math.max(0, Math.min(nz - 1, Math.round(z - z0))) * nx + Math.max(0, Math.min(nx - 1, Math.round(x - x0)))]] : biomas[0]), orilla: ORILLA, cultivo: CULTIVO, pelado: PELADO, claros, aguas, vacas, molinos, cosas, postes, fardos, publico, cintas, carteles, mojones, autos, estacionados,
-    casas, objetos, barandas, pircas, puentes, estorbos,
+    biomas, zona: ZONA, biomaEn: (x, z) => (ZONA ? biomas[ZONA[Math.max(0, Math.min(nz - 1, Math.round(z - z0))) * nx + Math.max(0, Math.min(nx - 1, Math.round(x - x0)))]] : biomas[0]), orilla: ORILLA, cultivo: CULTIVO, pelado: PELADO, claros, natura: NATURA, aguas, vacas, molinos, cosas, postes, fardos, publico, cintas, carteles, mojones, autos, estacionados,
+    casas, objetos, salidas, rotos, barandas, pircas, puentes, estorbos,
     vuelta: L ? { largo: L, desde: L, hasta: 2 * L } : null,   // (solo en una vuelta cerrada) cuanto mide, y entre que metros del camino se corre
     // cuanto se corren hacia la derecha las rodadas en un metro del camino (0 si la pista no las tiene): el piloto automatico las sigue
     enSurco,

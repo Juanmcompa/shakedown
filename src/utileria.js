@@ -4,7 +4,7 @@ import * as THREE from '../vendor/three.module.js';
 import { azar } from './noise.js';
 import { crearLote } from './pixel.js';
 import { estilo } from './material.js';
-import { armarEstacionado } from './autos.js';
+import { armarEstacionado, armarRoto } from './autos.js';
 import { crearLoteDeSprites } from './sprites.js';
 
 const COLORES = ['#d8402f', '#f2c200', '#f4f0e6', '#49b3d6', '#3f9150', '#f07f1e'];
@@ -169,6 +169,14 @@ export function crearUtileria(T, escena, esc, clima) {
     const { grupo, alto } = armarEstacionado(a.n);
     grupo.quaternion.copy(acostar(a.x, a.z, Q)).multiply(Q2.setFromAxisAngle(ARRIBA, -a.rumbo));
     grupo.position.set(a.x, a.y + alto, a.z);
+    escena.add(grupo);
+  }
+
+  // --- los autos rotos que quedaron afuera del camino (una salida de pista de otro auto): caidos de costado y de trompa ---
+  for (const o of T.rotos || []) {
+    const { grupo, alto } = armarRoto(o.n), E = new THREE.Euler(o.pitch || 0, 0, o.roll || 0);
+    grupo.quaternion.copy(acostar(o.x, o.z, Q)).multiply(Q2.setFromAxisAngle(ARRIBA, -o.rumbo)).multiply(new THREE.Quaternion().setFromEuler(E));
+    grupo.position.set(o.x, o.y + alto - 0.1, o.z);
     escena.add(grupo);
   }
 

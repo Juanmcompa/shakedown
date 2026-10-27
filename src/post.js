@@ -62,6 +62,8 @@ const REVELADOS = {
   tarde:  { ajuste: [0.75, 1.02, 1.0, 0.34], sombras: [0.95, 0.93, 1.1],  luces: [1.07, 1.0, 0.92],  desde: 0.85 },
   lluvia: { ajuste: [0.32, 0.92, 1.0, 0.34], sombras: [0.95, 1.0, 1.05],  luces: [0.99, 1.0, 1.02],  desde: 0.9 },
   niebla: { ajuste: [0.4, 0.9, 0.98, 0.28],  sombras: [0.98, 1.0, 1.03],  luces: [1.01, 1.0, 0.99],  desde: 0.95 },
+  // la noche: mas brillo alrededor de lo muy iluminado (los faros, los fogones), sombras azules, luces calidas y bordes mas oscuros
+  noche:  { ajuste: [0.7, 0.96, 1.06, 0.46], sombras: [0.86, 0.96, 1.22], luces: [1.1, 1.02, 0.9], desde: 0.85 },
 };
 
 export function crearPost(render, clima, liviano) {
@@ -131,6 +133,11 @@ export function crearPost(render, clima, liviano) {
       const u = mFinal.uniforms;
       u.uFoco.value.x = foco; u.uLente.value.set(cam.near, cam.far);
       pasar(mFinal, null);
+    },
+    // cambia el revelado segun el clima y la hora (la clave de REVELADOS: ver revelado en world.js)
+    revelar: (clave) => {
+      const r = REVELADOS[clave] || REVELADOS.sol, u = mFinal.uniforms;
+      u.uAjuste.value.set(...r.ajuste); u.uSombras.value.set(...r.sombras); u.uLuces.value.set(...r.luces); mBrillante.uniforms.uDesde.value = r.desde;
     },
     // para ajustar a mano desde la consola
     datos: mFinal.uniforms,
