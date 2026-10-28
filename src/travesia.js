@@ -635,7 +635,7 @@ export function crearModoTravesia(o) {
     efectos: (si) => { fx.prender(si); mundo.fiesta.efectos(si); },
     // --- para probar desde la consola (solo en una copia local, ver main.js) ---
     prueba: {
-      guia,
+      guia, escena, auto: () => c,   // (la escena y el auto, para las pruebas de vista)
       estado: () => ({ activa, fase, km: mejorKm(), indice, mejor, roto: e && e.roto, cartas: e && e.cartas.slice(), mano: mano.map((k) => k.id), motivo: motivoFin, velocidad: c && c.velocidad, record: record(),
         memoria: T && T.memoria(), dibujados: mundo.vivos(), armados: T && T.estadistica.armados, soltados: T && T.estadistica.soltados, tSinAvance, proxima: proximaCarta }),
       avanzar: (seg, o2 = {}) => {

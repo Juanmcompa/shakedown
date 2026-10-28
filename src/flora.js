@@ -66,6 +66,53 @@ export function crearFlora(T, escena, esc, liviano) {
     return zonas.get(k);
   };
   const monte = new Uint8Array(nx * nz);
+  const ruido = crearRuido((T.etapa.semilla || 1) + 31), ruidoMonte = crearRuido((T.etapa.semilla || 1) + 57);
+  // los arboles que chocan (para saber si uno esta solo, y para no poner uno de adorno encima de otra cosa)
+  const caja = new Map(), kc = (a, b) => Math.floor(a / 8) * 4096 + Math.floor(b / 8);
+  for (const o of T.cosas) { const k = kc(o.x, o.z); if (!caja.has(k)) caja.set(k, []); caja.get(k).push(o); }
+  const cerca = (x, z, radio, soloArboles, salvo) => {
+    for (let a = -Math.ceil(radio / 8); a <= Math.ceil(radio / 8); a++) for (let b = -Math.ceil(radio / 8); b <= Math.ceil(radio / 8); b++) {
+      for (const o of caja.get(kc(x + a * 8, z + b * 8)) || []) if (o !== salvo && (!soloArboles || (o.clase === 'arbol' && o.tipo !== 'arbusto')) && (o.x - x) ** 2 + (o.z - z) ** 2 < (radio + (o.hx ? Math.hypot(o.hx, o.hz) : o.r || 0)) ** 2) return true;
+    }
+    return false;
+  };
+  // cerca de un arroyo o vado (agua baja a un costado del camino): ahi van los sauces
+  const juntoAlAgua = (x, z) => T.aguas.some((a) => Math.hypot(a.x - x, a.z - z) < a.cruce + 10 && T.altura(x, z) - a.nivel < 2.2);
+  const conteo = {}, contar = (donde, tipo) => { const c = conteo[donde] || (conteo[donde] = {}); c[tipo] = (c[tipo] || 0) + 1; };   // (para las pruebas: cuantos de cada tipo hay en cada ambiente)
+  const sortear = (lista, q) => { let t = lista.reduce((s, e) => s + e[1], 0) * q; for (const e of lista) { t -= e[1]; if (t <= 0) return e[0]; } return lista[0][0]; };
+
+  // --- que dibujo lleva cada arbol que choca ---
+  const OTONO = ['lengaRoja', 'lenga', 'nire', 'lengaMarron'];   // rojo oscuro, naranja, amarillo y marron
+  const deOtono = (g, q) => OTONO[Math.max(0, Math.min(3, Math.floor(((g - 0.5) * 2.2 + 0.5 + (q - 0.5) * 0.3) * 4)))];
+  const elegirArbol = (o, donde) => {
+    const rr = azar(Math.floor(o.x * 173 + o.z * 89) + 31), g = ruidoMonte.n2(o.x / 38, o.z / 38), q = rr(), q2 = rr(), t = o.tipo;
+    if (o.plantado) {   // las hileras de la vereda y la plaza del pueblo
+      if (t === 'lenga') return q < 0.78 ? 'platano' : q < 0.92 ? 'palmera' : 'lenga';
+      if (t === 'alamo') return q < 0.5 ? 'alamo' : q < 0.88 ? 'platano' : 'alamoOtono';
+      return t;
+    }
+    if (donde === 'bosque') {
+      if (t === 'pino' || t === 'pinoAlto') return sortear([[t, 3], ['abeto', g < 0.5 ? 4 : 1.2], ['roble', g > 0.6 ? 2.5 : 0.4], ['abedul', g > 0.35 && g < 0.65 ? 2.5 : 0.3]], q);
+      if (t === 'lenga') return sortear([['roble', g > 0.5 ? 3 : 1.5], ['abedul', g > 0.35 ? 2.5 : 1], ['robleBajo', 1.4], ['lenga', 1], ['nire', 0.6], ['lengaRoja', 0.5], ['abeto', g < 0.4 ? 1.5 : 0]], q);
+    } else if (donde === 'campo') {
+      if (t === 'eucalipto') {
+        if (!cerca(o.x, o.z, 16, true, o)) return q < 0.5 ? 'ombu' : q < 0.65 ? 'robleBajo' : 'eucalipto';   // uno solo en el campo: copa ancha
+        return q < 0.4 ? 'eucaliptoAlto' : q < 0.9 ? 'eucalipto' : 'robleBajo';
+      }
+      if (t === 'alamo') {
+        if (juntoAlAgua(o.x, o.z)) return q < 0.75 ? 'sauce' : 'alamo';
+        return o.fila ? (q < 0.9 ? 'alamo' : 'alamoOtono') : q < 0.8 ? 'alamo' : q < 0.9 ? 'alamoOtono' : 'sauce';
+      }
+    } else if (donde === 'montana') {
+      if (t === 'araucaria') return q < 0.8 ? 'araucaria' : q < 0.9 ? 'secoRetorcido' : 'pinoViento';
+      if (t === 'pino') return q < 0.3 ? 'pinoViento' : q < 0.45 ? 'pino' : deOtono(g, q2);
+      if (t === 'lenga') return q < 0.3 ? 'secoRetorcido' : deOtono(g, q2);
+    } else if (donde === 'sierra') {
+      if (t === 'pino') return q < 0.55 ? 'pinoViento' : 'pino';
+      if (t === 'lenga') return q < 0.3 ? 'secoRetorcido' : deOtono(g, q2);
+    }
+    return t;
+  };
 
   // --- arboles y arbustos ---
   for (const o of T.cosas) {
@@ -76,13 +123,11 @@ export function crearFlora(T, escena, esc, liviano) {
       z.yuyos.poner(dibujo, o.x, o.y - 0.05, o.z, { escala: 1.15 + r() * 0.5, azar: r(), mueve: 0.04 });
       continue;
     }
-    // las lengas, en otoño: unas rojas y otras amarillas. Alguna esta seca en la montaña, y algun alamo del campo es un sauce.
-    // (la forma de bloques solo se usa para saber cuanto monte le queda debajo, igual que antes: el sorteo no cambia)
-    const donde = T.biomaEn(o.x, o.z), f = (FORMAS[o.tipo] || FORMAS.lenga)(o.alto, r), sorteo = r(), sorteo2 = r();
-    let tipo = o.tipo === 'lenga' && sorteo < 0.34 ? 'nire' : o.tipo;
-    if (tipo === 'lenga' && (donde === 'montana' || donde === 'sierra') && sorteo2 < 0.3) tipo = 'seco';
-    if (tipo === 'alamo' && donde === 'campo' && sorteo2 < 0.25) tipo = 'sauce';
-    z.arboles.poner(tipo, o.x, o.y, o.z, o.vuelta, o.alto, r());
+    // Que dibujo lleva cada arbol: el choque (tronco y lugar) no cambia, solo lo que se ve. Se mezcla por ambiente, con rodales (g es un
+    // ruido suave: en un lugar domina un tipo y en otro, otro) y con sorteos propios de cada arbol, asi no cambia ningun otro sorteo.
+    // (la forma de bloques solo se usa para saber cuanto monte le queda debajo, igual que antes)
+    const donde = T.biomaEn(o.x, o.z), f = (FORMAS[o.tipo] || FORMAS.lenga)(o.alto, r), tipo = elegirArbol(o, donde);
+    z.arboles.poner(tipo, o.x, o.y, o.z, o.vuelta, o.alto, r()); contar(donde, tipo);
     // el piso de abajo queda como monte
     const radio = f.pisos[0][0] / 8 + 1.2, gx = Math.round(o.x - x0), gz = Math.round(o.z - z0), n = Math.ceil(radio);
     for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
@@ -90,9 +135,65 @@ export function crearFlora(T, escena, esc, liviano) {
     }
   }
 
+  // --- arboles de adorno: no chocan (no estan en t.cosas) y van lejos del camino, para que el paisaje no sea siempre igual ---
+  // Se sortean con la semilla de la pista. Hay pocos (menos de la mitad de los que chocan) y siguen siendo instancias.
+  let sueltos = 0;
+  {
+    const rd = azar((T.etapa.semilla || 1) + 83), celda = T.celda || 1, C = T.camino, pasto = SUELOS.pasto.id;
+    const tope = Math.round(T.cosas.filter((o) => o.clase === 'arbol' && o.tipo !== 'arbusto').length * 0.4) + 25;
+    // un lugar donde se puede plantar: pasto, sin sembrar, sin pelar, no empinado, ni en un claro; devuelve la celda o -1
+    const sitio = (x, z, desde) => {
+      if (x < x0 + 5 || x > T.x1 - 5 || z < z0 + 5 || z > T.z1 - 5) return -1;
+      const k = Math.round(z - z0) * nx + Math.round(x - x0), b = T.borde[k];
+      if (!(b > desde && b < 80) || S[k] !== pasto || T.pelado[k] || T.cultivo[k]) return -1;
+      if (Math.hypot(H[k + 1] - H[k - 1], H[k + nx] - H[k - nx]) / (2 * celda) > 0.36) return -1;
+      if (T.claros.some((q) => (q.x - x) ** 2 + (q.z - z) ** 2 < q.r * q.r)) return -1;
+      return k;
+    };
+    const poner = (tipo, x, z, tam) => {
+      if (sueltos >= tope) return false;
+      zona(x, z).arboles.poner(tipo, x, T.altura(x, z), z, rd() * 6.28, tam, rd(), true);
+      sueltos++; contar(T.biomaEn(x, z), tipo + '*');   // (con * : de adorno)
+      return true;
+    };
+    const PRO = { bosque: 0.26, campo: 0.05, montana: 0.2, sierra: 0.05 };
+    for (let z = z0 + 8; z < T.z1 - 8; z += 7) for (let x = x0 + 8; x < T.x1 - 8; x += 7) {
+      const px = x + (rd() - 0.5) * 6, pz = z + (rd() - 0.5) * 6, a = rd(), q = rd(), tam = 0.9 + rd() * 0.6, donde = T.biomaEn(px, pz), n = ruidoMonte.n2(px / 30 + 9, pz / 30);
+      if (a > (PRO[donde] ?? 0)) continue;
+      const k = sitio(px, pz, donde === 'campo' ? 14 : 7);
+      if (k < 0 || cerca(px, pz, donde === 'campo' ? 22 : 3.2, donde === 'campo')) continue;
+      let tipo;
+      if (donde === 'bosque') tipo = sortear([['arbustoRedondo', n > 0.55 ? 4 : 1.5], ['abeto', n < 0.45 ? 3 : 1], ['roble', n > 0.5 ? 2.5 : 1], ['abedul', 2], ['robleBajo', 1]], q);   // bordes y claros: arbustos y hoja ancha
+      else if (donde === 'campo') tipo = sortear([['ombu', 5], ['robleBajo', 3], ['eucaliptoAlto', 2]], q);   // un arbol solo, de copa ancha
+      else if (donde === 'montana') tipo = sortear([[deOtono(n, q), 5], ['arbustoOtono', 3], ['secoRetorcido', 1.2], ['pinoViento', 1.2]], rd());
+      else tipo = sortear([['arbustoOtono', 1], ['pinoViento', 1], ['secoRetorcido', 1]], q);
+      poner(tipo, px, pz, tipo.startsWith('arbusto') ? 0.8 + rd() * 0.5 : tam);
+    }
+    // alamos en fila (cortina de viento) a un costado del camino de campo, afuera del alambrado
+    if (C) for (let i0 = 30; i0 < C.n - 60; i0 += 110) {
+      if (rd() > 0.4) continue;
+      const lado = rd() < 0.5 ? -1 : 1, largo = 60 + rd() * 50, d0 = 9 + rd() * 2;
+      for (let m = 0; m < largo; m += 6.2) {
+        const i = Math.min(C.n - 1, Math.round(i0 + m)), d = C.W[i] / 2 + d0 + (rd() - 0.5) * 0.8;
+        const px = C.X[i] - C.HZ[i] * lado * d, pz = C.Z[i] + C.HX[i] * lado * d;
+        if (T.biomaEn(px, pz) !== 'campo' || sitio(px, pz, 5) < 0 || cerca(px, pz, 3.2, false)) continue;
+        poner(rd() < 0.88 ? 'alamo' : 'alamoOtono', px, pz, 1.2 + rd() * 0.5);
+      }
+    }
+    // sauces a la orilla de los arroyos y vados
+    for (const ag of T.aguas) {
+      let n = 0;
+      for (let t = 0; t < 40 && n < 6; t++) {
+        const px = ag.x + (rd() - 0.5) * 2 * (ag.cruce + 8), pz = ag.z + (rd() - 0.5) * 2 * (ag.cruce + 8), dn = T.altura(px, pz) - ag.nivel;
+        if (dn < 0.2 || dn > 1.8 || T.biomaEn(px, pz) === 'montana' || T.biomaEn(px, pz) === 'sierra' || sitio(px, pz, 3) < 0 || cerca(px, pz, 3, false)) continue;
+        if (poner('sauce', px, pz, 1.1 + rd() * 0.5)) n++;
+      }
+    }
+  }
+
   // --- yuyos: se siembran en una grilla, mas tupidos cerca del camino ---
   // (si la pista pasa por varios ambientes, en cada lugar crece lo del suyo)
-  const listas = T.biomas.map((id) => YUYOS[id] || YUYOS.bosque), ruido = crearRuido((T.etapa.semilla || 1) + 31), r = azar((T.etapa.semilla || 1) + 5);
+  const listas = T.biomas.map((id) => YUYOS[id] || YUYOS.bosque), r = azar((T.etapa.semilla || 1) + 5);
   const paso = liviano ? 2.6 : 1.9, pasto = SUELOS.pasto.id;
   const elegir = (opciones, x, z) => {
     let total = 0;
@@ -135,5 +236,5 @@ export function crearFlora(T, escena, esc, liviano) {
     if (m) { escena.add(m); arboles += z.arboles.cuantos(); }
     if (z.yuyos.cuantos()) { escena.add(z.yuyos.malla(!liviano)); yuyos += z.yuyos.cuantos(); }
   }
-  return { monte, yuyos, arboles, zonas: zonas.size };
+  return { monte, yuyos, arboles, sueltos, tipos: conteo, zonas: zonas.size };
 }

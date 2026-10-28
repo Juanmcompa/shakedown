@@ -2,7 +2,8 @@
 // se asustan, gente con antorchas y flashes de fotos, la suciedad del auto por terreno (barro, tierra, arena, agua) y las huellas
 // segun el suelo. Revisa que:
 //  - los arboles son planos cruzados (2 o 3), con recorte (alpha test, sin transparencia) y son instancias: un solo dibujo por zona,
-//    con tantos arboles como habia antes (los que chocan);
+//    con tantos arboles como habia antes (los que chocan) mas unos pocos de adorno que no chocan, y con variedad de tipos por bioma
+//    (el bosque, al menos 6; la prueba vervariedad.mjs hace lo mismo con los demas ambientes);
 //  - con el ajuste "efectos" apagado no hay hojas, petalos, viento, polillas, animales, antorchas ni flashes (y al prenderlo vuelven);
 //  - los animales se alejan cuando el auto se acerca (y no se mueven si el auto esta quieto);
 //  - los flashes salen cuando pasa el auto;
@@ -65,7 +66,7 @@ const a = await pag.evaluate(() => {
   const s = window.shakedown, r = { mallas: 0, arboles: 0, planos: new Set(), alphaTest: true, sinTransparencia: true, indices: true, tipos: 0, bloques: 0 };
   s.escena.traverse((o) => {
     if (!o.isInstancedMesh || !o.userData.arboles) return;
-    r.mallas++; r.arboles += o.count; r.planos.add(o.userData.planos);
+    r.mallas++; r.arboles += o.count; r.sueltos = (r.sueltos || 0) + (o.userData.sueltos || 0); r.planos.add(o.userData.planos);
     const m = o.material; if (m.alphaTest < 0.4 || !m.map) r.alphaTest = false; if (m.transparent) r.sinTransparencia = false;
     if (o.geometry.index.count !== (o.userData.planos * 6 + 6) * 2 || !o.geometry.getAttribute('aTop') || !o.geometry.getAttribute('aUv2')) r.indices = false;   // los planos cruzados y el plano horizontal de la copa (vista de arriba), cada uno con sus dos caras
   });
@@ -73,12 +74,15 @@ const a = await pag.evaluate(() => {
   return { ...r, planos: [...r.planos] };
 });
 ver('los arboles son instancias (' + a.arboles + ' en ' + a.mallas + ' dibujos de zona)', a.mallas > 0 && a.mallas < 100 && a.arboles > 100, a);
-ver('hay un arbol dibujado por cada arbol que choca (' + a.arbolesDelTerreno + ')', a.arboles === a.arbolesDelTerreno, a);
+ver('hay un arbol dibujado por cada arbol que choca (' + a.arbolesDelTerreno + ') y los de adorno (' + (a.sueltos || 0) + ') son pocos', a.arboles - (a.sueltos || 0) === a.arbolesDelTerreno && (a.sueltos || 0) <= a.arbolesDelTerreno * 0.4 + 25, a);
+// la variedad: cuantos tipos de arbol distintos hay en este bioma (los de adorno cuentan, llevan * en el conteo)
+const tp = await pag.evaluate(() => window.shakedown.mundo.flora.tipos), tb = Object.keys(tp.bosque || {}).map((x) => x.replace('*', ''));
+ver('el bosque tiene variedad de arboles: ' + new Set(tb).size + ' tipos (' + [...new Set(tb)].join(', ') + ')', new Set(tb).size >= 6, tp);
 ver('son planos cruzados (2 o 3 planos de dos triangulos cada uno) mas un plano horizontal en la copa para la camara alta', a.planos.length === 1 && (a.planos[0] === 2 || a.planos[0] === 3) && a.indices, a);
 ver('con recorte (alpha test) y sin transparencia: no parpadean al girar', a.alphaTest && a.sinTransparencia, a);
 // el tronco (el choque) no cambio: lo comprueban las pruebas de huellas; aca, que los arboles siguen donde estaban
 const mismos = await pag.evaluate(() => { const s = window.shakedown; let k = 0; s.escena.traverse((o) => { if (o.isInstancedMesh && o.userData.arboles) { const M = new s.escena.matrix.constructor(); for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, M); const x = M.elements[12], z = M.elements[14]; if (s.T.cosas.some((q) => q.clase === 'arbol' && Math.abs(q.x - x) < 0.01 && Math.abs(q.z - z) < 0.01)) k++; } } }); return k; });
-ver('cada instancia esta en el lugar de su tronco (' + mismos + ')', mismos === a.arboles, mismos);
+ver('cada instancia esta en el lugar de su tronco (' + mismos + ')', mismos === a.arboles - (a.sueltos || 0), mismos);
 
 const iA = await lugarDeArboles(pag, false);
 await ir(pag, iA); await camara(pag, 0); await foto(pag, 'arboles-ps1-1');

@@ -517,7 +517,7 @@ export function crearTerreno(etapa) {
     // arboles plantados a proposito (los de la vereda, los de una plaza): [metros desde el inicio, metros a la derecha, tipo, tamaño]
     for (const e of t.arboles || []) {
       const l = lugar(t, e[0], e[1]);
-      anotar({ x: l.x, z: l.z, y: l.y, r: 0.45, alto: e[3] || 1.1, clase: 'arbol', tipo: e[2] || 'alamo', duro: 1, vuelta: rnd() * 6.28 });
+      anotar({ x: l.x, z: l.z, y: l.y, r: 0.45, alto: e[3] || 1.1, clase: 'arbol', tipo: e[2] || 'alamo', duro: 1, vuelta: rnd() * 6.28, plantado: true });   // (plantado: solo lo mira flora.js para elegir el dibujo)
       estorba(l.i, e[1], 0, 0.45, 0.45);
     }
     // las bocacalles van cerradas: tres vallas atravesadas y, atras, los vecinos mirando
@@ -667,7 +667,7 @@ export function crearTerreno(etapa) {
         // cortina de alamos sobre el borde izquierdo del lote
         if (sorteo(col * 3 + 1, fila) < 0.42) for (let z = zl + 3; z < zl + FILA - 2; z += 5.4) {
           const x = xl + (rnd() - 0.5) * 0.5;
-          if (libre(x, z, 7.5)) anotar({ x, z, y: altura(x, z), r: 0.45, alto: 1.2 + rnd() * 0.5, clase: 'arbol', tipo: 'alamo', duro: 1, vuelta: rnd() * 6.28 });
+          if (libre(x, z, 7.5)) anotar({ x, z, y: altura(x, z), r: 0.45, alto: 1.2 + rnd() * 0.5, clase: 'arbol', tipo: 'alamo', duro: 1, vuelta: rnd() * 6.28, fila: true });
         }
         if (que !== 0) continue;
         // en algunos lotes de pasto: un molino con su tanque, o unas vacas

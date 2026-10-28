@@ -1,4 +1,4 @@
-// Lo que decora el desierto de la Travesia: matas y arbustos secos, acacias chatas de tronco torcido, piedras negras sueltas
+// Lo que decora el desierto de la Travesia: matas y arbustos secos, piedras negras sueltas (las acacias estan en arboles.js)
 // (dibujos planos de pocos pixeles, a 8 por metro, como los de sprites.js) y las medidas de las formaciones de roca grandes
 // (torres, hongos, mesas) que se ven al fondo. Los colores son de tierra: apagados, pero calidos.
 import * as THREE from '../vendor/three.module.js';
@@ -45,34 +45,7 @@ function piedraNegra(p) {
     p.punto(x, y, y === 0 || (x < p.w / 2 && y < p.h / 2) ? t[3] : y >= p.h - 1 ? t[0] : x > p.w * 0.65 ? t[1] : t[2]);
   }
 }
-// una acacia chata: tronco torcido que se abre en dos o tres ramas y una copa plana y ancha, como un paraguas aplastado
-function acacia(p) {
-  const w = p.w, h = p.h, copaAlto = Math.max(3, Math.round(h * 0.34)), copaY = Math.round(h * 0.18), cx = Math.floor(w / 2);
-  const tronco = '#4d3827', luz = '#6b5038';
-  // tronco: sube torciendose; arriba se abre en dos ramas que llegan a la copa
-  let x = cx + (p.azar() < 0.5 ? -2 : 2);
-  const base = h - 1, tope = copaY + copaAlto - 1;
-  for (let y = base; y > tope; y--) {
-    p.rect(x, y, 2, 1, tronco); p.punto(x, y, luz);
-    if (p.azar() < 0.4) x += p.azar() < 0.5 ? -1 : 1;
-    x = Math.max(cx - 4, Math.min(cx + 3, x));
-  }
-  for (let k = 0; k < 2; k++) {
-    let rx = x, ry = tope;
-    const dir = k ? 1 : -1;
-    for (let s = 0; s < Math.round(w * 0.2); s++) { p.punto(rx, ry, tronco); rx += dir; if (s % 2) ry--; if (ry < copaY + 1) break; }
-  }
-  // copa: elipse achatada de racimos, mas clara arriba y con sombra abajo; el borde queda deshilachado
-  const verdes = ['#4a4a26', '#62622f', '#7b7a3a', '#97924a'];
-  for (let y = copaY; y < copaY + copaAlto; y++) for (let xx = 0; xx < w; xx++) {
-    const dx = (xx - (w - 1) / 2) / (w / 2), dy = (y - (copaY + (copaAlto - 1) / 2)) / (copaAlto / 2), d = dx * dx * 0.95 + dy * dy * 1.5 + (p.azar() - 0.5) * 0.45;
-    if (d > 1) continue;
-    if (y > copaY + 1 && p.azar() < 0.12 + 0.18 * Math.max(0, dy)) continue;   // huecos por abajo: se ve el cielo entre las ramas
-    const luzY = 1 - (y - copaY) / copaAlto - dx * 0.2 + (p.azar() - 0.5) * 0.35;
-    p.punto(xx, y, verdes[luzY > 0.78 ? 3 : luzY > 0.5 ? 2 : luzY > 0.22 ? 1 : 0]);
-  }
-  for (let i = 0; i < Math.round(w / 3); i++) p.punto(entero(p, 2, w - 3), copaY + entero(p, 0, 1), verdes[3]);
-}
+// (las acacias chatas ya no son sprites: ahora son de planos cruzados, ver 'acacia' en arboles.js; la mitad de las matas tambien)
 
 const DIBUJOS = {
   mataOcre: [8, 6, (p) => mata(p, ['#7a5a2c', '#a07a3a', '#c29a52', '#dcb870'], 6)],
@@ -81,7 +54,6 @@ const DIBUJOS = {
   arbustoEspina: [12, 9, (p) => arbusto(p, ['#54502f', '#726d3d', '#908a50', '#b0a96c'], 0.22)],
   cardoSeco: [7, 12, cardoSeco],
   piedraNegra: [7, 4, piedraNegra], piedraNegraGrande: [10, 6, piedraNegra],
-  acacia: [30, 16, acacia], acaciaChica: [20, 12, acacia],
 };
 const VERSIONES = 3;
 

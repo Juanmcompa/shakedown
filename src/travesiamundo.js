@@ -9,6 +9,7 @@ import { texturaDePisos, crearEscenografia } from './arte.js';
 import { ambiente, estilo } from './material.js';
 import { crearLote } from './pixel.js';
 import { crearLoteDeSprites } from './sprites.js';
+import { crearLoteDeArboles } from './arboles.js';
 import { LUCES, PISO, AGUA } from './world.js';
 import { RADIOS_DE_PIEDRA, altoDePiedra } from './travesiaterreno.js';
 import { crearDibujosDeTravesia, FORMACIONES, PIXEL_FORMACION } from './travesiaflora.js';
@@ -190,11 +191,21 @@ export function crearMundoTravesia(escena, liviano) {
 
     // las matas secas y las piedritas
     if (t.decor.length) {
-      const lote = crearLoteDeSprites(dibujosFlora);
-      for (const d of t.decor) lote.poner(d.nombre, d.x, d.y, d.z, { escala: d.escala, azar: d.azar, mueve: d.mueve });
-      const mesh = lote.malla(!liviano);
-      grupo.add(mesh);
-      liberar.push(mesh.geometry, mesh.material, mesh.customDepthMaterial);
+      const lote = crearLoteDeSprites(dibujosFlora), verdes = crearLoteDeArboles(liviano);
+      for (const d of t.decor) {
+        // las acacias y la mitad de las matas espinosas y ocres son de planos cruzados (como los arboles del resto del juego);
+        // el resto sigue siendo de sprites. (el sorteo ya viene hecho en d: aca no se sortea nada nuevo)
+        const arbol = d.nombre === 'acacia' ? ['acacia', 1.2] : d.nombre === 'acaciaChica' ? ['acaciaChica', 1.0] : d.nombre === 'arbustoEspina' && d.azar < 0.5 ? ['matoEspina', 1.2] : d.nombre === 'arbustoOcre' && d.azar < 0.5 ? ['matoSeco', 1.2] : null;
+        if (arbol) verdes.poner(arbol[0], d.x, d.y + 0.12, d.z, d.azar * 6.28 * 7 % 6.28, d.escala * arbol[1], (d.azar * 13) % 1);
+        else lote.poner(d.nombre, d.x, d.y, d.z, { escala: d.escala, azar: d.azar, mueve: d.mueve });
+      }
+      if (lote.cuantos()) {
+        const mesh = lote.malla(!liviano);
+        grupo.add(mesh);
+        liberar.push(mesh.geometry, mesh.material, mesh.customDepthMaterial);
+      }
+      const arboles = verdes.malla();
+      if (arboles) { arboles.userData.travesia = true; grupo.add(arboles); liberar.push(arboles.geometry, arboles.material, arboles.customDepthMaterial); }
     }
 
     // el agua de los arroyos que pasan por aca, recortada a este pedazo
