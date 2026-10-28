@@ -4,7 +4,8 @@
 // con ayer; cada boton lleve a su modo; elegir una pista distinta de la cargada vaya directo a la largada sin mostrar el menu de nuevo
 // (se ve "Cargando <pista>..." y la pasada empieza sola, tambien con el permiso del sensor de un iPhone); "Volver" lleve al inicio; que
 // un link de un amigo (#r=, #t=) abra donde corresponde; y que en celulares chicos entren la pista, Largar y Pistas anteriores.
-// Capturas en out/: inicio-compu, inicio-celu, inicio-320, inicio-anteriores, inicio-travesia.
+// Capturas en out/: inicio-compu, inicio-celu, inicio-320, inicio-anteriores, inicio-travesia, y de los celulares chicos con
+// nombre largo: chico-320, chico-360, chico-390, chico-568x320.
 // uso: node tools/pruebas/verinicio.mjs
 import { abrir, irACard, largarDesdeHome, aceptarNombre } from './ver.mjs';
 let mal = 0;
@@ -217,19 +218,42 @@ ver('celular tipo iPhone: elegir otro circuito larga solo, sin volver al menu ('
 ver('sin errores en la consola (celular)', f.errores.length === 0, [...new Set(f.errores)].slice(0, 3));
 await f.cerrar();
 
-// ---------- 5: celulares chicos: la pista, Largar y los modos entran sin tocar nada ----------
+// ---------- 5: celulares chicos: la pista, Largar y los modos entran sin tocar nada (con el nombre de hoy y con uno largo a proposito) ----------
+// Tambien: que nada se pise arriba (marca, auto, tabla, ayuda, musica, configuracion) y que el nombre no pase de dos renglones.
+const NOMBRES = ['', 'Huella de Pampa Linda', 'Camino del Gaucho Perdido Alto'];   // '' = el que trae la pista de hoy
+const pisadas = (pag) => pag.evaluate(() => {
+  const R = (e) => e.getBoundingClientRect(), cosas = [['marca', document.querySelector('.marca')], ['auto', document.getElementById('miAuto')], ...[...document.querySelectorAll('.solapas > button')].map((b, k) => ['boton' + k, b])];
+  const mal = [];
+  for (let i = 0; i < cosas.length; i++) {
+    const a = R(cosas[i][1]); if (a.right > innerWidth + 0.5 || a.bottom > innerHeight + 0.5) mal.push('se sale ' + cosas[i][0]);
+    for (let k = i + 1; k < cosas.length; k++) { const b = R(cosas[k][1]); if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) mal.push(cosas[i][0] + ' pisa a ' + cosas[k][0]); }
+  }
+  const au = document.getElementById('miAuto'), ra = R(au);
+  if ([...au.querySelectorAll('*')].some((x) => { const r = R(x); return r.right > ra.right + 0.5 || r.left < ra.left - 0.5; })) mal.push('lo de adentro del auto se sale del boton');
+  return mal;
+});
+const renglonesNombre = (pag) => pag.evaluate(() => { const n = document.getElementById('pistaNombre'); return Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)); });
 const h = await abrir({ ancho: 320, alto: 568, contexto: dedos });
 await listo(h.pag);
-for (const [w, al] of [[320, 568], [360, 640], [375, 667], [390, 844]]) {
+const original = await h.pag.evaluate(() => document.getElementById('pistaNombre').textContent);
+const CAPTURA = { '320x568': 'chico-320', '360x640': 'chico-360', '390x844': 'chico-390', '568x320': 'chico-568x320' };
+for (const [w, al] of [[320, 568], [360, 640], [375, 667], [390, 844], [568, 320], [640, 360], [844, 390], [1280, 720]]) {
   await h.pag.setViewportSize({ width: w, height: al });
-  await h.pag.waitForTimeout(700);
-  ver(w + 'x' + al + ': entran la pista, Largar, Pistas anteriores y los cinco modos', (await entero(h.pag, '#largar')) && (await entero(h.pag, '#homeModos [data-panel="pasadas"]')) && await h.pag.evaluate(() => [...document.querySelectorAll('#homeModos .modo:not(.destacado)')].every((b) => { const r = b.getBoundingClientRect(); return r.bottom <= innerHeight + 0.5 && r.right <= innerWidth + 0.5 && b.scrollWidth <= b.clientWidth + 1; })));
-  if (w === 320) await h.pag.screenshot({ path: 'out/inicio-320.png' });
-}
-for (const [w, al] of [[568, 320], [640, 360], [844, 390]]) {
-  await h.pag.setViewportSize({ width: w, height: al });
-  await h.pag.waitForTimeout(700);
-  ver(w + 'x' + al + ' (acostado): se ven Largar y Pistas anteriores', (await entero(h.pag, '#largar')) && (await entero(h.pag, '#homeModos [data-panel="pasadas"]')));
+  for (const nombre of NOMBRES) {
+    await h.pag.evaluate((n) => { document.getElementById('pistaNombre').textContent = n; window.dispatchEvent(new Event('resize')); }, nombre || original);
+    await h.pag.waitForTimeout(500);
+    const largo = w < al || w < 700;   // (parado o celu chico)
+    const etiqueta = w + 'x' + al + ' "' + (nombre || original) + '"';
+    const modosEnteros = await h.pag.evaluate(() => [...document.querySelectorAll('#homeModos .modo')].every((b) => { const r = b.getBoundingClientRect(); return r.bottom <= innerHeight + 0.5 && r.right <= innerWidth + 0.5 && b.scrollWidth <= b.clientWidth + 1; }));
+    const solo = w >= 700 && al >= 700;
+    ver(etiqueta + ': entran la pista, Largar, Pistas anteriores' + (largo || al < 500 ? ' y todos los modos' : '') + ', sin scrollear', (await entero(h.pag, '#largar')) && (await entero(h.pag, '#homeModos [data-panel="pasadas"]')) && (solo || modosEnteros) && await h.pag.evaluate(() => { const e = document.getElementById('home'); return e.scrollHeight <= e.clientHeight + 1; }));
+    const mal = await pisadas(h.pag);
+    ver(etiqueta + ': arriba nada se pisa ni se sale', mal.length === 0, mal);
+    const reng = await renglonesNombre(h.pag);
+    ver(etiqueta + ': el nombre no pasa de dos renglones (' + reng + ')', reng <= 2, reng);
+    if (CAPTURA[w + 'x' + al] && nombre === NOMBRES[1]) await h.pag.screenshot({ path: 'out/' + CAPTURA[w + 'x' + al] + '.png' });
+    if (w === 320 && nombre === '') await h.pag.screenshot({ path: 'out/inicio-320.png' });
+  }
 }
 await h.cerrar();
 

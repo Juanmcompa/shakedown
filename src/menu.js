@@ -320,6 +320,17 @@ export function crearMenu(o) {
   const vacia = (icono, texto) => { const li = crear('li', 'vacio', texto); li.dataset.icono = icono; return li; };
   // La pista protagonista: la que esta cargada. Con sus tiempos abajo: los de tus amigos y clubes (en lo libre, sus mejores
   // tiempos en esa pista) y el tuyo.
+  // El nombre de la pista no pasa de dos renglones: si un nombre largo se pasa, se le achica la letra de a poco (hasta 18 px) para
+  // que el inicio entre entero en un celular sin scrollear. Se repite al girar o cambiar el tamaño de la ventana.
+  function ajustarNombre() {
+    const h = $('pistaNombre');
+    h.style.fontSize = '';
+    if (!h.offsetHeight) return;   // (el inicio no esta a la vista: no hay nada que medir)
+    const renglones = () => Math.round(h.offsetHeight / parseFloat(getComputedStyle(h).lineHeight));
+    for (let px = parseFloat(getComputedStyle(h).fontSize); renglones() > 2 && px > 18; ) { px -= 1; h.style.fontSize = px + 'px'; }
+  }
+  let ajustando = 0;
+  window.addEventListener('resize', () => { cancelAnimationFrame(ajustando); ajustando = requestAnimationFrame(ajustarNombre); });
   function pintarDia() {
     const n = numero, E = etapa;
     const largo = etapa.largo || 0;
@@ -327,6 +338,7 @@ export function crearMenu(o) {
     $('pistaNumero').textContent = libre ? '' : '#' + n;
     $('pistaFecha').textContent = libre ? (comunidad && comunidad.autor ? 'por ' + comunidad.autor : '') : fechaDe(n);
     $('pistaNombre').textContent = E.nombre;
+    ajustarNombre();
     // (si la pista pasa por varios ambientes, se nombran todos: 🌾🌲⛰️ Campo, bosque y montaña)
     const varios = etapa.biomas && etapa.biomas.length > 1 ? etapa.biomas.map((b) => BIOMAS[b].nombre.toLowerCase()) : null;
     const ambiente = varios ? etapa.biomas.map((b) => BIOMAS[b].emoji).join('') + ' ' + (varios.slice(0, -1).join(', ') + ' y ' + varios[varios.length - 1]).replace(/^./, (l) => l.toUpperCase()) : BIOMAS[E.bioma].emoji + ' ' + BIOMAS[E.bioma].nombre;

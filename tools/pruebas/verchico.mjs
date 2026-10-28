@@ -6,12 +6,23 @@
 // girar-antes.png, girar-despues.png.
 // uso: node tools/pruebas/verchico.mjs
 import fs from 'node:fs';
-import { abrir } from './ver.mjs';
+import { abrir, aceptarNombre } from './ver.mjs';
 fs.mkdirSync('out', { recursive: true });
 let mal = 0;
 const ver = (que, si, detalle) => { console.log((si ? '  ok  ' : '  MAL ') + que + (si || detalle === undefined ? '' : ' -> ' + JSON.stringify(detalle))); if (!si) mal++; };
 const dedos = { hasTouch: true, isMobile: true, deviceScaleFactor: 2 };
 const TAMANOS = [[320, 568], [360, 640], [375, 667], [390, 844]];
+
+// lleva el auto hasta un tramo con nota del copiloto (la pista de hoy no tiene nota en cualquier metro) y espera a que se dibuje;
+// asi la prueba mira siempre una nota de verdad y no un instante en que todavia no hay ninguna
+async function irANota(P) {
+  const n = await P.evaluate(() => window.shakedown.T.camino.n);
+  for (let i = 40; i < n - 80; i += 50) {
+    await P.evaluate((m) => { const s = window.shakedown; s.ir(m); s.avanzar(0.05); }, i);
+    if (await P.waitForFunction(() => document.querySelectorAll('#notas .nota').length > 0, null, { timeout: 3000 }).then(() => true).catch(() => false)) return i;
+  }
+  return -1;
+}
 
 // lo que hay en pantalla del tablero: cada cosa con su rectangulo, y donde esta el auto
 const leer = (pag) => pag.evaluate(async () => {
@@ -48,12 +59,16 @@ const a = await abrir({ ancho: 390, alto: 844, contexto: dedos, demora: 120000 }
 if (!a.cargo) { console.log('NO CARGO\n' + a.errores.join('\n')); process.exit(1); }
 const A = a.pag;
 await A.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
-await A.evaluate(() => { const s = window.shakedown; s.largar(); s.ir(300); s.avanzar(3.3); s.simular(2, 0, 0.6); s.avanzar(0.05); });
+await A.evaluate(() => window.shakedown.largar());
+await aceptarNombre(A, true);   // (la pasada oficial pide el nombre antes de largar)
+await A.evaluate(() => { const s = window.shakedown; s.ir(300); s.avanzar(3.3); });
+ver('hay un tramo con nota del copiloto para mirar', (await irANota(A)) >= 0);
+await A.evaluate(() => { const s = window.shakedown; s.simular(0.5, 0, 0.6); s.avanzar(0.05); });
 for (const [w, h] of TAMANOS) {
   for (const [ancho, alto, forma] of [[w, h, 'parado'], [h, w, 'acostado']]) {
     await A.setViewportSize({ width: ancho, height: alto });
     await A.waitForTimeout(1800);
-    await A.evaluate(() => { const s = window.shakedown; s.simular(0.5, 0, 0.6); s.avanzar(0.05); });
+    await irANota(A);   // (con el cambio de tamaño la nota se vuelve a dibujar: se la espera)
     await A.waitForTimeout(500);
     const d = await leer(A);
     const nombre = ancho + 'x' + alto;
@@ -76,7 +91,10 @@ async function escena(ancho, alto, girarDesde, nombre) {
   const j = await abrir({ ancho: girarDesde ? girarDesde[0] : ancho, alto: girarDesde ? girarDesde[1] : alto, contexto: dedos, demora: 120000 });
   const P = j.pag;
   await P.waitForFunction(() => !document.documentElement.classList.contains('cargando'), null, { timeout: 90000 });
-  await P.evaluate(() => { const s = window.shakedown; s.render.info.autoReset = false; s.largar(); s.ir(300); s.avanzar(3.3); });
+  await P.evaluate(() => window.shakedown.largar());
+  await aceptarNombre(P, true);
+  await P.evaluate(() => { const s = window.shakedown; s.render.info.autoReset = false; s.ir(300); s.avanzar(3.3); });
+  await irANota(P);
   const quieta = () => P.evaluate(async () => { const s = window.shakedown; const r = []; for (let k = 0; k < 4; k++) { const c = s.auto(); c.vel[0] = c.vel[2] = 0; s.camara.estado.listo = false; if (k === 2) { s.render.info.reset(); } await new Promise((q) => requestAnimationFrame(q)); } return { calls: s.render.info.render.calls, tris: s.render.info.render.triangles }; });
   if (girarDesde) {
     await P.waitForTimeout(1500);

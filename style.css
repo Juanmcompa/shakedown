@@ -239,7 +239,14 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
   /* poca altura: de los tiempos se ven los tuyos y a lo sumo dos de amigos */
   .dia .card-tiempos li:nth-child(n+3):not(.mio) { display: none; }
 }
-@media (max-height: 600px) and (orientation: portrait) {
+@media (max-width: 380px), (max-height: 680px) {
+  .marca { width: min(9rem, 100%); }
+  .dia h2 { font-size: clamp(28px, 9vw, 36px); }
+  .largar-grande { font-size: 28px; }
+}
+/* celular parado y bajo (360 x 640, 375 x 667, 320 x 568): todo mas junto para que el inicio entre entero sin scrollear, aunque el
+   nombre de la pista ocupe dos renglones (menu.js le achica la letra si pasa de dos) */
+@media (max-height: 700px) and (orientation: portrait) {
   #portada { gap: 6px; }
   .home { gap: 8px; }
   .dia { gap: 6px; padding: 8px 12px 10px; }
@@ -247,25 +254,29 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
   .datos { font-size: 14px; }
   .largar-grande { padding: 6px 16px 8px; font-size: 26px; }
   .largar-grande > .icono { width: 28px; height: 28px; }
+  .card-tiempos { gap: 3px; }
   .card-tiempos li { min-height: 30px; }
   .modos { gap: 6px; }
-  .modo { min-height: 46px; padding: 5px 2px 6px; gap: 2px; }
+  .modo { min-height: 46px; padding: 4px 2px 5px; gap: 2px; }
   .modo > .icono { width: 22px; height: 22px; }
   .modo.destacado { min-height: 44px; }
   .modo.destacado .modo-nombre { font-size: 20px; }
 }
-@media (max-width: 380px), (max-height: 680px) {
-  .marca { width: min(9rem, 100%); }
-  .dia h2 { font-size: clamp(28px, 9vw, 36px); }
-  .largar-grande { font-size: 28px; }
-  .modo { min-height: 56px; }
-  .modo > .icono { width: 24px; height: 24px; }
+/* 320 x 568: ademas, sin la fila "sin tiempos de amigos", menos margen arriba y abajo y el auto mas finito */
+@media (max-height: 600px) and (orientation: portrait) {
+  #portada { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .home-arriba { gap: 4px 12px; }
+  .home-arriba button.mi-auto { padding-top: 3px; padding-bottom: 3px; }
+  .dia .card-tiempos li.vacio:not(.mio) { display: none; }
+  .card-tiempos li { min-height: 28px; }
 }
 /* celular acostado: una sola fila arriba, y abajo la pista a la izquierda y los modos a la derecha */
 @media (max-height: 520px) {
   #portada { gap: 6px; padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
-  .home-arriba { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "marca coche solapas" "firma . ."; gap: 2px 14px; }
-  .home-arriba .mi-auto { justify-self: center; width: min(20rem, 100%); }
+  /* (la primera columna es solo de la marca: la firma se parte en dos renglones debajo, asi no le quita lugar al auto y no se pisa con los botones) */
+  .home-arriba { grid-template-columns: minmax(0, 8rem) minmax(0, 1fr) auto; grid-template-areas: "marca coche solapas" "firma . ."; gap: 2px 12px; }
+  .home-arriba .mi-auto { justify-self: center; width: min(20rem, 100%); min-width: 0; overflow: hidden; }
+  .firma-portada { white-space: normal; font-size: 11px; line-height: 1.15; }
   .marca { width: min(8rem, 100%); }
   .home { max-width: 70rem; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-content: start; align-items: start; gap: 8px 14px; }
   .modos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -274,6 +285,26 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
   .dia h2 { font-size: 28px; }
   .dia .card-tiempos li { min-height: 28px; padding: 2px 8px; }
   .home-pie { grid-auto-flow: column; justify-content: center; align-items: center; gap: 4px 16px; }
+}
+/* acostado muy bajo (568 x 320, 640 x 360; no el 844 x 390): la pista en una columna compacta con su Largar a la vista; la tabla de tiempos se
+   esconde (se ve con el boton Tabla de arriba) y los modos achican el alto */
+@media (max-height: 380px) {
+  #portada { gap: 4px; padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .home { gap: 6px 12px; }
+  .dia { gap: 3px; padding: 6px 12px 8px; border-top-width: 4px; }
+  .dia-rotulo { font-size: 13px; gap: 2px 8px; }
+  .dia-rotulo b { font-size: 17px; }
+  .dia-rotulo .lugar { font-size: 12px; }
+  .dia h2 { font-size: 22px; line-height: 1.05; }
+  .datos { font-size: 12px; gap: 0 10px; }
+  .largar-grande { padding: 3px 14px 5px; font-size: 22px; }
+  .largar-grande > .icono { width: 24px; height: 24px; }
+  .dia .card-tiempos, .dia .vista-hoy, .dia .hoy-puesto { display: none; }
+  .modo { min-height: 44px; padding: 4px 2px 5px; gap: 2px; }
+  .modo > .icono { width: 22px; height: 22px; }
+  .modo-nombre { font-size: 11.5px; }
+  .modo.destacado { min-height: 40px; }
+  .modo.destacado .modo-nombre { font-size: 17px; }
 }
 /* --- la tabla de todos: el puesto es el de la tabla (puede faltar un tramo), y tu fila se destaca --- */
 .vista-hoy button { min-height: 34px; padding: 6px 12px 7px; font-size: 15px; }
