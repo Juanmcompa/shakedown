@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="39" class="cargando">
+<html lang="es" data-pagina="40" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -26,7 +26,15 @@
 <link rel="apple-touch-icon" href="marca/icono-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preload" as="image" type="image/webp" href="marca/logo-640.webp" imagesrcset="marca/logo-640.webp 640w, marca/logo.webp 1200w" imagesizes="(max-width: 600px) 60vw, 20rem">
-<style>html { background: #16181b; }</style>
+<style>
+  html { background: #16181b; }
+  /* Al elegir otra pista el juego cambia de pagina. Sin esto, entre que el navegador suelta la pagina vieja y dibuja la nueva,
+     el celu muestra un cuadro en blanco. Con "view-transition" el navegador deja quieta la pagina vieja (que ya muestra el
+     cartel de carga) hasta que la nueva tiene su cartel dibujado, y pasa de una a la otra con un fundido corto. */
+  @view-transition { navigation: auto; }
+</style>
+<!-- (y la pagina nueva no se dibuja hasta tener el cartel de carga: asi el primer cuadro ya es el cartel, no un fondo vacio) -->
+<link rel="expect" href="#yendo" blocking="render">
 <script>
   // Si la pagina se abre con #largar (se eligio otra pista desde el inicio), no se muestra el inicio: se ve "Cargando <pista>..."
   // y la pasada empieza sola. main.js saca esta marca al largar. (El nombre lo dejo el inicio antes de recargar.)
