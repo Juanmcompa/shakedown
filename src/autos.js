@@ -1004,8 +1004,15 @@ export function crearEspectro(escena, T, C) {
       x.fillText(txt, 128, 33, 232);
       tex.needsUpdate = true;
     },
-    // lo pone en la posicion, el rumbo y la altura grabados (o.alto: metros de su centro sobre el piso)
-    poner: (o) => {
+    // lo pone en la posicion, el rumbo y la altura grabados (o.alto: metros de su centro sobre el piso).
+    // yo: donde va el que corre y hacia donde va el camino ({ x, z, hx, hz }). El cartel con el nombre solo se ve cuando el
+    // fantasma va bastante adelante: de cerca (o atras, pegado a la camara) tapaba todo. Aparece de a poco entre 20 y 32 m.
+    poner: (o, yo) => {
+      if (yo) {
+        const dx = o.x - yo.x, dz = o.z - yo.z, adelante = dx * yo.hx + dz * yo.hz, lejos = Math.hypot(dx, dz);
+        const ver = adelante > 0 ? Math.max(0, Math.min(1, (lejos - 20) / 12)) : 0;
+        cartel.material.opacity = ver; cartel.visible = ver > 0.02;
+      }
       const sx = (T.altura(o.x + 1, o.z) - T.altura(o.x - 1, o.z)) / 2, sz = (T.altura(o.x, o.z + 1) - T.altura(o.x, o.z - 1)) / 2;
       V.set(-sx, 1, -sz).normalize();
       grupo.quaternion.setFromUnitVectors(ARRIBA, V).multiply(Q.setFromAxisAngle(ARRIBA, -o.rumbo));

@@ -110,6 +110,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Árboles PS1 (planos cruzados con plano de copa), efectos de pista (hojas, pétalos, viento con arena, polillas, animales que se asustan, antorchas y flashes), suciedad por terreno y huellas por suelo; cámara de atrás por defecto
 - [x] Sin pantalla blanca al elegir otra pista: el cartel de carga aparece al instante
 - [x] Árboles del mismo verde que el pasto y sin costuras; 28 tipos repartidos por bioma (sin cambiar choques ni pistas)
+- [x] El nombre del fantasma solo se ve cuando va bastante adelante (de cerca tapaba la cámara)
 
 ## Lo que sigue
 

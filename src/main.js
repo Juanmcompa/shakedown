@@ -869,7 +869,7 @@ function cuadro(ahora) {
       if (rival && partida.lanzado) {
         const e = espectroDe(rival.auto);
         rival.fantasma.pose(partida.tiempo, lugar);
-        if (lugar.termino) e.ocultar(); else e.poner(lugar);
+        if (lugar.termino) e.ocultar(); else e.poner(lugar, { x: c.pos[0], z: c.pos[2], hx: P.HX[partida.indice], hz: P.HZ[partida.indice] });
         hud.rival(rival.nombre, rival.fantasma.ventaja(partida.tiempo, partida.indice));
       }
     }
