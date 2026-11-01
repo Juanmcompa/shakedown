@@ -83,7 +83,7 @@ await A.evaluate(() => {
 });
 await A.evaluate(() => window.shakedown.ajustar('trazada', window.shakedown.gusto('trazada')));   // (repinta el inicio)
 const hoyTxt = await A.evaluate(() => [...document.querySelectorAll('#hoyTiempos li')].map((li) => li.innerText.replace(/\s+/g, ' ').trim()));
-ver('debajo de la pista, la tabla del dia con los tiempos de tus amigos (nombre, auto y tiempo)', hoyTxt.length === 5 && /^1 \S+ Caro323 01:58:00/.test(hoyTxt[0]) && /^2 \S+ Beto333 02:00:50/.test(hoyTxt[1]) && /^3 \S+ Lola/.test(hoyTxt[2]) && /^4 \S+ Tito/.test(hoyTxt[3]), hoyTxt);
+ver('debajo de la pista, la tabla del dia con los tiempos de tus amigos (numero de auto, nombre y tiempo)', hoyTxt.length === 5 && /^1 323 Caro 01:58:00/.test(hoyTxt[0]) && /^2 333 Beto 02:00:50/.test(hoyTxt[1]) && /^3 333 Lola/.test(hoyTxt[2]) && /^4 333 Tito/.test(hoyTxt[3]), hoyTxt);
 ver('y, como todavia no corriste, "te falta tu pasada"', /Te falta tu pasada/.test(hoyTxt[4]), hoyTxt);
 // Pistas anteriores
 await irACard(A, 'pasadas');

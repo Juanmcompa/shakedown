@@ -6,16 +6,22 @@
 // base: la direccion del servidor ('' = no hay). Devuelve:
 //   hay                    true si hay servidor configurado
 //   conLlave(f)            f() devuelve la llave de este aparato (ver club.js): va en todo lo que se escribe
-//   subir(codigo, espera)  guarda una pasada. Promesa de: el codigo corto; '' si el servidor no la quiso (o es de un formato
+//   subir(codigo, espera, apodo)  guarda una pasada. Promesa de: el codigo corto; '' si el servidor no la quiso (o es de un formato
 //                          viejo, que no se sube); null si no se pudo (sin servidor o sin señal: se puede reintentar)
+//                          apodo: el nombre de ahora, para que figure ese (si la pasada quedo guardada con otro o sin nombre)
 //   pasada(id)             trae una pasada por su codigo corto. Promesa de { codigo, j } o null
 //   crearClub(nombre, apodo), entrar(codigo, apodo), salir(codigo), verClub(codigo)    promesa de lo que conteste el servidor, { error } o null
 //   tablas(pista, version, codigos)    promesa de { codigo: { nombre, miembros, soy, tabla, faltan, pistas } o null (el club ya no existe) } o null
 //   travesia(nombre, km, auto)   manda el record de km de la Travesia. Promesa de { km, nuevo }, { error, estado } o null
 //   travesias(codigos)     los records de la Travesia de cada club: promesa de { codigo: { nombre, tabla: [{ j, nombre, km, auto, mio }] } o null } o null
-//   todos(pista, version)  la tabla del dia de TODOS los que corrieron la oficial (con o sin club): promesa de
-//                          { total, tabla: [{ puesto, id, j, nombre, t, c, auto, ab, ayuda, serio, mio }] (los primeros 100),
-//                          yo: tu fila o null, cerca: [tu puesto y los dos de arriba y abajo, si estas mas alla del 100] } o null
+//   todos(pista, version, orden)  la tabla del dia de TODOS los que corrieron esa pista (con o sin club). orden: 'oficial' (por la
+//                          pasada oficial; al final los que solo practicaron) o 'mejor' (por la mejor pasada, practicas incluidas).
+//                          Promesa de { orden, total, oficiales, tabla: [fila] (los primeros 100), yo: tu fila o null,
+//                          cerca: [tu puesto y los dos de arriba y abajo, si estas mas alla del 100] } o null. Cada fila es
+//                          { puesto, puestoOficial, puestoMejor, j, nombre, mio, oficial, mejor } y "oficial" / "mejor" son null o
+//                          { id, t, c, auto, ab, ayuda, serio, trazada, practica } (mejor: la mas rapida entre la oficial y las practicas;
+//                          puede ser la misma oficial). Ademas cada fila trae PLANOS los datos de la oficial (si no tiene, los de la
+//                          mejor): id, t, c, auto, ab, ayuda, serio, trazada, practica: asi se pinta como siempre.
 //   nombre(apodo)          avisa el nombre nuevo: el servidor lo cambia en todo lo que ya tiene guardado de este aparato
 //   crearPista(nombre, apodo, club, hoja)   publica una pista armada en el creador. Promesa de { numero, version, nombre, autor, club, vence },
 //                          { error, estado } o null
@@ -64,16 +70,23 @@ export function crearNube(base) {
     return yo.j;
   }
 
+  // Una fila de la tabla de todos con sus datos planos: los de la oficial o, si no tiene, los de la mejor (asi el dibujo de siempre
+  // sigue andando). "practica" dice si lo que se muestra es una practica.
+  const plana = (x) => {
+    const b = x.oficial || x.mejor;
+    return b ? { ...x, id: b.id, t: b.t, c: b.c, auto: b.auto, ab: b.ab, ayuda: !!b.ayuda, serio: !!b.serio, trazada: !!b.trazada, practica: !!b.practica } : x;
+  };
+
   return {
     hay: !!base,
     conLlave: (f) => { llave = f; },
     // Guarda una pasada (su codigo: el texto del link largo). La misma pasada no se sube dos veces.
     // espera: cuanto se aguanta la respuesta ACA (el pedido sigue igual: si llega tarde, la proxima vez ya esta).
-    subir: (codigo, espera = 8000) => {
+    subir: (codigo, espera = 8000, apodo = '') => {
       if (!base) return Promise.resolve(null);
       if (typeof codigo !== 'string' || codigo[0] !== 'd') return Promise.resolve('');   // (formato viejo: el servidor no lo lee)
       if (!subidas.has(codigo)) {
-        subidas.set(codigo, pedir('POST', '/pasadas', { llave: llave(), codigo }, 8000, true).then((r) => {
+        subidas.set(codigo, pedir('POST', '/pasadas', { llave: llave(), codigo, ...(apodo ? { apodo } : {}) }, 8000, true).then((r) => {
           if (r && r.id) return r.id;
           // no la quiere: no tiene sentido insistir (salvo que sea por ahora: muchos pedidos, o un reloj adelantado)
           if (r && r.estado >= 400 && r.estado < 500 && r.estado !== 429 && r.estado !== 425) return '';
@@ -97,10 +110,12 @@ export function crearNube(base) {
       const r = await pedir('POST', '/tablas', { llave: llave(), pista, version, clubes: codigos });
       return r && r.clubes ? r.clubes : null;
     },
-    todos: async (pista, version) => {
+    todos: async (pista, version, orden = 'oficial') => {
       if (!base) return null;
-      const r = await pedir('POST', '/todos', { llave: llave(), pista, version });
-      return r && !r.error && Array.isArray(r.tabla) ? r : null;
+      const r = await pedir('POST', '/todos', { llave: llave(), pista, version, orden });
+      if (!r || r.error || !Array.isArray(r.tabla)) return null;
+      // (un servidor que todavia no conoce "orden" manda las oficiales en filas planas: esas se dejan como estan)
+      return { ...r, tabla: r.tabla.map(plana), yo: r.yo ? plana(r.yo) : null, cerca: (r.cerca || []).map(plana) };
     },
     nombre: (apodo) => pedir('POST', '/nombre', { llave: llave(), apodo }),
     travesia: (nombre, km, auto) => pedir('POST', '/travesia', { llave: llave(), nombre, km, auto }),

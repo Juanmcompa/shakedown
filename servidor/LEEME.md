@@ -1,9 +1,10 @@
 # El servidor de Shakedown
 
-El juego se juega entero sin servidor. Con servidor suma tres cosas:
+El juego se juega entero sin servidor. Con servidor suma estas cosas:
 
 - **Links cortos.** La pasada (el fantasma) se guarda acá, y el link pasa de 500 a 800 letras a siete: `…/shakedown/#r=k7Qx2Mp`. El fantasma es igual de fiel: se guarda la pasada entera.
 - **Clubes.** Grupos de amigos con tabla propia. La pasada oficial de cada uno aparece sola en la tabla de todos sus clubes.
+- **Tabla de todos.** De la pista de cada día (hoy o una anterior), todos los que la corrieron, con o sin club. Por corredor van dos tiempos: su **oficial** (la primera pasada del día, una sola) y su **mejor** (la más rápida entre la oficial y sus prácticas, que se suben solas si mejoran su mejor práctica; una práctica nunca reemplaza a la oficial). Se pide ordenada por la oficial (los que solo practicaron van al final) o por el mejor tiempo. Cada pasada lleva si fue en rally serio, con trazada o con ayuda. Sin nombre, la práctica no figura: queda en el aparato y se sube cuando lo haya.
 - **Pistas de la comunidad.** Las que arma un jugador en el creador, nota por nota. Se guarda la hoja (las notas que eligió, unas 400 letras: el camino lo arma cada aparato), con su nombre, quién la armó y, si es para un club, cuál. Duran dos semanas, cada uno puede tener cinco a la vez y las puede borrar cuando quiera.
 
 Si el servidor no contesta, el juego sigue andando con el link largo de siempre (lo único que no anda sin servidor son las pistas de la comunidad).

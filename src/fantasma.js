@@ -51,7 +51,8 @@ export const limpio = (txt) => limpiarTexto(txt, 14);
 export const SIN_NOMBRE = 'Sin nombre';
 
 // Un resultado es: { pista, nombre, t (segundos), s: [segundos de cada sector], c: 'vvarv', auto, ab: '' o por que abandono,
-//                    vueltas, roto, practica, ayuda (corrio con la ayuda de manejo), serio (en modo "rally serio") }
+//                    vueltas, roto, practica, ayuda (corrio con la ayuda de manejo), serio (en modo "rally serio"),
+//                    trazada (la trazada estuvo prendida en algun momento de la pasada, o al largar) }
 
 // --- el compresor: escribe bits sueltos, cada uno con la probabilidad que le calcula un "modelo" que va aprendiendo ---
 // (Es el metodo de los compresores de archivos, en chico. Todo con numeros enteros: da lo mismo en cualquier aparato.)
@@ -164,8 +165,14 @@ function pasarResultado(io, m, enc, dec, pista, completo) {
   // El auto. Antes era uno de AUTOS_DEL_LINK; ahora es el codigo de sus partes (ver partes.js), que va despues de las
   // marcas. El numero de AUTOS_DEL_LINK se sigue escribiendo (el mas parecido), para que los links nuevos se lean igual
   // con un programa viejo; y un link viejo, sin partes, se sigue leyendo: su auto queda con el nombre de antes.
+  // (Este numero ocupa 3 bits y hoy solo usa 0 y 1: el bit de valor 4 lleva la marca "trazada" (la trazada estuvo prendida en
+  // algun momento de la pasada). Los links de antes lo tienen en cero: sin trazada. Un programa viejo que lea un link nuevo
+  // con trazada no encuentra ese auto en la lista y usa el primero, pero el auto de verdad viene en las partes, mas abajo.
+  // Quedan libres los numeros 2 y 3 para autos nuevos de la lista; mas alla no se puede.)
   const codigo = enc ? codigoDe(m.auto) : '', parecido = codigo[1] === '2' ? 'kacito' : 'vitarita';
-  o.auto = AUTOS_DEL_LINK[io.crudo(Math.max(0, AUTOS_DEL_LINK.indexOf(parecido)), 3)] || AUTOS_DEL_LINK[0];
+  const numAuto = io.crudo(Math.max(0, AUTOS_DEL_LINK.indexOf(parecido)) | (m.trazada ? 4 : 0), 3);
+  o.auto = AUTOS_DEL_LINK[numAuto & 3] || AUTOS_DEL_LINK[0];
+  o.trazada = !!(numAuto & 4);
   // (cuatro marcas: la primera es la ayuda de manejo; la segunda, que trae las partes del auto; la tercera, que corrio en
   // modo "rally serio"; la cuarta queda libre. Los links de antes tienen la tercera en cero: sin modo serio.)
   const marcas = io.crudo((m.ayuda ? 1 : 0) | (enc ? 2 : 0) | (m.serio ? 4 : 0) | (m.largas ? 8 : 0), 4);

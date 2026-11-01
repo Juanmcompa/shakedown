@@ -184,11 +184,13 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
 .largar-grande:disabled { opacity: .55; }
 /* tiempos: el puesto, el auto, quien es y su tiempo (los tuyos con una tira del color de la pista) */
 .card-tiempos { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
-.card-tiempos li { display: grid; grid-template-columns: 1.2em auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-height: 38px; padding: 5px 10px; background: rgba(255, 255, 255, .07); }
-.card-tiempos li i { font: 700 15px/1 var(--titulos); font-style: normal; opacity: .65; text-align: center; }
-.card-tiempos .emoji { font-size: 20px; }
-.card-tiempos .quien { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 18px/1.1 var(--titulos); }
-.card-tiempos .quien .codigo-auto { margin-left: 6px; font-size: 12px; vertical-align: 2px; }
+.card-tiempos li { min-height: 38px; padding: 5px 10px; background: rgba(255, 255, 255, .07); }
+/* (los renglones de la Travesia -puesto, auto, nombre y km- siguen con su grilla de siempre; los de las tablas son .renglon, mas abajo) */
+.card-tiempos li:not(.renglon) { display: grid; grid-template-columns: 1.2em auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+.card-tiempos li:not(.renglon) i { font: 700 15px/1 var(--titulos); font-style: normal; opacity: .65; text-align: center; }
+.card-tiempos li:not(.renglon) .emoji { font-size: 20px; }
+.card-tiempos li:not(.renglon) .quien { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 18px/1.1 var(--titulos); }
+.card-tiempos li:not(.renglon) .quien .codigo-auto { margin-left: 6px; font-size: 12px; vertical-align: 2px; }
 .card-tiempos li.mio { background: rgba(255, 255, 255, .13); box-shadow: inset 3px 0 0 var(--tono); }
 .card-tiempos li.vacio { display: flex; gap: 8px; font: 600 15px/1.2 var(--texto); }
 .card-tiempos li.vacio > .icono { width: 20px; height: 20px; vertical-align: 0; opacity: .8; }
@@ -299,23 +301,83 @@ button.mi-auto b { font: 700 18px/1.1 var(--titulos); overflow: hidden; text-ove
   .datos { font-size: 12px; gap: 0 10px; }
   .largar-grande { padding: 3px 14px 5px; font-size: 22px; }
   .largar-grande > .icono { width: 24px; height: 24px; }
-  .dia .card-tiempos, .dia .vista-hoy, .dia .hoy-puesto { display: none; }
+  .dia .card-tiempos, .dia .vista-fila, .dia .hoy-puesto { display: none; }
   .modo { min-height: 44px; padding: 4px 2px 5px; gap: 2px; }
   .modo > .icono { width: 22px; height: 22px; }
   .modo-nombre { font-size: 11.5px; }
   .modo.destacado { min-height: 40px; }
   .modo.destacado .modo-nombre { font-size: 17px; }
 }
+/* --- los renglones de las tablas (el inicio, el panel Tabla, el resultado, amigos y clubes) ---
+   En este orden: el puesto, el auto (su numero), las marcas de la pasada (casco, linea o ayuda; el lugar queda aunque no haya, asi los
+   nombres se alinean), el nombre y los tiempos: arriba el mejor, grande; debajo la oficial, mas chica y apagada. Los cuadraditos de
+   los sectores (solo los tuyos) van debajo del nombre. El nombre se corta con puntos suspensivos; el tiempo, nunca. */
+.renglon { display: grid; grid-template-columns: 1.3em auto 24px minmax(0, 1fr) auto; column-gap: 7px; row-gap: 0; align-items: center; }
+.renglon.con-accion { grid-template-columns: 1.3em auto 24px minmax(0, 1fr) auto auto; }
+.renglon > .puesto { grid-column: 1; grid-row: 1 / 3; font: 700 16px/1 var(--titulos); font-style: normal; opacity: .65; text-align: center; }
+.renglon > .codigo-auto { grid-column: 2; grid-row: 1 / 3; margin: 0; padding: 1px 4px 2px; font: 400 18px/1 var(--numeros); letter-spacing: .03em; opacity: .9; }
+.renglon > .marcas { grid-column: 3; grid-row: 1 / 3; width: 24px; height: 24px; display: grid; grid-template-columns: repeat(2, 12px); align-content: center; justify-content: center; }
+.renglon .marcas .marca { width: 12px; height: 12px; vertical-align: 0; }
+.renglon .marcas[data-n="1"] { grid-template-columns: 24px; }
+.renglon .marcas[data-n="1"] .marca { width: 24px; height: 24px; }
+.renglon > .quien { grid-column: 4; grid-row: 1 / 3; min-width: 0; font: 700 16px/1.2 var(--texto); }
+.renglon.con-cuadros > .quien { grid-row: 1; }
+.renglon > .cuadros { grid-column: 4; grid-row: 2; margin-top: 3px; }
+.renglon > .tiempos { grid-column: 5; grid-row: 1 / 3; justify-self: end; display: grid; justify-items: end; row-gap: 1px; }
+.renglon > button, .renglon > .sin-fantasma { grid-column: 6; grid-row: 1 / 3; margin-left: 3px; }
+.renglon > .sin-fantasma { width: 36px; }
+.tl { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.tl .tipo { width: 12px; height: 12px; vertical-align: 0; opacity: .8; }
+.tl.grande .tiempoMarca { font: 400 27px/.85 var(--numeros); letter-spacing: .01em; }
+.tl.chica { opacity: .62; }
+.tl.chica .tiempoOf { font: 400 19px/.85 var(--numeros); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.tl .marcas-chicas { display: inline-flex; gap: 1px; margin-right: 2px; }
+.tl .marcas-chicas .marca { width: 12px; height: 12px; vertical-align: 0; }
+/* en el inicio, las fichas de Todos / Amigos / clubes y, al lado, la ficha chica "Oficial | Con practicas" (en un celular angosto, solo los iconos) */
+.vista-fila { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.vista-fila .vista-hoy { flex: 1 1 auto; min-width: 0; }
+.vista-fila .orden { flex: none; margin-left: auto; padding-bottom: 4px; }
+.vista-fila .orden button { min-height: 34px; }
+@media (max-width: 440px) {
+  #hoyOrden .texto-orden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #hoyOrden button { padding: 4px 8px; min-width: 38px; justify-content: center; }
+  #hoyOrden button > .icono { width: 18px; height: 18px; }
+}
+/* la ficha chica "Oficial | Con practicas" arriba de la tabla */
+.orden { gap: 4px; }
+.orden button { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 32px; padding: 5px 11px 6px 8px; font: 700 15px/1 var(--titulos); }
+.orden button > .icono { width: 14px; height: 14px; vertical-align: 0; }
+@media (max-width: 400px) {
+  .renglon { column-gap: 5px; }
+  .renglon > .puesto { font-size: 14px; }
+  .renglon > .codigo-auto { font-size: 16px; padding: 1px 3px 2px; }
+  .tl.grande .tiempoMarca { font-size: 25px; }
+  .tl.chica .tiempoOf { font-size: 17px; }
+  .orden button { padding: 4px 9px 5px 7px; font-size: 14px; }
+}
+/* 320 de ancho: todo un poco mas junto para que el nombre conserve lugar (el tiempo se achica lo justo, nunca se corta) */
+@media (max-width: 340px) {
+  .renglon { column-gap: 4px; grid-template-columns: .9em auto 24px minmax(0, 1fr) auto; }
+  .renglon.con-accion { grid-template-columns: .9em auto 24px minmax(0, 1fr) auto auto; }
+  #panel.panel { padding-left: 12px; padding-right: 12px; }
+  .tabla li, .card-tiempos li { padding-left: 5px; padding-right: 5px; }
+  .renglon > .puesto { font-size: 13px; }
+  .renglon > .codigo-auto { font-size: 14px; padding: 1px 2px 2px; letter-spacing: 0; }
+  .tl { gap: 2px; }
+  .tl.grande .tiempoMarca { font-size: 20px; }
+  .tl.chica .tiempoOf { font-size: 14px; }
+  .renglon > button, .renglon > .sin-fantasma { margin-left: 0; }
+  .renglon > button.chiquito, .renglon > .sin-fantasma { width: 32px; height: 32px; }
+  .renglon > button.chiquito .icono { width: 20px; height: 20px; }
+}
+
 /* --- la tabla de todos: el puesto es el de la tabla (puede faltar un tramo), y tu fila se destaca --- */
 .vista-hoy button { min-height: 34px; padding: 6px 12px 7px; font-size: 15px; }
 .card-tiempos li.hueco { display: block; min-height: 0; padding: 0; text-align: center; line-height: .8; background: none; opacity: .55; }
 .card-tiempos li.mio .tiempoMarca { color: var(--tono); }
 .hoy-puesto { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 800 22px/1 var(--titulos); }
 .hoy-puesto button.con-texto { font-size: 15px; padding: 6px 12px 7px 8px; }
-.tabla.todos li::before { content: attr(data-puesto); }
-.tabla.todos li { grid-template-columns: 2.4em auto 1fr auto auto 36px; }
 .tabla.todos li.hueco { display: block; padding: 0; text-align: center; background: none; opacity: .55; line-height: .8; }
-.tabla.todos li.hueco::before { content: none; }
 .tabla.todos li.mio { background: rgba(255, 255, 255, .16); }
 .fin-todos b { font-size: 30px; }
 /* el cartel que pide el nombre antes de la pasada oficial */
@@ -339,7 +401,7 @@ html.yendo-fin .yendo { opacity: 0; transition: opacity .3s; pointer-events: non
 .yendo b { font: 800 clamp(26px, 8vw, 40px)/1.1 var(--titulos); max-width: 16em; }
 /* el codigo de un auto (431): en la portada, en el garaje y al lado del nombre en la tabla */
 .codigo-auto { font: 700 14px/1 var(--titulos); letter-spacing: .08em; padding: 2px 5px 3px; border-radius: 3px; background: rgba(255, 255, 255, .14); color: #fff; }
-.quien .codigo-auto { margin-left: 6px; font-size: 12px; opacity: .85; vertical-align: 1px; }
+.quien .codigo-auto { margin-left: 6px; font-size: 12px; opacity: .85; vertical-align: 1px; }   /* (la Travesia todavia lo lleva al lado del nombre) */
 /* --- el garaje: la vitrina, el nombre y el codigo, una fila por parte y las fichas --- */
 .garaje { width: min(30rem, 100%); }
 .vitrina { position: static; touch-action: auto; width: 100%; height: clamp(150px, 30vh, 230px); display: block; border-radius: 6px; background: radial-gradient(ellipse at 50% 70%, #3a3c40, #18191c 75%); }
@@ -404,9 +466,7 @@ button.chiquito.elegido .icono { filter: brightness(0); opacity: 1; }
 .cerrar { position: fixed; top: var(--ma); right: var(--md); width: 48px; height: 48px; padding: 0; display: grid; place-items: center; background: #fff; z-index: 1; }
 .cerrar .icono { width: 36px; height: 36px; vertical-align: 0; }
 .tabla, .pasadas { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-.tabla { counter-reset: puesto; }
-.tabla li { counter-increment: puesto; display: grid; grid-template-columns: 1.4em auto 1fr auto auto 36px; gap: 10px; align-items: center; padding: 6px 10px; background: rgba(255, 255, 255, .07); }
-.tabla li::before { content: counter(puesto); font: 700 18px/1 var(--titulos); }
+.tabla li { padding: 6px 10px; background: rgba(255, 255, 255, .07); }
 .tabla li.mio { box-shadow: inset 3px 0 0 var(--amarillo); }
 .quien { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* los clubes: una fila de botones (Todos, cada club y el +) que se corre de costado si no entra */
@@ -461,8 +521,6 @@ input[type=range]:focus-visible { outline: 3px solid #fff; outline-offset: 2px; 
 .panel.mirando > div > *:not(.mirado), .panel.mirando > .cerrar { opacity: 0; }
 .panel.mirando .mirado { background: var(--placa); }
 .sugerencia { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; }
-/* en las tablas, el salvavidas marca los tiempos hechos con la ayuda de manejo */
-.quien .icono.con-ayuda { width: 12px; height: 12px; margin-left: 5px; vertical-align: -1px; }
 .teclas { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 9px 16px; align-items: center; }
 .teclas div { display: contents; }
 .teclas dd { margin: 0; }
@@ -554,21 +612,8 @@ html { --pedal-ancho: calc(96px * var(--pedales, 1)); --pedal-alto: calc(116px *
   button.auto small { display: none; }
   button.auto b { grid-row: 1 / 3; align-self: center; }
   button.chiquito { width: 44px; height: 44px; }
+  .renglon > .sin-fantasma { width: 44px; }
   button.chiquito .icono { width: 24px; height: 24px; }
-  .tabla li { grid-template-columns: 1.4em auto 1fr auto auto 44px; gap: 8px; }
-}
-
-/* pantalla angosta: en la tabla, los cuadraditos van abajo del nombre, asi el nombre se lee entero */
-@media (max-width: 560px) {
-  .tabla li { grid-template-columns: 1.4em auto minmax(0, 1fr) auto 44px; gap: 4px 8px; }
-  .tabla li::before { grid-column: 1; grid-row: 1 / 3; }
-  .tabla li > .emoji { grid-column: 2; grid-row: 1 / 3; }
-  .tabla li > .quien { grid-column: 3; grid-row: 1; }
-  .tabla li > .cuadros { grid-column: 3; grid-row: 2; }
-  .tabla li > .tiempoMarca { grid-column: 4; grid-row: 1 / 3; }
-  .tabla li > :last-child { grid-column: 5; grid-row: 1 / 3; }
-  .tabla.todos li { grid-template-columns: 2.2em auto minmax(0, 1fr) auto 44px; }
-  .tabla.todos li::before { font-size: 16px; }
 }
 
 /* celular parado: los botones de arriba van en columna, contra el borde derecho, y las notas quedan en el medio */

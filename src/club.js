@@ -4,7 +4,7 @@
 // de tus clubes; queda guardado aca tambien, asi la tabla se ve aunque despues no haya señal.
 //
 // Un resultado es: { nombre, t (segundos), s: [segundos por sector], c: 'vvarv' (colores), auto, ab ('' o por que abandono),
-//                    vueltas, roto, practica, ayuda, codigo (el texto del link largo, con el fantasma),
+//                    vueltas, roto, practica, ayuda, serio (rally serio), trazada (la trazada estuvo prendida), codigo (el texto del link largo, con el fantasma),
 //                    id (el codigo corto con el que esta guardado en el servidor) }
 // Los de los demas llevan ademas: j (su numero de corredor en el servidor), de: [los clubes tuyos en los que figura]
 // y link: true si llego por un link que abriste.
@@ -17,7 +17,7 @@
 // Ademas: el borrador del creador de pistas (ver creador.js) y las pistas de la comunidad que se conocen en este aparato
 // (las que armaste, las que abriste y las de tus clubes), para poder listarlas y correrlas aunque no haya señal.
 import { limpio, limpiarTexto } from './fantasma.js';
-import { esDeLaComunidad, COMUNIDAD } from './circuitos.js';
+import { esCircuito, esDeLaComunidad, COMUNIDAD } from './circuitos.js';
 
 const CLAVE = 'shakedown';
 const GUARDA_FANTASMAS = 21;   // dias: de las pistas mas viejas se guardan los tiempos, pero no los fantasmas
@@ -137,7 +137,9 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
       const lista = [];
       for (const n in datos.dias) {
         const numero = Number(n);
-        if (numero > hoy - RECIENTES && numero !== COMUNIDAD.borrador) for (const r of propios(datos.dias[n])) if (r.codigo && !r.id && !r.noSube) lista.push({ numero, r: { ...r } });
+        // (la practica de una pista del dia, sin nombre todavia, espera: no figura en la tabla de todos. Se sube cuando lo haya)
+        const dia = !esCircuito(numero) && !esDeLaComunidad(numero), sinNombre = !datos.nombre;
+        if (numero > hoy - RECIENTES && numero !== COMUNIDAD.borrador) for (const r of propios(datos.dias[n])) if (r.codigo && !r.id && !r.noSube && !(r.practica && dia && sinNombre)) lista.push({ numero, r: { ...r } });
       }
       return lista;
     },
@@ -213,7 +215,7 @@ export function crearClub(pista, hoy, versionDe = () => 1) {
         let v = buscar(d, r);
         if (!v) { v = { s: [], vueltas: 0, roto: 0 }; d.club.push(v); }
         if (!(v.t !== undefined && Math.abs(v.t - r.t) < 0.02 && !!v.ab === !!r.ab)) { delete v.codigo; v.s = []; }   // es otra pasada: aquel fantasma ya no vale
-        Object.assign(v, { nombre: r.nombre, t: r.t, c: r.c, auto: r.auto, ab: r.ab || '', ayuda: !!r.ayuda, practica: !!r.practica, j: r.j, id: r.id });
+        Object.assign(v, { nombre: r.nombre, t: r.t, c: r.c, auto: r.auto, ab: r.ab || '', ayuda: !!r.ayuda, serio: !!r.serio, trazada: !!r.trazada, practica: !!r.practica, j: r.j, id: r.id });
         v.de = [...new Set([...(v.de || []), codigo])];
       }
       d.club = recortar(d.club.filter(seQueda));

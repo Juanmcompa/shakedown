@@ -8,7 +8,13 @@
 //   - lo que se comparte: el primer renglon queda como siempre y el puesto entre todos va en otro;
 //   - la tabla de un dia anterior se ve desde Pistas anteriores;
 //   - con mas gente (se suman unos corredores de mentira): los primeros, el salto y tu puesto ("#9 de 12").
-// Capturas en out/: nombre-cartel, todos-inicio (celu), todos-resultado, todos-tabla, todos-inicio-compu.
+//   - las practicas: A (con su oficial) corre una practica mas rapida y en su fila figuran las dos; H, que solo practica una pista
+//     anterior, aparece en "mejor" y al final en "oficial"; I, sin nombre, deja la practica en el aparato y la sube al ponerse nombre.
+//   - el dibujo de las filas (la ultima parte, con unos corredores armados a mano en la pista de anteayer): el auto es solo su numero
+//     (sin emoji), las marcas (casco, linea, ayuda), los dos tiempos cuando hay una practica mas rapida y uno solo cuando no, el DNF,
+//     el que solo practico, los cuadraditos solo en tu fila, el orden Oficial / Con practicas, y que entre en 320, 360 y 390 de ancho.
+// Capturas en out/: nombre-cartel, todos-inicio (celu), todos-resultado, todos-tabla, todos-inicio-compu, tabla-inicio-celu,
+// tabla-panel-compu, tabla-panel-celu, tabla-orden-mejor, tabla-320.
 import { abrir } from './ver.mjs';
 import { crearTerreno } from '../../src/terrain.js';
 import { generarPista, VERSION } from '../../src/generador.js';
@@ -244,6 +250,173 @@ for (const [nombre, ancho, alto, ctx, archivo] of [['F', 390, 844, celular, 'out
   }
   await f.cerrar();
 }
+
+// ---------- las practicas en la tabla de todos: la oficial siempre, y al lado la mejor pasada (practicas incluidas) ----------
+// A (que ya tiene su oficial de hoy) corre una practica mas rapida: figuran las dos, y en el orden "oficial" no se mueve.
+const dosOrdenes = (pag, n) => pag.evaluate(async (n) => {
+  const s = window.shakedown, v = (await import('/src/generador.js')).versionDe(n);
+  const [o, m] = await Promise.all([s.nube.todos(n, v, 'oficial'), s.nube.todos(n, v, 'mejor')]);
+  return { o, m };
+}, n);
+const resumen = (t) => t.tabla.map((x) => x.nombre + ':' + (x.oficial ? x.oficial.t : '-') + '/' + (x.mejor ? x.mejor.t : '-'));
+j = await abrirYa('A3', { contexto: celular, ancho: 390, alto: 844, antes: comoElMismo(datosA) });
+A = j.pag;
+ver('A3: ya tiene su oficial de hoy (lo que corre ahora es una practica)', await A.evaluate(() => !window.shakedown.club.sePuedeOficial() && !!window.shakedown.club.oficial()));
+await A.click('#largar');
+await A.waitForFunction(() => window.shakedown.estado().pantalla === 'jugando', null, { timeout: 30000 });
+const finPA = await correrYa(A, 'as', 'vitarita');
+await esperarFin(A);
+const practicaA = await A.waitForFunction(() => { const p = window.shakedown.club.practica(); return !!p && !!p.id; }, null, { timeout: 25000 }).then(() => A.evaluate(() => window.shakedown.club.practica())).catch(() => null);
+ver('A3: la practica llega y mejora su oficial', finPA.estado === 'llegada' && practicaA && practicaA.t < tiempoA - 0.02, [finPA.estado, practicaA && practicaA.t, tiempoA]);
+const dA = await dosOrdenes(A, N);
+const yoO = dA.o.yo, yoM = dA.m.yo;
+ver('A3: en su fila figuran las dos: la oficial y, aparte, la mejor (su practica)', yoO && Math.abs(yoO.oficial.t - tiempoA) < 0.02 && yoO.oficial.practica === false && Math.abs(yoO.mejor.t - practicaA.t) < 0.02 && yoO.mejor.practica === true && yoO.mejor.id === practicaA.id, yoO);
+ver('A3: orden "oficial": la practica no mueve a nadie (Ana, Beto, Caro), y la fila plana es la oficial', dA.o.orden === 'oficial' && dA.o.tabla.filter((x) => /^(Ana Rally|Beto|Caro)$/.test(x.nombre)).map((x) => x.nombre).join() === 'Ana Rally,Beto,Caro' && Math.abs(yoO.t - tiempoA) < 0.02 && yoO.puesto === 1, resumen(dA.o));
+ver('A3: orden "mejor": Ana primera con su practica, los demas con la oficial como mejor (hay 12 corredores: los de relleno van en medio)', dA.m.orden === 'mejor' && yoM.puesto === 1 && yoM.puestoOficial === 1 && dA.m.tabla.find((x) => x.nombre === 'Beto').mejor.id === dA.m.tabla.find((x) => x.nombre === 'Beto').oficial.id, resumen(dA.m));
+ver('A3: el total es el mismo en los dos y no cuenta dos veces a Ana', dA.o.total === 12 && dA.m.total === 12 && dA.o.oficiales === 12, [dA.o.total, dA.m.total, dA.o.oficiales]);
+ver('A3: el resultado de la practica no dice un puesto entre todos (no es la oficial)', (await texto(A, 'finTodos')) === '', await texto(A, 'finTodos'));
+await j.cerrar();
+
+// H: solo practica una pista anterior (con nombre): aparece en "mejor" y al final en "oficial"
+const sinLlave = (datos, extra) => JSON.stringify({ ...JSON.parse(datos), llave: undefined, dias: {}, ...extra });
+const corrioAyerCon = async (nombre, extra, piloto) => {
+  const x = await abrirYa(nombre, { contexto: celular, ancho: 390, alto: 844, antes: comoElMismo(sinLlave(datosC, extra)) });
+  const pag = x.pag;
+  await pag.click('#homeModos [data-panel="pasadas"]');
+  await pag.waitForSelector('#pasadas a[data-n="' + (N - 1) + '"]');
+  await pag.click('#pasadas a[data-n="' + (N - 1) + '"]');
+  await pag.waitForFunction((n) => window.shakedown && window.shakedown.T.etapa.numero === n && !document.documentElement.classList.contains('cargando'), N - 1, { timeout: 120000 });
+  await pag.waitForFunction(() => window.shakedown.estado().pantalla === 'jugando', null, { timeout: 60000 });
+  const fin = await correrYa(pag, piloto, 'vitarita');
+  await esperarFin(pag);
+  return { x, pag, fin };
+};
+const h = await corrioAyerCon('H', { nombre: 'Hugo' }, 'normal');
+const practicaH = await h.pag.waitForFunction((n) => { const d = JSON.parse(localStorage.getItem('shakedown')).dias[n]; return !!d && !!d.practica && !!d.practica.id; }, N - 1, { timeout: 25000 }).then(() => true).catch(() => false);
+ver('H: la practica de una pista anterior se sube sola', h.fin.estado === 'llegada' && practicaH, h.fin.estado);
+const dH = await dosOrdenes(h.pag, N - 1);
+ver('H: en "mejor" figura con su practica (y Dani con su oficial)', dH.m.tabla.map((x) => x.nombre).sort().join() === 'Dani,Hugo' && dH.m.yo.oficial === null && dH.m.yo.mejor.practica === true && dH.m.yo.mejor.t === dH.m.yo.t && dH.m.total === 2, resumen(dH.m));
+ver('H: en "oficial" va al final, sin oficial, con el mejor de plano', dH.o.tabla.map((x) => x.nombre).join() === 'Dani,Hugo' && dH.o.yo.puesto === 2 && dH.o.yo.oficial === null && dH.o.yo.practica === true && dH.o.oficiales === 1, resumen(dH.o));
+await h.x.cerrar();
+
+// I: sin nombre, la practica de una pista anterior queda en el aparato; al ponerse nombre se sube sola
+const ii = await corrioAyerCon('I', { nombre: '' }, 'manso');
+await ii.pag.waitForTimeout(2500);
+const antesI = await ii.pag.evaluate(async (n) => { const s = window.shakedown, d = s.club.practica(); const t = await s.nube.todos(n, (await import('/src/generador.js')).versionDe(n), 'mejor'); return { id: d && d.id, noSube: d && d.noSube, pendientes: s.club.sinSubir().length, nombres: t.tabla.map((x) => x.nombre).sort().join() }; }, N - 1);
+ver('I: sin nombre la practica queda en el aparato, sin subir ni pedir nada', ii.fin.estado === 'llegada' && !antesI.id && !antesI.noSube && antesI.pendientes === 0 && antesI.nombres === 'Dani,Hugo', antesI);
+await ii.pag.fill('#nombre', 'Ines');
+await ii.pag.press('#nombre', 'Tab');
+const subioI = await ii.pag.waitForFunction(() => { const p = window.shakedown.club.practica(); return !!p && !!p.id; }, null, { timeout: 25000 }).then(() => true).catch(() => false);
+const dI = await dosOrdenes(ii.pag, N - 1);
+ver('I: al ponerse nombre la practica se sube sola y figura con ese nombre', subioI && dI.m.tabla.map((x) => x.nombre).sort().join() === 'Dani,Hugo,Ines' && dI.m.yo && dI.m.yo.nombre === 'Ines' && dI.m.yo.oficial === null, resumen(dI.m));
+await ii.x.cerrar();
+
+// ---------- el dibujo de las filas: numero de auto, marcas, los dos tiempos, el DNF y el orden ----------
+// Pista de anteayer, con corredores armados a mano (sus pasadas se arman como las arma el juego):
+//   Mica: oficial en rally serio (95,00) y una practica con trazada y ayuda, mas rapida (88,00)  -> dos tiempos
+//   Zoe:  solo la oficial (91,00), con casco, linea y ayuda                                       -> un tiempo con las tres marcas
+//   Dino: la oficial abandonada (DNF)                                                             -> "DNF" donde va la oficial
+//   Lalo: solo practico (85,00), con trazada                                                      -> un tiempo con el cono
+const DIA2 = N - 2, T2 = crearTerreno(generarPista(DIA2));
+const pasadaEn = async (nombre, t, extra) => {
+  const r = { pista: DIA2, nombre, t, s: [t / 5, t / 5, t / 5, t / 5, t / 5], c: 'vvavv', auto: '333', ab: '', vueltas: 0, roto: 0, practica: false, ayuda: false, ...extra };
+  const g = crearGrabacion(T2), P = T2.camino, n = Math.floor(t / 0.5) + 1;
+  for (let k = 0; k < n; k++) { const i = Math.min(P.n - 2, T2.largada.i + Math.round(k * 7)); g.muestra(k * 0.5, { pos: [P.X[i], T2.altura(P.X[i], P.Z[i]), P.Z[i]], adelante: [P.HX[i], 0, P.HZ[i]] }); }
+  return g.codigo(r, []);
+};
+const subirA = async (llave, nombre, t, extra) => {
+  const f = await fetch(API + '/pasadas', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ llave: llave + 'x'.repeat(20), codigo: await pasadaEn(nombre, t, extra) }) });
+  if (f.status !== 200) ver('armado de ' + nombre, false, [f.status, await f.text()]);
+};
+await subirA('mica', 'Mica', 95, { serio: true, auto: '323' });
+await subirA('mica', 'Mica', 88, { practica: true, trazada: true, ayuda: true, auto: '323' });
+await subirA('zoe', 'Zoe', 91, { serio: true, trazada: true, ayuda: true });
+await subirA('dino', 'Dino Rally Lar', 70, { ab: 'roto', c: 'vvrnn' });
+await subirA('lalo', 'Lalo', 85, { practica: true, trazada: true, auto: '323' });
+// lo que se ve de cada fila: el auto, las marcas, el nombre y los tiempos (con su bandera o cono y sus marcas chicas)
+const leerFilas = (pag, sel) => pag.evaluate((sel) => {
+  const marcas = (el) => (el ? [...el.querySelectorAll('img')].map((i) => i.alt) : []);
+  return [...document.querySelectorAll(sel)].filter((li) => li.classList.contains('renglon')).map((li) => ({
+    nombre: li.querySelector('.quien').textContent, auto: li.querySelector('.codigo-auto').textContent, emoji: !!li.querySelector('.emoji'),
+    marcas: marcas(li.querySelector(':scope > .marcas')), cuadros: !!li.querySelector('.cuadros'), mio: li.classList.contains('mio'),
+    tiempos: [...li.querySelectorAll('.tl')].map((l) => ({ tiempo: l.querySelector('.tiempoMarca, .tiempoOf').textContent, tipo: (l.querySelector('.tipo') || {}).alt || '', marcas: marcas(l.querySelector('.marcas-chicas')) })) }));
+}, sel);
+// que ninguna fila se pase del ancho, que los tiempos se vean enteros y que el nombre conserve un lugar minimo (si no entra, se corta con "...")
+const medidas = (pag, sel) => pag.evaluate((sel) => {
+  const lis = [...document.querySelectorAll(sel)].filter((li) => li.classList.contains('renglon') && li.offsetParent), malas = [];   // (los que el inicio esconde por falta de alto no cuentan)
+  let minNombre = 1e9;
+  for (const li of lis) {
+    const f = li.getBoundingClientRect(), t = li.querySelector('.tiempos').getBoundingClientRect(), q = li.querySelector('.quien').getBoundingClientRect();
+    minNombre = Math.min(minNombre, q.width);
+    if (li.scrollWidth > li.clientWidth + 1 || t.right > f.right + 0.5 || t.left < f.left || q.right > t.left + 0.5) malas.push(li.querySelector('.quien').textContent + ' (se sale)');
+    for (const l of li.querySelectorAll('.tl')) if (l.scrollWidth > l.clientWidth + 1 || l.offsetHeight > 32) malas.push(li.querySelector('.quien').textContent + ' (el tiempo se parte o se corta)');
+  }
+  return { filas: lis.length, malas, minNombre: Math.round(minNombre), ancho: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+}, sel);
+const jx = await abrirYa('J', { ruta: '?p=' + DIA2 + '&servidor=' + encodeURIComponent(API), contexto: celular, ancho: 390, alto: 844, antes: comoElMismo(sinLlave(datosC, { nombre: 'Juana' })) });
+const J = jx.pag;
+await J.waitForFunction(() => document.querySelectorAll('#hoyTiempos li.renglon').length >= 4, null, { timeout: 25000 });
+ver('J: es la pista de anteayer', await J.evaluate(() => window.shakedown.T.etapa.numero) === DIA2);
+let fj = await leerFilas(J, '#hoyTiempos li');
+const por = (lista, nombre) => lista.find((x) => x.nombre === nombre) || {};
+ver('J inicio: orden "oficial": Zoe, Mica, Dino (DNF), y al final Lalo, que solo practico', fj.slice(0, 4).map((x) => x.nombre).join() === 'Zoe,Mica,Dino Rally Lar,Lalo', fj.map((x) => x.nombre));
+ver('J inicio: el auto es solo su numero, sin emoji', fj.every((x) => /^\d{3}$/.test(x.auto) && !x.emoji) && por(fj, 'Mica').auto === '323' && por(fj, 'Zoe').auto === '333', fj.map((x) => x.auto));
+ver('J inicio: Mica, dos tiempos: arriba la practica (88) con su cono y abajo la oficial (95) con su bandera y su casco', JSON.stringify(por(fj, 'Mica').tiempos) === JSON.stringify([{ tiempo: '01:28:00', tipo: 'Práctica', marcas: [] }, { tiempo: '01:35:00', tipo: 'Pasada oficial', marcas: ['Rally serio'] }]), por(fj, 'Mica').tiempos);
+ver('J inicio: Mica, las marcas de la de arriba (linea, ayuda), en ese orden', por(fj, 'Mica').marcas.join() === 'Con la trazada,Con ayuda de manejo', por(fj, 'Mica').marcas);
+ver('J inicio: Zoe, un solo tiempo (oficial, con su bandera) y las tres marcas: casco, linea, ayuda', JSON.stringify(por(fj, 'Zoe').tiempos) === JSON.stringify([{ tiempo: '01:31:00', tipo: 'Pasada oficial', marcas: [] }]) && por(fj, 'Zoe').marcas.join() === 'Rally serio,Con la trazada,Con ayuda de manejo', [por(fj, 'Zoe').tiempos, por(fj, 'Zoe').marcas]);
+ver('J inicio: Dino, "DNF" en lugar del tiempo, con su bandera y sin marcas', JSON.stringify(por(fj, 'Dino Rally Lar').tiempos) === JSON.stringify([{ tiempo: 'DNF', tipo: 'Pasada oficial', marcas: [] }]) && por(fj, 'Dino Rally Lar').marcas.length === 0, por(fj, 'Dino Rally Lar').tiempos);
+ver('J inicio: Lalo, solo practico: un tiempo con el cono y su linea', JSON.stringify(por(fj, 'Lalo').tiempos) === JSON.stringify([{ tiempo: '01:25:00', tipo: 'Práctica', marcas: [] }]) && por(fj, 'Lalo').marcas.join() === 'Con la trazada', por(fj, 'Lalo'));
+ver('J inicio: sin cuadraditos de los demas (la pista se corre sin saber como es)', fj.every((x) => !x.cuadros), fj.map((x) => x.cuadros));
+ver('J inicio: el toggle "Oficial | Con practicas" con Oficial elegido', await J.evaluate(() => [...document.querySelectorAll('#hoyOrden button')].map((b) => b.textContent + (b.classList.contains('elegido') ? '*' : '')).join()) === 'Oficial*,Con prácticas');
+await J.screenshot({ path: 'out/tabla-inicio-celu.png' });
+// que entre en celus chicos, parados y acostados
+const tamanos = [[320, 568], [360, 640], [390, 844], [844, 390]];
+for (const [w, h] of tamanos) {
+  await J.setViewportSize({ width: w, height: h });
+  await J.waitForTimeout(400);
+  const m = await medidas(J, '#hoyTiempos li');
+  ver('J inicio ' + w + 'x' + h + ': las filas entran, los tiempos se ven enteros y el nombre conserva lugar (' + m.minNombre + ' px)', m.filas >= 2 && m.malas.length === 0 && m.ancho && m.minNombre >= 40, m);
+  if (w === 320) await J.screenshot({ path: 'out/tabla-320.png' });
+}
+await J.setViewportSize({ width: 390, height: 844 });
+await J.waitForTimeout(300);
+// el orden "Con practicas": Lalo (85), Mica (88), Zoe (91) y al final Dino (DNF)
+await J.click('#hoyOrden button:nth-child(2)');
+await J.waitForFunction(() => { const q = document.querySelector('#hoyTiempos li.renglon .quien'); return q && q.textContent === 'Lalo'; }, null, { timeout: 25000 });
+fj = await leerFilas(J, '#hoyTiempos li');
+ver('J inicio: orden "Con practicas": Lalo, Mica, Zoe, Dino', fj.slice(0, 4).map((x) => x.nombre).join() === 'Lalo,Mica,Zoe,Dino Rally Lar', fj.map((x) => x.nombre));
+ver('J inicio: en ese orden Mica sigue con sus dos tiempos y Zoe con uno', por(fj, 'Mica').tiempos.length === 2 && por(fj, 'Zoe').tiempos.length === 1);
+await J.screenshot({ path: 'out/tabla-orden-mejor.png' });
+await J.reload();
+await cargada(J);
+await J.waitForFunction(() => document.querySelectorAll('#hoyTiempos li.renglon').length >= 4, null, { timeout: 25000 });
+ver('J inicio: la eleccion se recuerda mientras dure la sesion (despues de recargar sigue "Con practicas")', await J.evaluate(() => document.querySelector('#hoyOrden button.elegido').textContent) === 'Con prácticas' && (await leerFilas(J, '#hoyTiempos li'))[0].nombre === 'Lalo');
+await J.click('#hoyOrden button:nth-child(1)');
+await J.waitForFunction(() => document.querySelector('#hoyTiempos li.renglon .quien').textContent === 'Zoe', null, { timeout: 25000 });
+// el panel de la tabla
+await J.click('#hoyVerTodos');
+await J.waitForFunction(() => !document.getElementById('panelTabla').hidden);
+await J.waitForTimeout(900);
+const pj = await leerFilas(J, '#tabla li');
+ver('J panel: las mismas filas y el mismo orden que en el inicio', pj.map((x) => x.nombre).join() === 'Zoe,Mica,Dino Rally Lar,Lalo' && JSON.stringify(pj.map((x) => x.tiempos.map((t) => t.tiempo))) === JSON.stringify([['01:31:00'], ['01:28:00', '01:35:00'], ['DNF'], ['01:25:00']]), pj.map((x) => [x.nombre, x.tiempos.map((t) => t.tiempo)]));
+ver('J panel: el toggle esta arriba de la tabla y el DNF no tiene boton de fantasma', await J.evaluate(() => !!document.querySelector('#ordenTabla button.elegido') && document.querySelectorAll('#tabla li')[2].querySelector('button') === null && document.querySelectorAll('#tabla li')[1].querySelector('button') !== null));
+await J.screenshot({ path: 'out/tabla-panel-celu.png' });
+for (const [w, h] of [[320, 568], [360, 640], [390, 844], [568, 320], [640, 360], [844, 390]]) {
+  await J.setViewportSize({ width: w, height: h });
+  await J.waitForTimeout(300);
+  const m = await medidas(J, '#tabla li');
+  if (w === 320) await J.screenshot({ path: 'out/tabla-320-panel.png' });
+  ver('J panel ' + w + 'x' + h + ': las filas entran, los tiempos se ven enteros y el nombre conserva lugar (' + m.minNombre + ' px)', m.filas === 4 && m.malas.length === 0 && m.ancho && m.minNombre >= 40, m);
+}
+await J.setViewportSize({ width: 1280, height: 900 });
+await J.waitForTimeout(400);
+await J.screenshot({ path: 'out/tabla-panel-compu.png' });
+await J.setViewportSize({ width: 390, height: 844 });
+// el fantasma de la fila de Mica es el de su practica (la que se ve arriba)
+await J.click('#tabla li:nth-child(2) button');
+await J.waitForFunction(() => window.shakedown.estado().rival === 'Mica', null, { timeout: 25000 });
+ver('J panel: el boton de la fila de Mica corre contra la pasada de arriba (su practica: la clave termina en "|p")', await J.evaluate(() => /\|p$/.test(window.shakedown.club.rival() || '')), await J.evaluate(() => window.shakedown.club.rival()));
+await jx.cerrar();
 
 console.log(mal ? 'FALLARON ' + mal : 'Todo bien');
 process.exit(mal ? 1 : 0);

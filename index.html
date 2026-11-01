@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-pagina="40" class="cargando">
+<html lang="es" data-pagina="41" class="cargando">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -383,7 +383,11 @@
       <p id="pistaDatos" class="datos"></p>
       <button id="largar" class="largar-grande" data-largar="hoy" data-icono="bandera" data-color="#000000" disabled><span class="rotulo">Largar</span></button>
       <!-- de quien ver los tiempos: Todos (los que corrieron la oficial, con o sin club), Amigos (links y clubes) o un club -->
-      <div id="hoyVista" class="opciones clubes vista-hoy" role="radiogroup" aria-label="De quién ver los tiempos" hidden></div>
+      <!-- y, al lado, el orden de la tabla: por la pasada oficial o por la mejor (practicas incluidas) -->
+      <div class="vista-fila">
+        <div id="hoyVista" class="opciones clubes vista-hoy" role="radiogroup" aria-label="De quién ver los tiempos" hidden></div>
+        <div id="hoyOrden" class="opciones orden" role="radiogroup" aria-label="Orden de la tabla" hidden></div>
+      </div>
       <ol id="hoyTiempos" class="card-tiempos"></ol>
       <p id="hoyPuesto" class="hoy-puesto" hidden><span id="hoyPuestoTexto"></span> <button id="hoyVerTodos" type="button" class="con-texto discreto" data-icono="podio" data-color="#000000">Ver la tabla</button></p>
     </article>
@@ -450,11 +454,10 @@
       <p class="chico">Después lo invitás con un link: el que lo abre queda adentro. La pasada oficial de cada uno aparece sola en la tabla del club, y podés estar en todos los clubes que quieras.</p>
     </form>
     <p id="clubAviso" class="chico" role="status" hidden></p>
+    <div id="ordenTabla" class="opciones orden" role="radiogroup" aria-label="Orden de la tabla" hidden></div>
     <ol id="tabla" class="tabla"></ol>
     <p id="tablaVacia" class="chico"></p>
     <p id="clubFaltan" class="chico" hidden></p>
-    <h3 id="practicasTitulo" hidden>Prácticas</h3>
-    <ol id="practicas" class="tabla"></ol>
     <!-- las pistas que armo la gente del club (las trae el servidor con la tabla) -->
     <div id="clubPistas" class="club-pistas" hidden>
       <h3>Pistas del club</h3>

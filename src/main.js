@@ -45,7 +45,7 @@ const $ = (id) => document.getElementById(id), raiz = document.documentElement;
 // minuto y sigue vieja (recien publicada, el sitio todavia reparte la anterior), no se insiste: se avisa (codigo A) y
 // queda "Probar de nuevo". Con la pagina al dia, el ?fresca= se saca de la direccion.
 // (Subir este numero y el de data-pagina en index.html cada vez que cambie el HTML.)
-const PAGINA = '40';
+const PAGINA = '41';
 const sinFresca = new URLSearchParams(location.search), fresca = Number(sinFresca.get('fresca')) || 0;
 sinFresca.delete('fresca');
 const direccionLimpia = location.pathname + (String(sinFresca) ? '?' + sinFresca : '');
@@ -204,6 +204,9 @@ const ayuda = crearAyuda(T);
 // (id: el codigo del auto armado: ver partes.js)
 const refs = { [codigoDe(REFERENCIA)]: ref }, refDe = (id) => { id = codigoDe(id); return refs[id] || (refs[id] = crearReferencia(T, configDe(id))); };
 let c = null, dibujo = null, conAyuda = !!gusto('ayuda'), ayudaDeLaPasada = false, conTrazada = !!gusto('trazada');
+// La marca "trazada" de una pasada: la trazada estuvo prendida al largar o en cualquier momento de la pasada (si la prendes a mitad de
+// camino tambien cuenta; apagarla despues no la saca). Es lo mas simple y lo mas justo: nadie la usa sin que figure.
+let trazadaDeLaPasada = false;
 // el modo "rally serio" (ver SERIO en config.js): lo contrario de la ayuda. (Si alguna vez quedaron los dos, gana la ayuda.)
 let conSerio = !conAyuda && !!gusto('serio'), serioDeLaPasada = false;
 // El auto con el que se corre: el que armaste en el garaje (su codigo de partes, como '431'; ver partes.js).
@@ -234,7 +237,11 @@ function buscarRival() {
   const mia = (lista) => lista.find((x) => x.mio && x.codigo), tiene = (x) => x && (x.codigo || x.id);
   let r = clave ? (deLaPractica ? club.practicas() : club.tabla()).find((x) => (clave === '*' ? x.mio : !x.mio && (claveDe(x) === clave || x.nombre === clave))) : null;
   // alguien de la tabla de todos que no esta en ningun club ni llego por link: su fantasma se baja del servidor al elegirlo
-  if (!tiene(r) && clave && clave !== '*' && !deLaPractica) r = filasDeTodos().find((x) => !x.mio && claveDe(x) === clave) || r;
+  // (una fila trae su oficial y su mejor pasada, que puede ser una practica: "|p" elige esa)
+  if (!tiene(r) && clave && clave !== '*') {
+    const x = filasDeTodos().find((f) => !f.mio && claveDe(f) === clave), p = x && (deLaPractica ? x.mejor : x.oficial || x.mejor);
+    if (p) r = { ...x, ...p };
+  }
   // sin rival elegido: despues de la oficial, se practica contra la mejor pasada propia
   if (!tiene(r) && !club.sePuedeOficial()) { const a = mia(club.tabla()), b = mia(club.practicas()); r = a && b ? (b.t < a.t || a.ab ? b : a) : a || b; }
   return tiene(r) ? r : null;
@@ -260,7 +267,11 @@ async function cargarRival() {
 
 // --- el servidor: links cortos y clubes (ver nube.js). Si no hay servidor o no contesta, nada de esto molesta ---
 // Sube una pasada propia y anota con que codigo corto quedo guardada. (Lo del borrador no se sube.)
-const subir = (r, codigo, n = numero) => (seSube ? nube.subir(codigo) : Promise.resolve(null)).then((id) => { if (id !== null) club.ponerId(r, id, n); return id; });
+// Una practica de la pista del dia entra a la tabla de todos, y sin nombre no figura: queda guardada aca, sin subir, y se sube
+// cuando haya nombre (ver "renombrar"). Las de los circuitos y las pistas de la comunidad se suben igual. Se sube con el nombre de
+// ahora (la pasada puede haber quedado guardada con otro, o con ninguno).
+const esperaNombre = (r, n) => !!r.practica && !club.nombre() && !esCircuito(n) && !esDeLaComunidad(n);
+const subir = (r, codigo, n = numero) => (seSube && !esperaNombre(r, n) ? nube.subir(codigo, undefined, club.nombre()) : Promise.resolve(null)).then((id) => { if (id !== null) club.ponerId(r, id, n); return id; });
 // Lo que va despues de "#r=" al compartir: el codigo corto si la pasada esta en el servidor; si no, la pasada entera.
 // (Casi siempre ya se subio al terminar de correr. Si justo esta en eso, se la espera un momento y nada mas: en el
 // celular, el menu de compartir solo se abre si no pasa mucho desde que se toco el boton.)
@@ -324,11 +335,13 @@ function subirTravesia() {
     return true;
   })().finally(() => { subiendoTravesia = null; }));
 }
-// --- la tabla de todos: la oficial de cada corredor de la pista del dia, este o no en un club (ver "todos" en worker.js) ---
-// Queda en "deTodos" por numero de pista: { total, tabla (los primeros), yo (mi fila, con mi puesto), cerca (alrededor mio) }.
+// --- la tabla de todos: lo que corrio cada uno en la pista del dia, este o no en un club (ver "todos" en worker.js) ---
+// Queda en "deTodos" por numero de pista: { orden, total, oficiales, tabla (los primeros), yo (mi fila, con mi puesto), cerca (alrededor mio) }.
+// Cada fila trae su "oficial" y su "mejor" (la mejor pasada, practicas incluidas; ver nube.js) y, para el dibujo de siempre, los
+// datos planos de la oficial (o de la mejor, si no tiene oficial). "ordenTodos" es el orden que se pide: 'oficial' o 'mejor'.
 // Solo en una pista del dia (hoy o una anterior): los circuitos y las pistas de la comunidad no tienen oficial.
 const deTodos = {};
-let ultimaTodos = -1e9, pidiendoTodos = null;
+let ultimaTodos = -1e9, pidiendoTodos = null, ordenTodos = 'oficial';
 const hayTodos = () => nube.hay && !fijo && !comunidad && !esCircuito(numero) && numero >= 1 && numero <= HOY;
 const filasDeTodos = () => { const t = deTodos[numero]; return t ? [...t.tabla, ...(t.yo ? [t.yo] : []), ...t.cerca] : []; };
 function traerTodos(ya) {
@@ -337,8 +350,8 @@ function traerTodos(ya) {
   ultimaTodos = performance.now();
   const n = numero;
   return (pidiendoTodos = (async () => {
-    const t = await nube.todos(n, versionDe(n));
-    if (t) {
+    const t = await nube.todos(n, versionDe(n), ordenTodos);
+    if (t && !(t.orden && t.orden !== ordenTodos)) {   // (si mientras tanto se pidio otro orden, esta ya no sirve: se pide de nuevo)
       deTodos[n] = t;
       // si el rival elegido es de esta tabla y todavia no se habia podido armar, ahora si
       if (!rival && /^@/.test((club.rival() || '').split('|')[0])) cargarRival();
@@ -351,6 +364,7 @@ async function renombrar() {
   if (!nube.hay || !club.nombre()) return;
   for (const c of club.clubes()) nube.entrar(c.codigo, club.nombre());
   await nube.nombre(club.nombre());
+  sincronizar().then((quedan) => { if (quedan) reintentarLuego(); else traerTodos(true); });   // (las practicas que esperaban tener nombre)
   traerTodos(true);
 }
 
@@ -485,6 +499,12 @@ const menu = crearMenu({
   } : null,
   // la tabla de todos de la pista cargada (null si no hay, o todavia no llego)
   todos: () => deTodos[numero] || null,
+  // el orden de la tabla de todos: 'oficial' (por la pasada oficial; al final los que solo practicaron) o 'mejor' (por la mejor
+  // pasada, practicas incluidas). Sin argumento dice cual es; con uno, lo cambia y la pide de nuevo (cuando llega, se pinta).
+  ordenTodos: (orden) => {
+    if ((orden === 'oficial' || orden === 'mejor') && orden !== ordenTodos) { ordenTodos = orden; (pidiendoTodos || Promise.resolve()).then(() => traerTodos(true)); }
+    return ordenTodos;
+  },
   // volver a ver el tutorial (desde "Como se juega")
   tutorial: () => largar(true),
   // el creador de pistas (codigo: el club para el que se arma, si se abre desde un club)
@@ -572,7 +592,7 @@ function largar(conTutorial) {
   raiz.classList.toggle('practica', modo === 'practica');   // en las practicas aparece el boton de salir
   ponerLaHora(horaDeLaPasada());
   pantalla = 'jugando';
-  tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio;
+  tFin = 0; avisado = ''; ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio; trazadaDeLaPasada = conTrazada;
   rondas = 0; mejorRonda = null; mejoroAlgo = false;
   partida.preparar(c);
   if (!explicar) partida.largar();
@@ -605,7 +625,7 @@ const tutorial = crearTutorial({
   alTerminar: (ayudaElegida) => {
     club.gusto('tutorial', 1);
     if (ayudaElegida !== undefined && ayudaElegida !== conAyuda) ajustar('ayuda', ayudaElegida);
-    ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio;
+    ayudaDeLaPasada = conAyuda; serioDeLaPasada = conSerio; trazadaDeLaPasada = conTrazada;
     trazada.mostrar(conTrazada);
     partida.largar();
     hud.sello(true);
@@ -622,7 +642,7 @@ const mejorGuardado = () => { const g = T.vuelta && club.practica(); return g &&
 // (vuelta cerrada) Se cruzo la raya: se cerro una ronda. Si es la mejor de la salida, queda como resultado (y de fantasma).
 function cerrarRonda(v) {
   rondas++;
-  const r = { pista: numero, nombre: club.nombre(), t: v.tiempo, s: v.sectores, c: v.colores, auto: club.auto(), ab: '', vueltas: v.vueltas, roto: Math.round(v.roto), practica: true, ayuda: ayudaDeLaPasada, serio: serioDeLaPasada };
+  const r = { pista: numero, nombre: club.nombre(), t: v.tiempo, s: v.sectores, c: v.colores, auto: club.auto(), ab: '', vueltas: v.vueltas, roto: Math.round(v.roto), practica: true, ayuda: ayudaDeLaPasada, serio: serioDeLaPasada, trazada: trazadaDeLaPasada };
   const marca = mejorGuardado(), esLaMejor = !mejorRonda || v.tiempo < mejorRonda.r.t, g = grabacion;
   if (esLaMejor) {
     mejorRonda = { r, g };
@@ -649,7 +669,7 @@ function terminar() {
   hud.llamar(false); trabado = false;
   const llego = partida.estado === 'llegada';
   let r = { pista: numero, nombre: club.nombre(), t: partida.tiempo, s: partida.sectores.map((x) => x.tiempo), c: partida.colores(), auto: club.auto(),
-    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada, serio: serioDeLaPasada };
+    ab: llego ? '' : partida.motivo || 'roto', vueltas: partida.vueltas, roto: Math.round(partida.roto), practica: modo === 'practica', ayuda: ayudaDeLaPasada, serio: serioDeLaPasada, trazada: trazadaDeLaPasada };
   let mejoro = false, g = grabacion;   // (en las practicas y en los circuitos queda guardada solo la mejor)
   if (T.vuelta && mejorRonda) { r = { ...mejorRonda.r, nombre: club.nombre(), rondas, seRompio: partida.estado === 'abandono' }; g = mejorRonda.g; mejoro = mejoroAlgo; }
   else if (modo === 'oficial') club.cerrarOficial(r); else mejoro = club.anotarPractica(r);
@@ -763,7 +783,7 @@ const APLICAR = {
   // La ayuda y el modo serio son contrarios: prender uno apaga el otro.
   ayuda: (v) => { conAyuda = !!v; if (conAyuda && gusto('serio')) { club.gusto('serio', false); conSerio = false; } if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); APLICAR.trazada(gusto('trazada')); },
   serio: (v) => { conSerio = !!v; if (conSerio && gusto('ayuda')) { club.gusto('ayuda', false); conAyuda = false; APLICAR.trazada(gusto('trazada')); } if (pantalla !== 'jugando' || partida.estado === 'previa') ponerAuto(club.auto()); },
-  trazada: (v) => { conTrazada = !!v; if (conTrazada) trazada.usar(refDe(club.auto())); trazada.mostrar(conTrazada && pantalla === 'jugando'); },
+  trazada: (v) => { conTrazada = !!v; if (conTrazada) trazada.usar(refDe(club.auto())); if (conTrazada && pantalla === 'jugando') trazadaDeLaPasada = true; trazada.mostrar(conTrazada && pantalla === 'jugando'); },
   lejos: (v) => { camara.alejar(v); travesia.alejar(v); },
   sensible: (v) => teclas.ajustar({ grados: gradosDeInclinacion(v) }),
   botones: (v) => { conFlechas = !!v; teclas.ajustar({ flechas: conFlechas }); pintarVolante(); },

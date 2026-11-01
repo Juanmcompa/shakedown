@@ -69,10 +69,17 @@ export function crearMenu(o) {
   // En lo libre (un circuito o una pista de la comunidad) no hay oficial: se corre las veces que se quiera y queda el mejor
   // tiempo. El borrador es libre tambien, pero no se comparte (todavia no existe para los demas).
   const libre = !!fijo || !!comunidad, borrador = !!(comunidad && comunidad.borrador);
-  // el salvavidas que marca un tiempo hecho con la ayuda de manejo
-  const conAyuda = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('salvavidas'); img.alt = 'con ayuda de manejo'; img.title = 'Con ayuda de manejo'; return img; };
-  // y el casco, uno hecho en modo "rally serio"
-  const conSerio = () => { const img = crear('img', 'icono con-ayuda'); img.src = icono('casco'); img.alt = 'en modo rally serio'; img.title = 'En modo rally serio'; return img; };
+  // --- las marcas de una pasada en las tablas: casco (rally serio), linea (la trazada estuvo prendida) y salvavidas (ayuda de
+  // manejo), siempre en ese orden. Mas la del tipo de pasada: la bandera es la oficial y el cono una practica. ---
+  const MARCAS = [['serio', 'casco', 'Rally serio'], ['trazada', 'linea', 'Con la trazada'], ['ayuda', 'salvavidas', 'Con ayuda de manejo']];
+  // (la clase con-ayuda deja que el dibujo reciba el toque: asi se ve su explicacion)
+  const marca = (nombre, texto) => { const img = crear('img', 'icono marca con-ayuda'); img.src = icono(nombre); img.alt = texto; img.title = texto; return img; };
+  const marcasDe = (p, clase) => {
+    const caja = crear('span', clase);
+    for (const [k, ic, txt] of MARCAS) if (p && p[k]) caja.append(marca(ic, txt));
+    caja.dataset.n = caja.children.length;   // (con una sola marca se ve mas grande: ver .marcas en style.css)
+    return caja;
+  };
   let ultimo = null, linkDe = null, ultimoMejoro = false;   // el ultimo resultado mostrado, la funcion que arma su link y si fue tu mejor tiempo
   // la tabla: de quien se ven los tiempos ('' = todos los que se conocen; si no, el codigo de un club), si esta abierto
   // el formulario para armar un club, y lo ultimo que hay para avisar ahi
@@ -162,13 +169,14 @@ export function crearMenu(o) {
     pintarAjustes();
     pintarCards();
     pintarPie();
-    // la tabla: en lo libre, los mejores tiempos de cada uno; en una pista del dia, las oficiales y, aparte, las practicas
+    // la tabla: en lo libre, los mejores tiempos de cada uno; en una pista del dia, la oficial de cada uno y, si hizo una practica
+    // mas rapida, esa arriba (ver "renglon"). Los que solo practicaron van al final (o donde les toque, si el orden es el de la mejor).
     pintarClubes();
+    pintarOrden();
     const deTodos = vista === TODOS, t = deTodos && o.todos ? o.todos() : null;
-    const principal = deTodos ? [] : libre ? club.practicas(vista) : club.tabla(vista), practicas = libre || deTodos ? [] : club.practicas(vista);
+    const principal = deTodos ? [] : amigos(vista);
     $('tabla').classList.toggle('todos', deTodos);
     if (deTodos) pintarTodos($('tabla'), t); else pintarTabla($('tabla'), principal);
-    pintarTabla($('practicas'), practicas);
     $('tablaTotal').hidden = !deTodos || !t || !t.total;
     if (deTodos && t) $('tablaTotal').textContent = t.total + (t.total === 1 ? ' corredor' : ' corredores') + (t.yo ? ' · vos, #' + t.yo.puesto : '');
     $('tablaVacia').hidden = armando || (deTodos ? !!(t && t.total) : principal.length > 0);
@@ -176,10 +184,9 @@ export function crearMenu(o) {
       : vista ? 'Todavía no corrió nadie de este club.' : borrador ? 'Los tiempos del borrador quedan solo en este aparato.'
       : comunidad ? 'Todavía no hay tiempos. Corrila y compartila: acá aparecen todos los que la corren.'
       : 'Todavía no hay tiempos. Corré tu pasada y compartila: los de tus amigos aparecen acá cuando abrís sus links' + (o.clubes ? ', o solos si arman un club.' : '.');
-    $('practicasTitulo').hidden = libre || practicas.length === 0;
     $('tablaPista').textContent = fijo ? '· ' + fijo.corto : comunidad ? '· ' + etapa.nombre : '#' + numero;
     // (si se esta mostrando un resultado, su tabla tambien se pone al dia: pueden haber llegado tiempos de los clubes)
-    if (ultimo) { const todos = libre ? club.practicas() : club.tabla(); $('finRanking').hidden = todos.length < 2; pintarTabla($('finTabla'), todos); pintarContra(ultimo, ultimoMejoro); }
+    if (ultimo) { const todos = amigos(); $('finRanking').hidden = todos.length < 2; pintarTabla($('finTabla'), todos); pintarContra(ultimo, ultimoMejoro); }
     ponerIconos();
   }
 
@@ -258,21 +265,92 @@ export function crearMenu(o) {
     if (r.error) avisar(r.error); else { vista = ''; avisar('Saliste del club.'); }
   });
 
+  // --- las tablas de amigos y clubes: la oficial de cada uno y su practica en un solo renglon ---
+  // Une la lista de oficiales con la de practicas: quien hizo una practica mas rapida que su oficial (o abandono la oficial) figura con
+  // las dos; quien solo practico va al final con su mejor practica. (Cada uno se reconoce por su numero de corredor, o es "vos".)
+  function unir(oficiales, practicas) {
+    const llave = (r) => (r.mio ? '*' : r.j || r.nombre || '?'), mejores = new Map(), con = new Set();
+    for (const p of practicas) if (!p.ab && p.t > 0 && (!mejores.has(llave(p)) || p.t < mejores.get(llave(p)).t)) mejores.set(llave(p), p);
+    const filas = oficiales.map((r) => {
+      const p = mejores.get(llave(r));
+      con.add(llave(r));
+      return p && (r.ab || p.t < r.t) ? { ...r, oficial: r, mejor: p } : r;
+    });
+    return [...filas, ...[...mejores].filter(([k]) => !con.has(k)).map(([, p]) => p)];
+  }
+  // El orden de la tabla: 'oficial' (por la pasada oficial; al final los que solo practicaron) o 'mejor' (por la mejor pasada de cada
+  // uno, practicas incluidas). Lo guarda main.js (asi lo sabe tambien la tabla de todos, que la trae ordenada el servidor); aca se
+  // recuerda mientras dure la sesion del navegador.
+  const orden = () => (o.ordenTodos ? o.ordenTodos() : 'oficial');
+  const tiempoDe = (r) => { const p = pasadasDe(r).arriba; return p.ab || !(p.t > 0) ? Infinity : p.t; };
+  const ordenar = (lista) => (orden() === 'mejor' ? [...lista].sort((a, b) => { const x = tiempoDe(a), y = tiempoDe(b); return x < y ? -1 : x > y ? 1 : 0; }) : lista);
+  // la tabla de tus amigos (links y clubes juntos, o los de un club): en lo libre, las mejores practicas de cada uno
+  const amigos = (deClub) => (libre ? club.practicas(deClub) : ordenar(unir(club.tabla(deClub), club.practicas(deClub))));
+  try { const guardado = sessionStorage.getItem('shakedownOrden'); if (o.ordenTodos && (guardado === 'oficial' || guardado === 'mejor')) o.ordenTodos(guardado); } catch (e) { /* sin memoria: queda el de siempre */ }
+  // La ficha chica "Oficial | Con prácticas" (arriba de la tabla en el panel y debajo de las fichas de Todos / Amigos en el inicio).
+  function pintarOrden() {
+    // (con la tabla de todos siempre; solo con amigos, si alguien hizo una practica: si no, no hay nada que ordenar)
+    const sirve = !libre && (conTodos || amigos(vista === TODOS ? '' : vista).some((r) => pasadasDe(r).arriba.practica));
+    for (const caja of [$('hoyOrden'), $('ordenTabla')]) {
+      caja.hidden = !sirve || (armando && caja === $('ordenTabla'));
+      if (caja.hidden) continue;
+      caja.textContent = '';
+      for (const [valor, icon, texto] of [['oficial', 'bandera', 'Oficial'], ['mejor', 'cono', 'Con prácticas']]) {
+        const si = orden() === valor, b = crear('button', si ? 'elegido' : ''), t = crear('span', 'texto-orden', texto);
+        b.append(t);   // (en el inicio, en un celular angosto, queda el icono solo: ver .orden en style.css)
+        b.type = 'button'; b.title = texto; b.setAttribute('aria-label', texto); b.dataset.icono = icon; b.dataset.color = si ? '#000000' : '#ffffff';
+        b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', si);
+        b.addEventListener('click', () => {
+          if (orden() === valor) return;
+          o.ordenTodos(valor);
+          try { sessionStorage.setItem('shakedownOrden', valor); } catch (e) { /* sin memoria */ }
+          pintar();
+        });
+        caja.append(b);
+      }
+    }
+  }
+
   // --- la tabla ---
-  function pintarTabla(ol, lista) {
-    ol.textContent = '';
-    const rival = o.rival();
-    lista.forEach((r) => {
-      const li = crear('li', r.mio ? 'mio' : '');
-      if (r.puesto) li.dataset.puesto = r.puesto;   // (en la tabla de todos el puesto no es el lugar en la lista: puede faltar un tramo)
-      const quien = crear('span', 'quien', r.nombre || (r.mio ? 'Vos' : '?'));
-      quien.append(crear('small', 'codigo-auto', codigoDe(r.auto)));   // (con que auto corrio: el codigo de sus partes)
-      if (r.ayuda) quien.append(conAyuda());
-      else if (r.serio) quien.append(conSerio());
-      li.append(crear('span', 'emoji', configDe(r.auto).emoji), quien, crear('span', 'tiempoMarca', marcaDe(r)), cuadritos(r.c));
-      // (un DNF no tiene fantasma para correrle: no termino, y si se cerro el juego en el medio, ni siquiera quedo grabado)
-      if ((r.codigo || r.id) && !r.ab) {
-        const clave = o.claveDe(r), es = rival && rival.clave === clave && !!rival.practica === !!r.practica;
+  // Un renglon de tabla, en este orden: el puesto, el auto (solo su numero), las marcas de la pasada (casco, linea o ayuda; el lugar
+  // queda vacio si no hay, asi los nombres se alinean), el nombre y los tiempos. Es el mismo dibujo en el inicio, en el panel de la
+  // tabla, en el resultado y en las tablas de amigos y clubes.
+  // Los tiempos: arriba y grande el MEJOR de esa persona; abajo, mas chico y apagado, su OFICIAL (solo si es otra pasada, o sea,
+  // si hizo una practica mas rapida). Si la mejor es la oficial, un solo tiempo. Si solo practico, un solo tiempo con el cono.
+  // Una fila de la tabla de todos trae "oficial" y "mejor"; las de tus amigos y clubes son una sola pasada (la oficial o una practica).
+  function pasadasDe(r) {
+    const doble = r.oficial !== undefined || r.mejor !== undefined;
+    const oficial = doble ? r.oficial || null : r.practica ? null : r;
+    const mejor = doble ? r.mejor || oficial : r;
+    const otra = !!oficial && mejor !== oficial && !(mejor.id && mejor.id === oficial.id);
+    return { arriba: mejor, abajo: otra ? oficial : null };
+  }
+  // una linea de tiempo: [marcas chicas, solo en la de abajo] [bandera o cono] [tiempo]. En lo libre no hay oficial: no se marca.
+  function lineaDeTiempo(p, grande, sinTipo) {
+    const l = crear('span', 'tl ' + (grande ? 'grande' : 'chica'));
+    if (!grande) l.append(marcasDe(p, 'marcas-chicas'));
+    if (!sinTipo) { const tipo = p.practica ? 'cono' : 'bandera', img = marca(tipo, p.practica ? 'Práctica' : 'Pasada oficial'); img.classList.replace('marca', 'tipo'); l.append(img); }
+    l.append(crear(grande ? 'b' : 'span', grande ? 'tiempoMarca' : 'tiempoOf', marcaDe(p)));
+    return l;
+  }
+  // o2: { puesto, quien (si no, el nombre de la fila), fantasma (con el boton de correr contra su pasada), libre }
+  function renglon(r, o2 = {}) {
+    const { arriba, abajo } = pasadasDe(r), li = crear('li', 'renglon' + (r.mio ? ' mio' : ''));
+    const puesto = o2.puesto === undefined || o2.puesto === null ? '' : String(o2.puesto);
+    li.dataset.puesto = puesto;   // (en la tabla de todos el puesto no es el lugar en la lista: puede faltar un tramo)
+    const tiempos = crear('span', 'tiempos');
+    tiempos.append(lineaDeTiempo(arriba, true, o2.libre));
+    if (abajo) tiempos.append(lineaDeTiempo(abajo, false, o2.libre));
+    li.append(crear('i', 'puesto', puesto), crear('span', 'codigo-auto', codigoDe(arriba.auto)), marcasDe(arriba, 'marcas'),
+      crear('span', 'quien', o2.quien || r.nombre || (r.mio ? 'Vos' : '?')), tiempos);
+    // los cuadraditos de los sectores son solo de tu pasada: los de los demas adelantarian como es la pista antes de correrla
+    if (r.mio && arriba.c) { li.append(cuadritos(arriba.c)); li.classList.add('con-cuadros'); }
+    if (o2.fantasma) {
+      li.classList.add('con-accion');
+      // el boton es de la pasada de arriba (la mejor). Un DNF no tiene fantasma para correrle: no termino, y si se cerro el juego
+      // en el medio, ni siquiera quedo grabado.
+      if ((arriba.codigo || arriba.id) && !arriba.ab) {
+        const clave = o.claveDe(r), practica = !!arriba.practica, rival = o.rival(), es = rival && rival.clave === clave && !!rival.practica === practica;
         // el fantasma: amarillo si es contra quien se corre
         const b = crear('button', 'chiquito' + (es ? ' elegido' : ''));
         b.dataset.icono = 'fantasma';
@@ -280,15 +358,19 @@ export function crearMenu(o) {
         b.setAttribute('aria-label', b.title); b.setAttribute('aria-pressed', es);
         b.addEventListener('click', async () => {
           // (el fantasma de alguien de un club se baja del servidor en este momento)
-          const llego = await o.elegirRival(es ? '' : clave, !!r.practica);
+          const llego = await o.elegirRival(es ? '' : clave, practica);
           aviso = llego === false ? 'No pude traer el fantasma de ' + r.nombre + ': no hay conexión con el servidor.' : '';
           pintar();
-          if (ultimo) pintarTabla($('finTabla'), libre ? club.practicas() : club.tabla());
+          if (ultimo) pintarTabla($('finTabla'), amigos());
         });
         li.append(b);
-      } else li.append(crear('span'));
-      ol.append(li);
-    });
+      } else li.append(crear('span', 'sin-fantasma'));
+    }
+    return li;
+  }
+  function pintarTabla(ol, lista) {
+    ol.textContent = '';
+    lista.forEach((r, k) => ol.append(renglon(r, { puesto: r.puesto || k + 1, fantasma: true, libre })));
     ponerIconos(ol);
   }
 
@@ -309,14 +391,6 @@ export function crearMenu(o) {
   // para correr. Se pintan de nuevo cada vez que cambia algo (llegan tiempos de un club, se corre, se elige otro auto...). ---
   const koma = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
   const sinTiempo = () => crear('span', 'tiempoMarca sin', '—');
-  // una fila de tiempos: el puesto, el auto, quien es y su tiempo
-  function filaTiempo(puesto, r, quien) {
-    const li = crear('li', r.mio ? 'mio' : ''), nombre = crear('span', 'quien', quien || r.nombre || '?');
-    nombre.append(crear('small', 'codigo-auto', codigoDe(r.auto)));
-    if (r.ayuda) nombre.append(conAyuda()); else if (r.serio) nombre.append(conSerio());
-    li.append(crear('i', '', puesto), crear('span', 'emoji', configDe(r.auto).emoji), nombre, crear('b', 'tiempoMarca', marcaDe(r)));
-    return li;
-  }
   const vacia = (icono, texto) => { const li = crear('li', 'vacio', texto); li.dataset.icono = icono; return li; };
   // La pista protagonista: la que esta cargada. Con sus tiempos abajo: los de tus amigos y clubes (en lo libre, sus mejores
   // tiempos en esa pista) y el tuyo.
@@ -347,21 +421,22 @@ export function crearMenu(o) {
     for (const txt of [ambiente, CLIMAS[E.clima].emoji + ' ' + CLIMAS[E.clima].nombre, largo ? (largo / 1000).toFixed(1).replace('.', ',') + ' km' : '', CARACTER[E.caracter] ? CARACTER[E.caracter].nombre : '']) if (txt) datos.append(crear('span', 'dato', txt));
     // los tiempos: los primeros de todos (o de tus amigos, o de un club, segun la ficha) y, aparte, el tuyo
     const ol = $('hoyTiempos'), deTodos = vista === TODOS && conTodos, t = deTodos && o.todos ? o.todos() : null;
-    const tabla = libre ? club.practicas() : club.tabla(deTodos ? '' : vista);
-    const mio = libre ? club.practica() : tabla.find((r) => r.mio);
+    const lista = amigos(deTodos ? '' : vista);
+    const mio = libre ? (club.practica() && { ...club.practica(), mio: true }) : lista.find((r) => r.mio);
     const puede = !libre && club.sePuedeOficial(), practica = libre ? mio : club.resumen(n).practica;
+    const fila = (puesto, r, quien) => renglon(r, { puesto, quien, libre });
     ol.textContent = '';
     if (deTodos) {
       // el puesto de cada uno es el de la tabla de todos; el tuyo, aunque estes lejos, va abajo con tu puesto.
       // (tu fila lleva tus cuadraditos; los de los demas no, para no adelantar como es la pista antes de correrla)
       const primeros = t ? t.tabla.slice(0, 5) : [], yo = t && t.yo;
-      for (const r of primeros) { const li = filaTiempo(String(r.puesto), r, r.mio ? 'Vos' : ''); if (r.mio && r.c) li.append(cuadritos(r.c)); ol.append(li); }
+      for (const r of primeros) ol.append(fila(String(r.puesto), r, r.mio ? 'Vos' : ''));
       if (!primeros.length) ol.append(vacia('podio', t ? 'Todavía no corrió nadie. ¡Sé el primero!' : 'Buscando la tabla de todos…'));
       if (yo && !primeros.some((r) => r.mio)) {
         if (yo.puesto > primeros.length + 1) ol.append(crear('li', 'hueco', '⋮'));
-        const li = filaTiempo(String(yo.puesto), yo, 'Vos'); li.append(cuadritos(yo.c)); ol.append(li);
+        ol.append(fila(String(yo.puesto), yo, 'Vos'));
       } else if (!yo) {
-        if (mio) { const li = filaTiempo('', mio, 'Vos'); if (mio.c) li.append(cuadritos(mio.c)); ol.append(li); }
+        if (mio) ol.append(fila('', mio, 'Vos'));
         else if (puede) ol.append(vacia('bandera', 'Te falta tu pasada'));
         else ol.append(vacia('cono', practica ? 'Práctica ' + marcaDe(practica) : 'Sin pasada'));
         ol.lastChild.classList.add('mio');
@@ -369,10 +444,10 @@ export function crearMenu(o) {
       $('hoyPuesto').hidden = !t || !t.total;
       $('hoyPuestoTexto').textContent = t && t.total ? (t.yo ? '#' + t.yo.puesto + ' de ' + t.total : t.total + (t.total === 1 ? ' corredor' : ' corredores')) : '';
     } else {
-      const otros = tabla.filter((r) => !r.mio && !r.ab && r.t > 0).slice(0, 5);
-      otros.forEach((r, k) => ol.append(filaTiempo(String(k + 1), r)));
+      const otros = lista.filter((r) => !r.mio && !pasadasDe(r).arriba.ab && pasadasDe(r).arriba.t > 0).slice(0, 5);
+      otros.forEach((r, k) => ol.append(fila(String(k + 1), r)));
       if (!otros.length) ol.append(vacia('podio', 'Sin tiempos de amigos'));
-      if (mio) { const li = filaTiempo('', mio, 'Vos'); if (mio.c) li.append(cuadritos(mio.c)); ol.append(li); }
+      if (mio) ol.append(fila('', mio, 'Vos'));
       else if (puede) ol.append(vacia('bandera', 'Te falta tu pasada'));
       else ol.append(vacia('cono', practica ? 'Práctica ' + marcaDe(practica) : 'Sin pasada'));
       ol.lastChild.classList.add('mio');
@@ -454,16 +529,17 @@ export function crearMenu(o) {
   // Tu puesto entre todos ("37º de 412"), si esta pasada es tu oficial y el servidor ya la tiene (si no, no se dice nada). Devuelve el texto.
   const puestoGlobal = (r) => {
     const t = o.todos ? o.todos() : null, yo = t && t.yo;
-    return !libre && !r.practica && !r.ab && yo && Math.abs(yo.t - r.t) < 0.02 ? { yo, t } : null;
+    return !libre && !r.practica && !r.ab && yo && (!t.orden || t.orden === 'oficial') && Math.abs(yo.t - r.t) < 0.02 ? { yo, t } : null;   // (el puesto es el de la oficial: solo si la tabla esta en ese orden)
   };
   function pintarGlobal(r) {
     const g = $('finTodos'), x = puestoGlobal(r);
     g.hidden = !x;
     if (!x) return;
     const { yo, t } = x, filas = [...t.tabla, ...t.cerca];
+    const total = t.oficiales !== undefined ? t.oficiales : t.total;   // (de la oficial: no cuentan los que solo practicaron)
     const delante = filas.find((f) => f.puesto === yo.puesto - 1 && !f.ab);
     g.textContent = '';
-    g.append(crear('b', '', yo.puesto === 1 ? '¡1º de ' + t.total + '!' : yo.puesto + 'º de ' + t.total), crear('span', '', yo.puesto === 1 ? 'Sos el más rápido de todos, por ahora.' : delante ? 'A ' + (r.t - delante.t).toFixed(2).replace('.', ',') + ' s de ' + (delante.nombre || '?') : 'Entre todos los que la corrieron'));
+    g.append(crear('b', '', yo.puesto === 1 ? '¡1º de ' + total + '!' : yo.puesto + 'º de ' + total), crear('span', '', yo.puesto === 1 ? 'Sos el más rápido de todos, por ahora.' : delante ? 'A ' + (r.t - delante.t).toFixed(2).replace('.', ',') + ' s de ' + (delante.nombre || '?') : 'Entre todos los que la corrieron'));
     g.classList.toggle('primero', yo.puesto === 1);
   }
   function pintarContra(r, mejoro) {
@@ -843,7 +919,7 @@ export function crearMenu(o) {
       $('compartido').textContent = '';
       $('finGuardado').hidden = true;   // (main.js dice enseguida si se esta guardando: ver "guardado")
       $('social').hidden = borrador;   // (el borrador no se comparte: todavia no existe para los demas)
-      const tabla = libre ? club.practicas() : club.tabla();
+      const tabla = amigos();
       $('finRanking').hidden = tabla.length < 2;
       pintarTabla($('finTabla'), tabla);
       rotular($('otra'), libre ? 'Otra vez' : 'Practicar');

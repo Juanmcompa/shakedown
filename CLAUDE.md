@@ -36,7 +36,7 @@ Devuelven un resumen corto: qué cambiaron, qué pruebas corrieron y cómo salie
 
 - La pista sale de la fecha: una pista nueva por día y **una sola pasada oficial**. Si un cambio hace que la pista de un
   día sea otra, hay que subir `VERSION` en `src/generador.js` (o la `version` del circuito en `src/circuitos.js`).
-- El fantasma del link es fiel: hace exactamente lo que hizo el otro.
+- El fantasma del link es fiel: hace exactamente lo que hizo el otro. (La marca de trazada va en el bit de valor 4 del número de auto del link: no reordenar.)
 - Primer renglón de lo que se comparte de la pista del día, exacto: `Shakedown #42 🌧️🌲 ⏱️ 01:42:85 🟩 🟩 🟨 🟥 🟩 🏁 🚙431`
   (al final, el auto: su chasis y el código de sus partes). Un abandono dice `💥 DNF`.
 - Los autos se arman por partes (`src/partes.js`): ninguna combinación es la mejor para todo. La Vitarita (333) y el
@@ -56,7 +56,7 @@ Las que usan servidor necesitan antes uno limpio: `node servidor/local.mjs 8787`
 
 - `node tools/pruebas/huella.mjs 1 10 tools/pruebas/medidas/huella-v2.txt` (y `16001 3 …huella-circuitos-v1.txt`,
   `16004 1 …huella-practica-v1.txt`, `16005 1 …huella-giulio-v1.txt`, `16006 1 …huella-montana-v5.txt`): tienen que decir **IGUAL**. Si no, cambió cómo se maneja o cómo es la pista.
-- `node servidor/prueba.mjs`: el servidor (153 pruebas).
+- `node servidor/prueba.mjs`: el servidor (183 pruebas).
 - La Montaña (camino deformado, con el auto): `vermontana.mjs`.
 - El motor de pistas: `node tools/pruebas/vermotor.mjs` (20 días seguidos: variedad, noche, festival y que el piloto llegue).
 - `vertodos.mjs` y `vercreador.mjs` necesitan un servidor local limpio en cada corrida.

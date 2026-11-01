@@ -7,7 +7,7 @@ import { crearTerreno } from '../src/terrain.js';
 import { generarPista, anotarPista, VERSION } from '../src/generador.js';
 import { armarHoja } from '../src/hoja.js';
 import { COMUNIDAD } from '../src/circuitos.js';
-import { crearGrabacion } from '../src/fantasma.js';
+import { crearGrabacion, leerCodigo } from '../src/fantasma.js';
 import { hoy } from '../src/dia.js';
 
 const BASE = process.argv[2] || '', env = { DB: BASE ? null : baseLocal() };
@@ -400,6 +400,91 @@ if (!BASE) {
     ver('los cambios de nombre tienen tope por conexion', ne.join() === '200,200,429', ne);
     LIMITES.nombresPorConexion = topes.nombresPorConexion;
   }
+}
+
+// --- la tabla de todos con practicas: por corredor, su oficial y su mejor (oficial o practica) ---
+{
+  const dia = N - 2, Td = crearTerreno(generarPista(dia)), [L1, L2, L3, L4, L5, L6, L7] = ['1', '2', '3', '4', '5', '6', '7'].map((x) => x.repeat(24) + 'P' + sufijo);
+  const subir = async (quien, m, extra = {}) => pedir('POST', '/pasadas', { llave: quien, codigo: await pasada(Td, { pista: dia, ...m }), ...extra });
+  const dos = (quien, orden = 'mejor') => pedir('POST', '/todos', { llave: quien, pista: dia, version: VERSION, orden });
+  const MIOS = ['Ana2', 'Bea2', 'Cris2', 'Dani2', 'Eli2', 'Gus2', 'Fede2'];
+  const soloMios = (r) => r.cosa.tabla.filter((x) => MIOS.includes(x.nombre));
+  // Ana: oficial 100 (rally serio) y despues una practica mas rapida, 85, con trazada
+  const a1 = await subir(L1, { nombre: 'Ana2', t: 100, serio: true });
+  const a2 = await subir(L1, { nombre: 'Ana2', t: 85, practica: true, trazada: true });
+  ver('una practica mas rapida que la oficial se guarda', a1.estado === 200 && a2.estado === 200 && a1.cosa.id !== a2.cosa.id, [a1, a2]);
+  // Bea: solo practica (95). Cris: oficial 90 y una practica mas lenta (95). Dani: abandona la oficial. Eli: oficial 110 y practicas 80, 70 y 90.
+  // Gus: oficial 120 y una practica igual (120).
+  const b1 = await subir(L2, { nombre: 'Bea2', t: 95, practica: true, ayuda: true });
+  const c1 = await subir(L3, { nombre: 'Cris2', t: 90 }), c2 = await subir(L3, { nombre: 'Cris2', t: 95, practica: true });
+  const d1 = await subir(L4, { nombre: 'Dani2', t: 40, ab: 'roto', dura: 40 });
+  const e1 = await subir(L5, { nombre: 'Eli2', t: 110 }), e2 = await subir(L5, { nombre: 'Eli2', t: 80, practica: true }), e3 = await subir(L5, { nombre: 'Eli2', t: 70, practica: true }), e4 = await subir(L5, { nombre: 'Eli2', t: 90, practica: true });
+  const g1 = await subir(L6, { nombre: 'Gus2', t: 120 }), g2 = await subir(L6, { nombre: 'Gus2', t: 120, practica: true });
+  ver('se suben todas', [b1, c1, c2, d1, e1, e2, e3, e4, g1].every((x) => x.estado === 200) && g2.estado === 200, [b1, c1, c2, d1, e1, e2, e3, e4, g1, g2].map((x) => x.estado));
+  r = await subir(L1, { nombre: 'Ana2', t: 80 });
+  ver('una practica no reemplaza a la oficial (la oficial sigue siendo una sola)', r.estado === 409, r);
+  // una practica sin nombre se guarda, pero no figura (y las de los circuitos y demas siguen igual)
+  const f1 = await subir(L7, { nombre: '', t: 60, practica: true });
+  r = await dos(L1, 'oficial');
+  ver('el formato nuevo: orden "oficial" (los que no tienen oficial, al final)', r.estado === 200 && r.cosa.orden === 'oficial' && soloMios(r).map((x) => x.nombre).join() === 'Cris2,Ana2,Eli2,Gus2,Dani2,Bea2', soloMios(r).map((x) => x.nombre));
+  const of = r.cosa;
+  r = await dos(L1, 'mejor');
+  const mj = r.cosa, tb = soloMios(r);
+  ver('orden "mejor" (por el mejor tiempo, practicas incluidas)', r.estado === 200 && mj.orden === 'mejor' && tb.map((x) => x.nombre).join() === 'Eli2,Ana2,Cris2,Bea2,Gus2,Dani2', tb.map((x) => x.nombre));
+  const por = (n) => tb.find((x) => x.nombre === n);
+  ver('Ana: oficial 100 (rally serio) y mejor 85 (practica, con trazada)', por('Ana2').oficial.t === 100 && por('Ana2').oficial.serio === true && por('Ana2').oficial.trazada === false && por('Ana2').oficial.practica === false
+    && por('Ana2').mejor.t === 85 && por('Ana2').mejor.practica === true && por('Ana2').mejor.trazada === true && por('Ana2').mejor.serio === false && por('Ana2').mejor.id === a2.cosa.id && por('Ana2').oficial.id === a1.cosa.id, por('Ana2'));
+  ver('Bea solo practico: sin oficial, mejor 95 (con ayuda)', por('Bea2').oficial === null && por('Bea2').mejor.t === 95 && por('Bea2').mejor.ayuda === true && por('Bea2').mejor.practica === true, por('Bea2'));
+  ver('Cris: una practica mas lenta no cambia nada, el mejor es la oficial', por('Cris2').mejor.t === 90 && por('Cris2').mejor.id === c1.cosa.id && por('Cris2').oficial.id === c1.cosa.id && por('Cris2').mejor.practica === false, por('Cris2'));
+  ver('Dani abandono: oficial y mejor son ese abandono', por('Dani2').oficial.ab === 'roto' && por('Dani2').mejor.ab === 'roto' && por('Dani2').mejor.id === d1.cosa.id, por('Dani2'));
+  ver('Eli: de tres practicas queda la mejor', por('Eli2').oficial.t === 110 && por('Eli2').mejor.t === 70 && por('Eli2').mejor.id === e3.cosa.id, por('Eli2'));
+  ver('un empate con la oficial se queda con la oficial', por('Gus2').mejor.id === g1.cosa.id && por('Gus2').mejor.practica === false, por('Gus2'));
+  ver('la practica sin nombre no figura', !mj.tabla.some((x) => x.nombre === 'Sin nombre') && (BASE || mj.total === 6), mj.total);
+  ver('cada detalle lleva lo que hace falta para pintar y correrle al fantasma', ['id', 't', 'c', 'auto', 'ab', 'ayuda', 'serio', 'trazada', 'practica'].every((k) => k in por('Ana2').mejor) && por('Ana2').mejor.c.length === 5 && /^[\w-]{16}$/.test(por('Ana2').j), por('Ana2'));
+  ver('puesto en cada orden', por('Ana2').puesto === por('Ana2').puestoMejor && of.tabla.find((x) => x.nombre === 'Ana2').puesto === por('Ana2').puestoOficial && por('Eli2').puestoMejor < por('Ana2').puestoMejor && por('Cris2').puestoOficial < por('Ana2').puestoOficial, [por('Ana2'), por('Eli2')]);
+  ver('mi fila marcada, con mis puestos en cada orden', mj.yo && mj.yo.mio === true && mj.yo.nombre === 'Ana2' && mj.yo.puesto === mj.yo.puestoMejor && of.yo.puesto === of.yo.puestoOficial && of.yo.puesto > mj.yo.puesto - 1, [mj.yo, of.yo]);
+  ver('el fantasma de una practica se baja con su codigo', (await pedir('GET', '/pasadas/' + por('Bea2').mejor.id)).estado === 200);
+  if (!BASE) {
+    ver('oficiales: cuantos tienen oficial', mj.oficiales === 5 && mj.total === 6, mj);
+    const tope = LIMITES.tablaDeTodos;
+    LIMITES.tablaDeTodos = 1;
+    r = await dos(L6, 'mejor');
+    ver('con tope: el primero, mi fila y los dos de arriba y de abajo (cada orden con el suyo)', r.cosa.tabla.length === 1 && r.cosa.tabla[0].nombre === 'Eli2' && r.cosa.yo.nombre === 'Gus2' && r.cosa.yo.puesto === 5 && r.cosa.cerca.map((x) => x.puesto + x.nombre).join() === '3Cris2,4Bea2,5Gus2,6Dani2', r.cosa);
+    r = await dos(L2, 'oficial');
+    ver('lo mismo en el orden de oficial', r.cosa.tabla[0].nombre === 'Cris2' && r.cosa.yo.nombre === 'Bea2' && r.cosa.yo.puesto === 6 && r.cosa.cerca.map((x) => x.nombre).join() === 'Gus2,Dani2,Bea2', r.cosa);
+    LIMITES.tablaDeTodos = tope;
+    // quien solo tiene una practica sin nombre no figura; con el nombre que llega despues (cambiar el nombre) aparece
+    r = await dos(L7);
+    ver('sin nombre no figura ni su fila', r.cosa.yo === null && r.cosa.total === 6, r.cosa);
+    r = await pedir('POST', '/nombre', { llave: L7, apodo: 'Fede2' });
+    r = await dos(L7);
+    ver('al ponerse nombre, su practica figura (solo en "mejor", al final en "oficial")', r.cosa.total === 7 && r.cosa.yo && r.cosa.yo.nombre === 'Fede2' && r.cosa.yo.oficial === null && r.cosa.yo.mejor.t === 60 && r.cosa.yo.puestoMejor === 1 && r.cosa.yo.puestoOficial === 6 && r.cosa.tabla.find((x) => x.nombre === "Bea2").puestoOficial === 7, r.cosa);
+  }
+  // la practica que se tenia guardada en el aparato antes de tener nombre se sube despues con el nombre de ahora ("apodo")
+  r = await subir(L7, { nombre: '', t: 59, practica: true }, { apodo: '  Fede <b>2  ' });
+  r = await dos(L7);
+  ver('"apodo" pone el nombre de ahora a una practica sin nombre', r.cosa.yo && r.cosa.yo.nombre === 'Fede b2' && r.cosa.yo.mejor.t === 59, r.cosa.yo);
+  // el formato de siempre (sin "orden"): solo oficiales, filas planas, como antes
+  r = await pedir('POST', '/todos', { llave: L1, pista: dia, version: VERSION });
+  ver('sin "orden" sigue el formato viejo: solo oficiales, filas planas', r.estado === 200 && r.cosa.tabla.every((x) => !x.practica && 't' in x && !('oficial' in x)) && !r.cosa.tabla.some((x) => x.nombre === 'Bea2' || x.nombre === 'Fede b2') && r.cosa.tabla.find((x) => x.nombre === 'Ana2').t === 100 && r.cosa.tabla.find((x) => x.nombre === 'Ana2').trazada === false, r.cosa.tabla.map((x) => x.nombre));
+  r = await pedir('POST', '/todos', { llave: L1, pista: dia, version: VERSION, orden: 'peor' });
+  ver('un orden que no existe se rechaza', r.estado === 400, r);
+  r = await pedir('POST', '/todos', { llave: L1, pista: N + 3, version: VERSION, orden: 'mejor' });
+  ver('las pistas que no tienen tabla tampoco la tienen con orden', r.estado === 400, r);
+  r = await pedir('POST', '/todos', { pista: dia, version: VERSION, orden: 'oficial' });
+  ver('sin llave se ve la tabla nueva, sin mi fila', r.estado === 200 && r.cosa.yo === null && !r.cosa.tabla.some((x) => x.mio) && r.cosa.tabla.length > 5, r.cosa.tabla.length);
+  // las marcas tambien llegan en las tablas de los clubes
+  r = await pedir('POST', '/clubes', { llave: L1, nombre: 'Marcas', apodo: 'Ana2' });
+  const cm = r.cosa && r.cosa.codigo;
+  r = await pedir('POST', '/tablas', { llave: L1, pista: dia, version: VERSION, clubes: [cm] });
+  const tc = r.cosa && r.cosa.clubes[cm] && r.cosa.clubes[cm].tabla;
+  ver('la tabla de un club trae rally serio y trazada de cada fila', tc && tc.find((x) => !x.practica).serio === true && tc.find((x) => !x.practica).trazada === false && tc.find((x) => x.practica).trazada === true, tc);
+  // lo guardado en el link: la marca de trazada viaja, y los links de antes (sin ella) se leen igual
+  const conT = await leerCodigo(await pasada(Td, { pista: dia, nombre: 'Ana2', t: 85, trazada: true, serio: true, ayuda: false, auto: '323' })), sinT = await leerCodigo(await pasada(Td, { pista: dia, nombre: 'Ana2', t: 85, auto: '323' }));
+  ver('el link lleva la trazada (y no se pierden las otras marcas ni el auto)', conT.marca.trazada === true && conT.marca.serio === true && conT.marca.ayuda === false && conT.marca.auto === '323' && conT.marca.t === 85, conT.marca);
+  ver('un link sin trazada se lee como siempre', sinT.marca.trazada === false && sinT.marca.serio === false && sinT.marca.auto === '323', sinT.marca);
+  const ant = await leerCodigo(await pasada(Td, { pista: dia, nombre: 'Ana2', t: 85, trazada: false, auto: 'kacito' }));
+  ver('el auto viejo del link (Kacito) no se pisa con la marca', ant.marca.trazada === false && ant.marca.auto !== undefined, ant.marca);
 }
 
 // --- quien puede usarlo desde un navegador ---
