@@ -942,3 +942,9 @@ body:has(#panel:not([hidden])) .cartel-tv { visibility: hidden; }   /* (con un p
 @media (max-width: 600px) { .guia-tv { place-items: center; } .guia-iconos .icono { width: 48px; height: 48px; padding: 7px; } }
 @media (max-height: 480px) { .guia-tv { padding-top: 24px; } .guia-iconos .icono { width: 40px; height: 40px; padding: 5px; } }
 #tfCompartido { min-height: 1.35em; font-size: 14px; overflow-wrap: anywhere; max-width: 32rem; }
+
+/* como leer la tabla (en "Como se juega"): los renglones de ejemplo no se tocan */
+.leer-tabla .tabla.ejemplo { pointer-events: none; margin: 8px 0 12px; }
+.leer-tabla dl.leer dt { min-width: 4.5em; }
+.leer-tabla dl.leer { margin: 0 0 14px; }
+.leer-tabla p { margin: 12px 0; }

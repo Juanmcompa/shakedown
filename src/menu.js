@@ -686,7 +686,7 @@ export function crearMenu(o) {
       <div><dt>${dib('camara')}</dt><dd>cámara: aérea, de atrás o desde arriba</dd></div>
       <div><dt>${dib('sonido')}${dib('musica')}${dib('voz')}</dt><dd>sonido, música y voz del copiloto</dd></div>
     </dl>
-    <p>${dib('bandera')} larga la pasada oficial: una sola por día. ${dib('cono')} es práctica: no cuenta para la tabla.</p>
+    <p>${dib('bandera')} larga la pasada oficial: una sola por día. ${dib('cono')} es práctica: se puede correr todas las veces que quieras, y tu mejor práctica también aparece en la tabla (ver abajo, "Cómo leer la tabla").</p>
     <p>${dib('circuito')} Además de la pista del día hay circuitos fijos, para correr las veces que quieras: una subida y una bajada de montaña, un callejero por el pueblo y una vuelta cerrada para practicar, donde das las vueltas que quieras. Queda guardado tu mejor tiempo.</p>
     <p class="con-servidor">${dib('lapiz')} Ahí también están las pistas de la comunidad: las arma la gente en el creador, nota por nota, como las canta el copiloto. Duran dos semanas y se comparten con un link. Si la armás para un club, aparece en el club y la corren todos sus miembros.</p>
     <p>Cada pista tiene cinco sectores. Al final, cada uno queda <b class="verde">verde</b>, <b class="amarillo">amarillo</b> o <b class="rojo">rojo</b> según cuánto tardaste contra el tiempo de referencia. Si tuviste que volver al camino, ese sector es rojo.</p>
@@ -698,6 +698,36 @@ export function crearMenu(o) {
     <p>${dib('ajustes')} En la configuración se cambian la distancia de la cámara y, en el celular, la sensibilidad al inclinar y el tamaño de los pedales.</p>
     <p>${dib('trazada')} Ahí también se prende la trazada: una línea pintada en el camino que muestra por dónde pasar. Está <b class="verde">verde</b> donde podés acelerar, <b class="amarillo">amarilla</b> donde venís justo y <b class="rojo">roja</b> donde venís pasado: cuando el rojo llega al auto, hay que frenar.</p>
     <p>${dib('salvavidas')} Si recién arrancás, prendé la ayuda de manejo: el auto sigue solo la trazada, frena antes de las curvas y se cruza menos. Vos acelerás y corregís con el volante. Es más lento, pero llegás.</p>`;
+
+  // Como leer la tabla: cuatro renglones de ejemplo, dibujados con el mismo renglon() que las tablas de verdad (asi la explicacion
+  // nunca queda vieja si cambia el dibujo), y debajo que es cada cosa.
+  {
+    const caja = crear('div', 'leer-tabla');
+    caja.append(crear('h3', '', 'Cómo leer la tabla'));
+    const ol = crear('ol', 'tabla ejemplo');
+    const p = (t, extra) => Object.assign({ t, c: '', auto: '333', ab: '', ayuda: false, serio: false, trazada: false, practica: false }, extra);
+    const ejemplos = [
+      { nombre: 'Ana', oficial: p(98.4, { serio: true }) },
+      { nombre: 'Beto', oficial: p(105.2, { auto: '431', trazada: true }), mejor: p(96.1, { auto: '431', trazada: true, practica: true }) },
+      { nombre: 'Caro', oficial: p(0, { auto: '323', ab: 'roto', ayuda: true }) },
+      { nombre: 'Dani', oficial: null, mejor: p(101.7, { auto: '215', practica: true }) },
+    ];
+    ejemplos.forEach((r, k) => ol.append(renglon(r, { puesto: k + 1 })));
+    caja.append(ol);
+    caja.insertAdjacentHTML('beforeend', `
+    <dl class="teclas leer">
+      <div><dt>1 · 333</dt><dd>el puesto y el número de su auto (el código de sus partes)</dd></div>
+      <div><dt>${dib('casco')}</dt><dd>corrió en rally serio</dd></div>
+      <div><dt>${dib('linea')}</dt><dd>corrió con la trazada (la línea para seguir)</dd></div>
+      <div><dt>${dib('salvavidas')}</dt><dd>corrió con ayuda de manejo</dd></div>
+      <div><dt>${dib('bandera')}</dt><dd>su pasada oficial, la primera del día</dd></div>
+      <div><dt>${dib('cono')}</dt><dd>su mejor práctica</dd></div>
+    </dl>
+    <p>Si alguien hizo una práctica más rápida que su oficial, se ven los dos tiempos: arriba y grande su mejor tiempo, abajo y más chico su oficial (como Beto). Si nunca mejoró la oficial, queda un solo tiempo (Ana). DNF quiere decir que abandonó (Caro). Si solo practicó, aparece con el cono (Dani).</p>
+    <p>${dib('bandera')} <b>Oficial</b> ordena la tabla por las pasadas oficiales: es la competencia del día. ${dib('cono')} <b>Con prácticas</b> la ordena por el mejor tiempo de cada uno. Los cuadraditos de los sectores se ven solo en tu renglón, para no adelantarle la pista a nadie.</p>`);
+    $('comoSeJuega').append(caja);
+    ponerIconos(caja);
+  }
 
   for (const el of document.querySelectorAll('.con-servidor')) el.hidden = !o.clubes;   // (lo de los clubes, solo si hay servidor)
 

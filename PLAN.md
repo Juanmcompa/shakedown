@@ -112,6 +112,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] Árboles del mismo verde que el pasto y sin costuras; 28 tipos repartidos por bioma (sin cambiar choques ni pistas)
 - [x] El nombre del fantasma solo se ve cuando va bastante adelante (de cerca tapaba la cámara)
 - [x] Tabla con prácticas: por corredor el mejor tiempo arriba y el oficial abajo, marcas de casco, línea (trazada, nueva) y ayuda, orden Oficial / Con prácticas, sin el dibujo del auto (solo su número)
+- [x] "Cómo leer la tabla" en Cómo se juega, con renglones de ejemplo dibujados igual que la tabla
 
 ## Lo que sigue
 
