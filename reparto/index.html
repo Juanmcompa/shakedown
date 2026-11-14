@@ -23,19 +23,20 @@
   .caja { background: rgba(20, 22, 26, .78); border-radius: 10px; padding: 8px 12px; }
   #pedido { display: flex; align-items: center; gap: 8px; font-size: 20px; }
   #pedido b { font-weight: 700; }
-  #distancia { color: var(--apagado); font-size: 15px; white-space: nowrap; }
   #culata { color: var(--oro); font-size: 15px; font-weight: 700; white-space: nowrap; }
-  /* pantalla angosta (celular parado): todo arriba en dos renglones compactos (reloj, nivel y entregas; abajo, el pedido),
-     el mapita chico debajo a la derecha, y el resto de la pantalla libre para ver la calle */
+  /* pantalla angosta (celular parado): arriba, dos columnas. A la izquierda, el tiempo grande, las entregas y el record en
+     chico, el nivel y lo que se lleva (solo iconos); a la derecha, el mapita grande, del mismo alto. El resto de la pantalla,
+     libre para ver la calle. */
   @media (max-width: 560px) {
-    #arriba { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; left: 8px; right: 8px; }
-    #arriba .caja { padding: 5px 8px; }
-    #arriba #reloj { grid-column: 1; grid-row: 1; font-size: 26px; min-width: 74px; }
-    #arriba #nivel { grid-column: 2; grid-row: 1; justify-self: center; font-size: 13px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-    #arriba #cuenta { grid-column: 3; grid-row: 1; grid-template-columns: repeat(4, auto); font-size: 14px; }
-    #arriba #cuenta b { font-size: 17px; }
-    #arriba #pedido { grid-column: 1 / -1; grid-row: 2; font-size: 15px; gap: 6px; white-space: nowrap; overflow: hidden; }
-    #arriba #pedido b { overflow: hidden; text-overflow: ellipsis; }
+    #arriba { display: flex; flex-direction: column; align-items: stretch; gap: 6px; left: 8px; right: auto; width: calc(50% - 12px); }
+    #arriba .caja { padding: 4px 8px; text-align: center; }
+    #arriba #reloj { order: 1; font-size: 46px; line-height: 1.1; min-width: 0; }
+    #arriba #cuenta { order: 2; display: flex; justify-content: center; gap: 6px; font-size: 12px; }
+    #arriba #cuenta b { font-size: 14px; }
+    #arriba #nivel { order: 3; font-size: 14px; }
+    #arriba #pedido { order: 4; justify-content: center; font-size: 22px; gap: 6px; flex-wrap: wrap; }
+    #arriba #pedido b { font-size: 15px; }
+    #arriba #culata { flex-basis: 100%; font-size: 13px; }
   }
   #reloj { font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: 34px; min-width: 96px; text-align: center; }
   #reloj.apuro { color: var(--mal); }
@@ -99,12 +100,16 @@
   @media (pointer: coarse) {
     #mandos { display: block; }
     #ayudita { display: none; }
-    #mapita { width: 108px; height: 108px; bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 102px); right: 8px; }
+    #mapita { width: 120px; height: 120px; bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 102px); right: 8px; }
     .pedal { position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); width: 74px; height: 74px; border-radius: 50%; background: rgba(241,237,226,.18); color: var(--texto); font-size: 30px; touch-action: none; }
     .pedal.apretado { background: rgba(255,210,58,.45); }
     .izq { left: 12px; } .der { left: 94px; } .frena { right: 94px; } .acelera { right: 12px; }
     /* la pausa: en el medio, entre las flechas */
     .pedal.pausa { left: 50%; transform: translateX(-50%); width: 56px; height: 56px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 9px); background: #c8302a; font-size: 22px; }
+  }
+  /* (en el celular parado: el mapita grande, arriba a la derecha, al lado de la columna del tiempo) */
+  @media (max-width: 560px) {
+    #mapita { top: max(10px, env(safe-area-inset-top)); right: 8px; bottom: auto; width: calc(50% - 12px); height: auto; aspect-ratio: 1; }
   }
   #nocargo { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; background: var(--fondo); }
   [hidden] { display: none !important; }
@@ -114,7 +119,7 @@
 <canvas id="lienzo"></canvas>
 
 <div id="arriba">
-  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span><span id="culata" hidden>⤵ de culata</span></div>
+  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="culata" hidden>⤵ de culata</span></div>
   <div class="caja" id="reloj">0:00</div>
   <div class="caja" id="nivel"></div>
   <div class="caja" id="cuenta" title="Entregas · récord">

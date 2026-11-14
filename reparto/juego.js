@@ -150,12 +150,12 @@ function revisarParada(dt) {
 }
 
 // --- el nivel: en que etapa vas y cuanto falta para la siguiente ---
-//   🏭 Depósito 1 · 13/30   🏭 Depósito 2 · 7/20   🚌 Colectivos · 3/20   🚕 Taxis · 5
+//   Nivel 1: 13/30 (deposito 1)   Nivel 2: 7/20 (deposito 2)   Nivel 3: 3/20 (colectivos)   Nivel 4: 5 (taxis, sin fin)
 function nivel(e) {
-  if (e < ABRE[2]) return '🏭 Depósito 1 · ' + e + '/' + ABRE[2];
-  if (e < ABRE[3]) return '🏭 Depósito 2 · ' + (e - ABRE[2]) + '/' + (ABRE[3] - ABRE[2]);
-  if (e < TAXIS) return '🚌 Colectivos · ' + (e - ABRE[3]) + '/' + (TAXIS - ABRE[3]);
-  return '🚕 Taxis · ' + (e - TAXIS);
+  if (e < ABRE[2]) return 'Nivel 1: ' + e + '/' + ABRE[2];
+  if (e < ABRE[3]) return 'Nivel 2: ' + (e - ABRE[2]) + '/' + (ABRE[3] - ABRE[2]);
+  if (e < TAXIS) return 'Nivel 3: ' + (e - ABRE[3]) + '/' + (TAXIS - ABRE[3]);
+  return 'Nivel 4: ' + (e - TAXIS);
 }
 
 // --- llegar ---
@@ -285,8 +285,8 @@ function pintarViaje() {
   const d = objetivo(), n = viaje.paradas.length, falta = hechas < n;
   $('carga').textContent = viaje.carga;
   $('destinoIcono').textContent = falta && viaje.tipo === 'taxi' ? '🙋' : d.icono;
-  $('destinoNombre').textContent = d.deposito ? 'DEPÓSITO ' + (d.dep.n + 1) + ' · ' + (d.anden + 1)
-    : falta && viaje.tipo === 'colectivo' ? 'PARADA ' + (hechas + 1) + '/' + n : falta ? 'BUSCAR EN ' + d.nombre : d.nombre;
+  // (sin el nombre del lugar ni los metros: no decian nada. Solo, en el colectivo, en que parada vas)
+  $('destinoNombre').textContent = falta && viaje.tipo === 'colectivo' ? (hechas + 1) + '/' + n : '';
   pintarCuenta();
 }
 function portada(si) {
@@ -466,7 +466,6 @@ function dibujar(dt) {
     const queda = viaje.limite - reloj;
     $('reloj').textContent = reloj2(queda);
     $('reloj').classList.toggle('apuro', fase === 'viaje' && queda < 10);
-    $('distancia').textContent = Math.round(lejosDelDestino()) + ' m';
   }
   pintarMapita();
   render.render(escena, vistaFija || camara.cam);

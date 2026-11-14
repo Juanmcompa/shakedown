@@ -240,7 +240,7 @@ Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el 
 
 Un pueblo que crece. Llevás cosas de un lado a otro, cada viaje con su tiempo (dos minutos como mucho; el colectivo, dos y medio). Cada viaje queda guardado y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**, con la cabina de otro color y el número de su entrega en el techo: el tráfico sos vos. Chocarlos no rompe nada, pero no se corren. Si una entrega llega tarde (o te rendís con R), se termina la partida: aparecen tus entregas y el récord, y la próxima arranca de cero, con el pueblo chico.
 
-**Los niveles (en la misma partida).** Arriba siempre dice en cuál vas y cuánto falta: `🏭 Depósito 1 · 13/30`, `🏭 Depósito 2 · 7/20`, `🚌 Colectivos · 3/20`, `🚕 Taxis · 5`.
+**Los niveles (en la misma partida).** Arriba siempre dice en cuál vas y cuánto falta: `Nivel 1: 13/30` (depósito 1), `Nivel 2: 7/20` (depósito 2), `Nivel 3: 3/20` (colectivos), `Nivel 4: 5` (taxis).
 
 | Entregas | Qué se hace | Qué se abre |
 | --- | --- | --- |
@@ -261,7 +261,7 @@ El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se ag
 
 **Las vueltas de reparto** (de 5 viajes): depósito → negocio, de vuelta al depósito (de frente con tu viaje anterior: la primera vez el juego se frena y lo explica), depósito → otro negocio, de ahí a otro, y la **hora pico** de vuelta al depósito por las calles más usadas. Cada vuelta los viajes son más largos.
 
-**En el celular:** arriba, en dos renglones, el reloj, el nivel, las entregas y el pedido; el mapita chico debajo; la camioneta siempre en la franja de abajo de la pantalla (así se ve la calle de adelante); y en el medio de las flechas, el botón de pausa (en la compu, la P).
+**En el celular:** arriba, dos columnas: a la izquierda el tiempo grande, las entregas y el récord en chico, el nivel y lo que llevás (solo íconos); a la derecha, el mapita grande; la camioneta siempre en la franja de abajo de la pantalla (así se ve la calle de adelante); y en el medio de las flechas, el botón de pausa (en la compu, la P).
 
 **Compartir:** `Probá F for Traffic 📦 Hice 12 entregas`, una cajita por entrega, el link y el aviso de Early Access.
 
