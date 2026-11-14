@@ -9,7 +9,8 @@
 // Son solidos (el auto choca contra ellos como contra una pared que se mueve, y ellos no se corren: ya pasaron), pero no
 // hacen otra cosa que frenarte. Van en el vehiculo que usaste en cada viaje, con la cabina de otro color. No llevan fisica.
 import * as THREE from '../vendor/three.module.js';
-import { armarVehiculo, TIPOS } from './vehiculos.js';
+import { armarVehiculo, configDeTipo, TIPOS } from './vehiculos.js';
+import { remolqueDe } from './remolque.js';
 import { MUESTRA } from './memoria.js';
 
 const COLORES = ['#6f8fa3', '#c8402f', '#4f7a55', '#8a6f9a', '#2f6fa8', '#e9e4d6', '#7a2f2a', '#3f8a55', '#d8a48c', '#3d3f45', '#a9c3cc', '#e07a2e'];
@@ -29,9 +30,10 @@ export function crearFantasmas(escena, T) {
     const f = armarVehiculo(tipo, color);
     f.clave = clave;
     escena.add(f.grupo);
+    if (f.remolque) escena.add(f.remolque);
     return f;
   }
-  function devolver(f) { f.grupo.visible = false; (sueltos[f.clave] || (sueltos[f.clave] = [])).push(f); }
+  function devolver(f) { f.grupo.visible = false; if (f.remolque) f.remolque.visible = false; (sueltos[f.clave] || (sueltos[f.clave] = [])).push(f); }
 
   // suma un viaje guardado
   function sumar(v) { viajes.push(v); }
@@ -51,7 +53,8 @@ export function crearFantasmas(escena, T) {
     const nueva = (tramos, queda) => {
       let t = 0;
       for (const p of tramos) { p.desde = t; t += dura(p.v); }
-      cadenas.push({ tramos, fin: t, queda, color: COLORES[color++ % COLORES.length], vehiculo: null, suelto: false, choque: { x: 0, z: 0, hx: 1, hz: 2, ux: 1, uz: 0, y: 0, duro: 1, clase: 'auto', tipo: 'auto', roto: false } });
+      const caja = () => ({ x: 0, z: 0, hx: 1, hz: 2, ux: 1, uz: 0, y: 0, duro: 1, clase: 'auto', tipo: 'auto', roto: false });
+      cadenas.push({ tramos, fin: t, queda, color: COLORES[color++ % COLORES.length], vehiculo: null, suelto: false, choque: caja(), choque2: caja() });
     };
     for (let k = 0; k < n; k++) {
       if (!entregado[k]) continue;
@@ -77,6 +80,7 @@ export function crearFantasmas(escena, T) {
     let g = v.rs[b] - v.rs[k];
     g = Math.atan2(Math.sin(g), Math.cos(g));
     P.rumbo = v.rs[k] + g * u;
+    if (v.ts) { let h = v.ts[b] - v.ts[k]; h = Math.atan2(Math.sin(h), Math.cos(h)); P.remolque = v.ts[k] + h * u; } else P.remolque = null;
     P.tramo = p;
     return P;
   }
@@ -101,8 +105,17 @@ export function crearFantasmas(escena, T) {
       c.numero = v.k + 1;
       const o = c.choque;
       o.x = p.x; o.z = p.z; o.ux = Math.cos(p.rumbo); o.uz = Math.sin(p.rumbo); o.hx = TIPOS[tipo].ancho; o.hz = TIPOS[tipo].largo;
-      if (!c.suelto && Math.hypot(p.x - yo.pos[0], p.z - yo.pos[2]) > 9) c.suelto = true;
-      if (c.suelto) activos.push(o);
+      // el remolque del semi: su dibujo y su caja
+      let r = null;
+      if (f.remolque && p.remolque !== null) {
+        r = remolqueDe(TIPOS[tipo].remolque, configDeTipo(tipo).centro || 0, p.x, p.z, p.rumbo, p.remolque);
+        f.remolque.visible = true;
+        f.remolque.position.set(r.x, 0, r.z); f.remolque.rotation.set(0, -r.th, 0);
+        const o2 = c.choque2, R = TIPOS[tipo].remolque;
+        o2.x = r.x; o2.z = r.z; o2.ux = Math.cos(r.th); o2.uz = Math.sin(r.th); o2.hx = R.ancho; o2.hz = R.largo / 2;
+      } else if (f.remolque) f.remolque.visible = false;
+      if (!c.suelto && Math.hypot(p.x - yo.pos[0], p.z - yo.pos[2]) > 9 + (r ? 12 : 0)) c.suelto = true;
+      if (c.suelto) { activos.push(o); if (r) activos.push(c.choque2); }
     }
     T.ponerMoviles(otras.length ? activos.concat(otras) : activos);
     return activos.length;

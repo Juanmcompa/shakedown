@@ -24,6 +24,7 @@
   #pedido { display: flex; align-items: center; gap: 8px; font-size: 20px; }
   #pedido b { font-weight: 700; }
   #distancia { color: var(--apagado); font-size: 15px; white-space: nowrap; }
+  #culata { color: var(--oro); font-size: 15px; font-weight: 700; white-space: nowrap; }
   /* pantalla angosta (celular parado): el pedido arriba de todo y el resto en una fila abajo */
   @media (max-width: 560px) {
     #arriba { flex-wrap: wrap; }
@@ -61,6 +62,8 @@
   .numeros b { display: block; font-size: 26px; color: var(--texto); }
   button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; }
   #salir, #otraVez { background: var(--oro); color: #1d1a10; font-weight: 700; font-size: 22px; padding: 14px 28px; width: 100%; }
+  .secundario { margin-top: 10px; width: 100%; background: rgba(241,237,226,.14); color: var(--texto); font-weight: 700; font-size: 18px; padding: 12px 20px; }
+  .aviso { min-height: 1.2em; margin: 8px 0 0; color: var(--apagado); font-size: 14px; }
   #pueblonuevo { margin-top: 12px; background: transparent; color: var(--apagado); font-size: 15px; text-decoration: underline; }
   .teclas { margin-top: 14px; color: var(--apagado); font-size: 13px; }
   kbd { font-family: inherit; border: 1px solid #555; border-radius: 4px; padding: 0 5px; }
@@ -83,7 +86,7 @@
 <canvas id="lienzo"></canvas>
 
 <div id="arriba">
-  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span></div>
+  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span><span id="culata" hidden>⤵ de culata</span></div>
   <div class="caja" id="reloj">0:00</div>
   <div class="caja" id="cuenta" title="Entregas · récord">
     <span>📦</span><b id="entregas">0</b>
@@ -129,6 +132,8 @@
     </div>
     <p class="lema" id="finNuevo" hidden>🏆 ¡Nuevo récord!</p>
     <button id="otraVez">Jugar de nuevo</button>
+    <button id="finCompartir" class="secundario">📤 Compartir</button>
+    <p id="finCompartido" class="aviso"></p>
   </div>
 </div>
 

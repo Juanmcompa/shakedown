@@ -238,16 +238,17 @@ Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el 
 
 Un pueblo chico: dos avenidas que se cruzan, una diagonal, algunas calles sin salida, una plaza, un depósito central con andenes de carga y semáforos en las esquinas de las avenidas. Llevás paquetes entre el depósito y los negocios (dos minutos como mucho por viaje; si una entrega llega tarde, se termina la partida y ves cuántas hiciste), estacionás en la bahía de carga (o en el andén) y, al llegar, sale el siguiente. Cada viaje queda guardado en tu aparato y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**, con la cabina de otro color: el tráfico sos vos. Chocarlos no rompe nada, pero ellos no se corren.
 
-- **Según la carga, cambia el vehículo:** camioneta (con la carga tapada), furgón o camión (largo y lento). Todos llevan en el techo el número de la entrega que están haciendo: así se reconocen entre todos.
+- **Según la carga, cambia el vehículo:** camioneta (con la carga tapada), furgón, camión (largo y lento) o, desde la hora pico de la entrega 15, **semi**: un tractor con un remolque enganchado que lo sigue como uno de verdad (en las curvas se abre, marcha atrás se cruza y, si se lo deja, se pliega). El remolque choca contra todo. Todos llevan en el techo el número de la entrega que están haciendo: así se reconocen entre todos.
 - **Las versiones pasadas van encadenadas:** la de la entrega 3, al llegar, no se frena: sigue con tu entrega 4 (cambia el número del techo), después la 5, y así. En cada viaje hay una que arranca en cada entrega anterior y sigue tus pasos desde ahí, así que el pueblo se llena rápido. 
 - **Los viajes van en vueltas de 5:** depósito → negocio, de vuelta al depósito (por el mismo camino: te cruzás de frente con tu viaje anterior), depósito → otro negocio, de ahí a otro, y la **hora pico**: en camión, de vuelta al depósito por las calles que más usaste. Cada vuelta, los viajes son más largos.
+- **En el depósito se estaciona de culata:** con la cola (o la del remolque) contra el portón y la trompa hacia el playón. Los viajes al depósito tienen unos segundos de más para eso (el semi, más).
 - **El depósito tiene 8 portones** y cada llegada usa otro, en rueda: el camión que llega sale después por el mismo, y ese portón no se vuelve a usar hasta 8 llegadas más tarde. Así no se pisan en la puerta.
 - **La primera vez que te cruzás con una versión pasada**, todo se frena y aparece una explicación corta. La portada no lo cuenta: se descubre jugando.
-- Si una entrega se hace tarde (o te rendís con R), se pierde: aparecen tus entregas y el récord, y la partida siguiente arranca de cero, con el pueblo vacío.
+- Si una entrega se hace tarde (o te rendís con R), se pierde: aparecen tus entregas y el récord, y la partida siguiente arranca de cero, con el pueblo vacío. El resultado se comparte como en Shakedown (en el celular, el menú de compartir; en la compu, se copia): `Probá Reparto 📦 Hice 12 entregas`, una cajita por entrega y el link.
 - Los semáforos hacen lo mismo en cada viaje, segundo a segundo. Nadie obliga a respetarlos.
 - Gana el que hace más entregas. Si cerrás la página a mitad de partida, al volver seguís donde estabas; "Empezar de cero" la borra (el récord queda).
 
-Está todo en la carpeta `reparto/`: el pueblo y el orden de los viajes (`mapa.js`), los vehículos (`vehiculos.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). La física del auto, la cámara, los mandos y el sonido son los de Shakedown: si se mejora el manejo allá, mejora en los dos. Prueba: `node tools/pruebas/verreparto.mjs`.
+Está todo en la carpeta `reparto/`: el pueblo y el orden de los viajes (`mapa.js`), los vehículos (`vehiculos.js`), el remolque del semi (`remolque.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). La física del auto, la cámara, los mandos y el sonido son los de Shakedown: si se mejora el manejo allá, mejora en los dos. Prueba: `node tools/pruebas/verreparto.mjs`.
 
 ## Configuración
 

@@ -156,7 +156,7 @@ export function crearMapa() {
   // --- los destinos: los andenes del deposito y los negocios ---
   // Un anden: el vehiculo estaciona de trompa a la calle (rumbo pi: mirando hacia +z), con la cola contra la puerta.
   const destinos = ANDENES.map((x, i) => ({ n: i, anden: i, deposito: true, nombre: 'DEPOSITO', icono: '🏭', color: '#2f6fa8', tamano: 'camion',
-    x, z: D.zAnden + 4.4, rumbo: Math.PI, salida: { x, z: TAM - 2 } }));   // (se sale por la calle de abajo)
+    x, z: D.zAnden + 4.4, rumbo: Math.PI, salida: { x, z: TAM - 2 }, puerta: { x, z: D.zAnden + 0.6 } }));   // (se sale por la calle de abajo)
   // Los negocios: casas anchas, repartidas por todo el pueblo, con una bahia en la vereda para estacionar.
   const BAHIA = 4.5;   // medio largo de la bahia
   const candidatos = edificios.filter((e) => e.ancho >= 8 && e.alto < 4 && e.a > BAHIA && e.a < e.calle.L - BAHIA);
@@ -288,7 +288,8 @@ export function camino(red, desde, hasta) {
 //      con tu primera version: el juego lo explica ahi)
 //   3. del deposito a otro negocio
 //   4. de ese negocio a otro, elegido para que el viaje siguiente pise las calles mas usadas
-//   5. de vuelta al deposito, en camion: el punto culminante. Pasa por donde mas viajes pasaron.
+//   5. de vuelta al deposito, en camion (desde la entrega 15, en semi): el punto culminante. Pasa por donde mas viajes pasaron.
+// En el deposito siempre se estaciona de culata: con la cola contra el porton y la trompa hacia el playon.
 // Cada llegada al deposito usa un porton distinto, en rueda (1, 4, 7, 2, 5, 0, 3, 6, y de nuevo): el que llega sale despues
 // por el mismo porton, y ese porton no se vuelve a usar hasta 8 llegadas mas tarde. Asi los camiones no se pisan en la puerta.
 // Cada vuelta, los viajes son mas largos. Todo sale de una semilla fija: siempre los mismos viajes, en el mismo orden.
@@ -329,7 +330,7 @@ function crearViajes(destinos, red) {
       // el que deja el viaje siguiente (la hora pico) por las calles mas usadas, sin que quede demasiado lejos del deposito
       a = elegir(de, v, rr, (d) => pisadas(camino(red, d, anden).cuadras) - Math.max(0, largo(d, anden) - max * 1.2) * 0.5, recientes);
       tipo = a.tamano;
-    } else { a = anden; tipo = 'camion'; }
+    } else { a = anden; tipo = k >= 14 ? 'semi' : 'camion'; }   // (desde la hora pico de la entrega 15, en semi)
     const c = camino(red, de, a);
     lista.push({ de, a, tipo, camino: c });
   }
@@ -337,7 +338,8 @@ function crearViajes(destinos, red) {
   return function viaje(k) {
     while (lista.length <= k) decidir(lista.length);
     const { de, a, tipo, camino: c } = lista[k];
-    const lento = tipo === 'camion' ? 1.25 : 1;
-    return { k, de, a, tipo, carga: a.deposito ? '📦' : a.icono, camino: c, culmine: k % 5 === 4, limite: Math.min(120, Math.round((22 + c.largo / 7) * lento)) };
+    // el tiempo: segun el largo y el vehiculo, mas lo que lleva estacionar de culata en el deposito
+    const lento = { camion: 1.25, semi: 1.45 }[tipo] || 1, culata = a.deposito ? (tipo === 'semi' ? 30 : 10) : 0;
+    return { k, de, a, tipo, carga: a.deposito ? '📦' : a.icono, camino: c, culmine: k % 5 === 4, limite: Math.min(120, Math.round((22 + c.largo / 7) * lento + culata)) };
   };
 }
