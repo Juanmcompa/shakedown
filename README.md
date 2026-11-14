@@ -240,22 +240,22 @@ Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el 
 
 Un pueblo que crece. Llevás cosas de un lado a otro, cada viaje con su tiempo (dos minutos como mucho; el colectivo, dos y medio). Cada viaje queda guardado y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**, con la cabina de otro color y el número de su entrega en el techo: el tráfico sos vos. Chocarlos no rompe nada, pero no se corren. Si una entrega llega tarde (o te rendís con R), se termina la partida: aparecen tus entregas y el récord, y la próxima arranca de cero, con el pueblo chico.
 
-**Los niveles (en la misma partida).** Arriba siempre dice en cuál vas y cuánto falta: `🏭 Depósito 1 · 13/40`, `🏭 Depósito 2 · 7/20`, `🚌 Colectivos · 3/20`, `🚕 Taxis · 5`.
+**Los niveles (en la misma partida).** Arriba siempre dice en cuál vas y cuánto falta: `🏭 Depósito 1 · 13/30`, `🏭 Depósito 2 · 7/20`, `🚌 Colectivos · 3/20`, `🚕 Taxis · 5`.
 
 | Entregas | Qué se hace | Qué se abre |
 | --- | --- | --- |
-| 1 a 40 | Reparto desde el **depósito 1** | El pueblo de siempre |
-| 41 a 60 | Reparto desde el **depósito 2** (el 1 sigue con sus copias) | La zona 2, al este: calles nuevas, otra rotonda y 12 negocios más |
-| 61 a 80 | **Colectivo**: sale de la terminal, para en cada parada en orden (de 2 a 4) y vuelve | La zona 3, al sur: la terminal, paradas con refugio y la base de taxis |
-| 81 en adelante | **Taxi**: buscás al pasajero en un negocio y lo llevás a otro | — |
+| 1 a 30 | Reparto desde el **depósito 1** (el semi, solo en las dos últimas vueltas) | El pueblo de siempre |
+| 31 a 50 | Reparto desde el **depósito 2**, todo mezclado (el 1 sigue con sus copias) | La zona 2, al este: calles nuevas, otra rotonda y 12 negocios más |
+| 51 a 70 | **Colectivo**: sale de la terminal, para en cada parada en orden (de 2 a 4) y vuelve | La zona 3, al sur: la terminal, paradas con refugio y la base de taxis |
+| 71 en adelante | **Taxi**: buscás al pasajero en un negocio y lo llevás a otro | — |
 
-Las zonas cerradas se ven desde el principio, detrás de una valla de obra con un cartel en cada calle ("🚧 EN OBRA · 🔒 40 entregas"). Al llegar, la valla desaparece y sale un cartel grande.
+Las zonas cerradas se ven desde el principio, detrás de una valla de obra con un cartel en cada calle ("🚧 EN OBRA · 🔒 30 entregas"). Al llegar, la valla desaparece y sale un cartel grande.
 
 **El pueblo:** dos avenidas que se cruzan, una diagonal, cuatro rotondas (una de seis bocas), calles sin salida, una plaza, semáforos en las esquinas de las avenidas y negocios con bahía de carga en la vereda.
 
 **Los depósitos:** ocho portones con dársenas numeradas, ENTRADA a la derecha y SALIDA a la izquierda, circulación en un solo sentido. Siempre se estaciona **de culata** (si llegás de trompa, aparece "⤵ ¡De culata!"). Cada llegada usa otro portón, en rueda.
 
-**Los vehículos** cambian solo al salir del depósito: camioneta, furgón o camión según el negocio; la segunda salida de cada vuelta en camión y, desde la entrega 11, en **semi** (el remolque se abre en las curvas, marcha atrás se cruza, se desliza contra las paredes y tus copias lo atraviesan). Después, colectivo y taxi.
+**Los vehículos** cambian solo al salir del depósito: camioneta, furgón o camión según el negocio; la segunda salida de cada vuelta en camión o en **semi** (en el depósito 1, el semi solo en las dos últimas vueltas; en el 2, sorteado) (el remolque se abre en las curvas, marcha atrás se cruza, se desliza contra las paredes y tus copias lo atraviesan). Después, colectivo y taxi.
 
 **Las vueltas de reparto** (de 5 viajes): depósito → negocio, de vuelta al depósito (de frente con tu viaje anterior: la primera vez el juego se frena y lo explica), depósito → otro negocio, de ahí a otro, y la **hora pico** de vuelta al depósito por las calles más usadas. Cada vuelta los viajes son más largos.
 

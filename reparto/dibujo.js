@@ -3,7 +3,7 @@
 // color con el reloj del viaje; y el destino es una columna de luz con el icono del negocio.
 import * as THREE from '../vendor/three.module.js';
 import { tono } from '../src/pixel.js';
-import { TAM, XMAX, ZMAX, LIMITE, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITOS, ROTONDAS, colorSemaforo, aCalle } from './mapa.js';
+import { TAM, XMAX, ZMAX, LIMITE, ABRE, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITOS, ROTONDAS, colorSemaforo, aCalle } from './mapa.js';
 
 const rotondaEn = (n) => ROTONDAS.find((q) => Math.hypot(q.x - n.x, q.z - n.z) < 1);
 
@@ -390,7 +390,7 @@ function refugio(d) {
 }
 
 // un tramo de valla de obra: chapas con rayas rojas y blancas, y en cada calle que cruza un cartel "en obra" con lo que falta
-// para abrirla (zona 2: 40 entregas; zona 3: 60)
+// para abrirla (ver ABRE, en mapa.js)
 const chapaObra = (() => {
   const l = document.createElement('canvas');
   l.width = 16; l.height = 8;
@@ -412,7 +412,7 @@ function vallaDeObra(o) {
   const g = l.getContext('2d');
   g.fillStyle = '#e0b21e'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1e1f23'; g.fillRect(4, 4, 120, 56);
   g.fillStyle = '#e0b21e'; g.font = '700 20px "Atkinson Hyperlegible", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText('🚧 EN OBRA', 64, 22, 116); g.fillText('🔒 ' + (o.zona === 2 ? 40 : 60) + ' entregas', 64, 44, 116);
+  g.fillText('🚧 EN OBRA', 64, 22, 116); g.fillText('🔒 ' + ABRE[o.zona] + ' entregas', 64, 44, 116);
   const tx = new THREE.CanvasTexture(l); tx.colorSpace = THREE.SRGBColorSpace;
   const mc = new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide });
   // un cartel en cada calle que choca con la valla, en el medio de la calle (donde se ve al llegar)

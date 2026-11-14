@@ -6,8 +6,8 @@
 // El pueblo crece a medida que se juega (en la misma partida): tiene tres zonas, y las que todavia no se abrieron estan
 // detras de unas vallas de obra (se ven, pero no se puede pasar).
 //   zona 1: el pueblo de siempre (de 0 a TAM). Desde la primera entrega.
-//   zona 2: al este. Calles nuevas, otra rotonda y el deposito 2. Se abre con la entrega 40.
-//   zona 3: al sur. La terminal de colectivos (con paradas por todo el pueblo) y la base de radio taxi. Se abre con la 60.
+//   zona 2: al este. Calles nuevas, otra rotonda y el deposito 2. Se abre con la entrega 30.
+//   zona 3: al sur. La terminal de colectivos (con paradas por todo el pueblo) y la base de radio taxi. Se abre con la 50.
 //
 // No dibuja nada (eso es dibujo.js): hace de "terreno" para la fisica de Shakedown, que le pregunta solo cuatro cosas: la
 // altura del piso, su inclinacion, que piso es, y contra que puede chocar cerca de un punto (cosasCerca).
@@ -22,7 +22,7 @@ export const XMAX = 560, ZMAX = 480;   // el pueblo entero, con todas las zonas
 export const LIMITE = 341;         // donde van las vallas de obra: al este de x = LIMITE, la zona 2; al sur de z = LIMITE, la 3
 export const zonaDe = (x, z) => (z > LIMITE ? 3 : x > LIMITE ? 2 : 1);
 // las entregas con las que se abre cada zona (y cambia lo que se hace: ver los viajes, al final)
-export const ABRE = { 2: 40, 3: 60 }, TAXIS = 80;
+export const ABRE = { 2: 30, 3: 50 }, TAXIS = 70;
 export const zonasAbiertas = (k) => (k >= ABRE[3] ? 3 : k >= ABRE[2] ? 2 : 1);
 export const VEREDA = 3;           // ancho de la vereda
 export const BORDE = 44;           // del pueblo para afuera hay campo, y a esta distancia un paredon
@@ -386,16 +386,17 @@ export function caminoPor(red, lugares) {
 
 // --- los viajes ---
 // Todo sale de una semilla fija: siempre los mismos viajes, en el mismo orden. Hay cuatro etapas en la partida:
-//   entregas 1 a 40: el deposito 1, con el pueblo de siempre (zona 1)
-//   entregas 41 a 60: el deposito 2 (se abre la zona 2). El viaje 41 sale del deposito 1 y el 42 ya vuelve al 2.
-//   entregas 61 a 80: colectivo (se abre la zona 3). Cada viaje sale de la terminal, para en varias paradas en orden y
+//   entregas 1 a 30: el deposito 1, con el pueblo de siempre (zona 1). El semi, solo en las dos ultimas vueltas.
+//   entregas 31 a 50: el deposito 2 (se abre la zona 2), todo mezclado: la segunda salida de cada vuelta, en camion o en semi.
+//                     El viaje 31 sale del deposito 1 y el 32 ya vuelve al 2.
+//   entregas 51 a 70: colectivo (se abre la zona 3). Cada viaje sale de la terminal, para en varias paradas en orden y
 //                     vuelve a la terminal. Empieza con 2 paradas y cada 6 viajes, una mas (hasta 4).
-//   desde la 81: taxi. Se busca a alguien en un negocio y se lo lleva a otro.
+//   desde la 71: taxi. Se busca a alguien en un negocio y se lo lleva a otro.
 // En las etapas de deposito, los viajes van en vueltas de 5 (v = 0, 1, 2...):
 //   1. del deposito a un negocio (en el vehiculo que pida ese negocio: camioneta, furgon o camion)
 //   2. de vuelta al deposito: por el mismo camino, de frente con tu viaje anterior (asi, en el segundo viaje, te cruzas
 //      con tu primera version: el juego lo explica ahi)
-//   3. del deposito a otro negocio, en camion (desde la vuelta 3, la de las entregas 11 a 15, en semi)
+//   3. del deposito a otro negocio, en camion (o en semi: ver arriba)
 //   4. de ese negocio a otro, elegido para que el viaje siguiente pise las calles mas usadas
 //   5. de vuelta al deposito: el punto culminante. Pasa por donde mas viajes pasaron.
 // Desde que se sale del deposito hasta que se vuelve, el vehiculo es siempre el mismo (cambia solo en el deposito).
@@ -439,9 +440,14 @@ function crearViajes(destinos, red) {
     const [, max] = rango(v);
     let a, tipo;
     // El vehiculo se elige al salir del deposito y es el mismo hasta volver: la primera salida de la vuelta (viajes 1 y 2),
-    // el que pide el negocio; la segunda (viajes 3, 4 y 5, con la hora pico), camion, y desde la vuelta 3, semi.
+    // el que pide el negocio; la segunda (viajes 3, 4 y 5, con la hora pico), camion o semi (en el deposito 1, semi solo en las
+    // dos ultimas vueltas; en el 2, sorteado).
     if (i === 0) { a = elegir(de, v, rr, null, recientes, enZona); tipo = a.tamano; }
-    else if (i === 2) { a = elegir(de, v, rr, null, recientes, enZona); tipo = v >= 2 ? 'semi' : 'camion'; }
+    else if (i === 2) {
+      a = elegir(de, v, rr, null, recientes, enZona);
+      const ultimas = Math.floor(ABRE[2] / 5) - 2;   // (las dos ultimas vueltas del deposito 1)
+      tipo = dep === 0 ? (v >= ultimas ? 'semi' : 'camion') : rr() < 0.5 ? 'semi' : 'camion';
+    }
     else if (i === 1) { a = anden; tipo = lista[k - 1].tipo; }
     else if (i === 3) {
       // el que deja el viaje siguiente (la hora pico) por las calles mas usadas, sin que quede demasiado lejos del deposito

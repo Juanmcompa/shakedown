@@ -148,7 +148,7 @@ function revisarParada(dt) {
 }
 
 // --- el nivel: en que etapa vas y cuanto falta para la siguiente ---
-//   🏭 Depósito 1 · 13/40   🏭 Depósito 2 · 7/20   🚌 Colectivos · 3/20   🚕 Taxis · 5
+//   🏭 Depósito 1 · 13/30   🏭 Depósito 2 · 7/20   🚌 Colectivos · 3/20   🚕 Taxis · 5
 function nivel(e) {
   if (e < ABRE[2]) return '🏭 Depósito 1 · ' + e + '/' + ABRE[2];
   if (e < ABRE[3]) return '🏭 Depósito 2 · ' + (e - ABRE[2]) + '/' + (ABRE[3] - ABRE[2]);
