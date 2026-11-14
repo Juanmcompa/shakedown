@@ -1023,3 +1023,8 @@ export function crearEspectro(escena, T, C) {
     ocultar: () => { grupo.visible = false; },
   };
 }
+
+// Para Reparto (la otra pagina, en reparto/): el mismo auto pintado de otro color, para las versiones pasadas del que juega.
+// Se guarda cada pintura para que el mismo color no arme dos veces el mismo dibujo.
+const otras = new Map();
+export const pinturaOtra = (color) => otras.get(color) || otras.set(color, pintura(color, { numero: '92' })).get(color);

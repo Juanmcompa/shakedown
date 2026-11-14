@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es" class="cargando">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reparto</title>
+<meta name="description" content="Repartí cosas por el pueblo. Cada viaje queda: en el próximo, el tráfico sos vos.">
+<meta name="theme-color" content="#16181b">
+<link rel="icon" type="image/png" sizes="32x32" href="../marca/icono-32.png">
+<style>
+  @font-face { font-family: 'Pixelify Sans'; font-weight: 700; font-display: swap; size-adjust: 88%; src: url(../fuentes/pixelify-sans-latin-700-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Atkinson Hyperlegible'; font-weight: 400; font-display: swap; src: url(../fuentes/atkinson-hyperlegible-latin-400-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Atkinson Hyperlegible'; font-weight: 700; font-display: swap; src: url(../fuentes/atkinson-hyperlegible-latin-700-normal.woff2) format('woff2'); }
+  :root { --fondo: #16181b; --texto: #f1ede2; --apagado: #a9a49a; --oro: #ffd23a; --mal: #ff6b57; --bien: #6fdc8c; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--texto); font-family: 'Atkinson Hyperlegible', 'Segoe UI', sans-serif; overflow: hidden; }
+  body { -webkit-user-select: none; user-select: none; touch-action: none; }
+  #lienzo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .titulo { font-family: 'Pixelify Sans', sans-serif; font-weight: 700; letter-spacing: .02em; }
+
+  /* lo de arriba mientras se reparte */
+  #arriba { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
+  .caja { background: rgba(20, 22, 26, .78); border-radius: 10px; padding: 8px 12px; }
+  #pedido { display: flex; align-items: center; gap: 8px; font-size: 20px; }
+  #pedido b { font-weight: 700; }
+  #distancia { color: var(--apagado); font-size: 15px; white-space: nowrap; }
+  /* pantalla angosta (celular parado): el pedido arriba de todo y el resto en una fila abajo */
+  @media (max-width: 560px) {
+    #arriba { flex-wrap: wrap; }
+    #pedido { order: -1; width: 100%; font-size: 17px; }
+    #reloj { font-size: 28px; }
+    #arriba #cuenta { grid-template-columns: repeat(6, auto); }
+  }
+  #reloj { font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: 34px; min-width: 96px; text-align: center; }
+  #reloj.apuro { color: var(--mal); }
+  #cuenta { display: grid; grid-template-columns: auto auto; gap: 2px 8px; font-size: 16px; align-items: center; }
+  #cuenta span:nth-child(odd) { text-align: center; }
+  #cuenta b { font-size: 20px; }
+  #mapita { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 170px; height: 170px; border-radius: 10px; pointer-events: none; }
+  #grande { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: clamp(30px, 7vw, 60px); text-shadow: 0 3px 0 rgba(0,0,0,.5); white-space: nowrap; pointer-events: none; }
+  #grande.bien { color: var(--bien); } #grande.mal { color: var(--mal); }
+  #ayudita { position: fixed; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); color: var(--apagado); font-size: 13px; pointer-events: none; }
+  html:not(.jugando) #arriba, html:not(.jugando) #mapita, html:not(.jugando) #ayudita, html:not(.jugando) #mandos { display: none; }
+
+  /* la portada */
+  #portada { position: fixed; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(22,24,27,.35), rgba(22,24,27,.85)); padding: 16px; }
+  #portada .tarjeta { max-width: 460px; width: 100%; text-align: center; }
+  #portada h1 { font-size: clamp(48px, 13vw, 84px); margin: 0 0 4px; color: var(--oro); text-shadow: 0 4px 0 rgba(0,0,0,.45); }
+  #portada .lema { font-size: 18px; margin: 0 0 18px; }
+  .pasos { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 8px; text-align: left; }
+  .pasos li { display: flex; gap: 10px; align-items: center; background: rgba(20,22,26,.7); border-radius: 10px; padding: 8px 12px; font-size: 16px; }
+  .pasos li span:first-child { font-size: 24px; width: 32px; text-align: center; flex: none; }
+  .numeros { display: flex; justify-content: center; gap: 18px; margin: 0 0 18px; font-size: 15px; color: var(--apagado); }
+  .numeros b { display: block; font-size: 26px; color: var(--texto); }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; }
+  #salir { background: var(--oro); color: #1d1a10; font-weight: 700; font-size: 22px; padding: 14px 28px; width: 100%; }
+  #pueblonuevo { margin-top: 12px; background: transparent; color: var(--apagado); font-size: 15px; text-decoration: underline; }
+  .teclas { margin-top: 14px; color: var(--apagado); font-size: 13px; }
+  kbd { font-family: inherit; border: 1px solid #555; border-radius: 4px; padding: 0 5px; }
+
+  /* los mandos del celular */
+  #mandos { display: none; }
+  @media (pointer: coarse) {
+    #mandos { display: block; }
+    #ayudita { display: none; }
+    #mapita { width: 120px; height: 120px; bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 116px); }
+    .pedal { position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); width: 74px; height: 74px; border-radius: 50%; background: rgba(241,237,226,.18); color: var(--texto); font-size: 30px; touch-action: none; }
+    .pedal.apretado { background: rgba(255,210,58,.45); }
+    .izq { left: 16px; } .der { left: 104px; } .frena { right: 104px; } .acelera { right: 16px; }
+  }
+  #nocargo { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; background: var(--fondo); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="lienzo"></canvas>
+
+<div id="arriba">
+  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span></div>
+  <div class="caja" id="reloj">0:00</div>
+  <div class="caja" id="cuenta" title="Entregas · récord · tus viajes en la calle">
+    <span>📦</span><b id="entregas">0</b>
+    <span>🏆</span><b id="record">0</b>
+    <span>👻</span><b id="pasados">0</b>
+  </div>
+</div>
+<canvas id="mapita" width="340" height="340"></canvas>
+<div id="grande" hidden></div>
+<div id="ayudita"><kbd>WASD</kbd>/flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara · <kbd>R</kbd> rendirse · <kbd>Esc</kbd> salir</div>
+
+<div id="mandos">
+  <button class="pedal izq" data-tecla="ArrowLeft" aria-label="Doblar a la izquierda">◀</button>
+  <button class="pedal der" data-tecla="ArrowRight" aria-label="Doblar a la derecha">▶</button>
+  <button class="pedal frena" data-tecla="ArrowDown" aria-label="Frenar y marcha atrás">▼</button>
+  <button class="pedal acelera" data-tecla="ArrowUp" aria-label="Acelerar">▲</button>
+</div>
+
+<div id="portada">
+  <div class="tarjeta">
+    <h1 class="titulo">Reparto</h1>
+    <p class="lema">El tráfico del pueblo sos vos.</p>
+    <ul class="pasos">
+      <li><span>📦</span><span>Llevá cada pedido al negocio que toca. Al llegar, sale el próximo.</span></li>
+      <li><span>⏱️</span><span>Cada viaje tiene su tiempo: dos minutos como mucho.</span></li>
+      <li><span>👻</span><span>Todos tus viajes quedan. En el próximo, vuelven a la calle a la vez que vos.</span></li>
+      <li><span>🚦</span><span>Los semáforos cambian igual en cada viaje. Nadie te obliga a respetarlos…</span></li>
+    </ul>
+    <div class="numeros">
+      <div><b id="portadaEntregas">0</b>entregas</div>
+      <div><b id="portadaPasados">0</b>viajes en la calle</div>
+      <div><b id="portadaRecord">0</b>récord</div>
+    </div>
+    <button id="salir">Salir a repartir</button>
+    <button id="pueblonuevo" hidden>Pueblo nuevo (borrar mis viajes)</button>
+    <div class="teclas"><kbd>WASD</kbd> o flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara</div>
+  </div>
+</div>
+
+<div id="nocargo" hidden>Este navegador no puede mostrar gráficos 3D.</div>
+
+<script type="module" src="juego.js"></script>
+</body>
+</html>

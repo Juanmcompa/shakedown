@@ -232,6 +232,18 @@ Con una captura de esa pantalla alcanza para saber qué pasó. La letra dice qu�
 
 Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el celular abre el menú de compartir): el error entero, qué archivos no bajaron, el navegador y el aparato. No se manda solo a ningún lado: lo manda quien quiera, pegándolo en un chat.
 
+## Reparto (otro juego, con el mismo auto)
+
+**Jugar:** https://juanmcompa.github.io/shakedown/reparto/
+
+Un pueblo chico, con semáforos. Llevás un pedido de un negocio a otro (dos minutos como mucho) y, al llegar, sale el siguiente. Cada viaje queda guardado en tu aparato y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**: el tráfico sos vos. Al principio el pueblo está vacío; con cada entrega se llena. Chocar con un viaje viejo no te rompe nada, pero te frena (ellos no se corren: ya pasaron).
+
+- Si se hace tarde, el viaje fallido también queda en la calle, y se vuelve a intentar el mismo.
+- Los semáforos hacen lo mismo en cada viaje, segundo a segundo. Nadie obliga a respetarlos, pero si tu yo de antes cruzó en rojo, ahora te lo cruzás.
+- Gana el que hace más entregas. "Pueblo nuevo" borra los viajes (el récord queda).
+
+Está todo en la carpeta `reparto/`: el pueblo (`mapa.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). El auto, la cámara, los mandos y el sonido son los de Shakedown: si se mejora el manejo allá, mejora en los dos. Prueba: `node tools/pruebas/verreparto.mjs`.
+
 ## Configuración
 
 La tuerca de la portada abre la configuración. Lo que se elige queda guardado en el aparato.
