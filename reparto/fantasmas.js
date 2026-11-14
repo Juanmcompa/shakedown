@@ -2,53 +2,33 @@
 // todos a la vez, con el reloj del viaje. Son solidos (el auto choca contra ellos como contra una pared que se mueve, y
 // ellos no se corren: ya pasaron), pero no hacen otra cosa que frenarte.
 //
+// Son la misma camioneta, con la cabina de otro color (sin numeros ni nombres).
+//
 // Cuando un viaje viejo termina: si entrego, el auto queda unos segundos estacionado en la puerta y desaparece; si no
 // llego a tiempo, desaparece ahi nomas.
 import * as THREE from '../vendor/three.module.js';
-import { armarAuto, pinturaOtra } from '../src/autos.js';
-import { configDe } from '../src/partes.js';
+import { armarFurgon, MEDIO_ANCHO, MEDIO_LARGO } from './furgon.js';
 import { MUESTRA } from './memoria.js';
 
-const COLORES = ['#6f8fa3', '#b5503a', '#4f7a55', '#8a6f9a', '#2f6fa8', '#c9c2b0', '#7a2f2a', '#3f8a55', '#d8a48c', '#55585e', '#a9c3cc', '#8a5a44'];
+const COLORES = ['#6f8fa3', '#c8402f', '#4f7a55', '#8a6f9a', '#2f6fa8', '#e9e4d6', '#7a2f2a', '#3f8a55', '#d8a48c', '#3d3f45', '#a9c3cc', '#e07a2e'];
 const QUEDA = 3;          // segundos que queda estacionado despues de entregar
-const ANCHO = 0.88, LARGO = 1.95;   // medio ancho y medio largo del auto, para chocarlo
 
-export function crearFantasmas(escena, T) {
-  const C = configDe('vitarita');
-  const alto = C.resorteLargo + C.radio - C.masa * 9.81 / 4 / C.resorte - C.anclaje;   // a que altura va su centro, apoyado
-  const lista = [];   // uno por viaje guardado: { v, grupo, cartel, choque, suelto }
+export function crearFantasmas(escena, T, C) {
+  const lista = [];   // uno por viaje guardado: { v, grupo, choque, suelto }
   const ARRIBA = new THREE.Vector3(0, 1, 0);
+  let alto = 0;
 
-  function cartelDe(texto, fallido) {
-    const lienzo = document.createElement('canvas');
-    lienzo.width = 128; lienzo.height = 48;
-    const x = lienzo.getContext('2d');
-    x.font = '700 30px "Atkinson Hyperlegible", "Segoe UI", sans-serif';
-    const w = Math.min(124, x.measureText(texto).width + 20);
-    x.fillStyle = fallido ? 'rgba(90, 20, 15, .8)' : 'rgba(0, 0, 0, .7)';
-    x.fillRect(64 - w / 2, 4, w, 40);
-    x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillText(texto, 64, 25, 118);
-    const tex = new THREE.CanvasTexture(lienzo);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-    s.scale.set(3.2, 1.2, 1); s.position.y = 2.9; s.renderOrder = 5;
-    return s;
-  }
-
-  // suma un viaje guardado (n: su numero en la lista, para el color)
+  // suma un viaje guardado (su lugar en la lista elige el color)
   function sumar(v) {
-    const n = lista.length, { grupo } = armarAuto(C, pinturaOtra(COLORES[n % COLORES.length]));
-    grupo.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    const cartel = cartelDe(String(v.k + 1), !v.entrego);
-    grupo.add(cartel);
-    grupo.visible = false;
-    escena.add(grupo);
-    lista.push({ v, grupo, cartel, choque: { x: 0, z: 0, hx: ANCHO, hz: LARGO, ux: 1, uz: 0, y: 0, duro: 1, clase: 'auto', tipo: 'auto', roto: false }, suelto: false });
+    const f = armarFurgon(COLORES[lista.length % COLORES.length], C);
+    alto = f.alto;
+    f.grupo.visible = false;
+    escena.add(f.grupo);
+    lista.push({ v, grupo: f.grupo, choque: { x: 0, z: 0, hx: MEDIO_ANCHO, hz: MEDIO_LARGO, ux: 1, uz: 0, y: 0, duro: 1, clase: 'auto', tipo: 'auto', roto: false }, suelto: false });
   }
 
   function borrar() {
-    for (const f of lista) { escena.remove(f.grupo); f.cartel.material.map.dispose(); f.cartel.material.dispose(); }
+    for (const f of lista) escena.remove(f.grupo);
     lista.length = 0;
   }
 

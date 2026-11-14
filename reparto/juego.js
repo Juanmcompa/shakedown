@@ -7,13 +7,12 @@
 import * as THREE from '../vendor/three.module.js';
 import { JUEGO } from '../src/config.js';
 import { crearAuto } from '../src/vehicle.js';
-import { crearDibujo } from '../src/autos.js';
 import { crearCamara } from '../src/camera.js';
 import { crearTeclas } from '../src/input.js';
 import { crearSonido } from '../src/audio.js';
-import { configDe } from '../src/partes.js';
 import { ambiente } from '../src/material.js';
-import { crearMapa, TAM, PASO, MANZANAS, CALLE, BORDE, SEMAFOROS, colorSemaforo } from './mapa.js';
+import { crearMapa, TAM, CALLES, SEMAFOROS, colorSemaforo } from './mapa.js';
+import { configFurgon, crearDibujoFurgon } from './furgon.js';
 import { crearDibujoPueblo } from './dibujo.js';
 import { crearMemoria, crearGrabacion } from './memoria.js';
 import { crearFantasmas } from './fantasmas.js';
@@ -21,7 +20,7 @@ import { crearPiloto } from './piloto.js';
 
 const $ = (id) => document.getElementById(id);
 const QUIETO = { x: 0, y: 0, mano: true };
-const LLEGA = 3.8;        // metros del centro del destino para que cuente como llegado
+const LLEGA = 2.6;        // metros del centro del destino para que cuente como llegado
 const PARAR = 0.5;        // segundos que hay que quedarse ahi (casi parado) para entregar
 const reloj2 = (s) => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
@@ -37,12 +36,12 @@ render.outputColorSpace = THREE.SRGBColorSpace;
 const escena = new THREE.Scene();
 const mapa = crearMapa(), T = mapa.T;
 const pueblo = crearDibujoPueblo(escena, mapa, liviano);
-const C = configDe('vitarita');
-const c = crearAuto(T, C), dibujo = crearDibujo(escena, C);
+const C = configFurgon();
+const c = crearAuto(T, C), dibujo = crearDibujoFurgon(escena, C, '#f2b51c');
 const camara = crearCamara(T);
 const sonido = crearSonido();
 const memoria = crearMemoria();
-const fantasmas = crearFantasmas(escena, T);
+const fantasmas = crearFantasmas(escena, T, C);
 for (const v of memoria.viajes()) fantasmas.sumar(v);
 
 // --- el estado ---
@@ -100,7 +99,6 @@ function grande(txt, seg, clase = '') { const g = $('grande'); g.textContent = t
 function pintarCuenta() {
   $('entregas').textContent = memoria.entregas();
   $('record').textContent = memoria.record();
-  $('pasados').textContent = fantasmas.cuantos();
 }
 function pintarViaje() {
   $('carga').textContent = viaje.carga;
@@ -114,14 +112,13 @@ function portada(si) {
   document.documentElement.classList.toggle('jugando', !si);
   $('portadaRecord').textContent = memoria.record();
   $('portadaEntregas').textContent = memoria.entregas();
-  $('portadaPasados').textContent = fantasmas.cuantos();
   $('pueblonuevo').hidden = !fantasmas.cuantos();
   $('salir').textContent = memoria.entregas() || fantasmas.cuantos() ? 'Seguir repartiendo' : 'Salir a repartir';
 }
 function salir() { sonido.iniciar(); portada(false); empezar(false); }
 $('salir').addEventListener('click', salir);
 $('pueblonuevo').addEventListener('click', () => {
-  if (!confirm('¿Pueblo nuevo? Se borran todos tus viajes (el récord queda).')) return;
+  if (!confirm('¿Empezar de cero? Se borran tus entregas (el récord queda).')) return;
   memoria.borrar(); fantasmas.borrar(); portada(true);
 });
 
@@ -131,8 +128,8 @@ function pintarMapita() {
   const n = mapita.width, M = TAM + 24, esc = n / M, a = (v) => (v + 12) * esc;
   mg.clearRect(0, 0, n, n);
   mg.fillStyle = 'rgba(20,22,26,.72)'; mg.fillRect(0, 0, n, n);
-  mg.fillStyle = '#6a6c72';
-  for (let k = 0; k <= MANZANAS; k++) { mg.fillRect(a(k * PASO - CALLE), a(-CALLE), 2 * CALLE * esc, (TAM + 2 * CALLE) * esc); mg.fillRect(a(-CALLE), a(k * PASO - CALLE), (TAM + 2 * CALLE) * esc, 2 * CALLE * esc); }
+  mg.strokeStyle = '#6a6c72'; mg.lineCap = 'round';
+  for (const s of CALLES) { mg.lineWidth = Math.max(3, 2 * s.m * esc); mg.beginPath(); mg.moveTo(a(s.x1), a(s.z1)); mg.lineTo(a(s.x2), a(s.z2)); mg.stroke(); }
   for (const s of SEMAFOROS) { mg.fillStyle = { verde: '#3fdc6a', amarillo: '#ffc21e', rojo: '#ff3b2a' }[colorSemaforo(s, 'ns', reloj)]; mg.fillRect(a(s.x) - 2, a(s.z) - 2, 4, 4); }
   for (const f of fantasmas.enLaCalle()) { mg.fillStyle = f.entrego ? '#c9d4e0' : '#e08a7a'; mg.fillRect(a(f.x) - 2, a(f.z) - 2, 4, 4); }
   if (viaje) { mg.fillStyle = '#ffd23a'; mg.beginPath(); mg.arc(a(viaje.a.x), a(viaje.a.z), 5, 0, Math.PI * 2); mg.fill(); }
@@ -205,8 +202,9 @@ function dibujar(dt) {
     $('distancia').textContent = Math.round(Math.hypot(viaje.a.x - c.pos[0], viaje.a.z - c.pos[2])) + ' m';
   }
   pintarMapita();
-  render.render(escena, camara.cam);
+  render.render(escena, vistaFija || camara.cam);
 }
+let vistaFija = null;   // (solo las pruebas: una camara quieta para mirar el pueblo de arriba)
 
 // --- arranque ---
 c.poner(mapa.destinos[0].x, mapa.destinos[0].z, mapa.destinos[0].rumbo);
@@ -221,7 +219,7 @@ window.reparto = {
   estado: () => ({ fase, k: viaje && viaje.k, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1) }),
   salir,
   // maneja solo hasta el destino del viaje que toca
-  pilotear: (si = true) => { piloto = si && viaje ? crearPiloto({ x: c.pos[0], z: c.pos[2] }, viaje.a) : null; },
+  pilotear: (si = true) => { piloto = si && viaje ? crearPiloto(mapa.red, { x: c.pos[0], z: c.pos[2] }, viaje.a) : null; },
   // corre el juego "seg" segundos sin esperar (de a 1/30), con el piloto si esta prendido (y lo rearma en cada viaje nuevo)
   avanzar: (seg) => {
     let k = viaje && viaje.k, f = fase;
@@ -235,4 +233,10 @@ window.reparto = {
   },
   dibujar: () => dibujar(1 / 30),
   camara: (id) => camara.cambiar(id),
+  // mira el pueblo desde (x, alto, z) hacia el punto (hx, 0, hz); sin nada, vuelve la camara de siempre
+  vista: (x, alto, z, hx = x, hz = z) => {
+    if (x === undefined) { vistaFija = null; return; }
+    vistaFija = new THREE.PerspectiveCamera(45, lienzo.clientWidth / lienzo.clientHeight, 1, 3000);
+    vistaFija.position.set(x, alto, z); vistaFija.lookAt(hx, 0, hz);
+  },
 };

@@ -236,13 +236,13 @@ Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el 
 
 **Jugar:** https://juanmcompa.github.io/shakedown/reparto/
 
-Un pueblo chico, con semáforos. Llevás un pedido de un negocio a otro (dos minutos como mucho) y, al llegar, sale el siguiente. Cada viaje queda guardado en tu aparato y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**: el tráfico sos vos. Al principio el pueblo está vacío; con cada entrega se llena. Chocar con un viaje viejo no te rompe nada, pero te frena (ellos no se corren: ya pasaron).
+Un pueblo chico: dos avenidas que se cruzan, una diagonal, algunas calles sin salida, una plaza y semáforos en las esquinas de las avenidas. Manejás una camioneta de reparto: llevás un paquete de un negocio a otro (dos minutos como mucho), estacionás en la bahía de carga que tiene en la vereda y, al llegar, sale el siguiente. Cada viaje queda guardado en tu aparato y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**, en camionetas iguales con la cabina de otro color: el tráfico sos vos. El juego no lo explica: se descubre jugando. Al principio el pueblo está vacío; con cada entrega se llena. Chocar con un viaje viejo no te rompe nada, pero te frena (ellos no se corren: ya pasaron).
 
 - Si se hace tarde, el viaje fallido también queda en la calle, y se vuelve a intentar el mismo.
 - Los semáforos hacen lo mismo en cada viaje, segundo a segundo. Nadie obliga a respetarlos, pero si tu yo de antes cruzó en rojo, ahora te lo cruzás.
-- Gana el que hace más entregas. "Pueblo nuevo" borra los viajes (el récord queda).
+- Gana el que hace más entregas. "Empezar de cero" borra los viajes (el récord queda).
 
-Está todo en la carpeta `reparto/`: el pueblo (`mapa.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). El auto, la cámara, los mandos y el sonido son los de Shakedown: si se mejora el manejo allá, mejora en los dos. Prueba: `node tools/pruebas/verreparto.mjs`.
+Está todo en la carpeta `reparto/`: el pueblo (`mapa.js`: las calles son una lista con su ancho, y las casas se acomodan solas a lo largo de cada una), la camioneta (`furgon.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). La física del auto, la cámara, los mandos y el sonido son los de Shakedown: si se mejora el manejo allá, mejora en los dos. Prueba: `node tools/pruebas/verreparto.mjs`.
 
 ## Configuración
 

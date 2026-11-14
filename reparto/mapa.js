@@ -1,21 +1,26 @@
 // Reparto: el pueblo. Siempre el mismo (sale de una semilla fija), porque los viajes guardados tienen que volver a
-// pasar por las mismas calles. Una cuadricula de 6 x 6 manzanas con una plaza, casas alrededor de cada manzana, unos
-// negocios donde se entregan cosas y algunas esquinas con semaforo.
+// pasar por las mismas calles. Pocas calles, para que el lio llegue rapido: dos avenidas que se cruzan en el medio, una
+// diagonal que corta el pueblo, algunas calles que no siguen, una plaza, negocios con lugar para estacionar en la vereda
+// y semaforos en las esquinas de las avenidas.
 //
-// No dibuja nada (eso es dibujo.js): hace de "terreno" para la fisica del auto de Shakedown, que le pregunta solo cuatro
-// cosas: la altura del piso, su inclinacion, que piso es, y contra que puede chocar cerca de un punto (cosasCerca).
+// No dibuja nada (eso es dibujo.js): hace de "terreno" para la fisica de Shakedown, que le pregunta solo cuatro cosas: la
+// altura del piso, su inclinacion, que piso es, y contra que puede chocar cerca de un punto (cosasCerca).
 // Las versiones pasadas del que juega tambien se chocan: fantasmas.js las anota aca en cada cuadro (ver ponerMoviles).
 import { SUELOS } from '../src/config.js';
 import { azar } from '../src/noise.js';
 
-export const PASO = 62;            // de una calle a la siguiente (metros)
-export const MANZANAS = 6;         // por lado
-export const TAM = PASO * MANZANAS; // el pueblo va de 0 a TAM en x y en z (las calles de los bordes, sobre 0 y TAM)
-export const CALLE = 5;            // media calle: el asfalto va de -5 a +5 del eje
-export const VEREDA = 8;           // y la vereda hasta 8: ahi empiezan las casas
-export const BORDE = 46;           // del pueblo para afuera hay campo, y a esta distancia un paredon
-export const PLAZA = [2, 3];       // la manzana que es plaza (columna, fila)
-const CELDA = 8;
+export const TAM = 320;            // el pueblo va de 0 a TAM en x y en z
+export const VEREDA = 3;           // ancho de la vereda
+export const BORDE = 44;           // del pueblo para afuera hay campo, y a esta distancia un paredon
+const CALLE = 4.5, AVENIDA = 8, DIAGONAL = 5;
+// las calles: [x1, z1, x2, z2, media calle]. Las avenidas van primero (asi les tocan las casas primero).
+export const CALLES = [
+  [160, 0, 160, TAM, AVENIDA], [0, 160, TAM, 160, AVENIDA],
+  [0, 240, 240, 0, DIAGONAL],
+  [0, 0, 0, TAM, CALLE], [80, 80, 80, TAM, CALLE], [240, 0, 240, 240, CALLE], [TAM, 0, TAM, TAM, CALLE],
+  [0, 0, TAM, 0, CALLE], [0, 80, TAM, 80, CALLE], [0, 240, 160, 240, CALLE], [0, TAM, TAM, TAM, CALLE],
+].map(([x1, z1, x2, z2, m], i) => { const L = Math.hypot(x2 - x1, z2 - z1); return { i, x1, z1, x2, z2, m, L, ux: (x2 - x1) / L, uz: (z2 - z1) / L }; });
+export const PLAZA = { x0: 80, z0: 240, x1: 160, z1: TAM };   // la manzana que es plaza
 
 // los negocios: el nombre (en el cartel), un icono y el color del toldo
 export const NEGOCIOS = [
@@ -26,8 +31,8 @@ export const NEGOCIOS = [
 // lo que se lleva en cada viaje (solo para contarlo)
 export const CARGAS = ['📦', '🥚', '🍞', '🌵', '🎂', '🥛', '🔑', '📮', '🧀', '🍉', '📻', '💐'];
 
-// las esquinas con semaforo: [calle en x, calle en z] y su desfase en segundos (para que no cambien todos juntos)
-export const SEMAFOROS = [[1, 2, 0], [2, 4, 5], [3, 1, 11], [3, 3, 3], [4, 5, 8], [5, 2, 14]].map(([i, j, des]) => ({ i, j, x: i * PASO, z: j * PASO, des }));
+// los semaforos: en las esquinas de las avenidas (donde solo se cruzan calles derechas), con su desfase en segundos
+export const SEMAFOROS = [[160, 160, 0], [240, 160, 6], [160, 240, 11], [240, 80, 3], [80, 240, 14]].map(([x, z, des]) => ({ x, z, des }));
 export const CICLO = 18;   // segundos: 7 verde, 2 amarillo para un lado; 7 verde, 2 amarillo para el otro
 // el color de un semaforo en el segundo t del viaje, para los que van de norte a sur ('ns') o de este a oeste ('eo').
 // El reloj es el del viaje: en cada viaje los semaforos hacen lo mismo en el mismo segundo, igual que tus versiones pasadas.
@@ -37,11 +42,38 @@ export function colorSemaforo(s, eje, t) {
   return u >= 9 && u < 16 ? 'verde' : u >= 16 ? 'amarillo' : 'rojo';
 }
 
-// --- el pueblo, armado una sola vez ---
+// distancia de un punto a una calle (al eje) y en que parte del largo cae (t, de 0 a L)
+export function aCalle(s, x, z) {
+  const t = Math.max(0, Math.min(s.L, (x - s.x1) * s.ux + (z - s.z1) * s.uz));
+  return { d: Math.hypot(x - s.x1 - s.ux * t, z - s.z1 - s.uz * t), t };
+}
+
+// --- lo que hay en cada lugar, en un cuadriculado de 50 cm ---
+export const Z = { campo: 0, calle: 1, vereda: 2, plaza: 3, patio: 4, casa: 5, bahia: 6 };
+const RES = 0.5, X0 = -BORDE, NR = Math.round((TAM + 2 * BORDE) / RES);
+const CELDA = 8;
+
 export function crearMapa() {
   const r = azar(2026);
   const entre = (a, b) => a + r() * (b - a);
-  const edificios = [], cosas = [], celdas = new Map();
+
+  // --- el cuadriculado: calles, veredas, plaza, patios ---
+  const zona = new Uint8Array(NR * NR);
+  for (let j = 0; j < NR; j++) for (let i = 0; i < NR; i++) {
+    const x = X0 + (i + 0.5) * RES, z = X0 + (j + 0.5) * RES;
+    let z_ = x >= 0 && x <= TAM && z >= 0 && z <= TAM ? (x > PLAZA.x0 && x < PLAZA.x1 && z > PLAZA.z0 && z < PLAZA.z1 ? Z.plaza : Z.patio) : Z.campo;
+    for (const s of CALLES) {
+      const d = aCalle(s, x, z).d;
+      if (d <= s.m) { z_ = Z.calle; break; }
+      if (d <= s.m + VEREDA) z_ = Z.vereda;
+    }
+    zona[j * NR + i] = z_;
+  }
+  const celda = (x, z) => { const i = Math.floor((x - X0) / RES), j = Math.floor((z - X0) / RES); return i < 0 || j < 0 || i >= NR || j >= NR ? -1 : j * NR + i; };
+  const zonaEn = (x, z) => { const k = celda(x, z); return k < 0 ? Z.campo : zona[k]; };
+
+  // --- lo que se choca: en celdas de 8 m ---
+  const cosas = [], celdas = new Map();
   const clave = (i, j) => i * 4096 + j;
   // anota una cosa en todas las celdas que toca (con 3 m de mas: el auto pregunta por el centro de sus circulos de choque)
   function anotar(o, mapa = celdas) {
@@ -54,70 +86,77 @@ export function crearMapa() {
         l.push(o);
       }
   }
-  const caja = (x, z, hx, hz, clase = 'edificio') => { const o = { x, z, hx, hz, ux: 1, uz: 0, y: 0, duro: 1, clase, tipo: clase, roto: false }; cosas.push(o); anotar(o); return o; };
+  // una caja: centro, medio largo a lo largo de (ux, uz) y medio ancho de costado
+  const caja = (x, z, hx, hz, ux = 1, uz = 0, clase = 'edificio') => { const o = { x, z, hx, hz, ux, uz, y: 0, duro: 1, clase, tipo: clase, roto: false }; cosas.push(o); anotar(o); return o; };
   const circulo = (x, z, radio, clase) => { const o = { x, z, r: radio, y: 0, duro: 1, clase, tipo: clase, roto: false }; cosas.push(o); anotar(o); return o; };
+  // recorre los puntos de un rectangulo girado (cada 50 cm)
+  function cadaPunto(x, z, hx, hz, ux, uz, f) {
+    for (let a = -hx + 0.25; a < hx; a += RES) for (let b = -hz + 0.25; b < hz; b += RES) if (f(x + ux * a - uz * b, z + uz * a + ux * b) === false) return false;
+    return true;
+  }
 
-  // --- las casas: alrededor de cada manzana, de frente a la calle ---
-  // lado: hacia donde mira el frente (nx, nz). Los lados norte y sur van de punta a punta; los de este y oeste, entre medio.
-  for (let bi = 0; bi < MANZANAS; bi++) for (let bj = 0; bj < MANZANAS; bj++) {
-    if (bi === PLAZA[0] && bj === PLAZA[1]) continue;
-    const x0 = bi * PASO + VEREDA, x1 = (bi + 1) * PASO - VEREDA, z0 = bj * PASO + VEREDA, z1 = (bj + 1) * PASO - VEREDA;
-    const lados = [
-      { nx: 0, nz: -1, desde: x0, hasta: x1, frente: z0 },   // norte: mira a la calle de arriba
-      { nx: 0, nz: 1, desde: x0, hasta: x1, frente: z1 },    // sur
-      { nx: -1, nz: 0, desde: z0 + 13, hasta: z1 - 13, frente: x0 },   // oeste
-      { nx: 1, nz: 0, desde: z0 + 13, hasta: z1 - 13, frente: x1 },    // este
-    ];
-    for (const L of lados) {
-      let u = L.desde;
-      while (L.hasta - u > 4) {
-        let w = Math.min(L.hasta - u, entre(6, 12));
-        if (L.hasta - u - w < 5) w = L.hasta - u;   // (no deja pedacitos al final)
-        if (r() < 0.12 && w < 10) { u += w; continue; }   // un baldio
-        const fondo = entre(8, 12.5), alto = r() < 0.3 ? entre(5.5, 6.5) : entre(2.8, 3.6), medio = u + w / 2;
-        // centro de la casa y medias medidas en x y en z
-        const x = L.nz ? medio : L.frente - L.nx * fondo / 2, z = L.nz ? L.frente - L.nz * fondo / 2 : medio;
-        const hx = L.nz ? w / 2 : fondo / 2, hz = L.nz ? fondo / 2 : w / 2;
-        const e = { x, z, hx, hz, alto, ancho: w, nx: L.nx, nz: L.nz, frenteX: L.nz ? medio : L.frente, frenteZ: L.nz ? L.frente : medio, variante: Math.floor(r() * 64), negocio: -1 };
-        e.choque = caja(x, z, hx * 0.98, hz * 0.98);
+  // --- las casas: a lo largo de cada calle, de los dos lados, de frente a ella ---
+  const edificios = [];
+  for (const s of CALLES) for (const lado of [1, -1]) {
+    const nx = -s.uz * lado, nz = s.ux * lado;   // de la calle hacia las casas
+    let a = 0;
+    while (a < s.L - 5) {
+      if (r() < 0.1) { a += entre(5, 9); continue; }   // un baldio
+      let hecho = false;
+      for (const [w0, f0] of [[entre(7, 12), entre(9, 13)], [entre(6, 8), entre(7, 9)]]) {
+        const w = Math.min(w0, s.L - a), fondo = f0, desde = s.m + VEREDA;
+        const cx = s.x1 + s.ux * (a + w / 2) + nx * (desde + fondo / 2), cz = s.z1 + s.uz * (a + w / 2) + nz * (desde + fondo / 2);
+        const libre = cadaPunto(cx, cz, w / 2, fondo / 2, s.ux, s.uz, (x, z) => { const q = zonaEn(x, z); return q === Z.patio || q === Z.campo; });
+        if (!libre || w < 5) continue;
+        cadaPunto(cx, cz, w / 2, fondo / 2, s.ux, s.uz, (x, z) => { zona[celda(x, z)] = Z.casa; });
+        const alto = r() < 0.3 ? entre(5.5, 6.5) : entre(2.8, 3.6);
+        const e = { x: cx, z: cz, hx: w / 2, hz: fondo / 2, ux: s.ux, uz: s.uz, alto, ancho: w, fondo, nx: -nx, nz: -nz, calle: s, lado, a: a + w / 2,
+          frenteX: cx - nx * fondo / 2, frenteZ: cz - nz * fondo / 2, variante: Math.floor(r() * 64), negocio: -1 };
+        e.choque = caja(cx, cz, w / 2 * 0.98, fondo / 2 * 0.98, s.ux, s.uz);
         edificios.push(e);
-        u += w;
+        a += w + 0.3; hecho = true;
+        break;
       }
+      if (!hecho) a += 2;
     }
   }
 
-  // --- la plaza: arboles, un monumento en el medio y canteros ---
-  const px0 = PLAZA[0] * PASO + VEREDA, pz0 = PLAZA[1] * PASO + VEREDA, plazaLado = PASO - 2 * VEREDA;
-  const arboles = [];
-  for (let a = 0; a < 5; a++) for (let b = 0; b < 5; b++) {
-    if (a === 2 && b === 2) continue;
-    const x = px0 + 4 + a * (plazaLado - 8) / 4 + entre(-1.2, 1.2), z = pz0 + 4 + b * (plazaLado - 8) / 4 + entre(-1.2, 1.2);
-    arboles.push({ x, z, alto: entre(5, 8) });
-    circulo(x, z, 0.55, 'arbol');
+  // --- la plaza: arboles (lejos de los caminitos), un monumento en el medio ---
+  const arboles = [], pcx = (PLAZA.x0 + PLAZA.x1) / 2, pcz = (PLAZA.z0 + PLAZA.z1) / 2;
+  for (let x = PLAZA.x0 + 6; x < PLAZA.x1 - 4; x += 8) for (let z = PLAZA.z0 + 6; z < PLAZA.z1 - 4; z += 8) {
+    const ax = x + entre(-1.5, 1.5), az = z + entre(-1.5, 1.5);
+    if (Math.abs(ax - pcx) < 3.5 || Math.abs(az - pcz) < 3.5 || zonaEn(ax, az) !== Z.plaza) continue;
+    arboles.push({ x: ax, z: az, alto: entre(5, 8) });
+    circulo(ax, az, 0.55, 'arbol');
   }
-  const monumento = { x: px0 + plazaLado / 2, z: pz0 + plazaLado / 2 };
-  circulo(monumento.x, monumento.z, 2.4, 'monumento');
+  const monumento = { x: pcx, z: pcz };
+  circulo(pcx, pcz, 2.4, 'monumento');
 
   // --- el paredon de afuera ---
   const lejos = TAM / 2 + BORDE;
-  caja(TAM / 2, -BORDE, lejos, 1);
-  caja(TAM / 2, TAM + BORDE, lejos, 1);
-  caja(-BORDE, TAM / 2, 1, lejos);
-  caja(TAM + BORDE, TAM / 2, 1, lejos);
+  caja(TAM / 2, -BORDE, lejos, 1); caja(TAM / 2, TAM + BORDE, lejos, 1);
+  caja(-BORDE, TAM / 2, 1, lejos); caja(TAM + BORDE, TAM / 2, 1, lejos);
 
-  // --- los negocios: casas anchas, repartidas por todo el pueblo ---
-  const candidatos = edificios.filter((e) => e.ancho >= 8 && e.alto < 4);
+  // --- los negocios: casas anchas, repartidas por todo el pueblo, con una bahia en la vereda para estacionar ---
+  const BAHIA = 4.5;   // medio largo de la bahia
+  const candidatos = edificios.filter((e) => e.ancho >= 8 && e.alto < 4 && e.a > BAHIA && e.a < e.calle.L - BAHIA);
   for (let i = candidatos.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]]; }
   const destinos = [];
   for (const e of candidatos) {
-    if (destinos.length >= NEGOCIOS.length) break;
-    // el lugar de entrega: sobre la calle, pegado al cordon, frente a la puerta
-    const x = e.frenteX + e.nx * (VEREDA - 3.6), z = e.frenteZ + e.nz * (VEREDA - 3.6);
-    if (destinos.some((d) => Math.abs(d.x - x) + Math.abs(d.z - z) < 110)) continue;
+    if (destinos.length >= 10) break;
+    const s = e.calle, nx = -e.nx, nz = -e.nz;   // de la calle hacia la casa
+    const ex = s.x1 + s.ux * e.a, ez = s.z1 + s.uz * e.a;   // el punto del eje de la calle frente a la puerta
+    // la bahia: toda la vereda frente a la puerta, sin tocar otra calle (no en una esquina)
+    const bx = ex + nx * (s.m + VEREDA / 2), bz = ez + nz * (s.m + VEREDA / 2);
+    if (!cadaPunto(bx, bz, BAHIA, VEREDA / 2 - 0.05, s.ux, s.uz, (x, z) => zonaEn(x, z) === Z.vereda)) continue;
+    if (destinos.some((d) => Math.hypot(d.x - bx, d.z - bz) < 85)) continue;
+    cadaPunto(bx, bz, BAHIA, VEREDA / 2, s.ux, s.uz, (x, z) => { zona[celda(x, z)] = Z.bahia; });
     const n = destinos.length;
     e.negocio = n;
-    // estacionado ahi, con la puerta a la derecha: el rumbo del auto (0 = hacia -z, el norte) deja la casa a su derecha
-    destinos.push({ n, nombre: NEGOCIOS[n][0], icono: NEGOCIOS[n][1], color: NEGOCIOS[n][2], x, z, rumbo: Math.atan2(-e.nz, -e.nx), edificio: e });
+    e.alto = Math.max(e.alto, 4.4);   // (un negocio es mas alto: el cartel y el toldo van por arriba de la camioneta)
+    // estacionado en la bahia, a lo largo de la calle, con la puerta a la derecha (rumbo 0 = hacia -z; la derecha es (cos, sin))
+    destinos.push({ n, nombre: NEGOCIOS[n][0], icono: NEGOCIOS[n][1], color: NEGOCIOS[n][2], x: bx, z: bz, rumbo: Math.atan2(nz, nx), edificio: e,
+      bahia: { x: bx, z: bz, hx: BAHIA, hz: VEREDA / 2, ux: s.ux, uz: s.uz } });
   }
 
   // --- el orden de los viajes: siempre el mismo. El viaje k va del destino ruta(k) al destino ruta(k + 1) ---
@@ -125,7 +164,8 @@ export function crearMapa() {
   function destinoDe(k) {
     while (ruta.length <= k) {
       const de = destinos[ruta[ruta.length - 1]], rr = azar(7919 * ruta.length + 13);
-      const buenos = destinos.filter((d) => d !== de && Math.abs(d.x - de.x) + Math.abs(d.z - de.z) > 140 && Math.abs(d.x - de.x) + Math.abs(d.z - de.z) < 330);
+      const lejos = (d) => Math.hypot(d.x - de.x, d.z - de.z);
+      const buenos = destinos.filter((d) => d !== de && lejos(d) > 110 && lejos(d) < 290);
       const lista = buenos.length ? buenos : destinos.filter((d) => d !== de);
       ruta.push(lista[Math.floor(rr() * lista.length)].n);
     }
@@ -133,29 +173,18 @@ export function crearMapa() {
   }
   // el viaje k: de donde a donde, que se lleva y cuanto tiempo hay (hasta 2 minutos)
   function viaje(k) {
-    const de = destinoDe(k), a = destinoDe(k + 1), lejos = Math.abs(a.x - de.x) + Math.abs(a.z - de.z);
-    return { k, de, a, carga: CARGAS[k % CARGAS.length], limite: Math.min(120, Math.round(28 + lejos / 7.5)) };
+    const de = destinoDe(k), a = destinoDe(k + 1), lejos = Math.hypot(a.x - de.x, a.z - de.z) * 1.3;
+    return { k, de, a, carga: CARGAS[k % CARGAS.length], limite: Math.min(120, Math.round(25 + lejos / 7)) };
   }
 
   // --- el terreno, para la fisica: todo plano ---
-  const cerca = (v) => { const k = Math.round(v / PASO); return k >= 0 && k <= MANZANAS ? Math.abs(v - k * PASO) : 1e9; };
-  const adentro = (v, m) => v > -m && v < TAM + m;
-  // que hay en un punto: 'calle', 'vereda', 'plaza', 'patio' (el fondo de las manzanas) o 'campo'
-  function zona(x, z) {
-    const dx = cerca(x), dz = cerca(z);
-    if ((dx <= CALLE && adentro(z, CALLE)) || (dz <= CALLE && adentro(x, CALLE))) return 'calle';
-    if ((dx <= VEREDA && adentro(z, VEREDA)) || (dz <= VEREDA && adentro(x, VEREDA))) return 'vereda';
-    if (!adentro(x, 0) || !adentro(z, 0)) return 'campo';
-    if (Math.floor(x / PASO) === PLAZA[0] && Math.floor(z / PASO) === PLAZA[1]) return 'plaza';
-    return 'patio';
-  }
-  const PISOS = { calle: SUELOS.asfalto, vereda: SUELOS.vereda, plaza: SUELOS.pasto, patio: SUELOS.tierra, campo: SUELOS.pasto };
+  const PISOS = [SUELOS.pasto, SUELOS.asfalto, SUELOS.vereda, SUELOS.pasto, SUELOS.tierra, SUELOS.tierra, SUELOS.asfalto];
   let moviles = null;   // las celdas con las versiones pasadas de este cuadro (ver ponerMoviles)
   const T = {
     altura: () => 0,
     normal: (x, z, o) => { o[0] = 0; o[1] = 1; o[2] = 0; return o; },
     suelo: (x, z, o) => {
-      const s = PISOS[zona(x, z)];
+      const s = PISOS[zonaEn(x, z)];
       o.agarre = s.agarre; o.freno = s.freno; o.pasta = s.pasta; o.id = s.id; o.agua = 0;
       return o;
     },
@@ -172,7 +201,39 @@ export function crearMapa() {
       for (const [k, l] of m) { const fijos = celdas.get(k); if (fijos) l.push(...fijos); }
       moviles = m;
     },
-    zona,
+    zona: zonaEn,
   };
-  return { T, edificios, arboles, monumento, destinos, viaje, cosas };
+  return { T, edificios, arboles, monumento, destinos, viaje, cosas, red: crearRed() };
+}
+
+// --- la red de calles: las esquinas (donde se cruzan o terminan) y que esquinas une cada calle ---
+// La usan el dibujo (sendas peatonales, lineas de pare) y el piloto automatico de las pruebas.
+function crearRed() {
+  const nodos = [];
+  const nodo = (x, z) => {
+    let n = nodos.find((q) => Math.hypot(q.x - x, q.z - z) < 0.5);
+    if (!n) nodos.push((n = { id: nodos.length, x, z, calles: new Set(), vecinos: [] }));
+    return n;
+  };
+  for (const s of CALLES) { nodo(s.x1, s.z1).calles.add(s); nodo(s.x2, s.z2).calles.add(s); }
+  for (const a of CALLES) for (const b of CALLES) {
+    if (a.i >= b.i) continue;
+    const den = a.ux * b.uz - a.uz * b.ux;
+    if (Math.abs(den) < 1e-6) continue;
+    const t = ((b.x1 - a.x1) * b.uz - (b.z1 - a.z1) * b.ux) / den, u = ((b.x1 - a.x1) * a.uz - (b.z1 - a.z1) * a.ux) / den;
+    if (t < -0.01 || t > a.L + 0.01 || u < -0.01 || u > b.L + 0.01) continue;
+    const n = nodo(a.x1 + a.ux * t, a.z1 + a.uz * t);
+    n.calles.add(a); n.calles.add(b);
+  }
+  // cada calle une sus esquinas en orden
+  for (const s of CALLES) {
+    const en = nodos.filter((n) => aCalle(s, n.x, n.z).d < 0.5).sort((p, q) => aCalle(s, p.x, p.z).t - aCalle(s, q.x, q.z).t);
+    for (const n of en) n.calles.add(s);
+    for (let k = 1; k < en.length; k++) {
+      const largo = Math.hypot(en[k].x - en[k - 1].x, en[k].z - en[k - 1].z);
+      en[k - 1].vecinos.push({ n: en[k], largo, calle: s }); en[k].vecinos.push({ n: en[k - 1], largo, calle: s });
+    }
+  }
+  for (const n of nodos) n.calles = [...n.calles];
+  return { nodos };
 }

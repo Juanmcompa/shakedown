@@ -1,15 +1,16 @@
-// Reparto: dibuja el pueblo. El piso (calles, veredas, sendas, la plaza) es un solo dibujo de pocos pixeles (4 por metro,
-// como el resto de Shakedown); las casas son cajas con una fachada que se repite; los semaforos cambian de color con el
-// reloj del viaje; y el destino es una columna de luz con el icono del negocio.
+// Reparto: dibuja el pueblo. El piso (calles, veredas, sendas, bahias, la plaza) es un solo dibujo de pocos pixeles
+// (4 por metro, como el resto de Shakedown); las casas son cajas con una fachada que se repite; los semaforos cambian de
+// color con el reloj del viaje; y el destino es una columna de luz con el icono del negocio.
 import * as THREE from '../vendor/three.module.js';
 import { tono } from '../src/pixel.js';
-import { TAM, PASO, MANZANAS, CALLE, VEREDA, BORDE, PLAZA, SEMAFOROS, colorSemaforo } from './mapa.js';
+import { TAM, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, colorSemaforo, aCalle } from './mapa.js';
 
 const PX = 4;   // pixeles por metro en el piso
 const REVOQUES = ['#e6dfcd', '#d9b36a', '#d8a48c', '#a9c3cc', '#b4cdb4', '#c9bfa8', '#e2c9a0', '#bfae9a'];
 const ABERTURAS = ['#3f6a4a', '#6b4a36', '#35546e', '#8a3a2a', '#e9e4d6'];
 const TECHOS = ['#8f9499', '#8a5a44', '#7d8a84', '#b5523a', '#96402c', '#cfc8b8'];
 const LUZ = { verde: '#3fdc6a', amarillo: '#ffc21e', rojo: '#ff3b2a' };
+const ASFALTO = '#4c4d52', BALDOSA = '#b9b4a8';
 
 const textura = (lienzo, repetir) => {
   const t = new THREE.CanvasTexture(lienzo);
@@ -22,21 +23,51 @@ const textura = (lienzo, repetir) => {
 // un numero al azar fijo para cada punto (para salpicar el piso)
 const ruido = (i, j) => { const s = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return s - Math.floor(s); };
 
+// Para cada esquina y cada calle que sale de ella: hasta donde llega el cruce (de ahi para afuera va la senda peatonal).
+// Se avanza por la calle hasta que sus dos bordes quedan afuera del asfalto de las otras calles de esa esquina.
+function bocas(red) {
+  const lista = [];
+  for (const n of red.nodos) {
+    if (n.calles.length < 2) continue;
+    for (const v of n.vecinos) {
+      const s = v.calle, ux = (v.n.x - n.x) / v.largo, uz = (v.n.z - n.z) / v.largo, px = -uz, pz = ux;
+      let d = 0;
+      for (; d < 20; d += 0.25) {
+        let libre = true;
+        for (const o of n.calles) {
+          if (o === s) continue;
+          for (const k of [-1, 1]) if (aCalle(o, n.x + ux * d + px * s.m * k, n.z + uz * d + pz * s.m * k).d < o.m + 0.3) libre = false;
+        }
+        if (libre) break;
+      }
+      lista.push({ n, s, ux, uz, px, pz, d });
+    }
+  }
+  return lista;
+}
+
 // --- el piso ---
-function pintarPiso() {
+function pintarPiso(mapa) {
   const X0 = -BORDE - 8, lado = TAM + 2 * (BORDE + 8), n = Math.round(lado * PX);
   const lienzo = document.createElement('canvas');
   lienzo.width = lienzo.height = n;
   const g = lienzo.getContext('2d');
-  const R = (x, z, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round((x - X0) * PX), Math.round((z - X0) * PX), Math.round(w * PX), Math.round(h * PX)); };
-  // campo
+  g.setTransform(PX, 0, 0, PX, -X0 * PX, -X0 * PX);   // de aca en adelante se dibuja en metros del mundo
+  g.imageSmoothingEnabled = false;
+  const R = (x, z, w, h, col) => { g.fillStyle = col; g.fillRect(x, z, w, h); };
+  // un rectangulo girado: centro, medio largo a lo largo de (ux, uz), medio ancho de costado
+  const girado = (x, z, hx, hz, ux, uz, col) => { g.save(); g.translate(x, z); g.transform(ux, uz, -uz, ux, 0, 0); R(-hx, -hz, 2 * hx, 2 * hz, col); g.restore(); };
+  const linea = (s, ancho, col, corrido = 0, raya = null) => {
+    const px = -s.uz * corrido, pz = s.ux * corrido;
+    g.beginPath(); g.moveTo(s.x1 + px, s.z1 + pz); g.lineTo(s.x2 + px, s.z2 + pz);
+    g.lineWidth = ancho; g.strokeStyle = col; g.setLineDash(raya || []); g.lineCap = raya ? 'butt' : 'round'; g.stroke();
+  };
+  // campo, patios y plaza
   R(X0, X0, lado, lado, '#6f8f4a');
-  // los fondos de las manzanas (patios con pasto y tierra) y la plaza
-  for (let i = 0; i < MANZANAS; i++) for (let j = 0; j < MANZANAS; j++) {
-    const plaza = i === PLAZA[0] && j === PLAZA[1];
-    R(i * PASO, j * PASO, PASO, PASO, plaza ? '#5f8f3c' : '#7c8a52');
-  }
+  R(0, 0, TAM, TAM, '#7c8a52');
+  R(PLAZA.x0, PLAZA.z0, PLAZA.x1 - PLAZA.x0, PLAZA.z1 - PLAZA.z0, '#5f8f3c');
   // salpicado: matitas y tierra
+  g.setTransform(1, 0, 0, 1, 0, 0);
   const img = g.getImageData(0, 0, n, n), d = img.data;
   for (let k = 0; k < n * n; k++) {
     const v = ruido(k % n, Math.floor(k / n));
@@ -44,62 +75,50 @@ function pintarPiso() {
     else if (v < 0.04) { d[k * 4] = Math.min(255, d[k * 4] * 1.12); d[k * 4 + 1] = Math.min(255, d[k * 4 + 1] * 1.08); }
   }
   g.putImageData(img, 0, 0);
-  // los caminitos de la plaza: en cruz y en diagonal no (cruz y un cuadrado alrededor del monumento)
-  const px0 = PLAZA[0] * PASO, pz0 = PLAZA[1] * PASO, mitad = PASO / 2;
-  R(px0 + mitad - 1.2, pz0, 2.4, PASO, '#c9b48a'); R(px0, pz0 + mitad - 1.2, PASO, 2.4, '#c9b48a');
-  R(px0 + mitad - 5, pz0 + mitad - 5, 10, 10, '#c9b48a');
-  // veredas y calles (primero las veredas, despues el asfalto encima)
-  for (let k = 0; k <= MANZANAS; k++) {
-    const c = k * PASO;
-    R(c - VEREDA, -VEREDA, 2 * VEREDA, TAM + 2 * VEREDA, '#b9b4a8');
-    R(-VEREDA, c - VEREDA, TAM + 2 * VEREDA, 2 * VEREDA, '#b9b4a8');
+  g.setTransform(PX, 0, 0, PX, -X0 * PX, -X0 * PX);
+  // los caminitos de la plaza
+  const pcx = (PLAZA.x0 + PLAZA.x1) / 2, pcz = (PLAZA.z0 + PLAZA.z1) / 2;
+  R(pcx - 1.2, PLAZA.z0, 2.4, PLAZA.z1 - PLAZA.z0, '#c9b48a'); R(PLAZA.x0, pcz - 1.2, PLAZA.x1 - PLAZA.x0, 2.4, '#c9b48a');
+  R(pcx - 5, pcz - 5, 10, 10, '#c9b48a');
+  // veredas, cordon y asfalto (en ese orden: cada uno tapa al anterior)
+  for (const s of CALLES) linea(s, 2 * (s.m + VEREDA), BALDOSA);
+  for (const s of CALLES) for (let u = 1; u < s.L; u += 1) {   // las juntas de las baldosas, cada metro
+    for (const k of [-1, 1]) girado(s.x1 + s.ux * u - s.uz * k * (s.m + VEREDA / 2), s.z1 + s.uz * u + s.ux * k * (s.m + VEREDA / 2), 0.06, VEREDA / 2, s.ux, s.uz, 'rgba(0,0,0,.07)');
   }
-  // las baldosas de la vereda: una rayita cada metro
-  g.fillStyle = 'rgba(0,0,0,.07)';
-  for (let k = 0; k <= MANZANAS; k++) for (let u = -VEREDA; u < TAM + VEREDA; u += 1) {
-    const c = k * PASO;
-    g.fillRect(Math.round((c - VEREDA - X0) * PX), Math.round((u - X0) * PX), Math.round(2 * VEREDA * PX), 1);
-    g.fillRect(Math.round((u - X0) * PX), Math.round((c - VEREDA - X0) * PX), 1, Math.round(2 * VEREDA * PX));
-  }
-  // el cordon
-  for (let k = 0; k <= MANZANAS; k++) {
-    const c = k * PASO;
-    R(c - CALLE - 0.25, -CALLE, 2 * CALLE + 0.5, TAM + 2 * CALLE, '#8e8a80');
-    R(-CALLE, c - CALLE - 0.25, TAM + 2 * CALLE, 2 * CALLE + 0.5, '#8e8a80');
-  }
-  for (let k = 0; k <= MANZANAS; k++) {
-    const c = k * PASO;
-    R(c - CALLE, -CALLE, 2 * CALLE, TAM + 2 * CALLE, '#4c4d52');
-    R(-CALLE, c - CALLE, TAM + 2 * CALLE, 2 * CALLE, '#4c4d52');
-  }
+  for (const s of CALLES) linea(s, 2 * s.m + 0.5, '#8e8a80');
+  for (const s of CALLES) linea(s, 2 * s.m, ASFALTO);
   // manchas y parches del asfalto
-  for (let k = 0; k < 900; k++) {
-    const a = ruido(k, 1), b = ruido(k, 2), vertical = ruido(k, 3) < 0.5, linea = Math.floor(ruido(k, 4) * (MANZANAS + 1)) * PASO;
-    const u = -CALLE + a * (TAM + 2 * CALLE), w = (b - 0.5) * 2 * (CALLE - 0.6);
-    const col = ruido(k, 5) < 0.5 ? '#46474c' : '#55565b';
-    if (vertical) R(linea + w, u, 0.75, 0.5 + ruido(k, 6) * 1.5, col); else R(u, linea + w, 0.5 + ruido(k, 6) * 1.5, 0.75, col);
+  for (let k = 0; k < 700; k++) {
+    const s = CALLES[Math.floor(ruido(k, 4) * CALLES.length)], u = ruido(k, 1) * s.L, w = (ruido(k, 2) - 0.5) * 2 * (s.m - 0.6);
+    girado(s.x1 + s.ux * u - s.uz * w, s.z1 + s.uz * u + s.ux * w, 0.3 + ruido(k, 6) * 0.8, 0.35, s.ux, s.uz, ruido(k, 5) < 0.5 ? '#46474c' : '#55565b');
   }
-  // la linea del medio (cortada) y las sendas peatonales en cada esquina
-  for (let k = 0; k <= MANZANAS; k++) for (let m = 0; m < MANZANAS; m++) {
-    const c = k * PASO, desde = m * PASO + VEREDA + 2.5, hasta = (m + 1) * PASO - VEREDA - 2.5;
-    for (let u = desde; u < hasta - 1; u += 4) { R(c - 0.1, u, 0.2, 2, '#d8c27a'); R(u, c - 0.1, 2, 0.2, '#d8c27a'); }
+  // las lineas: en las calles, una cortada amarilla al medio; en las avenidas, doble amarilla y los carriles blancos
+  for (const s of CALLES) {
+    if (s.m >= 7) { linea(s, 0.18, '#d8c27a', 0.25); linea(s, 0.18, '#d8c27a', -0.25); linea(s, 0.18, '#e9e4d6', s.m / 2, [2, 3]); linea(s, 0.18, '#e9e4d6', -s.m / 2, [2, 3]); }
+    else linea(s, 0.2, '#d8c27a', 0, [2, 2]);
   }
-  for (let i = 0; i <= MANZANAS; i++) for (let j = 0; j <= MANZANAS; j++) {
-    const x = i * PASO, z = j * PASO;
-    for (let s = -CALLE + 0.4; s < CALLE - 0.4; s += 1) {
-      // las cuatro sendas: arriba, abajo, izquierda y derecha de la esquina
-      R(x + s, z - VEREDA, 0.55, 2.2, '#e9e4d6'); R(x + s, z + VEREDA - 2.2, 0.55, 2.2, '#e9e4d6');
-      R(x - VEREDA, z + s, 2.2, 0.55, '#e9e4d6'); R(x + VEREDA - 2.2, z + s, 2.2, 0.55, '#e9e4d6');
-    }
+  // los cruces, limpios (asfalto encima de las lineas), y las sendas peatonales de cada boca
+  const B = bocas(mapa.red);
+  for (const b of B) girado(b.n.x + b.ux * b.d / 2, b.n.z + b.uz * b.d / 2, b.d / 2 + 0.05, b.s.m, b.ux, b.uz, ASFALTO);
+  for (const b of B) {
+    if (b.d <= 0) continue;
+    for (let w = -b.s.m + 0.6; w < b.s.m - 0.4; w += 1) girado(b.n.x + b.ux * (b.d + 1.2) + b.px * w, b.n.z + b.uz * (b.d + 1.2) + b.pz * w, 1.1, 0.27, b.ux, b.uz, '#e9e4d6');
   }
-  // las lineas de pare en las esquinas con semaforo (en la mano de cada uno: el que viene, del lado derecho)
-  for (const S of SEMAFOROS) {
-    R(S.x, S.z + VEREDA + 0.2, CALLE, 0.4, '#f1ede2');            // el que sube (viene del sur, por la derecha: x > eje)
-    R(S.x - CALLE, S.z - VEREDA - 0.6, CALLE, 0.4, '#f1ede2');    // el que baja
-    R(S.x + VEREDA + 0.2, S.z - CALLE, 0.4, CALLE, '#f1ede2');    // el que va al oeste (viene del este, por z < eje)
-    R(S.x - VEREDA - 0.6, S.z, 0.4, CALLE, '#f1ede2');            // el que va al este
+  // las lineas de pare en las esquinas con semaforo: del lado derecho del que llega, antes de la senda
+  for (const S of SEMAFOROS) for (const b of B) {
+    if (Math.hypot(b.n.x - S.x, b.n.z - S.z) > 1) continue;
+    const derecha = -1;   // el que llega va hacia -u: su derecha es -p
+    girado(b.n.x + b.ux * (b.d + 2.8) + b.px * derecha * b.s.m / 2, b.n.z + b.uz * (b.d + 2.8) + b.pz * derecha * b.s.m / 2, 0.22, b.s.m / 2, b.ux, b.uz, '#f1ede2');
   }
-  return { lienzo, X0, lado };
+  // las bahias de los negocios: asfalto sobre la vereda, con el borde pintado y rayas amarillas de carga y descarga
+  for (const dd of mapa.destinos) {
+    const b = dd.bahia;
+    girado(b.x, b.z, b.hx + 0.25, b.hz, b.ux, b.uz, '#8e8a80');
+    girado(b.x, b.z, b.hx, b.hz, b.ux, b.uz, '#55565b');
+    for (const k of [-1, 1]) girado(b.x + b.ux * k * (b.hx - 0.1), b.z + b.uz * k * (b.hx - 0.1), 0.1, b.hz, b.ux, b.uz, '#f1ede2');
+    for (let u = -b.hx + 0.8; u < b.hx - 0.5; u += 1.2) girado(b.x + b.ux * u, b.z + b.uz * u, 0.18, b.hz * 0.6, b.ux, b.uz, '#d8b23a');
+  }
+  return { lienzo, X0, lado, bocas: B };
 }
 
 // --- una fachada: un piso de 4 m de ancho y 3 de alto con una ventana (o una puerta), que se repite ---
@@ -121,18 +140,16 @@ function fachada(v) {
   } else {          // puerta
     R(5, 3, 6, 8, tono(abertura, -0.1)); R(6, 4, 4, 3, abertura); R(9, 7, 1, 1, '#e0c070');
   }
-  // manchas de humedad
-  for (let k = 0; k < 6; k++) R(Math.floor(ruido(clave, k) * 16), Math.floor(ruido(k, clave) * 12), 1, 1, tono(pared, -0.08));
+  for (let k = 0; k < 6; k++) R(Math.floor(ruido(clave, k) * 16), Math.floor(ruido(k, clave) * 12), 1, 1, tono(pared, -0.08));   // humedad
   const m = new THREE.MeshLambertMaterial({ map: textura(l, true) });
   fachadas.set(clave, m);
   return m;
 }
 const techos = TECHOS.map((c) => new THREE.MeshLambertMaterial({ color: c }));
 
-// una caja con la fachada repetida cada 4 m de ancho y cada 3 m de alto
+// una casa: una caja girada como su calle, con la fachada repetida cada 4 m de ancho y cada 3 m de alto
 function casa(e) {
-  const geo = new THREE.BoxGeometry(e.hx * 2, e.alto, e.hz * 2);
-  const uv = geo.attributes.uv, W = e.hx * 2, D = e.hz * 2;
+  const W = e.hx * 2, D = e.hz * 2, geo = new THREE.BoxGeometry(W, e.alto, D), uv = geo.attributes.uv;
   for (let cara = 0; cara < 6; cara++) {
     if (cara === 2 || cara === 3) continue;
     const ancho = cara < 2 ? D : W;
@@ -141,11 +158,12 @@ function casa(e) {
   const f = fachada(e.variante), t = techos[e.variante % techos.length];
   const m = new THREE.Mesh(geo, [f, f, t, t, f, f]);
   m.position.set(e.x, e.alto / 2, e.z);
+  m.rotation.y = -Math.atan2(e.uz, e.ux);   // (el largo de la caja, su x, a lo largo de la calle)
   m.castShadow = m.receiveShadow = true;
   return m;
 }
 
-// el cartel de un negocio y su toldo, sobre la vereda
+// el cartel de un negocio y su toldo, sobre la bahia
 function cartel(e, d) {
   const grupo = new THREE.Group();
   const l = document.createElement('canvas');
@@ -155,20 +173,20 @@ function cartel(e, d) {
   g.fillStyle = d.color; g.fillRect(3, 3, 154, 26);
   g.fillStyle = '#f1ede2'; g.font = '700 20px "Atkinson Hyperlegible", "Segoe UI", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(d.nombre, 80, 17, 150);
-  const plano = new THREE.Mesh(new THREE.PlaneGeometry(5, 1), new THREE.MeshBasicMaterial({ map: textura(l) }));
-  // el frente de la casa mira a (nx, nz): el cartel va un poquito afuera, a 2,6 m de alto
-  plano.position.set(e.frenteX + e.nx * 0.06, 2.6, e.frenteZ + e.nz * 0.06);
+  const tex = textura(l);
+  const plano = new THREE.Mesh(new THREE.PlaneGeometry(5, 1), new THREE.MeshBasicMaterial({ map: tex }));
+  // el frente de la casa mira a (nx, nz): el cartel va un poquito afuera, a 3,6 m de alto (arriba de la camioneta estacionada)
+  plano.position.set(e.frenteX + e.nx * 0.06, 3.6, e.frenteZ + e.nz * 0.06);
   plano.rotation.y = Math.atan2(e.nx, e.nz);
   grupo.add(plano);
-  // el toldo
-  const toldo = new THREE.Mesh(new THREE.BoxGeometry(e.nz ? 5 : 1.6, 0.15, e.nz ? 1.6 : 5), new THREE.MeshLambertMaterial({ color: d.color }));
-  toldo.position.set(e.frenteX + e.nx * 0.8, 2.0, e.frenteZ + e.nz * 0.8);
+  const toldo = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 1.4), new THREE.MeshLambertMaterial({ color: d.color }));
+  toldo.position.set(e.frenteX + e.nx * 0.7, 2.9, e.frenteZ + e.nz * 0.7);
+  toldo.rotation.y = -Math.atan2(e.uz, e.ux);
   toldo.castShadow = true;
   grupo.add(toldo);
   // y en el techo, un cartel grande que se lee desde arriba (la camara mira de arriba)
-  const arriba = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.2), new THREE.MeshBasicMaterial({ map: plano.material.map }));
-  arriba.rotation.x = -Math.PI / 2;
-  arriba.rotation.z = e.nz ? (e.nz > 0 ? Math.PI : 0) : (e.nx > 0 ? -Math.PI / 2 : Math.PI / 2);
+  const arriba = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.2), new THREE.MeshBasicMaterial({ map: tex }));
+  arriba.rotation.set(-Math.PI / 2, 0, Math.atan2(-e.uz, e.ux), 'XYZ');
   arriba.position.set(e.x, e.alto + 0.05, e.z);
   grupo.add(arriba);
   return grupo;
@@ -192,8 +210,7 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
   // --- luz: una tarde de sol ---
   escena.background = new THREE.Color('#9fc4dc');
   escena.fog = new THREE.Fog('#9fc4dc', 220, 520);
-  const cielo = new THREE.HemisphereLight('#dbe9f5', '#7a6e58', 1.5);
-  escena.add(cielo);
+  escena.add(new THREE.HemisphereLight('#dbe9f5', '#7a6e58', 1.5));
   const sol = new THREE.DirectionalLight('#fff1d6', 2.2);
   sol.castShadow = true;
   sol.shadow.mapSize.set(liviano ? 1024 : 2048, liviano ? 1024 : 2048);
@@ -204,7 +221,7 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
   const haciaElSol = new THREE.Vector3(-0.5, 1, 0.35).normalize();
 
   // --- el piso ---
-  const p = pintarPiso();
+  const p = pintarPiso(mapa);
   const piso = new THREE.Mesh(new THREE.PlaneGeometry(p.lado, p.lado), new THREE.MeshLambertMaterial({ map: textura(p.lienzo) }));
   piso.rotation.x = -Math.PI / 2;
   piso.position.set(p.X0 + p.lado / 2, 0, p.X0 + p.lado / 2);
@@ -238,46 +255,45 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
     escena.add(m);
   }
 
-  // --- los semaforos: un poste en cada esquina, mirando al que viene por la derecha ---
+  // --- los semaforos: en cada boca de la esquina, un poste del lado derecho del que llega ---
   const poste = new THREE.MeshLambertMaterial({ color: '#2b2d31' });
   const luces = [];
   for (const s of SEMAFOROS) {
     const mat = { ns: new THREE.MeshBasicMaterial({ color: LUZ.verde }), eo: new THREE.MeshBasicMaterial({ color: LUZ.rojo }) };
     luces.push({ s, mat });
-    // [esquina x, esquina z, eje que mira]
-    for (const [sx, sz, eje] of [[1, 1, 'ns'], [-1, -1, 'ns'], [1, -1, 'eo'], [-1, 1, 'eo']]) {
-      const x = s.x + sx * (CALLE + 1.2), z = s.z + sz * (CALLE + 1.2);
+    for (const b of p.bocas) {
+      if (Math.hypot(b.n.x - s.x, b.n.z - s.z) > 1) continue;
+      const eje = Math.abs(b.uz) > Math.abs(b.ux) ? 'ns' : 'eo';
+      const x = b.n.x + b.ux * (b.d + 0.5) - b.px * (b.s.m + 1.2), z = b.n.z + b.uz * (b.d + 0.5) - b.pz * (b.s.m + 1.2);
       const palo = new THREE.Mesh(new THREE.BoxGeometry(0.18, 4.2, 0.18), poste);
       palo.position.set(x, 2.1, z); palo.castShadow = true;
       const cabeza = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.3, 0.55), poste);
       cabeza.position.set(x, 4.5, z);
-      // la luz: arriba de la cabeza (se ve desde la camara alta) y de frente
-      const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.7), mat[eje]);
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.7), mat[eje]);   // la luz: arriba (se ve desde la camara alta)
       lamp.position.set(x, 5.35, z);
       escena.add(palo, cabeza, lamp);
     }
   }
 
-  // --- el destino: una columna de luz, un anillo en el piso y el icono del negocio flotando ---
+  // --- el destino: una columna de luz, un rectangulo en la bahia y el icono del negocio flotando ---
   const destino = new THREE.Group();
-  const columna = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 7, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+  const columna = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 7, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
   columna.position.y = 3.5;
-  const anillo = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.8, 32), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: 0.9, depthWrite: false }));
-  anillo.rotation.x = -Math.PI / 2; anillo.position.y = 0.03;
+  const marco = new THREE.Mesh(new THREE.RingGeometry(2.4, 2.9, 32), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: 0.9, depthWrite: false }));
+  marco.rotation.x = -Math.PI / 2; marco.position.y = 0.03;
   const icono = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true }));
   icono.scale.set(3, 3, 1); icono.position.y = 9; icono.renderOrder = 6;
-  destino.add(columna, anillo, icono);
+  destino.add(columna, marco, icono);
   escena.add(destino);
   const iconos = new Map();
 
-  // --- la flecha sobre el auto, que apunta al destino ---
+  // --- la flecha sobre la camioneta, que apunta al destino ---
   const flecha = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2, 3), new THREE.MeshBasicMaterial({ color: '#ffd23a', depthTest: false, transparent: true, opacity: 0.95 }));
   flecha.renderOrder = 7;
   escena.add(flecha);
   const ARRIBA = new THREE.Vector3(0, 1, 0), HACIA = new THREE.Vector3();
 
   return {
-    // pone el destino del viaje
     destino: (d) => {
       destino.position.set(d.x, 0, d.z);
       if (!iconos.has(d.n)) iconos.set(d.n, iconoTextura(d.icono));
@@ -288,9 +304,9 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
       for (const { s, mat } of luces) { mat.ns.color.set(LUZ[colorSemaforo(s, 'ns', reloj)]); mat.eo.color.set(LUZ[colorSemaforo(s, 'eo', reloj)]); }
       columna.material.opacity = 0.16 + 0.1 * Math.sin(t * 4);
       icono.position.y = 9 + Math.sin(t * 2.5) * 0.4;
-      const dx = d.x - c.pos[0], dz = d.z - c.pos[2], lejos = Math.hypot(dx, dz);
+      const dx = d.x - c.pos[0], dz = d.z - c.pos[2], lejos = Math.hypot(dx, dz) || 1;
       flecha.visible = lejos > 9;
-      flecha.position.set(c.pos[0] + dx / lejos * 3.2, c.pos[1] + 3.4, c.pos[2] + dz / lejos * 3.2);
+      flecha.position.set(c.pos[0] + dx / lejos * 3.4, c.pos[1] + 4.2, c.pos[2] + dz / lejos * 3.4);
       HACIA.set(dx / lejos, 0, dz / lejos);
       flecha.quaternion.setFromUnitVectors(ARRIBA, HACIA);
       sol.target.position.set(c.pos[0], 0, c.pos[2]);

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Reparto</title>
-<meta name="description" content="Repartí cosas por el pueblo. Cada viaje queda: en el próximo, el tráfico sos vos.">
+<meta name="description" content="Repartí paquetes por el pueblo, a tiempo.">
 <meta name="theme-color" content="#16181b">
 <link rel="icon" type="image/png" sizes="32x32" href="../marca/icono-32.png">
 <style>
@@ -29,7 +29,7 @@
     #arriba { flex-wrap: wrap; }
     #pedido { order: -1; width: 100%; font-size: 17px; }
     #reloj { font-size: 28px; }
-    #arriba #cuenta { grid-template-columns: repeat(6, auto); }
+    #arriba #cuenta { grid-template-columns: repeat(4, auto); }
   }
   #reloj { font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: 34px; min-width: 96px; text-align: center; }
   #reloj.apuro { color: var(--mal); }
@@ -78,10 +78,9 @@
 <div id="arriba">
   <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span></div>
   <div class="caja" id="reloj">0:00</div>
-  <div class="caja" id="cuenta" title="Entregas · récord · tus viajes en la calle">
+  <div class="caja" id="cuenta" title="Entregas · récord">
     <span>📦</span><b id="entregas">0</b>
     <span>🏆</span><b id="record">0</b>
-    <span>👻</span><b id="pasados">0</b>
   </div>
 </div>
 <canvas id="mapita" width="340" height="340"></canvas>
@@ -98,20 +97,17 @@
 <div id="portada">
   <div class="tarjeta">
     <h1 class="titulo">Reparto</h1>
-    <p class="lema">El tráfico del pueblo sos vos.</p>
+    <p class="lema">Llevá cada paquete a tiempo.</p>
     <ul class="pasos">
-      <li><span>📦</span><span>Llevá cada pedido al negocio que toca. Al llegar, sale el próximo.</span></li>
-      <li><span>⏱️</span><span>Cada viaje tiene su tiempo: dos minutos como mucho.</span></li>
-      <li><span>👻</span><span>Todos tus viajes quedan. En el próximo, vuelven a la calle a la vez que vos.</span></li>
-      <li><span>🚦</span><span>Los semáforos cambian igual en cada viaje. Nadie te obliga a respetarlos…</span></li>
+      <li><span>📦</span><span>Llevá el paquete al negocio que toca y estacioná en su lugar. Al llegar, sale el próximo.</span></li>
+      <li><span>⏱️</span><span>Tenés un tiempo para cada entrega: dos minutos como mucho.</span></li>
     </ul>
     <div class="numeros">
       <div><b id="portadaEntregas">0</b>entregas</div>
-      <div><b id="portadaPasados">0</b>viajes en la calle</div>
       <div><b id="portadaRecord">0</b>récord</div>
     </div>
     <button id="salir">Salir a repartir</button>
-    <button id="pueblonuevo" hidden>Pueblo nuevo (borrar mis viajes)</button>
+    <button id="pueblonuevo" hidden>Empezar de cero</button>
     <div class="teclas"><kbd>WASD</kbd> o flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara</div>
   </div>
 </div>
