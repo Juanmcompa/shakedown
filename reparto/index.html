@@ -49,17 +49,18 @@
   html:not(.jugando) #arriba, html:not(.jugando) #mapita, html:not(.jugando) #ayudita, html:not(.jugando) #mandos { display: none; }
 
   /* la portada */
-  #portada { position: fixed; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(22,24,27,.35), rgba(22,24,27,.85)); padding: 16px; }
-  #portada .tarjeta { max-width: 460px; width: 100%; text-align: center; }
-  #portada h1 { font-size: clamp(48px, 13vw, 84px); margin: 0 0 4px; color: var(--oro); text-shadow: 0 4px 0 rgba(0,0,0,.45); }
-  #portada .lema { font-size: 18px; margin: 0 0 18px; }
+  #portada, #fin { position: fixed; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(22,24,27,.35), rgba(22,24,27,.85)); padding: 16px; }
+  #portada .tarjeta, #fin .tarjeta { max-width: 460px; width: 100%; text-align: center; }
+  #portada h1, #fin h1 { font-size: clamp(48px, 13vw, 84px); margin: 0 0 4px; color: var(--oro); text-shadow: 0 4px 0 rgba(0,0,0,.45); }
+  #fin h1 { font-size: clamp(34px, 9vw, 56px); }
+  #portada .lema, #fin .lema { font-size: 18px; margin: 0 0 18px; }
   .pasos { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 8px; text-align: left; }
   .pasos li { display: flex; gap: 10px; align-items: center; background: rgba(20,22,26,.7); border-radius: 10px; padding: 8px 12px; font-size: 16px; }
   .pasos li span:first-child { font-size: 24px; width: 32px; text-align: center; flex: none; }
   .numeros { display: flex; justify-content: center; gap: 18px; margin: 0 0 18px; font-size: 15px; color: var(--apagado); }
   .numeros b { display: block; font-size: 26px; color: var(--texto); }
   button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; }
-  #salir { background: var(--oro); color: #1d1a10; font-weight: 700; font-size: 22px; padding: 14px 28px; width: 100%; }
+  #salir, #otraVez { background: var(--oro); color: #1d1a10; font-weight: 700; font-size: 22px; padding: 14px 28px; width: 100%; }
   #pueblonuevo { margin-top: 12px; background: transparent; color: var(--apagado); font-size: 15px; text-decoration: underline; }
   .teclas { margin-top: 14px; color: var(--apagado); font-size: 13px; }
   kbd { font-family: inherit; border: 1px solid #555; border-radius: 4px; padding: 0 5px; }
@@ -106,7 +107,7 @@
     <p class="lema">Llevá cada paquete a tiempo.</p>
     <ul class="pasos">
       <li><span>📦</span><span>Llevá el paquete al negocio que toca y estacioná en su lugar. Al llegar, sale el próximo.</span></li>
-      <li><span>⏱️</span><span>Tenés un tiempo para cada entrega: dos minutos como mucho.</span></li>
+      <li><span>⏱️</span><span>Tenés un tiempo para cada entrega: dos minutos como mucho. Si llegás tarde, se termina.</span></li>
     </ul>
     <div class="numeros">
       <div><b id="portadaEntregas">0</b>entregas</div>
@@ -115,6 +116,19 @@
     <button id="salir">Salir a repartir</button>
     <button id="pueblonuevo" hidden>Empezar de cero</button>
     <div class="teclas"><kbd>WASD</kbd> o flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara</div>
+  </div>
+</div>
+
+<div id="fin" hidden>
+  <div class="tarjeta">
+    <h1 class="titulo" id="finTitulo">⏰ Se hizo tarde</h1>
+    <p class="lema">Se terminó el reparto.</p>
+    <div class="numeros">
+      <div><b id="finEntregas">0</b>entregas</div>
+      <div><b id="finRecord">0</b>récord</div>
+    </div>
+    <p class="lema" id="finNuevo" hidden>🏆 ¡Nuevo récord!</p>
+    <button id="otraVez">Jugar de nuevo</button>
   </div>
 </div>
 

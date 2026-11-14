@@ -1,6 +1,6 @@
 // Reparto: el juego. Viajes cortos entre el deposito y los negocios: al llegar, sale el siguiente. Cada viaje queda guardado
 // y, en el siguiente, todos los viajes anteriores vuelven a correr a la vez desde su largada: el trafico del pueblo sos vos.
-// Si se hace tarde, el viaje fallido tambien queda y se vuelve a intentar el mismo.
+// Si una entrega se hace tarde, se pierde: se ve cuantas entregas se hicieron y la proxima partida empieza de cero.
 // La primera vez que te cruzas con una version pasada, el juego se frena y lo explica.
 //
 // La fisica del auto, la camara, los mandos y el sonido son los de Shakedown (src/). Lo propio esta en esta carpeta: el
@@ -62,6 +62,7 @@ ponerVehiculo('furgon');
 
 // --- el estado ---
 // fase: 'portada', 'cuenta' (antes de salir), 'viaje', 'explica' (frenado: la explicacion de la primera version pasada),
+// 'fin' (se perdio: el resultado),
 // 'entrega' (llego: un instante de festejo) o 'tarde' (no llego)
 let fase = 'portada', viaje = null, reloj = 0, cuenta = 0, pausa = 0, parado = 0, resto = 0, tiempo = 0, grabacion = null, motivo = '';
 let piloto = null;   // (solo las pruebas: maneja solo)
@@ -70,11 +71,12 @@ const ent = { x: 0, y: 0, mano: false };
 const teclas = crearTeclas((tecla) => {
   sonido.iniciar();
   if (fase === 'explica') { if (tecla === 'Enter' || tecla === 'Space') seguir(); return; }
+  if (fase === 'fin') { if (tecla === 'Enter' || tecla === 'Space') otraVez(); else if (tecla === 'Escape') { $('fin').hidden = true; portada(true); } return; }
   if (tecla === 'KeyC') camara.cambiar();
   else if (tecla === 'KeyM') { sonido.alternar(); }
   else if (tecla === 'KeyR' && fase === 'viaje') tarde('rendido');
   else if ((tecla === 'Enter' || tecla === 'Space') && fase === 'portada') salir();
-  else if (tecla === 'Escape' && fase !== 'portada') portada(true);
+  else if (tecla === 'Escape' && fase !== 'portada' && fase !== 'tarde') portada(true);
 });
 teclas.ajustar({ flechas: true });   // en el celular: flechas en pantalla (sin inclinar el aparato)
 camara.cambiar('aerea');
@@ -107,13 +109,27 @@ function entregar() {
   grande('¡Entregado! ' + viaje.carga, 1.5, 'bien');
   pintarCuenta();
 }
+// No llego a tiempo (o se rindio): se pierde la partida. Un instante con el cartel y despues el resultado. Los viajes
+// se borran: la proxima partida arranca con el pueblo vacio (el record queda).
+let recordAntes = memoria.record();
 function tarde(m) {
-  memoria.sumar(grabacion.cerrar(viaje.k, false, tipo));
-  fantasmas.sumar(memoria.viajes()[memoria.viajes().length - 1]);
-  fase = 'tarde'; pausa = 2.2; motivo = m;
-  grande(m === 'rendido' ? '🏳️ Otra vez' : '⏰ Se hizo tarde', 2, 'mal');
+  fase = 'tarde'; pausa = 1.8; motivo = m;
+  grande(m === 'rendido' ? '🏳️ Te rendiste' : '⏰ Se hizo tarde', 1.8, 'mal');
+}
+function mostrarFin() {
+  const hechas = memoria.entregas(), record = memoria.record();
+  fase = 'fin';
+  $('finTitulo').textContent = motivo === 'rendido' ? '🏳️ Te rendiste' : '⏰ Se hizo tarde';
+  $('finEntregas').textContent = hechas;
+  $('finRecord').textContent = record;
+  $('finNuevo').hidden = !(hechas > 0 && hechas > recordAntes);
+  recordAntes = record;
+  memoria.borrar(); fantasmas.borrar(); fantasmas.preparar(0);
+  $('fin').hidden = false;
   pintarCuenta();
 }
+function otraVez() { $('fin').hidden = true; salir(); }
+$('otraVez').addEventListener('click', otraVez);
 
 // --- la explicacion: la primera vez que una version pasada se te cruza, todo se frena ---
 let marcado = null;
@@ -196,8 +212,8 @@ function logica(dt) {
     if (piloto) piloto(c, ent, dt); else teclas.leer(ent);
     manda = ent;
   } else if (fase === 'entrega' || fase === 'tarde') {
-    if ((pausa -= dt) <= 0) empezar(fase === 'entrega');
-  }
+    if ((pausa -= dt) <= 0) { if (fase === 'entrega') empezar(true); else mostrarFin(); }
+  } else if (fase === 'fin') return;
   // las versiones pasadas se mueven con el reloj del viaje (en la cuenta y en las pausas, quietas)
   if (fase === 'viaje') fantasmas.mover(reloj, c);
   resto += dt;
@@ -268,7 +284,7 @@ window.reparto = {
   mapa, auto: () => c, memoria, fantasmas,
   viaje: (k) => mapa.viaje(k),
   estado: () => ({ fase, k: viaje && viaje.k, tipo, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
-  salir, seguir,
+  salir, seguir, otraVez,
   // maneja solo hasta el destino del viaje que toca (si esta en la largada, sale por donde se sale: el playon del deposito)
   pilotear: (si = true) => {
     if (!si || !viaje) { piloto = null; return; }
