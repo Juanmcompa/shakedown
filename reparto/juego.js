@@ -91,7 +91,6 @@ camara.cambiar('aerea');
 function empezar(enElLugar) {
   viaje = mapa.viaje(forzado !== null ? forzado : memoria.entregas());
   ponerVehiculo(viaje.tipo);
-  dibujo.numero(viaje.k + 1);
   // (en el deposito siempre se sale del porton, de trompa al playon)
   if (!enElLugar || viaje.de.deposito) { ubicar(viaje.de.x, viaje.de.z, viaje.de.rumbo); if (!enElLugar) camara.saltar(); }
   else ubicar(c.pos[0], c.pos[2], Math.atan2(c.adelante[0], -c.adelante[2]));

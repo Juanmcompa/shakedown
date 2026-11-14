@@ -5,7 +5,8 @@
 //   semi:      un tractor con un remolque enganchado (ver remolque.js): solo para los viajes largos y dificiles
 // Por dentro manejan como la Vitarita de Shakedown (la misma fisica), agrandada a cada tamaño. Por fuera son cajas con
 // dibujos de pocos pixeles (4 por metro), como el resto del mundo. Las versiones pasadas son el mismo vehiculo con la
-// cabina de otro color. Todos llevan en el techo el numero de la entrega que estan haciendo (asi se reconocen entre todos).
+// cabina de otro color, y en el techo de la cabina el numero de la entrega que estan haciendo (asi se reconocen entre
+// todos). El del que juega no lleva numero.
 import * as THREE from '../vendor/three.module.js';
 import { configDe } from '../src/partes.js';
 import { tono } from '../src/pixel.js';
@@ -108,29 +109,26 @@ const tabla = new THREE.MeshLambertMaterial({ color: '#7a6248' }), lona = mat(li
 const llanta = new THREE.MeshLambertMaterial({ color: '#202124' }), aro = new THREE.MeshLambertMaterial({ color: '#b9bec4' });
 const rojo = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.25, 0.15) }), apagada = new THREE.MeshLambertMaterial({ color: '#7a2a22' });
 
-// el numero de una entrega, para el techo: oscuro con letras claras (o amarillo, el del que juega)
+// el numero de una entrega, para el techo de la cabina: blanco, con borde oscuro (sin fondo)
 const numeros = new Map();
-function materialNumero(n, propio) {
-  const clave = n + (propio ? 'p' : '');
-  if (numeros.has(clave)) return numeros.get(clave);
+function materialNumero(n) {
+  if (numeros.has(n)) return numeros.get(n);
   const l = document.createElement('canvas');
   l.width = l.height = 64;
   const g = l.getContext('2d');
-  g.fillStyle = propio ? '#ffd23a' : '#1e1f23'; g.fillRect(2, 2, 60, 60);
-  g.strokeStyle = propio ? '#1e1f23' : '#f1ede2'; g.lineWidth = 4; g.strokeRect(4, 4, 56, 56);
-  g.fillStyle = propio ? '#1e1f23' : '#f1ede2';
-  g.font = '700 ' + (n > 99 ? 28 : 40) + 'px "Pixelify Sans", "Atkinson Hyperlegible", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(String(n), 32, 35);
+  g.font = '700 ' + (n > 99 ? 30 : 44) + 'px "Pixelify Sans", "Atkinson Hyperlegible", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 7; g.strokeStyle = '#1e1f23'; g.lineJoin = 'round'; g.strokeText(String(n), 32, 35);
+  g.fillStyle = '#ffffff'; g.fillText(String(n), 32, 35);
   const t = new THREE.CanvasTexture(l);
   t.colorSpace = THREE.SRGBColorSpace;
-  const m = new THREE.MeshBasicMaterial({ map: t });
-  numeros.set(clave, m);
+  const m = new THREE.MeshBasicMaterial({ map: t, transparent: true });
+  numeros.set(n, m);
   return m;
 }
 
 // Arma un vehiculo. color: el de la cabina. Devuelve el grupo (con el origen en el centro de masa, como el auto de la
 // fisica: el piso queda "alto" metros abajo), sus ruedas, las luces de freno y numero(n): pone el numero del techo.
-export function armarVehiculo(tipo, color, propio = false) {
+export function armarVehiculo(tipo, color) {
   const t = TIPOS[tipo], C = configDeTipo(tipo), alto = altoDe(C);
   const piso = -alto, grupo = new THREE.Group(), W = t.anchoDibujo;
   const largo = t.caja + t.cabina, z0 = -largo / 2 + (C.centro || 0), base = piso + t.piso;
@@ -151,10 +149,10 @@ export function armarVehiculo(tipo, color, propio = false) {
     poner(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCaja, 0.08), tabla)).position.set(0, base + t.altoCaja / 2, z0 + largo - 0.04);
     poner(new THREE.Mesh(new THREE.BoxGeometry(W - 0.1, 0.75, t.caja - 0.1), lona)).position.set(0, base + 0.5, zc);
   }
-  // el numero, en el techo de la caja (se lee desde arriba y desde atras: la camara va detras del vehiculo)
-  const lado = Math.min(W * 0.85, 1.8), placa = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), materialNumero(0, propio));
+  // el numero, en el techo de la cabina (se lee desde arriba y desde atras: la camara va detras del vehiculo)
+  const lado = Math.min(W * 0.8, 1.6), placa = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), materialNumero(1));
   placa.rotation.set(-Math.PI / 2, 0, Math.PI);
-  placa.position.set(0, base + (t.abierta ? 0.9 : t.tractor ? t.altoCabina : t.altoCaja) + 0.03, t.tractor ? z0 + t.cabina / 2 : zc);
+  placa.position.set(0, base + t.altoCabina + 0.03, z0 + t.cabina / 2);
   placa.visible = false;
   grupo.add(placa);
   // el remolque del semi: un grupo aparte (se mueve solo: ver remolque.js), con el origen en el piso, en el medio del remolque
@@ -173,15 +171,8 @@ export function armarVehiculo(tipo, color, propio = false) {
       const r = new THREE.Mesh(geoR, llanta); r.position.set(x * (R.ancho - 0.2), 0.5, z); r.castShadow = true; remolque.add(r);
     }
     for (const x of [-1, 1]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.3), apagada); l.position.set(x * (R.ancho - 0.2), 1.35, R.largo / 2 + 0.01); remolque.add(l); lucesR.push(l); }
-    // en el semi el numero va arriba del remolque, mas grande
-    const otra = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), placa.material);
-    otra.rotation.set(-Math.PI / 2, 0, Math.PI); otra.position.set(0, 1.15 + R.alto + 0.03, 0); otra.visible = false;
-    remolque.add(otra);
-    placa.userData.otra = otra;
   }
-  const numero = (n) => {
-    for (const q of [placa, placa.userData.otra]) if (q) { q.visible = n > 0; if (n > 0) q.material = materialNumero(n, propio); }
-  };
+  const numero = (n) => { placa.visible = n > 0; if (n > 0) placa.material = materialNumero(n); };
   // las luces de atras
   const frenos = [...lucesR];
   for (const x of [-1, 1]) {
@@ -208,7 +199,7 @@ export function armarVehiculo(tipo, color, propio = false) {
 
 // el vehiculo del que juega: sigue al auto de la fisica cuadro a cuadro
 export function crearDibujoVehiculo(escena, tipo, color) {
-  const f = armarVehiculo(tipo, color, true);
+  const f = armarVehiculo(tipo, color);   // (el del que juega no lleva numero)
   escena.add(f.grupo);
   if (f.remolque) escena.add(f.remolque);
   return {
