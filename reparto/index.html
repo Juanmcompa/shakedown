@@ -39,6 +39,13 @@
   #cuenta b { font-size: 20px; }
   #mapita { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 170px; height: 170px; border-radius: 10px; pointer-events: none; }
   #grande { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: clamp(30px, 7vw, 60px); text-shadow: 0 3px 0 rgba(0,0,0,.5); white-space: nowrap; pointer-events: none; }
+  /* el aviso del deposito: grande, abajo del medio, titilando */
+  #avisoCulata { position: fixed; left: 50%; top: 58%; transform: translate(-50%, -50%); display: grid; gap: 4px; text-align: center; pointer-events: none;
+    background: rgba(20,22,26,.85); border: 3px solid var(--oro); border-radius: 14px; padding: 12px 20px; width: max-content; max-width: calc(100% - 32px); animation: titila .8s ease-in-out infinite alternate; }
+  #avisoCulata b { font-family: 'Pixelify Sans', sans-serif; font-size: clamp(28px, 6vw, 44px); color: var(--oro); }
+  #avisoCulata span { font-size: 17px; }
+  @keyframes titila { from { opacity: 1; } to { opacity: .55; } }
+  @media (prefers-reduced-motion: reduce) { #avisoCulata { animation: none; } }
   #grande.bien { color: var(--bien); } #grande.mal { color: var(--mal); } #grande.pico { color: var(--oro); }
   /* la explicacion de la primera version pasada: todo se frena y aparece esto abajo (el anillo amarillo la marca en la calle) */
   #explica { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(440px, calc(100% - 32px));
@@ -95,6 +102,7 @@
 </div>
 <canvas id="mapita" width="340" height="340"></canvas>
 <div id="grande" hidden></div>
+<div id="avisoCulata" hidden><b>⤵ ¡De culata!</b><span>Date vuelta y entrá marcha atrás hasta el portón</span></div>
 <div id="ayudita"><kbd>WASD</kbd>/flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara · <kbd>R</kbd> rendirse · <kbd>Esc</kbd> salir</div>
 
 <div id="mandos">

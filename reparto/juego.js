@@ -103,6 +103,7 @@ function empezar(enElLugar) {
   grabacion = crearGrabacion();
   pintarViaje();
   $('culata').hidden = !viaje.a.deposito;
+  avisoCulata = false; $('avisoCulata').hidden = true;
   if (viaje.culmine) grande(viaje.tipo === 'semi' ? '🚛 ¡Hora pico! En semi' : '🚚 ¡Hora pico!', 1.8, 'pico');
   else if (viaje.a.deposito) grande('🏭 Al depósito: de culata', 1.8);
   else grande(TIPOS[viaje.tipo].nombre + ' · ' + viaje.carga + ' → ' + viaje.a.icono, 1.6);
@@ -123,6 +124,18 @@ function llego() {
   const q = cola();
   return Math.hypot(q.x - d.puerta.x, q.z - d.puerta.z) < 2.2 && q.fz > 0.82;
 }
+// El aviso de "de culata": aparece cuando el vehiculo esta cerca del porton del deposito y no mira hacia el playon
+// (la trompa tiene que quedar para afuera). Casi todos llegan de trompa y no entienden por que no cuenta.
+let avisoCulata = false;
+function avisarCulata() {
+  const d = viaje.a;
+  let si = false;
+  if (d.deposito) {
+    const q = cola(), cerca = Math.hypot(c.pos[0] - d.puerta.x, c.pos[2] - d.puerta.z) < 16 || Math.hypot(q.x - d.puerta.x, q.z - d.puerta.z) < 16;
+    si = cerca && q.fz < 0.82;
+  }
+  if (si !== avisoCulata) { avisoCulata = si; $('avisoCulata').hidden = !si; }
+}
 function lejosDelDestino() {
   const d = viaje.a;
   if (!d.deposito) return Math.hypot(d.x - c.pos[0], d.z - c.pos[2]);
@@ -131,6 +144,7 @@ function lejosDelDestino() {
 }
 
 function entregar() {
+  avisoCulata = false; $('avisoCulata').hidden = true;
   memoria.sumar(grabacion.cerrar(viaje.k, true, tipo));
   fantasmas.sumar(memoria.viajes()[memoria.viajes().length - 1]);
   fase = 'entrega'; pausa = 1.6;
@@ -142,6 +156,7 @@ function entregar() {
 // se borran: la proxima partida arranca con el pueblo vacio (el record queda).
 let recordAntes = memoria.record();
 function tarde(m) {
+  avisoCulata = false; $('avisoCulata').hidden = true;
   fase = 'tarde'; pausa = 1.8; motivo = m;
   grande(m === 'rendido' ? '🏳️ Te rendiste' : '⏰ Se hizo tarde', 1.8, 'mal');
 }
@@ -289,6 +304,8 @@ function logica(dt) {
     }
     // llego: adentro del circulo y casi parado, un ratito
     parado = llego() && Math.abs(c.velocidad) < (viaje.a.deposito ? 1.5 : 2.5) ? parado + dt : 0;
+    // en el deposito, si te acercas al porton de trompa (o de costado), un aviso grande: hay que entrar de culata
+    avisarCulata();
     if (parado >= PARAR) entregar();
     else if (reloj >= viaje.limite) tarde('reloj');
   }
@@ -342,7 +359,7 @@ requestAnimationFrame(cuadro);
 window.reparto = {
   mapa, auto: () => c, memoria, fantasmas, remolque: () => remolque, ubicar, llego,
   viaje: (k) => mapa.viaje(k),
-  estado: () => ({ fase, k: viaje && viaje.k, tipo, doblado: remolque ? Math.round(remolque.doblado(c) * 180 / Math.PI) : null, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
+  estado: () => ({ avisoCulata, fase, k: viaje && viaje.k, tipo, doblado: remolque ? Math.round(remolque.doblado(c) * 180 / Math.PI) : null, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
   salir, seguir, otraVez, textoParaCompartir,
   // juega el viaje k (sin importar cuantas entregas van)
   jugarViaje: (k) => { forzado = k; $('portada').hidden = true; $('fin').hidden = true; document.documentElement.classList.add('jugando'); empezar(false); },
