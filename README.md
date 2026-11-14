@@ -249,13 +249,15 @@ Un pueblo que crece. Llevás cosas de un lado a otro, cada viaje con su tiempo (
 | 51 a 70 | **Colectivo**: sale de la terminal, para en cada parada en orden (de 2 a 4) y vuelve | La zona 3, al sur: la terminal, paradas con refugio y la base de taxis |
 | 71 en adelante | **Taxi**: buscás al pasajero en un negocio y lo llevás a otro | — |
 
-Las zonas cerradas se ven desde el principio, detrás de una valla de obra con un cartel en cada calle ("🚧 EN OBRA · 🔒 30 entregas"). Al llegar, la valla desaparece y sale un cartel grande.
+El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se agranda al abrir cada zona); vos sos la flecha verde. Las zonas cerradas se ven en la calle desde el principio, detrás de una valla de obra con un cartel en cada calle ("🚧 EN OBRA · 🔒 30 entregas"). Al llegar, la valla desaparece y sale un cartel grande.
 
 **El pueblo:** dos avenidas que se cruzan, una diagonal, cuatro rotondas (una de seis bocas), calles sin salida, una plaza, semáforos en las esquinas de las avenidas y negocios con bahía de carga en la vereda.
 
 **Los depósitos:** ocho portones con dársenas numeradas, ENTRADA a la derecha y SALIDA a la izquierda, circulación en un solo sentido. Siempre se estaciona **de culata** (si llegás de trompa, aparece "⤵ ¡De culata!"). Cada llegada usa otro portón, en rueda.
 
 **Los vehículos** cambian solo al salir del depósito: camioneta, furgón o camión según el negocio; la segunda salida de cada vuelta en camión o en **semi** (en el depósito 1, el semi solo en las dos últimas vueltas; en el 2, sorteado) (el remolque se abre en las curvas, marcha atrás se cruza, se desliza contra las paredes y tus copias lo atraviesan). Después, colectivo y taxi.
+
+**Para repartir el tráfico**, cada viaje se elige buscando calles que no se usaron, pero que crucen los caminos de antes en alguna esquina, y lugares que se repitan poco. El depósito 2 prefiere los negocios de la zona este; los colectivos rotan las paradas (la terminal está en el medio de la zona sur); los taxis prefieren cambiar de zona.
 
 **Las vueltas de reparto** (de 5 viajes): depósito → negocio, de vuelta al depósito (de frente con tu viaje anterior: la primera vez el juego se frena y lo explica), depósito → otro negocio, de ahí a otro, y la **hora pico** de vuelta al depósito por las calles más usadas. Cada vuelta los viajes son más largos.
 

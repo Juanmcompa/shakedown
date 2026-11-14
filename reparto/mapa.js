@@ -64,7 +64,7 @@ export const DEPOSITO = DEPOSITOS[0];
 const andenesDe = (D) => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => D.x0 + 4 + i * 7.2);   // ocho portones
 
 // Los negocios: el nombre (en el cartel), que se les lleva, el color del toldo y en que se lleva:
-// 'camioneta' (lo chico), 'furgon' o 'camion'. Los de la lista de siempre van en la zona 1; los de NEGOCIOS2, en las nuevas.
+// 'camioneta' (lo chico), 'furgon' o 'camion'. Los de la lista de siempre van en la zona 1; los de NEGOCIOS2, mitad en la 2 y mitad en la 3.
 export const NEGOCIOS = [
   ['PANADERIA', '🌾', '#b5523a', 'camioneta'], ['FARMACIA', '💊', '#3f8a55', 'camioneta'], ['FLORERIA', '💐', '#c8608a', 'camioneta'],
   ['HELADERIA', '🍦', '#5aa6c8', 'camioneta'], ['KIOSCO', '🍬', '#c8402f', 'camioneta'], ['VERDULERIA', '🥕', '#4f7a55', 'camioneta'],
@@ -244,11 +244,14 @@ export function crearMapa() {
     destinos.push(d);
     return d;
   }
-  // la terminal de colectivos y la base de radio taxi: en la zona 3, con bahias largas
-  for (const e of candidatos) if (zonaDe(e.x, e.z) === 3 && e.ancho >= 9 && conBahia(e, 9, 60, { terminal: true, nombre: 'TERMINAL', icono: '🚌', color: '#c8402f', tamano: 'colectivo' })) break;
-  for (const e of candidatos) if (zonaDe(e.x, e.z) === 3 && conBahia(e, 5, 60, { base: true, nombre: 'RADIO TAXI', icono: '🚕', color: '#e0b21e', tamano: 'taxi' })) break;
+  // la terminal de colectivos y la base de radio taxi: en la zona 3, con bahias largas. La terminal, lo mas cerca posible del
+  // medio de la zona (asi hay paradas para todos lados y los recorridos varian); la base, hacia el oeste.
+  const cercaDe = (x, z) => candidatos.filter((e) => zonaDe(e.x, e.z) === 3).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z));
+  for (const e of cercaDe(300, 410)) if (e.ancho >= 9 && conBahia(e, 9, 60, { terminal: true, nombre: 'TERMINAL', icono: '🚌', color: '#c8402f', tamano: 'colectivo' })) break;
+  for (const e of cercaDe(100, 440)) if (conBahia(e, 5, 60, { base: true, nombre: 'RADIO TAXI', icono: '🚕', color: '#e0b21e', tamano: 'taxi' })) break;
   // los negocios: los de siempre en la zona 1, los nuevos en las zonas 2 y 3
-  for (const [lista, enZona] of [[NEGOCIOS, (z) => z === 1], [NEGOCIOS2, (z) => z > 1]]) {
+  // (de los nuevos, los primeros 6 van en la zona 2 y los otros 6 en la 3)
+  for (const [lista, enZona] of [[NEGOCIOS, (z) => z === 1], [NEGOCIOS2.slice(0, 6), (z) => z === 2], [NEGOCIOS2.slice(6), (z) => z === 3]]) {
     let cual = 0;
     for (const e of candidatos) {
       if (cual >= lista.length) break;
@@ -391,6 +394,8 @@ export function caminoPor(red, lugares) {
 //                     El viaje 31 sale del deposito 1 y el 32 ya vuelve al 2.
 //   entregas 51 a 70: colectivo (se abre la zona 3). Cada viaje sale de la terminal, para en varias paradas en orden y
 //                     vuelve a la terminal. Empieza con 2 paradas y cada 6 viajes, una mas (hasta 4).
+// Para repartir: cada viaje busca calles distintas a las de antes pero que crucen los caminos anteriores en alguna esquina,
+// y lugares que se repitan poco (ver puntajeCamino).
 //   desde la 71: taxi. Se busca a alguien en un negocio y se lo lleva a otro.
 // En las etapas de deposito, los viajes van en vueltas de 5 (v = 0, 1, 2...):
 //   1. del deposito a un negocio (en el vehiculo que pida ese negocio: camioneta, furgon o camion)
@@ -409,24 +414,47 @@ function crearViajes(destinos, red) {
   const terminal = destinos.find((d) => d.terminal), base = destinos.find((d) => d.base);
   const andenesDe = (dep) => destinos.filter((d) => d.deposito && d.dep.n === dep);
   const lista = [];   // los viajes ya decididos: { de, a, tipo, paradas, camino }
-  const largoEntre = new Map();
-  const largo = (a, b) => { const k = a.n * 1000 + b.n; if (!largoEntre.has(k)) largoEntre.set(k, camino(red, a, b).largo); return largoEntre.get(k); };
+  const caminos = new Map();
+  const caminoDe = (a, b) => { const k = a.n * 1000 + b.n; if (!caminos.has(k)) caminos.set(k, camino(red, a, b)); return caminos.get(k); };
+  const largo = (a, b) => caminoDe(a, b).largo;
   // que tan lejos puede quedar un negocio, segun la vuelta (con tope: el pueblo grande igual tiene que entrar en 2 minutos)
   const rango = (v) => { v = Math.min(v, 4); return [60 + 45 * v, 170 + 60 * v]; };
-  // de los lugares que quedan a buena distancia, uno al azar (o el que mejor puntue, si se da "puntaje")
-  function elegir(de, v, rr, puntaje, sacar = [], entre = negocios, [min, max] = rango(v)) {
+
+  // --- para repartir: cuanto se uso cada cuadra, cada esquina y cada lugar ---
+  // Cada viaje nuevo busca ir por calles distintas (cuadras que nadie uso), pero cruzando los caminos de antes en alguna
+  // esquina (asi las versiones pasadas se cruzan, en vez de ir todas en fila por la misma calle), y a lugares que no se
+  // repitan.
+  const usoCuadra = new Map(), usoEsquina = new Map(), visitas = new Map();
+  const sumar1 = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+  function anotarUso(c, lugares) {
+    for (const q of c.cuadras) { sumar1(usoCuadra, q); }
+    for (const n of esquinas(c)) sumar1(usoEsquina, n);
+    for (const d of lugares) sumar1(visitas, d);
+  }
+  const esquinas = (c) => { const e = new Set(); for (const q of c.cuadras) { e.add(Math.floor(q / 1000)); e.add(q % 1000); } return e; };
+  // el puntaje de un camino: cuadras nuevas (+), cuadras ya muy usadas (-), esquinas donde cruza caminos de antes (+, hasta 4)
+  // cruces: cuanto pesan los cruces (en la hora pico, mas: ahi se busca el lio)
+  function puntajeCamino(c, cruces = 1.2, pisa = 0.5) {
+    let nuevas = 0, usadas = 0, cruza = 0;
+    for (const q of c.cuadras) { const u = usoCuadra.get(q) || 0; if (!u) nuevas++; usadas += u; }
+    for (const n of esquinas(c)) if (usoEsquina.get(n)) cruza++;
+    return nuevas * 2 - Math.min(usadas, 24) * pisa + Math.min(cruza, 4) * cruces;
+  }
+  // el puntaje de ir de "de" a un lugar: el del camino, menos lo repetido que es el lugar
+  const puntaje = (de, extra = () => 0) => (d) => puntajeCamino(caminoDe(de, d)) - (visitas.get(d) || 0) * 4 + extra(d);
+
+  // de los lugares que quedan a buena distancia, el que mejor puntue (con un poco de azar)
+  function elegir(de, v, rr, puntua, sacar = [], entre = negocios, [min, max] = rango(v)) {
     let buenos = entre.filter((d) => d !== de && !sacar.includes(d) && largo(de, d) >= min && largo(de, d) <= max);
     if (!buenos.length) {   // (si no hay ninguno en el rango: los mas cercanos al rango)
       const fuera = (d) => { const l = largo(de, d); return l < min ? min - l : l > max ? l - max : 0; };
       buenos = entre.filter((d) => d !== de && !sacar.includes(d)).sort((a, b) => fuera(a) - fuera(b)).slice(0, 3);
     }
-    if (!puntaje) return buenos[Math.floor(rr() * buenos.length)];
     let mejor = null, pm = -Infinity;
-    for (const d of buenos) { const p = puntaje(d) + rr() * 0.5; if (p > pm) { pm = p; mejor = d; } }
+    for (const d of buenos) { const p = puntua(d) + rr() * 1.5; if (p > pm) { pm = p; mejor = d; } }
     return mejor;
   }
-  // cuantas cuadras de un camino ya recorrieron los viajes anteriores (contando cada viaje)
-  const pisadas = (cuadras) => { let p = 0; for (const v of lista) for (const q of v.camino.cuadras) if (cuadras.includes(q)) p++; return p; };
+  function guardar(viaje, lugares) { lista.push(viaje); anotarUso(viaje.camino, lugares); }
 
   // un viaje de deposito (etapas 1 y 2)
   function deDeposito(k, dep, abiertas) {
@@ -435,46 +463,55 @@ function crearViajes(destinos, red) {
     // el porton de la llegada de este viaje (la primera de la vuelta en el viaje 2, la segunda en el 5)
     const anden = andenes[(1 + 3 * (2 * v + (i >= 2 ? 1 : 0))) % andenes.length];
     const de = k === 0 ? andenes[0] : lista[k - 1].a;
-    // (los negocios de los ultimos viajes no se repiten enseguida)
-    const recientes = lista.slice(-8).flatMap((x) => [x.de, x.a]);
+    const recientes = lista.slice(-4).flatMap((x) => [x.de, x.a]);
     const [, max] = rango(v);
+    // en el deposito 2 se prefieren los negocios de la zona 2 (mas en la primera salida de la vuelta; en la segunda, mezclado)
+    const zona2 = (cuanto) => (d) => (dep === 1 && d.zona === 2 ? cuanto : 0);
     let a, tipo;
     // El vehiculo se elige al salir del deposito y es el mismo hasta volver: la primera salida de la vuelta (viajes 1 y 2),
     // el que pide el negocio; la segunda (viajes 3, 4 y 5, con la hora pico), camion o semi (en el deposito 1, semi solo en las
     // dos ultimas vueltas; en el 2, sorteado).
-    if (i === 0) { a = elegir(de, v, rr, null, recientes, enZona); tipo = a.tamano; }
+    if (i === 0) { a = elegir(de, v, rr, puntaje(de, zona2(6)), recientes, enZona); tipo = a.tamano; }
     else if (i === 2) {
-      a = elegir(de, v, rr, null, recientes, enZona);
+      a = elegir(de, v, rr, puntaje(de, zona2(2)), recientes, enZona);
       const ultimas = Math.floor(ABRE[2] / 5) - 2;   // (las dos ultimas vueltas del deposito 1)
       tipo = dep === 0 ? (v >= ultimas ? 'semi' : 'camion') : rr() < 0.5 ? 'semi' : 'camion';
     }
     else if (i === 1) { a = anden; tipo = lista[k - 1].tipo; }
     else if (i === 3) {
-      // el que deja el viaje siguiente (la hora pico) por las calles mas usadas, sin que quede demasiado lejos del deposito
-      a = elegir(de, v, rr, (d) => pisadas(camino(red, d, anden).cuadras) - Math.max(0, largo(d, anden) - max * 1.2) * 0.5, recientes, enZona);
+      // el que deja la hora pico (el viaje siguiente) cruzando la mayor cantidad de caminos de antes, sin que quede
+      // demasiado lejos del deposito; y este viaje, por calles nuevas
+      a = elegir(de, v, rr, (d) => puntajeCamino(caminoDe(de, d)) * 0.5 + puntajeCamino(caminoDe(d, anden), 2.5, 0.15) - (visitas.get(d) || 0) * 4
+        - Math.max(0, largo(d, anden) - max * 1.2) * 0.5 + zona2(2)(d), recientes, enZona);
       tipo = lista[k - 1].tipo;
     } else { a = anden; tipo = lista[k - 1].tipo; }
-    lista.push({ de, a, tipo, paradas: [], camino: camino(red, de, a) });
+    guardar({ de, a, tipo, paradas: [], camino: caminoDe(de, a) }, [a]);
   }
-  // un viaje de colectivo: de la terminal a la terminal, pasando por varias paradas en orden (cada tramo, de 90 a 260 m)
-  // (de 2 a 4 paradas, cada tramo de 50 a 140 m, y todo el recorrido de no mas de 600 m: con un vehiculo tan largo, tiene
-  // que entrar en 2 minutos)
+  // un viaje de colectivo: de la terminal a la terminal, pasando por varias paradas en orden (de 2 a 4, cada tramo de 60 a
+  // 200 m, y todo el recorrido de no mas de 700 m). Las paradas van rotando: cada recorrido busca paradas y calles que se
+  // usaron poco.
   function deColectivo(k) {
     const j = k - ABRE[3], rr = azar(4241 * k + 7), n = Math.min(4, 2 + Math.floor(j / 6));
     const ps = [];
     let de = terminal;
-    for (let q = 0; q < n; q++) { const p = elegir(de, 0, rr, null, ps, paradas, [50, 140]); ps.push(p); de = p; }
+    for (let q = 0; q < n; q++) {
+      const desde = de;
+      const p = elegir(desde, 0, rr, (d) => puntajeCamino(caminoDe(desde, d)) - (visitas.get(d) || 0) * 6, ps, paradas, [60, 200]);
+      ps.push(p); de = p;
+    }
     let c = caminoPor(red, [terminal, ...ps, terminal]);
-    while (c.largo > 600 && ps.length > 2) { ps.pop(); c = caminoPor(red, [terminal, ...ps, terminal]); }
-    lista.push({ de: terminal, a: terminal, tipo: 'colectivo', paradas: ps, camino: c, salto: k === ABRE[3] });
+    while (c.largo > 700 && ps.length > 2) { ps.pop(); c = caminoPor(red, [terminal, ...ps, terminal]); }
+    guardar({ de: terminal, a: terminal, tipo: 'colectivo', paradas: ps, camino: c, salto: k === ABRE[3] }, ps);
   }
-  // un viaje de taxi: de donde quedo el anterior (o la base) a buscar a alguien a un negocio, y de ahi a otro
+  // un viaje de taxi: de donde quedo el anterior (o la base) a buscar a alguien a un negocio, y de ahi a otro. Se prefiere
+  // cambiar de zona (asi se usa todo el pueblo).
   function deTaxi(k) {
     const rr = azar(6007 * k + 3), de = k === TAXIS ? base : lista[k - 1].a;
     const recientes = lista.slice(-6).flatMap((x) => [x.de, x.a]);
-    const busca = elegir(de, 0, rr, null, recientes, negocios, [100, 280]);
-    const a = elegir(busca, 0, rr, null, [...recientes, busca], negocios, [150, 330]);
-    lista.push({ de, a, tipo: 'taxi', paradas: [busca], camino: caminoPor(red, [de, busca, a]), salto: k === TAXIS });
+    const otraZona = (desde) => (d) => (d.zona !== desde.zona ? 3 : 0);
+    const busca = elegir(de, 0, rr, puntaje(de, otraZona(de)), recientes, negocios, [100, 280]);
+    const a = elegir(busca, 0, rr, puntaje(busca, otraZona(busca)), [...recientes, busca], negocios, [150, 330]);
+    guardar({ de, a, tipo: 'taxi', paradas: [busca], camino: caminoPor(red, [de, busca, a]), salto: k === TAXIS }, [busca, a]);
   }
   function decidir(k) {
     if (k < ABRE[2]) deDeposito(k, 0, 1);

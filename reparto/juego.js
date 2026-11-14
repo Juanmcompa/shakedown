@@ -13,7 +13,7 @@ import { crearCamara } from '../src/camera.js';
 import { crearTeclas } from '../src/input.js';
 import { crearSonido } from '../src/audio.js';
 import { ambiente } from '../src/material.js';
-import { crearMapa, XMAX, ZMAX, LIMITE, CALLES, SEMAFOROS, ABRE, TAXIS, zonasAbiertas, colorSemaforo } from './mapa.js';
+import { crearMapa, TAM, XMAX, ZMAX, CALLES, SEMAFOROS, ABRE, TAXIS, zonasAbiertas, colorSemaforo } from './mapa.js';
 import { TIPOS, configDeTipo, crearDibujoVehiculo } from './vehiculos.js';
 import { crearDibujoPueblo } from './dibujo.js';
 import { crearMemoria, crearGrabacion } from './memoria.js';
@@ -306,26 +306,31 @@ $('pueblonuevo').addEventListener('click', () => {
 
 // el mapita: las calles, vos, el destino y tus versiones pasadas
 const mapita = $('mapita'), mg = mapita.getContext('2d');
+// Muestra solo la parte del pueblo que esta abierta: al principio el pueblo chico, y se agranda al abrir cada zona.
+// Vos sos la flecha verde (grande, con borde: que se encuentre enseguida entre el trafico).
 function pintarMapita() {
-  const n = mapita.width, M = Math.max(XMAX, ZMAX) + 24, esc = n / M, a = (v) => (v + 12) * esc;
+  const abiertas = zonasAbiertas(viaje ? viaje.k : memoria.entregas());
+  const ancho = (abiertas >= 2 ? XMAX : TAM) + 24, alto = (abiertas >= 3 ? ZMAX : TAM) + 24;
+  const n = mapita.width, esc = n / Math.max(ancho, alto);
+  // (centrado: si el pueblo abierto es mas ancho que alto, queda una franja arriba y abajo)
+  const ox = (n - ancho * esc) / 2, oz = (n - alto * esc) / 2, ax = (v) => ox + (v + 12) * esc, az = (v) => oz + (v + 12) * esc;
   mg.clearRect(0, 0, n, n);
   mg.fillStyle = 'rgba(20,22,26,.72)'; mg.fillRect(0, 0, n, n);
+  mg.save(); mg.beginPath(); mg.rect(ox, oz, ancho * esc, alto * esc); mg.clip();
   mg.strokeStyle = '#6a6c72'; mg.lineCap = 'round';
-  for (const s of CALLES) { mg.lineWidth = Math.max(3, 2 * s.m * esc); mg.beginPath(); mg.moveTo(a(s.x1), a(s.z1)); mg.lineTo(a(s.x2), a(s.z2)); mg.stroke(); }
-  // las vallas de las zonas cerradas
-  const abiertas = zonasAbiertas(viaje ? viaje.k : memoria.entregas());
-  mg.strokeStyle = '#c8302a'; mg.lineWidth = 2; mg.setLineDash([4, 3]);
-  if (abiertas < 2) { mg.beginPath(); mg.moveTo(a(LIMITE), a(-12)); mg.lineTo(a(LIMITE), a(LIMITE)); mg.stroke(); }
-  if (abiertas < 3) { mg.beginPath(); mg.moveTo(a(-12), a(LIMITE)); mg.lineTo(a(XMAX + 12), a(LIMITE)); mg.stroke(); }
-  mg.setLineDash([]);
-  for (const s of SEMAFOROS) { mg.fillStyle = { verde: '#3fdc6a', amarillo: '#ffc21e', rojo: '#ff3b2a' }[colorSemaforo(s, 'ns', reloj)]; mg.fillRect(a(s.x) - 2, a(s.z) - 2, 4, 4); }
-  for (const f of fantasmas.enLaCalle()) { mg.fillStyle = f.entrego ? '#c9d4e0' : '#e08a7a'; mg.fillRect(a(f.x) - 2, a(f.z) - 2, 4, 4); }
-  if (viaje) { const d = objetivo(); mg.fillStyle = '#ffd23a'; mg.beginPath(); mg.arc(a(d.x), a(d.z), 5, 0, Math.PI * 2); mg.fill(); }
-  // vos: un triangulo que apunta hacia donde vas
-  const r = Math.atan2(c.adelante[0], -c.adelante[2]), x = a(c.pos[0]), z = a(c.pos[2]);
-  mg.fillStyle = '#ffffff'; mg.beginPath();
-  mg.moveTo(x + Math.sin(r) * 6, z - Math.cos(r) * 6); mg.lineTo(x + Math.sin(r + 2.5) * 4, z - Math.cos(r + 2.5) * 4); mg.lineTo(x + Math.sin(r - 2.5) * 4, z - Math.cos(r - 2.5) * 4);
-  mg.fill();
+  for (const s of CALLES) { mg.lineWidth = Math.max(3, 2 * s.m * esc); mg.beginPath(); mg.moveTo(ax(s.x1), az(s.z1)); mg.lineTo(ax(s.x2), az(s.z2)); mg.stroke(); }
+  for (const s of SEMAFOROS) { mg.fillStyle = { verde: '#3fdc6a', amarillo: '#ffc21e', rojo: '#ff3b2a' }[colorSemaforo(s, 'ns', reloj)]; mg.fillRect(ax(s.x) - 2, az(s.z) - 2, 4, 4); }
+  for (const f of fantasmas.enLaCalle()) { mg.fillStyle = f.entrego ? '#c9d4e0' : '#e08a7a'; mg.fillRect(ax(f.x) - 2, az(f.z) - 2, 4, 4); }
+  if (viaje) { const d = objetivo(); mg.fillStyle = '#ffd23a'; mg.beginPath(); mg.arc(ax(d.x), az(d.z), 5, 0, Math.PI * 2); mg.fill(); }
+  mg.restore();
+  // vos: una flecha verde que apunta hacia donde vas
+  const r = Math.atan2(c.adelante[0], -c.adelante[2]), x = ax(c.pos[0]), z = az(c.pos[2]), L = 14;
+  const p = (ang, d) => [x + Math.sin(r + ang) * d, z - Math.cos(r + ang) * d];
+  mg.beginPath();
+  for (const [ang, d] of [[0, L], [2.45, L * 0.75], [Math.PI, L * 0.3], [-2.45, L * 0.75]]) { const [px, pz] = p(ang, d); mg.lineTo(px, pz); }
+  mg.closePath();
+  mg.fillStyle = '#3fdc6a'; mg.fill();
+  mg.lineWidth = 2; mg.strokeStyle = '#0c2a14'; mg.stroke();
 }
 
 // --- cada cuadro: la logica (sin dibujar: las pruebas la corren sola) ---
