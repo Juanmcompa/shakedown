@@ -113,12 +113,13 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] El nombre del fantasma solo se ve cuando va bastante adelante (de cerca tapaba la cámara)
 - [x] Tabla con prácticas: por corredor el mejor tiempo arriba y el oficial abajo, marcas de casco, línea (trazada, nueva) y ayuda, orden Oficial / Con prácticas, sin el dibujo del auto (solo su número)
 - [x] "Cómo leer la tabla" en Cómo se juega, con renglones de ejemplo dibujados igual que la tabla
+- [x] Reparto: versiones pasadas encadenadas (siguen con la entrega siguiente), número de entrega en el techo, 8 portones en rueda en el depósito; sin cajas sueltas (no aportaba)
 - [x] Reparto: tres vehículos según la carga (camioneta con cajas que se caen, furgón, camión), depósito con andenes, 18 negocios, vueltas de 5 viajes que se alargan con una hora pico al final, y una pausa que explica la primera versión pasada
 - [x] Reparto (juego aparte, en `reparto/`): entregas en un pueblo con semáforos; cada viaje queda guardado y vuelve a la calle en los siguientes (el tráfico sos vos). Mismo auto que Shakedown
 
 ## Lo que sigue
 
-- Reparto: el nombre definitivo; tabla de récords online; probarlo en el celular; balancear tiempos y cuánto se caen las cajas jugando de verdad; un supermercado o corralón con playón propio.
+- Reparto: el nombre definitivo; tabla de récords online; probarlo en el celular; balancear tiempos jugando de verdad; un supermercado o corralón con playón propio.
 - Troncos como prisma 3D; pinos un poco más claros desde arriba; revisar cómo se ve la arena del viento.
 - Festival más grande en los circuitos fijos y las pistas de la comunidad cuando hay bosque cerrado (hoy no se despejan árboles ahí); más pueblos en la pista del día; horas distintas en la Travesía.
 - Moderar los nombres de la tabla de todos (hoy solo se limpian caracteres raros) y, si crece la gente, guardar en caché la tabla para no leer la base en cada pedido.

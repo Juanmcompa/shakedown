@@ -1,10 +1,10 @@
 // Reparto: los vehiculos de reparto. Segun lo que se lleva, el viaje se hace en uno de tres:
-//   camioneta: chica, con la caja abierta (la carga va a la vista y se puede caer: ver carga.js)
+//   camioneta: chica, con la carga tapada con una lona
 //   furgon:    la camioneta de reparto de siempre, caja cerrada
 //   camion:    largo, pesado, lento para arrancar y para doblar
 // Por dentro manejan como la Vitarita de Shakedown (la misma fisica), agrandada a cada tamaño. Por fuera son cajas con
 // dibujos de pocos pixeles (4 por metro), como el resto del mundo. Las versiones pasadas son el mismo vehiculo con la
-// cabina de otro color; la camioneta, con una lona encima (la carga va tapada: no se cae).
+// cabina de otro color. Todos llevan en el techo el numero de la entrega que estan haciendo (asi se reconocen entre todos).
 import * as THREE from '../vendor/three.module.js';
 import { configDe } from '../src/partes.js';
 import { tono } from '../src/pixel.js';
@@ -88,10 +88,29 @@ const tabla = new THREE.MeshLambertMaterial({ color: '#7a6248' }), lona = mat(li
 const llanta = new THREE.MeshLambertMaterial({ color: '#202124' }), aro = new THREE.MeshLambertMaterial({ color: '#b9bec4' });
 const rojo = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.25, 0.15) }), apagada = new THREE.MeshLambertMaterial({ color: '#7a2a22' });
 
-// Arma un vehiculo. color: el de la cabina. tapado: con lona (las versiones pasadas). Devuelve el grupo (con el origen en el
-// centro de masa, como el auto de la fisica: el piso queda "alto" metros abajo), sus ruedas, las luces de freno y, si la caja
-// es abierta, donde va la carga (cama: medio ancho, desde y hasta en z, altura del piso de la caja).
-export function armarVehiculo(tipo, color, tapado = false) {
+// el numero de una entrega, para el techo: oscuro con letras claras (o amarillo, el del que juega)
+const numeros = new Map();
+function materialNumero(n, propio) {
+  const clave = n + (propio ? 'p' : '');
+  if (numeros.has(clave)) return numeros.get(clave);
+  const l = document.createElement('canvas');
+  l.width = l.height = 64;
+  const g = l.getContext('2d');
+  g.fillStyle = propio ? '#ffd23a' : '#1e1f23'; g.fillRect(2, 2, 60, 60);
+  g.strokeStyle = propio ? '#1e1f23' : '#f1ede2'; g.lineWidth = 4; g.strokeRect(4, 4, 56, 56);
+  g.fillStyle = propio ? '#1e1f23' : '#f1ede2';
+  g.font = '700 ' + (n > 99 ? 28 : 40) + 'px "Pixelify Sans", "Atkinson Hyperlegible", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(n), 32, 35);
+  const t = new THREE.CanvasTexture(l);
+  t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.MeshBasicMaterial({ map: t });
+  numeros.set(clave, m);
+  return m;
+}
+
+// Arma un vehiculo. color: el de la cabina. Devuelve el grupo (con el origen en el centro de masa, como el auto de la
+// fisica: el piso queda "alto" metros abajo), sus ruedas, las luces de freno y numero(n): pone el numero del techo.
+export function armarVehiculo(tipo, color, propio = false) {
   const t = TIPOS[tipo], C = configDeTipo(tipo), alto = altoDe(C);
   const piso = -alto, grupo = new THREE.Group(), W = t.anchoDibujo;
   const largo = t.caja + t.cabina, z0 = -largo / 2 + (C.centro || 0), base = piso + t.piso;
@@ -99,7 +118,6 @@ export function armarVehiculo(tipo, color, tapado = false) {
   // la cabina adelante (adelante es -z)
   poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.97, t.altoCabina, t.cabina), materialesCabina(color))).position.set(0, base + t.altoCabina / 2, z0 + t.cabina / 2);
   poner(new THREE.Mesh(new THREE.BoxGeometry(W, 0.22, 0.2), llanta)).position.set(0, base + 0.05, z0 - 0.05);
-  let cama = null;
   const zc = z0 + t.cabina + t.caja / 2;
   if (!t.abierta) poner(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCaja, t.caja), materialesCaja(tipo))).position.set(0, base + t.altoCaja / 2, zc);
   else {
@@ -107,9 +125,15 @@ export function armarVehiculo(tipo, color, tapado = false) {
     poner(new THREE.Mesh(new THREE.BoxGeometry(W, 0.12, t.caja), tabla)).position.set(0, base + 0.06, zc);
     for (const x of [-1, 1]) poner(new THREE.Mesh(new THREE.BoxGeometry(0.08, t.altoCaja, t.caja), tabla)).position.set(x * (W / 2 - 0.04), base + t.altoCaja / 2, zc);
     poner(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCaja, 0.08), tabla)).position.set(0, base + t.altoCaja / 2, z0 + largo - 0.04);
-    if (tapado) poner(new THREE.Mesh(new THREE.BoxGeometry(W - 0.1, 0.75, t.caja - 0.1), lona)).position.set(0, base + 0.5, zc);
-    cama = { x: W / 2 - 0.1, z0: z0 + t.cabina + 0.05, z1: z0 + largo - 0.1, y: base + 0.12 };
+    poner(new THREE.Mesh(new THREE.BoxGeometry(W - 0.1, 0.75, t.caja - 0.1), lona)).position.set(0, base + 0.5, zc);
   }
+  // el numero, en el techo de la caja (se lee desde arriba, con la parte de arriba del numero hacia adelante)
+  const lado = Math.min(W * 0.85, 1.8), placa = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), materialNumero(0, propio));
+  placa.rotation.x = -Math.PI / 2;
+  placa.position.set(0, base + (t.abierta ? 0.9 : t.altoCaja) + 0.03, zc);
+  placa.visible = false;
+  grupo.add(placa);
+  const numero = (n) => { placa.visible = n > 0; if (n > 0) placa.material = materialNumero(n, propio); };
   // las luces de atras
   const frenos = [];
   for (const x of [-1, 1]) {
@@ -131,12 +155,12 @@ export function armarVehiculo(tipo, color, tapado = false) {
     grupo.add(pivote);
     ruedas.push({ pivote, rueda });
   }
-  return { grupo, ruedas, frenos, alto, cama, C, tipo };
+  return { grupo, ruedas, frenos, alto, numero, C, tipo };
 }
 
 // el vehiculo del que juega: sigue al auto de la fisica cuadro a cuadro
 export function crearDibujoVehiculo(escena, tipo, color) {
-  const f = armarVehiculo(tipo, color);
+  const f = armarVehiculo(tipo, color, true);
   escena.add(f.grupo);
   return {
     ...f,

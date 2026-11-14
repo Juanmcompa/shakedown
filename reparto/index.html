@@ -39,7 +39,6 @@
   #mapita { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 170px; height: 170px; border-radius: 10px; pointer-events: none; }
   #grande { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: clamp(30px, 7vw, 60px); text-shadow: 0 3px 0 rgba(0,0,0,.5); white-space: nowrap; pointer-events: none; }
   #grande.bien { color: var(--bien); } #grande.mal { color: var(--mal); } #grande.pico { color: var(--oro); }
-  #cajas { font-size: 14px; letter-spacing: -2px; }
   /* la explicacion de la primera version pasada: todo se frena y aparece esto abajo (el anillo amarillo la marca en la calle) */
   #explica { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(440px, calc(100% - 32px));
     background: rgba(20,22,26,.92); border: 2px solid var(--oro); border-radius: 14px; padding: 16px 18px; text-align: center; }
@@ -83,7 +82,7 @@
 <canvas id="lienzo"></canvas>
 
 <div id="arriba">
-  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span><span id="cajas" hidden></span></div>
+  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span></div>
   <div class="caja" id="reloj">0:00</div>
   <div class="caja" id="cuenta" title="Entregas · récord">
     <span>📦</span><b id="entregas">0</b>

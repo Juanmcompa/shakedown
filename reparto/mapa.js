@@ -24,9 +24,9 @@ export const CALLES = [
 ].map(([x1, z1, x2, z2, m], i) => { const L = Math.hypot(x2 - x1, z2 - z1); return { i, x1, z1, x2, z2, m, L, ux: (x2 - x1) / L, uz: (z2 - z1) / L }; });
 export const PLAZA = { x0: 80, z0: 240, x1: 160, z1: TAM };   // la manzana que es plaza
 // El deposito central: un galpon con andenes (las puertas donde se carga) y un playon abierto a la calle de abajo.
-// De ahi sale y ahi vuelve buena parte de los viajes: es donde mas se cruzan tus versiones pasadas, y donde hacen fila.
+// De ahi sale y ahi vuelve buena parte de los viajes: es donde mas se cruzan tus versiones pasadas.
 export const DEPOSITO = { x0: 250, x1: 310, z0: 246, zAnden: 262, z1: 316 };
-const ANDENES = [258, 270, 282, 294, 306];
+const ANDENES = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 254 + i * 7.2);   // ocho portones
 
 // Los negocios: el nombre (en el cartel), que se les lleva, el color del toldo y en que se lleva:
 // 'camioneta' (lo chico: va en la caja abierta), 'furgon' o 'camion'.
@@ -288,8 +288,9 @@ export function camino(red, desde, hasta) {
 //      con tu primera version: el juego lo explica ahi)
 //   3. del deposito a otro negocio
 //   4. de ese negocio a otro, elegido para que el viaje siguiente pise las calles mas usadas
-//   5. de vuelta al deposito, en camion: el punto culminante. Pasa por donde mas viajes pasaron y termina en el mismo anden
-//      que el viaje 2 de esa vuelta (y que los viajes 5 de otras vueltas): ahi se hace fila.
+//   5. de vuelta al deposito, en camion: el punto culminante. Pasa por donde mas viajes pasaron.
+// Cada llegada al deposito usa un porton distinto, en rueda (1, 4, 7, 2, 5, 0, 3, 6, y de nuevo): el que llega sale despues
+// por el mismo porton, y ese porton no se vuelve a usar hasta 8 llegadas mas tarde. Asi los camiones no se pisan en la puerta.
 // Cada vuelta, los viajes son mas largos. Todo sale de una semilla fija: siempre los mismos viajes, en el mismo orden.
 function crearViajes(destinos, red) {
   const andenes = destinos.filter((d) => d.deposito), negocios = destinos.filter((d) => !d.deposito);
@@ -315,8 +316,9 @@ function crearViajes(destinos, red) {
   const pisadas = (cuadras) => { let p = 0; for (const v of lista) for (const q of v.camino.cuadras) if (cuadras.includes(q)) p++; return p; };
   function decidir(k) {
     const v = Math.floor(k / 5), i = k % 5, rr = azar(7919 * k + 13);
-    const anden = andenes[v % 2];   // los viajes que vuelven al deposito, a uno de dos andenes (asi se hace fila)
-    const de = k === 0 ? andenes[2] : lista[k - 1].a;
+    // el porton de la llegada de este viaje (la primera de la vuelta en el viaje 2, la segunda en el 5)
+    const anden = andenes[(1 + 3 * (2 * v + (i >= 2 ? 1 : 0))) % andenes.length];
+    const de = k === 0 ? andenes[0] : lista[k - 1].a;
     // (los negocios de los ultimos viajes no se repiten enseguida)
     const recientes = lista.slice(-8).flatMap((x) => [x.de, x.a]);
     const [, max] = rango(v);
