@@ -113,6 +113,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] El nombre del fantasma solo se ve cuando va bastante adelante (de cerca tapaba la cámara)
 - [x] Tabla con prácticas: por corredor el mejor tiempo arriba y el oficial abajo, marcas de casco, línea (trazada, nueva) y ayuda, orden Oficial / Con prácticas, sin el dibujo del auto (solo su número)
 - [x] "Cómo leer la tabla" en Cómo se juega, con renglones de ejemplo dibujados igual que la tabla
+- [x] F FOR TRAFFIC (antes Reparto): niveles en la misma partida (depósito 1 → depósito 2 y zona este a las 40 → colectivos con paradas y zona sur a las 60 → taxis a las 80), vallas de obra, cartel de nivel, sello Early Access y firma
 - [x] Reparto: compartir el resultado (Probá Reparto 📦 Hice N entregas), semi con remolque desde la entrega 15, en el depósito se estaciona de culata
 - [x] Reparto: una entrega tarde termina la partida (resultado con entregas y récord; la siguiente empieza de cero)
 - [x] Reparto: versiones pasadas encadenadas (siguen con la entrega siguiente), número de entrega en el techo, 8 portones en rueda en el depósito; sin cajas sueltas (no aportaba)
@@ -121,7 +122,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 
 ## Lo que sigue
 
-- Reparto: el nombre definitivo; tabla de récords online; probarlo en el celular; balancear tiempos jugando de verdad; un supermercado o corralón con playón propio.
+- F FOR TRAFFIC: qué viene después de los taxis; ¿la dirección pasa a /f-for-traffic/?; tabla de récords online; probarlo en el celular; balancear tiempos jugando de verdad; un supermercado o corralón con playón propio.
 - Troncos como prisma 3D; pinos un poco más claros desde arriba; revisar cómo se ve la arena del viento.
 - Festival más grande en los circuitos fijos y las pistas de la comunidad cuando hay bosque cerrado (hoy no se despejan árboles ahí); más pueblos en la pista del día; horas distintas en la Travesía.
 - Moderar los nombres de la tabla de todos (hoy solo se limpian caracteres raros) y, si crece la gente, guardar en caché la tabla para no leer la base en cada pedido.

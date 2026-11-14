@@ -3,6 +3,8 @@
 //   furgon:    la camioneta de reparto de siempre, caja cerrada
 //   camion:    largo, pesado, lento para arrancar y para doblar
 //   semi:      un tractor con un remolque enganchado (ver remolque.js): solo para los viajes largos y dificiles
+//   colectivo: largo y de un solo cuerpo (la empresa de colectivos, desde la entrega 61)
+//   taxi:      un auto chico, negro con el techo de color (radio taxi, desde la entrega 81)
 // Por dentro manejan como la Vitarita de Shakedown (la misma fisica), agrandada a cada tamaño. Por fuera son cajas con
 // dibujos de pocos pixeles (4 por metro), como el resto del mundo. Las versiones pasadas son el mismo vehiculo con la
 // cabina de otro color, y en el techo de la cabina el numero de la entrega que estan haciendo (asi se reconocen entre
@@ -26,6 +28,10 @@ export const TIPOS = {
   semi: { nombre: 'Semi', k: 3.4, motor: 2.5, giro: 0.86, ancho: 1.2, largo: 2.9, choque: [1.15, 1.75], trocha: 1.0, ejes: 1.6,
     cabina: 2.5, caja: 3.2, altoCabina: 2.6, altoCaja: 0.3, anchoDibujo: 2.4, piso: 0.6, tractor: true,
     remolque: { largo: 11, ancho: 1.24, alto: 3.0, perno: 1.0, eje: 2.2, plato: 1.2 } },
+  colectivo: { nombre: 'Colectivo', k: 3.0, motor: 2.3, giro: 0.8, ancho: 1.27, largo: 5.6, choque: [1.25, 4.35], trocha: 1.0, ejes: 2.9,
+    cabina: 11.2, caja: 0, altoCabina: 2.9, altoCaja: 0, anchoDibujo: 2.5, piso: 0.35, colectivo: true },
+  taxi: { nombre: 'Taxi', k: 0.95, motor: 1.15, giro: 1.05, ancho: 0.9, largo: 2.15, choque: [0.88, 1.25], trocha: 0.78, ejes: 1.3,
+    cabina: 4.3, caja: 0, altoCabina: 1.4, altoCaja: 0, anchoDibujo: 1.75, piso: 0.3, auto: true },
 };
 
 // la fisica: la de la Vitarita agrandada (el mismo resorte por kilo; el motor, un poco menos por kilo cuanto mas grande)
@@ -92,6 +98,41 @@ function materialesCabina(color) {
   cabinas.set(color, m);
   return m;
 }
+// el colectivo: de un color, con la franja de ventanillas, la puerta adelante y el parabrisas
+const colectivos = new Map();
+function materialesColectivo(color) {
+  if (colectivos.has(color)) return colectivos.get(color);
+  const oscuro = tono(color, -0.3), claro = tono(color, 0.35);
+  const lado = mat(lienzo(45, 12, (R) => {
+    R(0, 0, 45, 12, color); R(0, 0, 45, 1, claro); R(0, 11, 45, 1, '#2b2b2d'); R(0, 8, 45, 1, '#e9e4d6');
+    for (let x = 6; x < 44; x += 5) { R(x, 2, 4, 5, '#22364a'); R(x, 2, 4, 1, '#35546e'); }
+    R(1, 2, 4, 9, '#2b3a48'); R(1, 2, 4, 1, '#35546e');   // la puerta
+  }));
+  const frente = mat(lienzo(10, 12, (R) => {
+    R(0, 0, 10, 12, color); R(1, 0, 8, 2, '#1e1f23'); R(2, 0, 6, 1, '#ffd23a');   // el cartel del recorrido
+    R(0, 2, 10, 5, '#35546e'); R(1, 3, 3, 1, '#7fb0cf'); R(0, 9, 10, 1, oscuro); R(0, 9, 1, 1, '#fff4c2'); R(9, 9, 1, 1, '#fff4c2');
+  }));
+  const atras = mat(lienzo(10, 12, (R) => { R(0, 0, 10, 12, color); R(1, 2, 8, 3, '#22364a'); R(0, 9, 1, 2, '#c8302a'); R(9, 9, 1, 2, '#c8302a'); }));
+  const techo = mat(lienzo(10, 45, (R) => { R(0, 0, 10, 45, '#d9dcdf'); R(3, 8, 4, 4, '#9aa0a6'); R(3, 30, 4, 4, '#9aa0a6'); }));
+  const m = [lado, lado, techo, negro, atras, frente];
+  colectivos.set(color, m);
+  return m;
+}
+// el taxi: negro, con el techo de color (el del que juega, amarillo como los de aca) y el cartelito de TAXI
+const taxis = new Map();
+function materialesTaxi(color) {
+  if (taxis.has(color)) return taxis.get(color);
+  const N = '#1e1f23';
+  const cuerpo = mat(lienzo(17, 3, (R) => { R(0, 0, 17, 3, N); R(0, 0, 17, 1, '#2f3034'); R(3, 2, 2, 1, '#55585e'); R(12, 2, 2, 1, '#55585e'); }));
+  const cabina = [mat(lienzo(8, 3, (R) => { R(0, 0, 8, 3, N); R(1, 0, 6, 2, '#35546e'); R(4, 0, 1, 2, N); })), null, mat(lienzo(4, 8, (R) => R(0, 0, 4, 8, color))), negro, null, null];
+  cabina[1] = cabina[0];
+  cabina[4] = cabina[5] = mat(lienzo(6, 3, (R) => { R(0, 0, 6, 3, N); R(1, 0, 4, 2, '#35546e'); }));
+  const cartel = mat(lienzo(8, 3, (R) => { R(0, 0, 8, 3, '#f2c200'); R(1, 1, 6, 1, '#1e1f23'); }));
+  const m = { cuerpo: [cuerpo, cuerpo, mat(lienzo(4, 8, (R) => R(0, 0, 4, 8, N))), negro, cuerpo, cuerpo], cabina, cartel };
+  taxis.set(color, m);
+  return m;
+}
+
 // el remolque: blanco con una franja azul y REPARTO escrito al costado
 let mRemolque = null;
 function materialesRemolque() {
@@ -133,11 +174,17 @@ export function armarVehiculo(tipo, color) {
   const piso = -alto, grupo = new THREE.Group(), W = t.anchoDibujo;
   const largo = t.caja + t.cabina, z0 = -largo / 2 + (C.centro || 0), base = piso + t.piso;
   const poner = (m) => { m.castShadow = true; grupo.add(m); return m; };
-  // la cabina adelante (adelante es -z)
-  poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.97, t.altoCabina, t.cabina), materialesCabina(color))).position.set(0, base + t.altoCabina / 2, z0 + t.cabina / 2);
+  // la cabina adelante (adelante es -z). El colectivo es un solo cuerpo; el taxi, una caja baja con la cabina encima.
+  if (t.colectivo) poner(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCabina, t.cabina), materialesColectivo(color))).position.set(0, base + t.altoCabina / 2, z0 + t.cabina / 2);
+  else if (t.auto) {
+    const m = materialesTaxi(color);
+    poner(new THREE.Mesh(new THREE.BoxGeometry(W, 0.75, t.cabina), m.cuerpo)).position.set(0, base + 0.375, z0 + t.cabina / 2);
+    poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.86, 0.62, 2.1), m.cabina)).position.set(0, base + 0.75 + 0.31, z0 + t.cabina / 2 + 0.25);
+    poner(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.3), m.cartel)).position.set(0, base + 1.48, z0 + t.cabina / 2 - 0.1);
+  } else poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.97, t.altoCabina, t.cabina), materialesCabina(color))).position.set(0, base + t.altoCabina / 2, z0 + t.cabina / 2);
   poner(new THREE.Mesh(new THREE.BoxGeometry(W, 0.22, 0.2), llanta)).position.set(0, base + 0.05, z0 - 0.05);
   const zc = z0 + t.cabina + t.caja / 2;
-  if (t.tractor) {
+  if (t.colectivo || t.auto) { /* (sin caja: ya esta todo) */ } else if (t.tractor) {
     // el chasis del tractor y el plato
     poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.6, 0.3, t.caja), negro)).position.set(0, base + 0.15, zc);
     poner(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.12, 10), new THREE.MeshLambertMaterial({ color: '#8a8f96' }))).position.set(0, base + 0.36, (C.centro || 0) + t.remolque.plato);
@@ -152,7 +199,7 @@ export function armarVehiculo(tipo, color) {
   // el numero, en el techo de la cabina (se lee desde arriba y desde atras: la camara va detras del vehiculo)
   const lado = Math.min(W * 0.8, 1.6), placa = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), materialNumero(1));
   placa.rotation.set(-Math.PI / 2, 0, Math.PI);
-  placa.position.set(0, base + t.altoCabina + 0.03, z0 + t.cabina / 2);
+  placa.position.set(0, base + t.altoCabina + (t.auto ? 0.12 : 0.03), t.colectivo ? z0 + 2.4 : t.auto ? z0 + t.cabina / 2 + 0.6 : z0 + t.cabina / 2);
   placa.visible = false;
   grupo.add(placa);
   // el remolque del semi: un grupo aparte (se mueve solo: ver remolque.js), con el origen en el piso, en el medio del remolque

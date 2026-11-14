@@ -7,13 +7,13 @@
 // pueblo y los viajes (mapa.js), como se dibuja (dibujo.js), los vehiculos (vehiculos.js), la memoria (memoria.js) y
 // las versiones pasadas (fantasmas.js).
 import * as THREE from '../vendor/three.module.js';
-import { JUEGO } from '../src/config.js';
+import { JUEGO, FIRMA } from '../src/config.js';
 import { crearAuto } from '../src/vehicle.js';
 import { crearCamara } from '../src/camera.js';
 import { crearTeclas } from '../src/input.js';
 import { crearSonido } from '../src/audio.js';
 import { ambiente } from '../src/material.js';
-import { crearMapa, TAM, CALLES, SEMAFOROS, colorSemaforo } from './mapa.js';
+import { crearMapa, XMAX, ZMAX, LIMITE, CALLES, SEMAFOROS, ABRE, TAXIS, zonasAbiertas, colorSemaforo } from './mapa.js';
 import { TIPOS, configDeTipo, crearDibujoVehiculo } from './vehiculos.js';
 import { crearDibujoPueblo } from './dibujo.js';
 import { crearMemoria, crearGrabacion } from './memoria.js';
@@ -60,7 +60,7 @@ function ponerVehiculo(t) {
   dibujo = crearDibujoVehiculo(escena, t, COLOR);
   remolque = TIPOS[t].remolque ? crearRemolque(TIPOS[t].remolque, configDeTipo(t).centro || 0) : null;
   if (antes) ubicar(antes.pos[0], antes.pos[2], Math.atan2(antes.adelante[0], -antes.adelante[2]));
-  camara.alejar({ camion: 1.3, semi: 1.7 }[t] || 1);
+  camara.alejar({ camion: 1.3, semi: 1.7, colectivo: 1.5 }[t] || 1);
 }
 ponerVehiculo('furgon');
 
@@ -91,23 +91,69 @@ camara.cambiar('aerea');
 // empieza el viaje que toca. enElLugar: el auto ya esta en la puerta (acaba de entregar): sale de donde esta
 function empezar(enElLugar) {
   viaje = mapa.viaje(forzado !== null ? forzado : memoria.entregas());
+  hechas = 0; esperando = 0;
+  abrirZonas(viaje.k);
   ponerVehiculo(viaje.tipo);
-  // (en el deposito siempre se sale del porton, de trompa al playon)
-  if (!enElLugar || viaje.de.deposito) { ubicar(viaje.de.x, viaje.de.z, viaje.de.rumbo); if (!enElLugar) camara.saltar(); }
+  // (en el deposito siempre se sale del porton, de trompa al playon; y al empezar con los colectivos o los taxis, se arranca
+  // en la terminal o en la base)
+  if (!enElLugar || viaje.de.deposito || viaje.salto) { ubicar(viaje.de.x, viaje.de.z, viaje.de.rumbo); if (!enElLugar || viaje.salto) camara.saltar(); }
   else ubicar(c.pos[0], c.pos[2], Math.atan2(c.adelante[0], -c.adelante[2]));
   reloj = 0; parado = 0; resto = 0;
   fase = 'cuenta'; cuenta = enElLugar ? 1.4 : 2;
   fantasmas.preparar(viaje.k);
   fantasmas.reiniciar();
   fantasmas.mover(0, c);
-  pueblo.destino(viaje.a);
+  pueblo.destino(objetivo());
   grabacion = crearGrabacion();
   pintarViaje();
   $('culata').hidden = !viaje.a.deposito;
   avisoCulata = false; $('avisoCulata').hidden = true;
-  if (viaje.culmine) grande(viaje.tipo === 'semi' ? '🚛 ¡Hora pico! En semi' : '🚚 ¡Hora pico!', 1.8, 'pico');
+  // al subir de nivel (se abre una zona, o cambia lo que se hace), un cartel grande
+  if (viaje.k === ABRE[2]) grande('🏭 ¡Depósito 2! Se abrieron calles', 2.6, 'pico');
+  else if (viaje.k === ABRE[3]) grande('🚌 ¡Empresa de colectivos!', 2.6, 'pico');
+  else if (viaje.k === TAXIS) grande('🚕 ¡Radio taxi!', 2.6, 'pico');
+  else if (viaje.tipo === 'colectivo') grande('🚌 ' + viaje.paradas.length + ' paradas y a la terminal', 1.8);
+  else if (viaje.tipo === 'taxi') grande('🙋 Buscá al pasajero', 1.6);
+  else if (viaje.culmine) grande(viaje.tipo === 'semi' ? '🚛 ¡Hora pico! En semi' : '🚚 ¡Hora pico!', 1.8, 'pico');
   else if (viaje.a.deposito) grande('🏭 Al depósito: de culata', 1.8);
   else grande(TIPOS[viaje.tipo].nombre + ' · ' + viaje.carga + ' → ' + viaje.a.icono, 1.6);
+}
+
+// --- que el juego esta en desarrollo y quien lo hizo (lo mismo que Shakedown: FIRMA, en src/config.js) ---
+const enDesarrollo = [FIRMA.etapa, FIRMA.aviso].filter(Boolean).join(' · ').replace(/^(.)/, '🚧 $1');
+for (const sello of document.querySelectorAll('.sello')) { sello.querySelector('b').textContent = FIRMA.etapa; sello.querySelector('span').textContent = FIRMA.aviso; sello.hidden = sello.hidden || !enDesarrollo; }
+$('firmaAutor').textContent = FIRMA.autor;
+$('firma').hidden = !FIRMA.autor;
+// al largar una partida, el sello aparece un momento (como el cartel de la largada de Shakedown)
+let tSello = 0;
+function mostrarSello() { if (!enDesarrollo) return; $('selloLargada').hidden = false; tSello = 2.6; }
+
+// --- las zonas y las paradas ---
+// abre las vallas de las zonas que tocan para el viaje k (las demas quedan cerradas: al perder, vuelve al pueblo chico)
+function abrirZonas(k) { const n = zonasAbiertas(k); mapa.T.abrir(n); pueblo.abrir(n); }
+// En los colectivos y los taxis hay que parar antes de llegar: en cada parada, en orden (o a buscar al pasajero).
+// hechas: cuantas paradas ya se hicieron en este viaje. objetivo(): adonde hay que ir ahora.
+let hechas = 0, esperando = 0;
+const objetivo = () => (viaje && hechas < viaje.paradas.length ? viaje.paradas[hechas] : viaje ? viaje.a : null);
+const PARA = 0.8;   // segundos casi quieto en la parada para que suban
+function revisarParada(dt) {
+  const p = objetivo();
+  const ahi = Math.hypot(p.x - c.pos[0], p.z - c.pos[2]) < (viaje.tipo === 'colectivo' ? 3.4 : LLEGA) && Math.abs(c.velocidad) < 1.5;
+  esperando = ahi ? esperando + dt : 0;
+  if (esperando < PARA) return;
+  esperando = 0; hechas++;
+  grande(viaje.tipo === 'taxi' ? '🙋 ¡Subió!' : '👥 ¡Subieron!', 1.2, 'bien');
+  pueblo.destino(objetivo());
+  pintarViaje();
+}
+
+// --- el nivel: en que etapa vas y cuanto falta para la siguiente ---
+//   🏭 Depósito 1 · 13/40   🏭 Depósito 2 · 7/20   🚌 Colectivos · 3/20   🚕 Taxis · 5
+function nivel(e) {
+  if (e < ABRE[2]) return '🏭 Depósito 1 · ' + e + '/' + ABRE[2];
+  if (e < ABRE[3]) return '🏭 Depósito 2 · ' + (e - ABRE[2]) + '/' + (ABRE[3] - ABRE[2]);
+  if (e < TAXIS) return '🚌 Colectivos · ' + (e - ABRE[3]) + '/' + (TAXIS - ABRE[3]);
+  return '🚕 Taxis · ' + (e - TAXIS);
 }
 
 // --- llegar ---
@@ -120,6 +166,7 @@ function cola() {
 // En un negocio: el centro adentro del circulo de la bahia. En el deposito: de culata, con la cola contra el porton y la
 // trompa hacia el playon (mirando hacia +z, con 35 grados de margen).
 function llego() {
+  if (hechas < viaje.paradas.length) return false;   // (falta pasar por alguna parada)
   const d = viaje.a;
   if (!d.deposito) return Math.hypot(d.x - c.pos[0], d.z - c.pos[2]) < LLEGA;
   const q = cola();
@@ -138,7 +185,7 @@ function avisarCulata() {
   if (si !== avisoCulata) { avisoCulata = si; $('avisoCulata').hidden = !si; }
 }
 function lejosDelDestino() {
-  const d = viaje.a;
+  const d = objetivo();
   if (!d.deposito) return Math.hypot(d.x - c.pos[0], d.z - c.pos[2]);
   const q = cola();
   return Math.hypot(q.x - d.puerta.x, q.z - d.puerta.z);
@@ -169,22 +216,24 @@ function mostrarFin() {
   $('finRecord').textContent = record;
   $('finNuevo').hidden = !(hechas > 0 && hechas > recordAntes);
   recordAntes = record;
-  memoria.borrar(); fantasmas.borrar(); fantasmas.preparar(0);
+  memoria.borrar(); fantasmas.borrar(); fantasmas.preparar(0); abrirZonas(0);
   $('fin').hidden = false;
   pintarCuenta();
 }
 function otraVez() { $('fin').hidden = true; salir(); }
 
 // --- compartir el resultado (como en Shakedown: en el celular abre el menu de compartir; en la compu lo copia) ---
-//   Probá Reparto 📦 Hice 12 entregas
+//   Probá F for Traffic 📦 Hice 12 entregas
 //   📦📦📦📦📦📦📦📦📦📦📦📦
 //   https://juanmcompa.github.io/shakedown/reparto/
+//   🚧 Early Access · App en desarrollo     (mientras el juego este en desarrollo: lo dice FIRMA, en src/config.js)
 let hechasFin = 0;
 function textoParaCompartir() {
   const n = hechasFin, cajas = '📦'.repeat(Math.min(n, 20)) + (n > 20 ? ' +' + (n - 20) : '');
-  const lineas = ['Probá Reparto 📦 Hice ' + n + (n === 1 ? ' entrega' : ' entregas')];
+  const lineas = ['Probá F for Traffic 📦 Hice ' + n + (n === 1 ? ' entrega' : ' entregas')];
   if (cajas) lineas.push(cajas);
   lineas.push(location.origin + location.pathname);
+  if (enDesarrollo) lineas.push(enDesarrollo);
   return lineas.join('\n');
 }
 async function compartir() {
@@ -226,13 +275,16 @@ $('explicaSeguir').addEventListener('click', seguir);
 let tGrande = 0;
 function grande(txt, seg, clase = '') { const g = $('grande'); g.textContent = txt; g.className = clase; g.hidden = false; tGrande = seg; }
 function pintarCuenta() {
+  $('nivel').textContent = nivel(memoria.entregas());
   $('entregas').textContent = memoria.entregas();
   $('record').textContent = memoria.record();
 }
 function pintarViaje() {
+  const d = objetivo(), n = viaje.paradas.length, falta = hechas < n;
   $('carga').textContent = viaje.carga;
-  $('destinoIcono').textContent = viaje.a.icono;
-  $('destinoNombre').textContent = viaje.a.deposito ? 'DEPÓSITO ' + (viaje.a.anden + 1) : viaje.a.nombre;
+  $('destinoIcono').textContent = falta && viaje.tipo === 'taxi' ? '🙋' : d.icono;
+  $('destinoNombre').textContent = d.deposito ? 'DEPÓSITO ' + (d.dep.n + 1) + ' · ' + (d.anden + 1)
+    : falta && viaje.tipo === 'colectivo' ? 'PARADA ' + (hechas + 1) + '/' + n : falta ? 'BUSCAR EN ' + d.nombre : d.nombre;
   pintarCuenta();
 }
 function portada(si) {
@@ -241,27 +293,34 @@ function portada(si) {
   document.documentElement.classList.toggle('jugando', !si);
   $('portadaRecord').textContent = memoria.record();
   $('portadaEntregas').textContent = memoria.entregas();
+  $('portadaNivel').textContent = nivel(memoria.entregas());
   $('pueblonuevo').hidden = !fantasmas.cuantos();
   $('salir').textContent = memoria.entregas() || fantasmas.cuantos() ? 'Seguir repartiendo' : 'Salir a repartir';
 }
-function salir() { sonido.iniciar(); portada(false); empezar(false); }
+function salir() { sonido.iniciar(); portada(false); empezar(false); if (memoria.entregas() === 0) mostrarSello(); }
 $('salir').addEventListener('click', salir);
 $('pueblonuevo').addEventListener('click', () => {
   if (!confirm('¿Empezar de cero? Se borran tus entregas (el récord queda).')) return;
-  memoria.borrar(); fantasmas.borrar(); portada(true);
+  memoria.borrar(); fantasmas.borrar(); abrirZonas(0); portada(true);
 });
 
 // el mapita: las calles, vos, el destino y tus versiones pasadas
 const mapita = $('mapita'), mg = mapita.getContext('2d');
 function pintarMapita() {
-  const n = mapita.width, M = TAM + 24, esc = n / M, a = (v) => (v + 12) * esc;
+  const n = mapita.width, M = Math.max(XMAX, ZMAX) + 24, esc = n / M, a = (v) => (v + 12) * esc;
   mg.clearRect(0, 0, n, n);
   mg.fillStyle = 'rgba(20,22,26,.72)'; mg.fillRect(0, 0, n, n);
   mg.strokeStyle = '#6a6c72'; mg.lineCap = 'round';
   for (const s of CALLES) { mg.lineWidth = Math.max(3, 2 * s.m * esc); mg.beginPath(); mg.moveTo(a(s.x1), a(s.z1)); mg.lineTo(a(s.x2), a(s.z2)); mg.stroke(); }
+  // las vallas de las zonas cerradas
+  const abiertas = zonasAbiertas(viaje ? viaje.k : memoria.entregas());
+  mg.strokeStyle = '#c8302a'; mg.lineWidth = 2; mg.setLineDash([4, 3]);
+  if (abiertas < 2) { mg.beginPath(); mg.moveTo(a(LIMITE), a(-12)); mg.lineTo(a(LIMITE), a(LIMITE)); mg.stroke(); }
+  if (abiertas < 3) { mg.beginPath(); mg.moveTo(a(-12), a(LIMITE)); mg.lineTo(a(XMAX + 12), a(LIMITE)); mg.stroke(); }
+  mg.setLineDash([]);
   for (const s of SEMAFOROS) { mg.fillStyle = { verde: '#3fdc6a', amarillo: '#ffc21e', rojo: '#ff3b2a' }[colorSemaforo(s, 'ns', reloj)]; mg.fillRect(a(s.x) - 2, a(s.z) - 2, 4, 4); }
   for (const f of fantasmas.enLaCalle()) { mg.fillStyle = f.entrego ? '#c9d4e0' : '#e08a7a'; mg.fillRect(a(f.x) - 2, a(f.z) - 2, 4, 4); }
-  if (viaje) { mg.fillStyle = '#ffd23a'; mg.beginPath(); mg.arc(a(viaje.a.x), a(viaje.a.z), 5, 0, Math.PI * 2); mg.fill(); }
+  if (viaje) { const d = objetivo(); mg.fillStyle = '#ffd23a'; mg.beginPath(); mg.arc(a(d.x), a(d.z), 5, 0, Math.PI * 2); mg.fill(); }
   // vos: un triangulo que apunta hacia donde vas
   const r = Math.atan2(c.adelante[0], -c.adelante[2]), x = a(c.pos[0]), z = a(c.pos[2]);
   mg.fillStyle = '#ffffff'; mg.beginPath();
@@ -274,6 +333,7 @@ function logica(dt) {
   tiempo += dt;
   if (fase === 'explica') return;   // (todo quieto hasta que se lee)
   if (tGrande > 0 && (tGrande -= dt) <= 0) $('grande').hidden = true;
+  if (tSello > 0 && (tSello -= dt) <= 0) $('selloLargada').hidden = true;
   let manda = QUIETO;
   if (fase === 'cuenta') {
     if ((cuenta -= dt) <= 0) fase = 'viaje';
@@ -309,6 +369,7 @@ function logica(dt) {
       if (f) { explicar(f); return; }
     }
     // llego: adentro del circulo y casi parado, un ratito
+    if (hechas < viaje.paradas.length) revisarParada(dt);
     parado = llego() && Math.abs(c.velocidad) < (viaje.a.deposito ? 1.5 : 2.5) ? parado + dt : 0;
     // en el deposito, si te acercas al porton de trompa (o de costado), un aviso grande: hay que entrar de culata
     avisarCulata();
@@ -339,7 +400,7 @@ function dibujar(dt) {
   dibujo.actualizar(c, dt, remolque);
   if (fase !== 'explica') camara.seguir(c, dt);
   ambiente.tiempo.value = tiempo;
-  if (viaje) pueblo.actualizar(tiempo, reloj, c, viaje.a);
+  if (viaje) pueblo.actualizar(tiempo, reloj, c, objetivo());
   else pueblo.actualizar(tiempo, tiempo, c, mapa.destinos[0]);
   if (marcado) anillo.material.opacity = 0.6 + 0.35 * Math.sin(tiempo * 6);
   sonido.actualizar(c, 0, fase === 'explica' ? 0 : dt);
@@ -355,6 +416,7 @@ function dibujar(dt) {
 let vistaFija = null;   // (solo las pruebas: una camara quieta para mirar el pueblo de arriba)
 
 // --- arranque ---
+abrirZonas(memoria.entregas());
 ubicar(mapa.destinos[0].x, mapa.destinos[0].z, mapa.destinos[0].rumbo);
 portada(true);
 pintarCuenta();
@@ -365,7 +427,7 @@ requestAnimationFrame(cuadro);
 window.reparto = {
   mapa, auto: () => c, memoria, fantasmas, remolque: () => remolque, ubicar, llego,
   viaje: (k) => mapa.viaje(k),
-  estado: () => ({ trabas, roces, avisoCulata, fase, k: viaje && viaje.k, tipo, doblado: remolque ? Math.round(remolque.doblado(c) * 180 / Math.PI) : null, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
+  estado: () => ({ hechas, paradas: viaje ? viaje.paradas.length : 0, nivel: nivel(memoria.entregas()), trabas, roces, avisoCulata, fase, k: viaje && viaje.k, tipo, doblado: remolque ? Math.round(remolque.doblado(c) * 180 / Math.PI) : null, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
   salir, seguir, otraVez, textoParaCompartir,
   // maneja con estos mandos (volante x, acelerador y) hasta que se apague (sin nada)
   mandar: (x, y) => { piloto = x === undefined ? null : (cc, e) => { e.x = x; e.y = y; e.mano = false; }; },
@@ -375,7 +437,7 @@ window.reparto = {
   pilotear: (si = true) => {
     if (!si || !viaje) { piloto = null; return; }
     const enLargada = Math.hypot(c.pos[0] - viaje.de.x, c.pos[2] - viaje.de.z) < 6;
-    piloto = crearPiloto(mapa.red, enLargada ? viaje.de : { x: c.pos[0], z: c.pos[2] }, viaje.a, () => cola());
+    piloto = crearPiloto(mapa.red, enLargada ? viaje.de : { x: c.pos[0], z: c.pos[2] }, viaje.a, () => cola(), viaje.paradas.slice(hechas), ['camion', 'semi', 'colectivo'].includes(tipo));
   },
   // corre el juego "seg" segundos sin esperar (de a 1/30), con el piloto si esta prendido (y lo rearma en cada viaje nuevo)
   avanzar: (seg) => {

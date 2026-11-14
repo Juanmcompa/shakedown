@@ -3,11 +3,11 @@
 // color con el reloj del viaje; y el destino es una columna de luz con el icono del negocio.
 import * as THREE from '../vendor/three.module.js';
 import { tono } from '../src/pixel.js';
-import { TAM, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITO, ROTONDAS, colorSemaforo, aCalle } from './mapa.js';
+import { TAM, XMAX, ZMAX, LIMITE, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITOS, ROTONDAS, colorSemaforo, aCalle } from './mapa.js';
 
 const rotondaEn = (n) => ROTONDAS.find((q) => Math.hypot(q.x - n.x, q.z - n.z) < 1);
 
-const PX = 4;   // pixeles por metro en el piso
+const PX = 3;   // pixeles por metro en el piso (3: el pueblo entero es grande, y el dibujo del piso tiene que entrar en el celular)
 const REVOQUES = ['#e6dfcd', '#d9b36a', '#d8a48c', '#a9c3cc', '#b4cdb4', '#c9bfa8', '#e2c9a0', '#bfae9a'];
 const ABERTURAS = ['#3f6a4a', '#6b4a36', '#35546e', '#8a3a2a', '#e9e4d6'];
 const TECHOS = ['#8f9499', '#8a5a44', '#7d8a84', '#b5523a', '#96402c', '#cfc8b8'];
@@ -53,9 +53,10 @@ function bocas(red) {
 
 // --- el piso ---
 function pintarPiso(mapa) {
-  const X0 = -BORDE - 8, lado = TAM + 2 * (BORDE + 8), n = Math.round(lado * PX);
+  const X0 = -BORDE - 8, ladoX = XMAX + 2 * (BORDE + 8), ladoZ = ZMAX + 2 * (BORDE + 8), lado = Math.max(ladoX, ladoZ);
+  const nx = Math.round(ladoX * PX), nz = Math.round(ladoZ * PX), n = nx;
   const lienzo = document.createElement('canvas');
-  lienzo.width = lienzo.height = n;
+  lienzo.width = nx; lienzo.height = nz;
   const g = lienzo.getContext('2d');
   g.setTransform(PX, 0, 0, PX, -X0 * PX, -X0 * PX);   // de aca en adelante se dibuja en metros del mundo
   g.imageSmoothingEnabled = false;
@@ -69,12 +70,12 @@ function pintarPiso(mapa) {
   };
   // campo, patios y plaza
   R(X0, X0, lado, lado, '#6f8f4a');
-  R(0, 0, TAM, TAM, '#7c8a52');
+  R(0, 0, XMAX, ZMAX, '#7c8a52');
   R(PLAZA.x0, PLAZA.z0, PLAZA.x1 - PLAZA.x0, PLAZA.z1 - PLAZA.z0, '#5f8f3c');
   // salpicado: matitas y tierra
   g.setTransform(1, 0, 0, 1, 0, 0);
-  const img = g.getImageData(0, 0, n, n), d = img.data;
-  for (let k = 0; k < n * n; k++) {
+  const img = g.getImageData(0, 0, nx, nz), d = img.data;
+  for (let k = 0; k < nx * nz; k++) {
     const v = ruido(k % n, Math.floor(k / n));
     if (v > 0.93) { d[k * 4] *= 0.85; d[k * 4 + 1] *= 0.88; d[k * 4 + 2] *= 0.85; }
     else if (v < 0.04) { d[k * 4] = Math.min(255, d[k * 4] * 1.12); d[k * 4 + 1] = Math.min(255, d[k * 4 + 1] * 1.08); }
@@ -144,8 +145,6 @@ function pintarPiso(mapa) {
     for (const k of [-1, 1]) girado(b.x + b.ux * k * (b.hx - 0.1), b.z + b.uz * k * (b.hx - 0.1), 0.1, b.hz, b.ux, b.uz, '#f1ede2');
     for (let u = -b.hx + 0.8; u < b.hx - 0.5; u += 1.2) girado(b.x + b.ux * u, b.z + b.uz * u, 0.18, b.hz * 0.6, b.ux, b.uz, '#d8b23a');
   }
-  // --- el playon del deposito: cemento, con todo pintado para que se entienda como se circula ---
-  const D = DEPOSITO, zq = D.quiebre, mitad = (D.x0 + D.x1) / 2;
   // texto pintado en el piso (en metros), girado "rot" (0: se lee desde la calle; pi: desde adentro)
   const texto = (t, x, z, alto, col, rot = 0) => {
     g.save(); g.translate(x, z); g.rotate(rot);
@@ -160,50 +159,60 @@ function pintarPiso(mapa) {
     g.restore();
   };
   const raya = (x1, z1, x2, z2, ancho, col, guiones) => { g.beginPath(); g.moveTo(x1, z1); g.lineTo(x2, z2); g.lineWidth = ancho; g.strokeStyle = col; g.setLineDash(guiones || []); g.lineCap = 'butt'; g.stroke(); g.setLineDash([]); };
-  R(D.x0, D.zAnden, D.x1 - D.x0, D.z1 - D.zAnden, '#8f8c86');
-  for (let x = D.x0; x < D.x1; x += 4) R(x, D.zAnden, 0.08, D.z1 - D.zAnden, 'rgba(0,0,0,.08)');
-  for (let z = D.zAnden; z < D.z1; z += 4) R(D.x0, z, D.x1 - D.x0, 0.08, 'rgba(0,0,0,.08)');
-  // las dos bocas: el cemento cruza la vereda hasta el cordon
-  for (const [a, b] of [D.entrada, D.salida]) R(a, D.z1, b - a, VEREDA + 0.05, '#9a968f');
-  // el cordon pintado de amarillo 5 m a cada lado de la entrada (que nadie estacione ahi y les cierre el giro a los camiones)
-  for (const x of [D.entrada[0] - 5, D.entrada[1]]) R(x, D.z1 + VEREDA - 0.15, 5, 0.4, '#e0b21e');
-  // las darsenas: una por porton, con su numero grande, hasta la linea de quiebre
-  const portones = mapa.destinos.filter((dd) => dd.deposito);
-  for (const dd of portones) {
-    R(dd.x - 2.4, D.zAnden, 4.8, 0.5, '#d8b23a');
-    texto(String(dd.anden + 1), dd.x, zq - 4, 3.2, '#f1ede2');
+  // las paradas de colectivo: la bahia dice COLECTIVOS; la terminal y la base de taxis, su nombre
+  for (const dd of mapa.destinos) {
+    if (!dd.bahia || !(dd.parada || dd.terminal || dd.base)) continue;
+    const b = dd.bahia;
+    texto(dd.parada ? 'COLECTIVOS' : dd.terminal ? 'TERMINAL' : 'TAXIS', b.x, b.z, 1.1, '#f1ede2', Math.atan2(b.uz, b.ux));
   }
-  for (let i = 0; i <= portones.length; i++) {
-    const x = i === 0 ? portones[0].x - 3.6 : i === portones.length ? portones[i - 1].x + 3.6 : (portones[i - 1].x + portones[i].x) / 2;
-    R(x - 0.1, D.zAnden, 0.2, zq - D.zAnden, '#f1ede2');
+  // --- el playon de cada deposito: cemento, con todo pintado para que se entienda como se circula ---
+  for (const D of DEPOSITOS) {
+    const zq = D.quiebre, mitad = (D.x0 + D.x1) / 2;
+    R(D.x0, D.zAnden, D.x1 - D.x0, D.z1 - D.zAnden, '#8f8c86');
+    for (let x = D.x0; x < D.x1; x += 4) R(x, D.zAnden, 0.08, D.z1 - D.zAnden, 'rgba(0,0,0,.08)');
+    for (let z = D.zAnden; z < D.z1; z += 4) R(D.x0, z, D.x1 - D.x0, 0.08, 'rgba(0,0,0,.08)');
+    // las dos bocas: el cemento cruza la vereda hasta el cordon
+    for (const [a, b] of [D.entrada, D.salida]) R(a, D.z1, b - a, VEREDA + 0.05, '#9a968f');
+    // el cordon pintado de amarillo 5 m a cada lado de la entrada (que nadie estacione ahi y les cierre el giro a los camiones)
+    for (const x of [D.entrada[0] - 5, D.entrada[1]]) R(x, D.z1 + VEREDA - 0.15, 5, 0.4, '#e0b21e');
+    // las darsenas: una por porton, con su numero grande, hasta la linea de quiebre
+    const portones = mapa.destinos.filter((dd) => dd.deposito && dd.dep === D);
+    for (const dd of portones) {
+      R(dd.x - 2.4, D.zAnden, 4.8, 0.5, '#d8b23a');
+      texto(String(dd.anden + 1), dd.x, zq - 4, 3.2, '#f1ede2');
+    }
+    for (let i = 0; i <= portones.length; i++) {
+      const x = i === 0 ? portones[0].x - 3.6 : i === portones.length ? portones[i - 1].x + 3.6 : (portones[i - 1].x + portones[i].x) / 2;
+      R(x - 0.1, D.zAnden, 0.2, zq - D.zAnden, '#f1ede2');
+    }
+    // la linea de quiebre (hasta ahi llegan los camiones estacionados) y la zona de maniobra
+    raya(D.x0 + 1, zq, D.x1 - 1, zq, 0.25, '#f1ede2', [1.5, 1]);
+    texto('ZONA DE MANIOBRA', mitad, zq + 8, 2, 'rgba(241,237,226,.75)');
+    // el flujo: de la entrada (derecha) hacia la salida (izquierda), en el medio del playon
+    for (const x of [mitad - 22, mitad - 8, mitad + 6, mitad + 20]) flecha(x, zq + 14, Math.PI, 7, 2.2, '#f1ede2');
+    texto('FLUJO INTERNO', mitad, zq + 18.5, 1.6, 'rgba(241,237,226,.8)');
+    // cebrados amarillos en las esquinas, de la linea de quiebre hacia las bocas: ahi no se deja nada parado
+    for (const x0 of [D.x0, D.x1 - 4]) {
+      g.save(); g.beginPath(); g.rect(x0, zq, 4, 9); g.clip();
+      R(x0, zq, 4, 9, 'rgba(224,178,30,.18)');
+      for (let k = -10; k < 14; k += 1.2) raya(x0 + k, zq, x0 + k + 9, zq + 9, 0.45, '#e0b21e');
+      g.restore();
+      g.strokeStyle = '#e0b21e'; g.lineWidth = 0.2; g.strokeRect(x0, zq, 4, 9);
+    }
+    // ENTRADA: flecha grande hacia adentro, el nombre, la linea de ceda el paso antes de cruzar la vereda, y la curva guia
+    // (punteada) para los que vienen del otro carril y doblan a la izquierda
+    const xe = (D.entrada[0] + D.entrada[1]) / 2, xs = (D.salida[0] + D.salida[1]) / 2;
+    flecha(xe, D.z1 - 5, -Math.PI / 2, 7, 3, '#f1ede2');
+    texto('ENTRADA', xe, D.z1 - 11, 1.8, '#f1ede2');
+    for (let x = D.entrada[0] + 0.3; x < D.entrada[1] - 0.3; x += 1.2) { g.fillStyle = '#f1ede2'; g.beginPath(); g.moveTo(x, D.z1 + VEREDA - 0.2); g.lineTo(x + 0.9, D.z1 + VEREDA - 0.2); g.lineTo(x + 0.45, D.z1 + VEREDA - 0.9); g.fill(); }
+    g.beginPath(); g.moveTo(D.entrada[1] + 6, D.calle - 2.5); g.quadraticCurveTo(xe + 1, D.calle - 2, xe - 1, D.z1 - 2); g.lineWidth = 0.22; g.strokeStyle = '#e0b21e'; g.setLineDash([1, 1]); g.stroke(); g.setLineDash([]);
+    // SALIDA: flecha hacia la calle, el nombre (se lee desde adentro), y la linea de PARE antes de pisar la vereda
+    flecha(xs, D.z1 - 8.5, Math.PI / 2, 7, 3, '#f1ede2');
+    texto('SALIDA', xs, D.z1 - 14.5, 1.8, '#f1ede2', Math.PI);
+    R(D.salida[0], D.z1 - 1.6, D.salida[1] - D.salida[0], 0.5, '#f1ede2');
+    texto('PARE', xs, D.z1 - 3, 1.4, '#f1ede2', Math.PI);
   }
-  // la linea de quiebre (hasta ahi llegan los camiones estacionados) y la zona de maniobra
-  raya(D.x0 + 1, zq, D.x1 - 1, zq, 0.25, '#f1ede2', [1.5, 1]);
-  texto('ZONA DE MANIOBRA', mitad, zq + 8, 2, 'rgba(241,237,226,.75)');
-  // el flujo: de la entrada (derecha) hacia la salida (izquierda), en el medio del playon
-  for (const x of [mitad - 22, mitad - 8, mitad + 6, mitad + 20]) flecha(x, zq + 14, Math.PI, 7, 2.2, '#f1ede2');
-  texto('FLUJO INTERNO', mitad, zq + 18.5, 1.6, 'rgba(241,237,226,.8)');
-  // cebrados amarillos en las esquinas, de la linea de quiebre hacia las bocas: ahi no se deja nada parado
-  for (const x0 of [D.x0, D.x1 - 4]) {
-    g.save(); g.beginPath(); g.rect(x0, zq, 4, 9); g.clip();
-    R(x0, zq, 4, 9, 'rgba(224,178,30,.18)');
-    for (let k = -10; k < 14; k += 1.2) raya(x0 + k, zq, x0 + k + 9, zq + 9, 0.45, '#e0b21e');
-    g.restore();
-    g.strokeStyle = '#e0b21e'; g.lineWidth = 0.2; g.strokeRect(x0, zq, 4, 9);
-  }
-  // ENTRADA: flecha grande hacia adentro, el nombre, la linea de ceda el paso antes de cruzar la vereda, y la curva guia
-  // (punteada) para los que vienen del otro carril y doblan a la izquierda
-  const xe = (D.entrada[0] + D.entrada[1]) / 2, xs = (D.salida[0] + D.salida[1]) / 2;
-  flecha(xe, D.z1 - 5, -Math.PI / 2, 7, 3, '#f1ede2');
-  texto('ENTRADA', xe, D.z1 - 11, 1.8, '#f1ede2');
-  for (let x = D.entrada[0] + 0.3; x < D.entrada[1] - 0.3; x += 1.2) { g.fillStyle = '#f1ede2'; g.beginPath(); g.moveTo(x, D.z1 + VEREDA - 0.2); g.lineTo(x + 0.9, D.z1 + VEREDA - 0.2); g.lineTo(x + 0.45, D.z1 + VEREDA - 0.9); g.fill(); }
-  g.beginPath(); g.moveTo(D.entrada[1] + 6, TAM - 2.5); g.quadraticCurveTo(xe + 1, TAM - 2, xe - 1, D.z1 - 2); g.lineWidth = 0.22; g.strokeStyle = '#e0b21e'; g.setLineDash([1, 1]); g.stroke(); g.setLineDash([]);
-  // SALIDA: flecha hacia la calle, el nombre (se lee desde adentro), y la linea de PARE antes de pisar la vereda
-  flecha(xs, D.z1 - 8.5, Math.PI / 2, 7, 3, '#f1ede2');
-  texto('SALIDA', xs, D.z1 - 14.5, 1.8, '#f1ede2', Math.PI);
-  R(D.salida[0], D.z1 - 1.6, D.salida[1] - D.salida[0], 0.5, '#f1ede2');
-  texto('PARE', xs, D.z1 - 3, 1.4, '#f1ede2', Math.PI);
-  return { lienzo, X0, lado, bocas: B };
+  return { lienzo, X0, ladoX, ladoZ, bocas: B };
 }
 
 // --- una fachada: un piso de 4 m de ancho y 3 de alto con una ventana (o una puerta), que se repite ---
@@ -305,8 +314,8 @@ function cartelVial(tipo, x, z, giro) {
 // el galpon del deposito: paredes grises con una franja azul arriba, un porton por anden con topes amarillos (como en un
 // centro de distribucion), el techo de chapa y el nombre grande arriba (se lee desde la camara alta). Mas dos muros bajos
 // a los costados del playon.
-function galpon(andenes) {
-  const D = DEPOSITO, W = D.x1 - D.x0, F = D.zAnden - D.z0, H = 7, grupo = new THREE.Group();
+function galpon(D, andenes) {
+  const W = D.x1 - D.x0, F = D.zAnden - D.z0, H = 7, grupo = new THREE.Group();
   const l = document.createElement('canvas');
   l.width = W * 4; l.height = H * 4;
   const g = l.getContext('2d');
@@ -332,7 +341,7 @@ function galpon(andenes) {
   const k = c.getContext('2d');
   k.fillStyle = '#2f6fa8'; k.fillRect(0, 0, 256, 40);
   k.fillStyle = '#f1ede2'; k.font = '700 28px "Atkinson Hyperlegible", "Segoe UI", sans-serif'; k.textAlign = 'center'; k.textBaseline = 'middle';
-  k.fillText('DEPOSITO', 128, 21);
+  k.fillText(D.n ? 'DEPOSITO 2' : 'DEPOSITO', 128, 21);
   const nombre = new THREE.Mesh(new THREE.PlaneGeometry(26, 4), new THREE.MeshBasicMaterial({ map: textura(c) }));
   nombre.rotation.x = -Math.PI / 2;
   nombre.position.set((D.x0 + D.x1) / 2, H + 0.05, (D.z0 + D.zAnden) / 2);
@@ -355,6 +364,66 @@ function galpon(andenes) {
   grupo.add(cartelVial('contramano', D.salida[1] + 0.6, D.z1 + 0.4, 0));
   grupo.add(cartelVial('contramano', D.entrada[0] - 0.6, D.z1 - 1.2, Math.PI));
   grupo.add(cartelVial('pare', D.salida[0] + 0.6, D.z1 - 1.2, Math.PI));
+  return grupo;
+}
+
+// el refugio de una parada: un techo sobre dos postes y el cartel azul con el colectivo
+function refugio(d) {
+  const b = d.bahia, e = d.edificio, grupo = new THREE.Group();
+  const gris = new THREE.MeshLambertMaterial({ color: '#8a8f96' }), techo = new THREE.MeshLambertMaterial({ color: '#2f6fa8' });
+  // va sobre la linea de la casa (pegado a la pared), en el medio de la bahia, de frente a la calle
+  const x = e.frenteX + e.nx * 0.9, z = e.frenteZ + e.nz * 0.9;
+  for (const k of [-1.2, 1.2]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.4, 0.1), gris); p.position.set(x + b.ux * k, 1.2, z + b.uz * k); grupo.add(p); }
+  const t = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 1.4), techo);
+  t.position.set(x, 2.45, z); t.rotation.y = -Math.atan2(b.uz, b.ux); t.castShadow = true;
+  grupo.add(t);
+  const l = document.createElement('canvas');
+  l.width = l.height = 48;
+  const g = l.getContext('2d');
+  g.fillStyle = '#2f6fa8'; g.fillRect(0, 0, 48, 48); g.fillStyle = '#ffffff'; g.font = '30px "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🚌', 24, 27);
+  const tx = new THREE.CanvasTexture(l); tx.colorSpace = THREE.SRGBColorSpace;
+  const c = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide }));
+  c.position.set(x + b.ux * 1.9 + e.nx * 1.0, 2.6, z + b.uz * 1.9 + e.nz * 1.0); c.rotation.y = Math.atan2(e.nx, e.nz);
+  const palo = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.6, 0.08), gris); palo.position.set(c.position.x, 1.3, c.position.z);
+  grupo.add(c, palo);
+  return grupo;
+}
+
+// un tramo de valla de obra: chapas con rayas rojas y blancas, y en cada calle que cruza un cartel "en obra" con lo que falta
+// para abrirla (zona 2: 40 entregas; zona 3: 60)
+const chapaObra = (() => {
+  const l = document.createElement('canvas');
+  l.width = 16; l.height = 8;
+  const g = l.getContext('2d');
+  g.fillStyle = '#e9e4d6'; g.fillRect(0, 0, 16, 8);
+  g.fillStyle = '#c8302a'; for (let x = -8; x < 16; x += 4) { g.beginPath(); g.moveTo(x, 8); g.lineTo(x + 2, 8); g.lineTo(x + 10, 0); g.lineTo(x + 8, 0); g.fill(); }
+  const t = new THREE.CanvasTexture(l); t.magFilter = THREE.NearestFilter; t.wrapS = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+function vallaDeObra(o) {
+  const largo = Math.max(o.hx, o.hz) * 2, aLoLargoDeX = o.hx > o.hz, grupo = new THREE.Group();
+  const tex = chapaObra.clone(); tex.needsUpdate = true; tex.repeat.set(largo / 4, 1);
+  const chapa = new THREE.Mesh(new THREE.BoxGeometry(aLoLargoDeX ? largo : 0.1, 1.4, aLoLargoDeX ? 0.1 : largo), new THREE.MeshLambertMaterial({ map: tex }));
+  chapa.position.set(o.x, 0.9, o.z); chapa.castShadow = true;
+  grupo.add(chapa);
+  // los carteles, cada 40 m
+  const l = document.createElement('canvas');
+  l.width = 128; l.height = 64;
+  const g = l.getContext('2d');
+  g.fillStyle = '#e0b21e'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1e1f23'; g.fillRect(4, 4, 120, 56);
+  g.fillStyle = '#e0b21e'; g.font = '700 20px "Atkinson Hyperlegible", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('🚧 EN OBRA', 64, 22, 116); g.fillText('🔒 ' + (o.zona === 2 ? 40 : 60) + ' entregas', 64, 44, 116);
+  const tx = new THREE.CanvasTexture(l); tx.colorSpace = THREE.SRGBColorSpace;
+  const mc = new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide });
+  // un cartel en cada calle que choca con la valla, en el medio de la calle (donde se ve al llegar)
+  for (const q of CALLES) {
+    const t = aLoLargoDeX ? (Math.abs(q.uz) < 1e-6 ? -1 : (o.z - q.z1) / q.uz) : (Math.abs(q.ux) < 1e-6 ? -1 : (o.x - q.x1) / q.ux);
+    if (!(t > 0 && t < q.L)) continue;
+    const x = aLoLargoDeX ? q.x1 + q.ux * t : o.x, z = aLoLargoDeX ? o.z : q.z1 + q.uz * t;
+    const c = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.8), mc);
+    c.position.set(x, 2.5, z); c.rotation.y = aLoLargoDeX ? Math.PI : -Math.PI / 2;   // (mira hacia el lado abierto: de donde se llega)
+    grupo.add(c);
+  }
   return grupo;
 }
 
@@ -388,16 +457,22 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
 
   // --- el piso ---
   const p = pintarPiso(mapa);
-  const piso = new THREE.Mesh(new THREE.PlaneGeometry(p.lado, p.lado), new THREE.MeshLambertMaterial({ map: textura(p.lienzo) }));
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(p.ladoX, p.ladoZ), new THREE.MeshLambertMaterial({ map: textura(p.lienzo) }));
   piso.rotation.x = -Math.PI / 2;
-  piso.position.set(p.X0 + p.lado / 2, 0, p.X0 + p.lado / 2);
+  piso.position.set(p.X0 + p.ladoX / 2, 0, p.X0 + p.ladoZ / 2);
   piso.receiveShadow = true;
   escena.add(piso);
 
   // --- las casas y los negocios ---
   for (const e of mapa.edificios) escena.add(casa(e));
   for (const d of mapa.destinos) if (d.edificio) escena.add(cartel(d.edificio, d));
-  escena.add(galpon(mapa.destinos.filter((d) => d.deposito)));
+  for (const D of DEPOSITOS) escena.add(galpon(D, mapa.destinos.filter((d) => d.deposito && d.dep === D)));
+  // los refugios de las paradas de colectivo: un techito con el cartel azul, sobre la vereda, al lado de la bahia
+  for (const d of mapa.destinos) if (d.parada) escena.add(refugio(d));
+  // --- las vallas de obra de las zonas que todavia no se abrieron (ver abrir) ---
+  const vallas = { 2: new THREE.Group(), 3: new THREE.Group() };
+  for (const o of mapa.vallas) vallas[o.zona].add(vallaDeObra(o));
+  escena.add(vallas[2], vallas[3]);
 
   // --- la plaza ---
   const tronco = new THREE.MeshLambertMaterial({ color: '#6b4a36' }), copas = ['#4f7a3a', '#5f8f3c', '#3f6a34'].map((c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
@@ -477,6 +552,8 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
   const ARRIBA = new THREE.Vector3(0, 1, 0), HACIA = new THREE.Vector3();
 
   return {
+    // muestra las vallas de las zonas que siguen cerradas (n: hasta que zona esta abierto)
+    abrir: (n) => { vallas[2].visible = n < 2; vallas[3].visible = n < 3; },
     destino: (d) => {
       destino.position.set(d.x, 0, d.z);
       if (!iconos.has(d.n)) iconos.set(d.n, iconoTextura(d.icono));
