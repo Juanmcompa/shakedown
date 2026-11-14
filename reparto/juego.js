@@ -76,6 +76,8 @@ const ent = { x: 0, y: 0, mano: false };
 
 const teclas = crearTeclas((tecla) => {
   sonido.iniciar();
+  if (pausado) { if (tecla === 'KeyP' || tecla === 'Escape' || tecla === 'Enter') pausar(false); return; }
+  if (tecla === 'KeyP' && fase !== 'portada' && fase !== 'fin') { pausar(true); return; }
   if (fase === 'explica') { if (tecla === 'Enter' || tecla === 'Space') seguir(); return; }
   if (fase === 'fin') { if (tecla === 'Enter' || tecla === 'Space') otraVez(); else if (tecla === 'Escape') { $('fin').hidden = true; portada(true); } return; }
   if (tecla === 'KeyC') camara.cambiar();
@@ -368,8 +370,20 @@ function pintarMapita() {
   mg.lineWidth = 2; mg.strokeStyle = '#0c2a14'; mg.stroke();
 }
 
+// --- la pausa: el boton del medio de los controles (o la P). Todo se queda quieto hasta seguir. ---
+let pausado = false;
+function pausar(si) {
+  pausado = si;
+  $('pausaMenu').hidden = !si;
+  for (const tecla of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) teclas.abajo.delete(tecla);   // (que no quede un pedal apretado)
+}
+$('botonPausa').addEventListener('click', () => { if (fase !== 'portada' && fase !== 'fin') pausar(true); });
+$('seguirPausa').addEventListener('click', () => pausar(false));
+$('salirPausa').addEventListener('click', () => { pausar(false); portada(true); });
+
 // --- cada cuadro: la logica (sin dibujar: las pruebas la corren sola) ---
 function logica(dt) {
+  if (pausado) return;   // (en pausa, todo quieto: el reloj del viaje, las versiones pasadas y la camioneta)
   tiempo += dt;
   if (fase === 'explica') return;   // (todo quieto hasta que se lee)
   if (tGrande > 0 && (tGrande -= dt) <= 0) $('grande').hidden = true;
@@ -423,6 +437,10 @@ function medir() {
   const w = lienzo.clientWidth, h = lienzo.clientHeight;
   render.setSize(w, h, false);
   camara.pantalla(w, h);
+  // Con el celular parado, la camioneta va siempre en la franja de abajo (entre el 62 % y el 86 % de la pantalla, de arriba
+  // hacia abajo): arriba quedan el reloj, el pedido y el mapita, abajo los controles, y en el medio se ve la calle de adelante.
+  if (h > w * 1.2) camara.encuadrar(0.14, 0.62, 0.22);
+  else camara.encuadrar(0.16, 0.2, 0.22);
 }
 window.addEventListener('resize', medir);
 medir();

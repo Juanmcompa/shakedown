@@ -25,12 +25,17 @@
   #pedido b { font-weight: 700; }
   #distancia { color: var(--apagado); font-size: 15px; white-space: nowrap; }
   #culata { color: var(--oro); font-size: 15px; font-weight: 700; white-space: nowrap; }
-  /* pantalla angosta (celular parado): el pedido arriba de todo y el resto en una fila abajo */
+  /* pantalla angosta (celular parado): todo arriba en dos renglones compactos (reloj, nivel y entregas; abajo, el pedido),
+     el mapita chico debajo a la derecha, y el resto de la pantalla libre para ver la calle */
   @media (max-width: 560px) {
-    #arriba { flex-wrap: wrap; }
-    #pedido { order: -1; width: 100%; font-size: 17px; }
-    #reloj { font-size: 28px; }
-    #arriba #cuenta { grid-template-columns: repeat(4, auto); }
+    #arriba { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; left: 8px; right: 8px; }
+    #arriba .caja { padding: 5px 8px; }
+    #arriba #reloj { grid-column: 1; grid-row: 1; font-size: 26px; min-width: 74px; }
+    #arriba #nivel { grid-column: 2; grid-row: 1; justify-self: center; font-size: 13px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    #arriba #cuenta { grid-column: 3; grid-row: 1; grid-template-columns: repeat(4, auto); font-size: 14px; }
+    #arriba #cuenta b { font-size: 17px; }
+    #arriba #pedido { grid-column: 1 / -1; grid-row: 2; font-size: 15px; gap: 6px; white-space: nowrap; overflow: hidden; }
+    #arriba #pedido b { overflow: hidden; text-overflow: ellipsis; }
   }
   #reloj { font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: 34px; min-width: 96px; text-align: center; }
   #reloj.apuro { color: var(--mal); }
@@ -59,6 +64,10 @@
   html:not(.jugando) #arriba, html:not(.jugando) #mapita, html:not(.jugando) #ayudita, html:not(.jugando) #mandos { display: none; }
 
   /* la portada */
+  #pausaMenu { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(22,24,27,.7); padding: 16px; }
+  #pausaMenu .tarjeta { width: min(340px, 100%); text-align: center; }
+  #pausaMenu h1 { color: var(--oro); font-size: 48px; margin: 0 0 16px; }
+  #seguirPausa { background: var(--oro); color: #1d1a10; font-weight: 700; font-size: 22px; padding: 14px 28px; width: 100%; }
   #portada, #fin { position: fixed; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(22,24,27,.35), rgba(22,24,27,.85)); padding: 16px; }
   #portada .tarjeta, #fin .tarjeta { max-width: 460px; width: 100%; text-align: center; }
   #portada h1, #fin h1 { font-size: clamp(40px, 11vw, 72px); margin: 0 0 4px; color: var(--oro); text-shadow: 0 4px 0 rgba(0,0,0,.45); }
@@ -90,10 +99,12 @@
   @media (pointer: coarse) {
     #mandos { display: block; }
     #ayudita { display: none; }
-    #mapita { width: 120px; height: 120px; bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 116px); }
+    #mapita { width: 108px; height: 108px; bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 102px); right: 8px; }
     .pedal { position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); width: 74px; height: 74px; border-radius: 50%; background: rgba(241,237,226,.18); color: var(--texto); font-size: 30px; touch-action: none; }
     .pedal.apretado { background: rgba(255,210,58,.45); }
-    .izq { left: 16px; } .der { left: 104px; } .frena { right: 104px; } .acelera { right: 16px; }
+    .izq { left: 12px; } .der { left: 94px; } .frena { right: 94px; } .acelera { right: 12px; }
+    /* la pausa: en el medio, entre las flechas */
+    .pedal.pausa { left: 50%; transform: translateX(-50%); width: 56px; height: 56px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 9px); background: #c8302a; font-size: 22px; }
   }
   #nocargo { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; background: var(--fondo); }
   [hidden] { display: none !important; }
@@ -114,13 +125,23 @@
 <canvas id="mapita" width="340" height="340"></canvas>
 <div id="grande" hidden></div>
 <div id="avisoCulata" hidden><b>⤵ ¡De culata!</b><span>Date vuelta y entrá marcha atrás hasta el portón</span></div>
-<div id="ayudita"><kbd>WASD</kbd>/flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara · <kbd>R</kbd> rendirse · <kbd>Esc</kbd> salir</div>
+<div id="ayudita"><kbd>WASD</kbd>/flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara · <kbd>P</kbd> pausa · <kbd>R</kbd> rendirse · <kbd>Esc</kbd> salir</div>
 
 <div id="mandos">
   <button class="pedal izq" data-tecla="ArrowLeft" aria-label="Doblar a la izquierda">◀</button>
   <button class="pedal der" data-tecla="ArrowRight" aria-label="Doblar a la derecha">▶</button>
   <button class="pedal frena" data-tecla="ArrowDown" aria-label="Frenar y marcha atrás">▼</button>
   <button class="pedal acelera" data-tecla="ArrowUp" aria-label="Acelerar">▲</button>
+  <button class="pedal pausa" id="botonPausa" aria-label="Pausa">❚❚</button>
+</div>
+
+<!-- la pausa: todo quieto hasta seguir -->
+<div id="pausaMenu" hidden>
+  <div class="tarjeta">
+    <h1 class="titulo">Pausa</h1>
+    <button id="seguirPausa">Seguir</button>
+    <button id="salirPausa" class="secundario">Volver a la portada</button>
+  </div>
 </div>
 
 <div id="portada">

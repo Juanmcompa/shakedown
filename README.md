@@ -261,6 +261,8 @@ El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se ag
 
 **Las vueltas de reparto** (de 5 viajes): depósito → negocio, de vuelta al depósito (de frente con tu viaje anterior: la primera vez el juego se frena y lo explica), depósito → otro negocio, de ahí a otro, y la **hora pico** de vuelta al depósito por las calles más usadas. Cada vuelta los viajes son más largos.
 
+**En el celular:** arriba, en dos renglones, el reloj, el nivel, las entregas y el pedido; el mapita chico debajo; la camioneta siempre en la franja de abajo de la pantalla (así se ve la calle de adelante); y en el medio de las flechas, el botón de pausa (en la compu, la P).
+
 **Compartir:** `Probá F for Traffic 📦 Hice 12 entregas`, una cajita por entrega, el link y el aviso de Early Access.
 
 Está todo en la carpeta `reparto/` (la dirección no cambió): el pueblo, las zonas y el orden de los viajes (`mapa.js`), los vehículos (`vehiculos.js`), el remolque del semi (`remolque.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). La física del auto, la cámara, los mandos y el sonido son los de Shakedown. Prueba: `node tools/pruebas/verreparto.mjs`.
