@@ -508,3 +508,7 @@ export function crearEscenografia() {
 
 // cascotes y tierra que salta: un cubito con dos tonos
 export const granito = () => textura(4, 4, (p) => { p.fondo('#ffffff'); p.rect(0, 3, 4, 1, '#b9b9b9'); p.rect(3, 0, 1, 4, '#cfcfcf'); p.punto(1, 1, '#dddddd'); });
+
+// Para F FOR TRAFFIC (la otra pagina, en reparto/): el dibujo de un piso (64 x 64 pixeles = 16 m), para usarlo como patron.
+// No cambia nada de Shakedown: solo deja usar estos dibujos desde afuera.
+export const lienzoDePiso = (nombre, semilla = 100) => lienzoPintado(64, 64, PISOS[nombre], semilla);

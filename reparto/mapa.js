@@ -16,6 +16,7 @@
 // Tambien decide los viajes (ver "los viajes", al final): siempre los mismos, en el mismo orden.
 import { SUELOS } from '../src/config.js';
 import { azar } from '../src/noise.js';
+import { EDIFICIOS } from '../src/edificios.js';
 
 export const TAM = 320;            // la zona 1 (el pueblo de siempre) va de 0 a TAM en x y en z
 export const XMAX = 560, ZMAX = 480;   // el pueblo entero, con todas las zonas
@@ -174,6 +175,12 @@ export function crearMapa() {
   const cercaDeValla = (x, z) => Math.abs(x - LIMITE) < 1.2 || Math.abs(z - LIMITE) < 1.2;
 
   // --- las casas: a lo largo de cada calle, de los dos lados, de frente a ella ---
+  // Son los edificios de Shakedown (src/edificios.js y src/pueblo.js), cada uno con su medida: casa con techo a dos aguas,
+  // casita de azotea, rancho, almacen, galpon, edificio de dos pisos (los negocios van en estos), y alguna capilla y algun
+  // tanque de agua. Se sortea el tipo de cada lote; si no entra, se prueba con uno mas chico.
+  const SORTEO = [['casa', 26], ['casita', 18], ['edificio', 26], ['almacen', 8], ['galpon', 6], ['rancho', 8], ['capilla', 1.5], ['tanque', 1]];
+  const totalSorteo = SORTEO.reduce((t, [, p]) => t + p, 0);
+  const sortear = () => { let x = r() * totalSorteo; for (const [tipo, p] of SORTEO) if ((x -= p) <= 0) return tipo; return 'casa'; };
   const edificios = [];
   for (const s of CALLES) for (const lado of [1, -1]) {
     const nx = -s.uz * lado, nz = s.ux * lado;   // de la calle hacia las casas
@@ -181,18 +188,20 @@ export function crearMapa() {
     while (a < s.L - 5) {
       if (r() < 0.1) { a += entre(5, 9); continue; }   // un baldio
       let hecho = false;
-      for (const [w0, f0] of [[entre(7, 12), entre(9, 13)], [entre(6, 8), entre(7, 9)]]) {
-        const w = Math.min(w0, s.L - a), fondo = f0, desde = s.m + VEREDA;
+      for (const tipo of [sortear(), 'casita']) {
+        const D = EDIFICIOS[tipo], w = D.ancho, fondo = D.fondo, desde = s.m + VEREDA;
+        if (w > s.L - a) continue;
         const cx = s.x1 + s.ux * (a + w / 2) + nx * (desde + fondo / 2), cz = s.z1 + s.uz * (a + w / 2) + nz * (desde + fondo / 2);
         const libre = cadaPunto(cx, cz, w / 2, fondo / 2, s.ux, s.uz, (x, z) => { const q = zonaEn(x, z); return (q === Z.patio || q === Z.campo) && !cercaDeValla(x, z); });
         if (!libre || w < 5) continue;
         cadaPunto(cx, cz, w / 2, fondo / 2, s.ux, s.uz, (x, z) => { zona[celda(x, z)] = Z.casa; });
-        const alto = r() < 0.3 ? entre(5.5, 6.5) : entre(2.8, 3.6);
+        const alto = D.alto;
+        // rumbo: hacia donde mira el frente (la calle), como lo usa el dibujo de Shakedown (el frente mira a -Z)
         const e = { x: cx, z: cz, hx: w / 2, hz: fondo / 2, ux: s.ux, uz: s.uz, alto, ancho: w, fondo, nx: -nx, nz: -nz, calle: s, lado, a: a + w / 2,
-          frenteX: cx - nx * fondo / 2, frenteZ: cz - nz * fondo / 2, variante: Math.floor(r() * 64), negocio: -1 };
+          frenteX: cx - nx * fondo / 2, frenteZ: cz - nz * fondo / 2, variante: Math.floor(r() * 64), negocio: -1, tipo, rumbo: Math.atan2(-nx, nz) };
         e.choque = caja(cx, cz, w / 2 * 0.98, fondo / 2 * 0.98, s.ux, s.uz);
         edificios.push(e);
-        a += w + 0.3; hecho = true;
+        a += w + entre(0.4, 1.6); hecho = true;
         break;
       }
       if (!hecho) a += 2;
@@ -204,11 +213,22 @@ export function crearMapa() {
   for (let x = PLAZA.x0 + 6; x < PLAZA.x1 - 4; x += 8) for (let z = PLAZA.z0 + 6; z < PLAZA.z1 - 4; z += 8) {
     const ax = x + entre(-1.5, 1.5), az = z + entre(-1.5, 1.5);
     if (Math.abs(ax - pcx) < 3.5 || Math.abs(az - pcz) < 3.5 || zonaEn(ax, az) !== Z.plaza) continue;
-    arboles.push({ x: ax, z: az, alto: entre(5, 8) });
+    arboles.push({ x: ax, z: az, alto: entre(5, 8), tipo: ['platano', 'ombu', 'palmera', 'acacia'][Math.floor(r() * 4)] });
     circulo(ax, az, 0.55, 'arbol');
   }
   const monumento = { x: pcx, z: pcz };
   circulo(pcx, pcz, 2.4, 'monumento');
+  // los arboles de los fondos de las manzanas (y algunos en el campo, afuera del pueblo): los de Shakedown, sin pisar casas
+  // ni veredas. Los de los fondos se chocan (se puede entrar por un baldio).
+  const TIPOS_FONDO = ['alamo', 'platano', 'acacia', 'acaciaChica', 'sauce', 'roble', 'eucalipto', 'arbustoRedondo', 'nire'];
+  const libreAlrededor = (x, z, q) => [[0, 0], [1.6, 0], [-1.6, 0], [0, 1.6], [0, -1.6]].every(([dx, dz]) => zonaEn(x + dx, z + dz) === q);
+  for (let i = 0; i < 2600; i++) {
+    const x = entre(-BORDE + 4, XMAX + BORDE - 4), z = entre(-BORDE + 4, ZMAX + BORDE - 4), q = zonaEn(x, z);
+    if (q !== Z.patio && !(q === Z.campo && r() < 0.35)) continue;
+    if (!libreAlrededor(x, z, q) || cercaDeValla(x, z)) continue;
+    arboles.push({ x, z, alto: entre(4, 8), tipo: TIPOS_FONDO[Math.floor(r() * TIPOS_FONDO.length)] });
+    circulo(x, z, 0.45, 'arbol');
+  }
   // la isla de cada rotonda (con su cordon) se choca
   for (const q of ROTONDAS) circulo(q.x, q.z, q.ri, 'cantero');
 
@@ -226,7 +246,9 @@ export function crearMapa() {
     salida: { x: (D.salida[0] + D.salida[1]) / 2, z: D.calle - 2.5, adentro: { x: (D.salida[0] + D.salida[1]) / 2, z: D.z1 - 5 } } }));
   // Un lugar con bahia: frente a una casa, toda la vereda de largo 2 x medio (sin tocar otra calle: no en una esquina), lejos
   // de los otros destinos. Devuelve el destino o null si no entra.
-  const candidatos = edificios.filter((e) => e.ancho >= 7 && e.alto < 4);
+  // (los negocios y la terminal, en los edificios de dos pisos: el cartel va arriba de la planta baja; las paradas y la base,
+  // en cualquier casa)
+  const candidatos = edificios.filter((e) => e.tipo !== 'tanque' && e.tipo !== 'capilla');
   for (let i = candidatos.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]]; }
   function conBahia(e, medio, separa, mas) {
     if (e.negocio >= 0 || e.a < medio || e.a > e.calle.L - medio) return null;
@@ -237,7 +259,6 @@ export function crearMapa() {
     if (destinos.some((d) => Math.hypot(d.x - bx, d.z - bz) < separa)) return null;
     cadaPunto(bx, bz, medio, VEREDA / 2, s.ux, s.uz, (x, z) => { zona[celda(x, z)] = Z.bahia; });
     e.negocio = destinos.length;
-    e.alto = Math.max(e.alto, 4.4);   // (mas alto: el cartel y el toldo van por arriba de lo que estaciona)
     // estacionado en la bahia, a lo largo de la calle, con la puerta a la derecha (rumbo 0 = hacia -z; la derecha es (cos, sin))
     const d = { n: destinos.length, x: bx, z: bz, rumbo: Math.atan2(nz, nx), edificio: e, zona: zonaDe(bx, bz),
       bahia: { x: bx, z: bz, hx: medio, hz: VEREDA / 2, ux: s.ux, uz: s.uz }, ...mas };
@@ -247,7 +268,7 @@ export function crearMapa() {
   // la terminal de colectivos y la base de radio taxi: en la zona 3, con bahias largas. La terminal, lo mas cerca posible del
   // medio de la zona (asi hay paradas para todos lados y los recorridos varian); la base, hacia el oeste.
   const cercaDe = (x, z) => candidatos.filter((e) => zonaDe(e.x, e.z) === 3).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z));
-  for (const e of cercaDe(300, 410)) if (e.ancho >= 9 && conBahia(e, 9, 60, { terminal: true, nombre: 'TERMINAL', icono: '🚌', color: '#c8402f', tamano: 'colectivo' })) break;
+  for (const e of cercaDe(300, 410)) if (e.tipo === 'edificio' && conBahia(e, 9, 60, { terminal: true, nombre: 'TERMINAL', icono: '🚌', color: '#c8402f', tamano: 'colectivo' })) break;
   for (const e of cercaDe(100, 440)) if (conBahia(e, 5, 60, { base: true, nombre: 'RADIO TAXI', icono: '🚕', color: '#e0b21e', tamano: 'taxi' })) break;
   // los negocios: los de siempre en la zona 1, los nuevos en las zonas 2 y 3
   // (de los nuevos, los primeros 6 van en la zona 2 y los otros 6 en la 3)
@@ -255,7 +276,7 @@ export function crearMapa() {
     let cual = 0;
     for (const e of candidatos) {
       if (cual >= lista.length) break;
-      if (!enZona(zonaDe(e.x, e.z)) || e.ancho < 8) continue;
+      if (!enZona(zonaDe(e.x, e.z)) || e.tipo !== 'edificio') continue;
       const [nombre, icono, color, tamano] = lista[cual];
       if (conBahia(e, 4.5, 55, { negocio: true, nombre, icono, color, tamano })) cual++;
     }

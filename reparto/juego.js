@@ -482,7 +482,7 @@ requestAnimationFrame(cuadro);
 
 // --- para las pruebas ---
 window.reparto = {
-  mapa, auto: () => c, memoria, fantasmas, remolque: () => remolque, ubicar, llego,
+  mapa, auto: () => c, dibujoAuto: () => dibujo, memoria, fantasmas, remolque: () => remolque, ubicar, llego,
   viaje: (k) => mapa.viaje(k),
   estado: () => ({ hechas, paradas: viaje ? viaje.paradas.length : 0, nivel: nivel(memoria.entregas()), trabas, roces, avisoCulata, fase, k: viaje && viaje.k, tipo, doblado: remolque ? Math.round(remolque.doblado(c) * 180 / Math.PI) : null, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
   salir, seguir, otraVez, textoParaCompartir,

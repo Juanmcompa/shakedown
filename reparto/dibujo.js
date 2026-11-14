@@ -3,16 +3,18 @@
 // color con el reloj del viaje; y el destino es una columna de luz con el icono del negocio.
 import * as THREE from '../vendor/three.module.js';
 import { tono } from '../src/pixel.js';
+import { crearPueblo } from '../src/pueblo.js';
+import { crearLoteDeArboles } from '../src/arboles.js';
+import { lienzoDePiso } from '../src/arte.js';
 import { TAM, XMAX, ZMAX, LIMITE, ABRE, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITOS, ROTONDAS, colorSemaforo, aCalle } from './mapa.js';
 
 const rotondaEn = (n) => ROTONDAS.find((q) => Math.hypot(q.x - n.x, q.z - n.z) < 1);
 
-const PX = 3;   // pixeles por metro en el piso (3: el pueblo entero es grande, y el dibujo del piso tiene que entrar en el celular)
+const PX = 4;   // pixeles por metro en el piso: 4, como en Shakedown (un pixel = 25 cm), para que sus dibujos de piso se vean nitidos
 const REVOQUES = ['#e6dfcd', '#d9b36a', '#d8a48c', '#a9c3cc', '#b4cdb4', '#c9bfa8', '#e2c9a0', '#bfae9a'];
 const ABERTURAS = ['#3f6a4a', '#6b4a36', '#35546e', '#8a3a2a', '#e9e4d6'];
 const TECHOS = ['#8f9499', '#8a5a44', '#7d8a84', '#b5523a', '#96402c', '#cfc8b8'];
 const LUZ = { verde: '#3fdc6a', amarillo: '#ffc21e', rojo: '#ff3b2a' };
-const ASFALTO = '#4c4d52', BALDOSA = '#b9b4a8';
 
 const textura = (lienzo, repetir) => {
   const t = new THREE.CanvasTexture(lienzo);
@@ -68,20 +70,18 @@ function pintarPiso(mapa) {
     g.beginPath(); g.moveTo(s.x1 + px, s.z1 + pz); g.lineTo(s.x2 + px, s.z2 + pz);
     g.lineWidth = ancho; g.strokeStyle = col; g.setLineDash(raya || []); g.lineCap = raya ? 'butt' : 'round'; g.stroke();
   };
-  // campo, patios y plaza
-  R(X0, X0, lado, lado, '#6f8f4a');
-  R(0, 0, XMAX, ZMAX, '#7c8a52');
-  R(PLAZA.x0, PLAZA.z0, PLAZA.x1 - PLAZA.x0, PLAZA.z1 - PLAZA.z0, '#5f8f3c');
-  // salpicado: matitas y tierra
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  const img = g.getImageData(0, 0, nx, nz), d = img.data;
-  for (let k = 0; k < nx * nz; k++) {
-    const v = ruido(k % n, Math.floor(k / n));
-    if (v > 0.93) { d[k * 4] *= 0.85; d[k * 4 + 1] *= 0.88; d[k * 4 + 2] *= 0.85; }
-    else if (v < 0.04) { d[k * 4] = Math.min(255, d[k * 4] * 1.12); d[k * 4 + 1] = Math.min(255, d[k * 4 + 1] * 1.08); }
+  // Los pisos son los dibujos de Shakedown (64 x 64 pixeles = 16 m), repetidos: pasto, el piso de debajo de los arboles
+  // (en los fondos de las manzanas), un manchon de pasto alto, baldosas de vereda y asfalto.
+  const patron = (nombre, semilla) => { const t = g.createPattern(lienzoDePiso(nombre, semilla), 'repeat'); t.setTransform(new DOMMatrix().scale(16 / 64)); return t; };
+  const PASTO = patron('pasto', 104), FONDO = patron('monteCampo', 121), MANCHON = patron('manchonCampo', 122), BALDOSA = patron('vereda', 109), ASFALTO = patron('asfalto', 100);
+  // campo, fondos de las manzanas y plaza
+  R(X0, X0, lado, lado, PASTO);
+  R(0, 0, XMAX, ZMAX, FONDO);
+  for (let k = 0; k < 160; k++) {   // manchones de pasto alto, para romper lo parejo
+    const x = X0 + ruido(k, 11) * lado, z = X0 + ruido(k, 12) * lado, rr = 4 + ruido(k, 13) * 9;
+    g.beginPath(); g.arc(x, z, rr, 0, Math.PI * 2); g.fillStyle = MANCHON; g.fill();
   }
-  g.putImageData(img, 0, 0);
-  g.setTransform(PX, 0, 0, PX, -X0 * PX, -X0 * PX);
+  R(PLAZA.x0, PLAZA.z0, PLAZA.x1 - PLAZA.x0, PLAZA.z1 - PLAZA.z0, PASTO);
   // los caminitos de la plaza
   const pcx = (PLAZA.x0 + PLAZA.x1) / 2, pcz = (PLAZA.z0 + PLAZA.z1) / 2;
   R(pcx - 1.2, PLAZA.z0, 2.4, PLAZA.z1 - PLAZA.z0, '#c9b48a'); R(PLAZA.x0, pcz - 1.2, PLAZA.x1 - PLAZA.x0, 2.4, '#c9b48a');
@@ -90,18 +90,10 @@ function pintarPiso(mapa) {
   const disco = (q, radio, col) => { g.beginPath(); g.arc(q.x, q.z, radio, 0, Math.PI * 2); g.fillStyle = col; g.fill(); };
   for (const s of CALLES) linea(s, 2 * (s.m + VEREDA), BALDOSA);
   for (const q of ROTONDAS) disco(q, q.ro + VEREDA, BALDOSA);
-  for (const s of CALLES) for (let u = 1; u < s.L; u += 1) {   // las juntas de las baldosas, cada metro
-    for (const k of [-1, 1]) girado(s.x1 + s.ux * u - s.uz * k * (s.m + VEREDA / 2), s.z1 + s.uz * u + s.ux * k * (s.m + VEREDA / 2), 0.06, VEREDA / 2, s.ux, s.uz, 'rgba(0,0,0,.07)');
-  }
   for (const s of CALLES) linea(s, 2 * s.m + 0.5, '#8e8a80');
   for (const q of ROTONDAS) disco(q, q.ro + 0.25, '#8e8a80');
   for (const s of CALLES) linea(s, 2 * s.m, ASFALTO);
   for (const q of ROTONDAS) disco(q, q.ro, ASFALTO);
-  // manchas y parches del asfalto
-  for (let k = 0; k < 700; k++) {
-    const s = CALLES[Math.floor(ruido(k, 4) * CALLES.length)], u = ruido(k, 1) * s.L, w = (ruido(k, 2) - 0.5) * 2 * (s.m - 0.6);
-    girado(s.x1 + s.ux * u - s.uz * w, s.z1 + s.uz * u + s.ux * w, 0.3 + ruido(k, 6) * 0.8, 0.35, s.ux, s.uz, ruido(k, 5) < 0.5 ? '#46474c' : '#55565b');
-  }
   // las lineas: en las calles, una cortada amarilla al medio; en las avenidas, doble amarilla y los carriles blancos
   for (const s of CALLES) {
     if (s.m >= 7) { linea(s, 0.18, '#d8c27a', 0.25); linea(s, 0.18, '#d8c27a', -0.25); linea(s, 0.18, '#e9e4d6', s.m / 2, [2, 3]); linea(s, 0.18, '#e9e4d6', -s.m / 2, [2, 3]); }
@@ -116,7 +108,7 @@ function pintarPiso(mapa) {
     disco(q, q.ro, ASFALTO);
     g.beginPath(); g.arc(q.x, q.z, (q.ri + q.ro) / 2 + 0.6, 0, Math.PI * 2); g.lineWidth = 0.15; g.strokeStyle = 'rgba(233,228,214,.55)'; g.setLineDash([2, 2]); g.stroke(); g.setLineDash([]);
     disco(q, q.ri + 0.35, '#e9e4d6');
-    disco(q, q.ri, '#5f8f3c');
+    disco(q, q.ri, PASTO);
   }
   for (const b of B) {
     if (!b.rotonda) continue;
@@ -464,7 +456,9 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
   escena.add(piso);
 
   // --- las casas y los negocios ---
-  for (const e of mapa.edificios) escena.add(casa(e));
+  // las casas: el dibujo de Shakedown (src/pueblo.js), con el tipo y la variante de cada lote
+  crearPueblo({ casas: mapa.edificios.map((e) => ({ x: e.x, y: 0, z: e.z, rumbo: e.rumbo, tipo: e.tipo, variante: e.variante })),
+    objetos: [], barandas: [], pircas: [], altura: () => 0 }, escena, null, null);
   for (const d of mapa.destinos) if (d.edificio) escena.add(cartel(d.edificio, d));
   for (const D of DEPOSITOS) escena.add(galpon(D, mapa.destinos.filter((d) => d.deposito && d.dep === D)));
   // los refugios de las paradas de colectivo: un techito con el cartel azul, sobre la vereda, al lado de la bahia
@@ -474,15 +468,13 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
   for (const o of mapa.vallas) vallas[o.zona].add(vallaDeObra(o));
   escena.add(vallas[2], vallas[3]);
 
-  // --- la plaza ---
-  const tronco = new THREE.MeshLambertMaterial({ color: '#6b4a36' }), copas = ['#4f7a3a', '#5f8f3c', '#3f6a34'].map((c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
-  for (const [k, a] of mapa.arboles.entries()) {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, a.alto * 0.45, 0.5), tronco);
-    t.position.set(a.x, a.alto * 0.225, a.z); t.castShadow = true;
-    const c = new THREE.Mesh(new THREE.IcosahedronGeometry(a.alto * 0.36, 0), copas[k % 3]);
-    c.position.set(a.x, a.alto * 0.62, a.z); c.castShadow = true;
-    escena.add(t, c);
-  }
+  // --- los arboles: los de Shakedown (planos cruzados con su dibujo), en la plaza, los fondos de las manzanas, el campo y
+  // las islas de las rotondas ---
+  const lote = crearLoteDeArboles(liviano);
+  mapa.arboles.forEach((a, k) => lote.poner(a.tipo, a.x, 0, a.z, ruido(k, 31) * 6.28, a.alto / 6, ruido(k, 32)));
+  for (const [k, q] of ROTONDAS.entries()) lote.poner(q.ri > 4 ? 'ombu' : 'arbustoRedondo', q.x, 0.3, q.z, k, q.ri > 4 ? 1.3 : 0.7, ruido(k, 33));
+  const arboles = lote.malla();
+  if (arboles) escena.add(arboles);
   const piedra = new THREE.MeshLambertMaterial({ color: '#cfc8b8' });
   const base = new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 4), piedra), aguja = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.9, 7, 4), piedra);
   base.position.set(mapa.monumento.x, 0.6, mapa.monumento.z); aguja.position.set(mapa.monumento.x, 4.6, mapa.monumento.z);
@@ -497,12 +489,6 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
     const c2 = new THREE.Mesh(new THREE.CylinderGeometry(q.ri, q.ri, 0.3, 32), pasto);
     c2.position.set(q.x, 0.15, q.z); c2.receiveShadow = true;
     escena.add(c1, c2);
-    const grande = q.ri > 4, alto = grande ? 7 : 2.2;
-    const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, alto * 0.45, 0.5), tronco);
-    t.position.set(q.x, alto * 0.225, q.z); t.castShadow = true;
-    const copa = new THREE.Mesh(new THREE.IcosahedronGeometry(alto * (grande ? 0.36 : 0.5), 0), copas[0]);
-    copa.position.set(q.x, alto * 0.62, q.z); copa.castShadow = true;
-    escena.add(t, copa);
   }
 
   // --- el paredon de afuera ---

@@ -1,7 +1,7 @@
 // Reparto: la memoria del juego. Cada viaje (entregado o no) se guarda en este aparato y vuelve en todos los viajes que
 // siguen, como una version pasada del que juega. Se guarda donde estaba el auto cada 0,2 s (a 10 cm y en 1/10000 de vuelta),
 // en numeros chicos pasados a texto: un viaje de 2 minutos ocupa unos 5 KB.
-const CLAVE = 'reparto4';   // (cambia cuando cambia el pueblo: los viajes de un pueblo no sirven en otro)
+const CLAVE = 'reparto5';   // (cambia cuando cambia el pueblo: los viajes de un pueblo no sirven en otro)
 export const MUESTRA = 0.2;          // segundos entre muestras
 const TOPE = Math.ceil(125 / MUESTRA);
 

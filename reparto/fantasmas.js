@@ -9,7 +9,7 @@
 // Son solidos (el auto choca contra ellos como contra una pared que se mueve, y ellos no se corren: ya pasaron), pero no
 // hacen otra cosa que frenarte. Van en el vehiculo que usaste en cada viaje, con la cabina de otro color. No llevan fisica.
 import * as THREE from '../vendor/three.module.js';
-import { armarVehiculo, configDeTipo, TIPOS } from './vehiculos.js';
+import { armarVehiculo, configDeTipo, bambolear, TIPOS } from './vehiculos.js';
 import { remolqueDe } from './remolque.js';
 import { MUESTRA } from './memoria.js';
 
@@ -96,12 +96,19 @@ export function crearFantasmas(escena, T) {
       if (!p) { if (c.vehiculo) { devolver(c.vehiculo); c.vehiculo = null; } continue; }
       const v = p.tramo.v, tipo = TIPOS[v.tipo] ? v.tipo : 'furgon';
       // al pasar de un viaje al siguiente puede cambiar de vehiculo
-      if (!c.vehiculo || c.vehiculo.tipo !== tipo) { if (c.vehiculo) devolver(c.vehiculo); c.vehiculo = pedir(tipo, c.color); }
+      if (!c.vehiculo || c.vehiculo.tipo !== tipo) { if (c.vehiculo) devolver(c.vehiculo); c.vehiculo = pedir(tipo, c.color); c.antes = null; }
       const f = c.vehiculo;
       f.grupo.visible = true;
       f.grupo.position.set(p.x, f.alto, p.z);
       f.grupo.quaternion.setFromAxisAngle(ARRIBA, -p.rumbo);
       f.numero(v.k + 1);
+      // el bamboleo de su carga, con lo que se movio desde el cuadro anterior
+      const a = c.antes, dt = a ? t - a.t : 0;
+      if (a && dt > 0.005 && dt < 0.3) {
+        const vel = Math.hypot(p.x - a.x, p.z - a.z) / dt, giro = Math.atan2(Math.sin(p.rumbo - a.rumbo), Math.cos(p.rumbo - a.rumbo)) / dt;
+        bambolear(f, vel * giro, (vel - a.vel) / dt, dt);
+        c.antes = { x: p.x, z: p.z, rumbo: p.rumbo, t, vel: a.vel + (vel - a.vel) * 0.3 };
+      } else c.antes = { x: p.x, z: p.z, rumbo: p.rumbo, t, vel: a ? a.vel : 0 };
       c.numero = v.k + 1;
       const o = c.choque;
       o.x = p.x; o.z = p.z; o.ux = Math.cos(p.rumbo); o.uz = Math.sin(p.rumbo); o.hx = TIPOS[tipo].ancho; o.hz = TIPOS[tipo].largo;

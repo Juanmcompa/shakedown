@@ -174,27 +174,33 @@ export function armarVehiculo(tipo, color) {
   const piso = -alto, grupo = new THREE.Group(), W = t.anchoDibujo;
   const largo = t.caja + t.cabina, z0 = -largo / 2 + (C.centro || 0), base = piso + t.piso;
   const poner = (m) => { m.castShadow = true; grupo.add(m); return m; };
+  // La carga (en el colectivo y el taxi, el cuerpo) va en un grupo aparte, con el eje abajo de todo: se inclina sola al doblar
+  // y al frenar (ver bambolear). zc: el medio de la carga a lo largo.
+  const zc = t.colectivo || t.auto ? z0 + t.cabina / 2 : z0 + t.cabina + t.caja / 2;
+  const carga = new THREE.Group();
+  carga.position.set(0, base, zc);
+  grupo.add(carga);
+  const enCarga = (m) => { m.castShadow = true; carga.add(m); return m; };
   // la cabina adelante (adelante es -z). El colectivo es un solo cuerpo; el taxi, una caja baja con la cabina encima.
-  if (t.colectivo) poner(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCabina, t.cabina), materialesColectivo(color))).position.set(0, base + t.altoCabina / 2, z0 + t.cabina / 2);
+  if (t.colectivo) enCarga(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCabina, t.cabina), materialesColectivo(color))).position.set(0, t.altoCabina / 2, 0);
   else if (t.auto) {
     const m = materialesTaxi(color);
-    poner(new THREE.Mesh(new THREE.BoxGeometry(W, 0.75, t.cabina), m.cuerpo)).position.set(0, base + 0.375, z0 + t.cabina / 2);
-    poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.86, 0.62, 2.1), m.cabina)).position.set(0, base + 0.75 + 0.31, z0 + t.cabina / 2 + 0.25);
-    poner(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.3), m.cartel)).position.set(0, base + 1.48, z0 + t.cabina / 2 - 0.1);
+    enCarga(new THREE.Mesh(new THREE.BoxGeometry(W, 0.75, t.cabina), m.cuerpo)).position.set(0, 0.375, 0);
+    enCarga(new THREE.Mesh(new THREE.BoxGeometry(W * 0.86, 0.62, 2.1), m.cabina)).position.set(0, 0.75 + 0.31, 0.25);
+    enCarga(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.3), m.cartel)).position.set(0, 1.48, -0.1);
   } else poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.97, t.altoCabina, t.cabina), materialesCabina(color))).position.set(0, base + t.altoCabina / 2, z0 + t.cabina / 2);
   poner(new THREE.Mesh(new THREE.BoxGeometry(W, 0.22, 0.2), llanta)).position.set(0, base + 0.05, z0 - 0.05);
-  const zc = z0 + t.cabina + t.caja / 2;
   if (t.colectivo || t.auto) { /* (sin caja: ya esta todo) */ } else if (t.tractor) {
     // el chasis del tractor y el plato
     poner(new THREE.Mesh(new THREE.BoxGeometry(W * 0.6, 0.3, t.caja), negro)).position.set(0, base + 0.15, zc);
     poner(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.12, 10), new THREE.MeshLambertMaterial({ color: '#8a8f96' }))).position.set(0, base + 0.36, (C.centro || 0) + t.remolque.plato);
-  } else if (!t.abierta) poner(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCaja, t.caja), materialesCaja(tipo))).position.set(0, base + t.altoCaja / 2, zc);
+  } else if (!t.abierta) enCarga(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCaja, t.caja), materialesCaja(tipo))).position.set(0, t.altoCaja / 2, 0);
   else {
     // la caja de la camioneta: el piso y cuatro tablas bajas
-    poner(new THREE.Mesh(new THREE.BoxGeometry(W, 0.12, t.caja), tabla)).position.set(0, base + 0.06, zc);
-    for (const x of [-1, 1]) poner(new THREE.Mesh(new THREE.BoxGeometry(0.08, t.altoCaja, t.caja), tabla)).position.set(x * (W / 2 - 0.04), base + t.altoCaja / 2, zc);
-    poner(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCaja, 0.08), tabla)).position.set(0, base + t.altoCaja / 2, z0 + largo - 0.04);
-    poner(new THREE.Mesh(new THREE.BoxGeometry(W - 0.1, 0.75, t.caja - 0.1), lona)).position.set(0, base + 0.5, zc);
+    enCarga(new THREE.Mesh(new THREE.BoxGeometry(W, 0.12, t.caja), tabla)).position.set(0, 0.06, 0);
+    for (const x of [-1, 1]) enCarga(new THREE.Mesh(new THREE.BoxGeometry(0.08, t.altoCaja, t.caja), tabla)).position.set(x * (W / 2 - 0.04), t.altoCaja / 2, 0);
+    enCarga(new THREE.Mesh(new THREE.BoxGeometry(W, t.altoCaja, 0.08), tabla)).position.set(0, t.altoCaja / 2, z0 + largo - 0.04 - zc);
+    enCarga(new THREE.Mesh(new THREE.BoxGeometry(W - 0.1, 0.75, t.caja - 0.1), lona)).position.set(0, 0.5, 0);
   }
   // el numero, en el techo de la cabina (se lee desde arriba y desde atras: la camara va detras del vehiculo)
   const lado = Math.min(W * 0.8, 1.6), placa = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), materialNumero(1));
@@ -203,15 +209,19 @@ export function armarVehiculo(tipo, color) {
   placa.visible = false;
   grupo.add(placa);
   // el remolque del semi: un grupo aparte (se mueve solo: ver remolque.js), con el origen en el piso, en el medio del remolque
-  let remolque = null;
+  let remolque = null, cajaRemolque = null;
   const lucesR = [];   // (las luces de freno del remolque: se suman despues a las del tractor)
   if (t.remolque) {
     const R = t.remolque;
     remolque = new THREE.Group();
     const caja = new THREE.Mesh(new THREE.BoxGeometry(R.ancho * 2, R.alto, R.largo), materialesRemolque());
-    caja.position.set(0, 1.15 + R.alto / 2, 0);
+    caja.position.set(0, R.alto / 2, 0);
+    // (la caja del remolque tambien se bambolea: va en su propio grupo, con el eje abajo)
+    cajaRemolque = new THREE.Group();
+    cajaRemolque.position.set(0, 1.15, 0);
+    cajaRemolque.add(caja);
     caja.castShadow = true;
-    remolque.add(caja);
+    remolque.add(cajaRemolque);
     const geoR = new THREE.CylinderGeometry(0.5, 0.5, 0.35, 10);
     geoR.rotateZ(Math.PI / 2);
     for (const z of [R.largo / 2 - R.eje - 0.65, R.largo / 2 - R.eje + 0.65]) for (const x of [-1, 1]) {
@@ -241,7 +251,23 @@ export function armarVehiculo(tipo, color) {
     grupo.add(pivote);
     ruedas.push({ pivote, rueda });
   }
-  return { grupo, remolque, ruedas, frenos, alto, numero, C, tipo };
+  return { grupo, remolque, carga, cajaRemolque, ruedas, frenos, alto, numero, C, tipo };
+}
+
+// El bamboleo de la carga (solo de dibujo, no es fisica): al doblar se inclina hacia afuera de la curva y al frenar hacia
+// adelante (al acelerar, hacia atras), con un resorte poco amortiguado que la hace rebotar un poco. aLat: aceleracion de
+// costado (+ = doblando a la derecha), aLon: a lo largo (+ = acelerando), en m/s2.
+const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
+export function bambolear(f, aLat, aLon, dt) {
+  if (!f.carga || !(dt > 0)) return;
+  const b = f.bambolea || (f.bambolea = { r: 0, vr: 0, p: 0, vp: 0 }), mucho = f.tipo === 'taxi' ? 0.5 : 1;
+  const objR = lim(aLat * 0.017 * mucho, -0.12, 0.12), objP = lim(aLon * 0.008 * mucho, -0.05, 0.05);
+  for (let paso = Math.min(dt, 0.1), n = Math.ceil(paso / 0.01), h = paso / n, i = 0; i < n; i++) {
+    b.vr += ((objR - b.r) * 70 - b.vr * 4.5) * h; b.r += b.vr * h;
+    b.vp += ((objP - b.p) * 80 - b.vp * 5) * h; b.p += b.vp * h;
+  }
+  f.carga.rotation.set(b.p, 0, b.r);
+  if (f.cajaRemolque) f.cajaRemolque.rotation.set(b.p * 0.5, 0, b.r * 1.2);
 }
 
 // el vehiculo del que juega: sigue al auto de la fisica cuadro a cuadro
@@ -254,6 +280,10 @@ export function crearDibujoVehiculo(escena, tipo, color) {
     // r: el remolque (si hay), para poner su dibujo donde esta
     actualizar(c, dt, r) {
       if (r && f.remolque) r.ubicar(f.remolque);
+      // el bamboleo: con lo que gira (rumbo por segundo, = -w[1]) y lo que cambia la velocidad
+      const v = c.velocidad, aLon = dt > 0 && f.vAntes !== undefined ? (v - f.vAntes) / dt : 0;
+      f.vAntes = v;
+      bambolear(f, v * -c.w[1], aLon, dt);
       f.grupo.position.fromArray(c.pos);
       f.grupo.quaternion.fromArray(c.q);
       c.ruedas.forEach((r, i) => {
