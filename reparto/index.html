@@ -38,7 +38,14 @@
   #cuenta b { font-size: 20px; }
   #mapita { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 170px; height: 170px; border-radius: 10px; pointer-events: none; }
   #grande { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); font-family: 'Pixelify Sans', sans-serif; font-weight: 700; font-size: clamp(30px, 7vw, 60px); text-shadow: 0 3px 0 rgba(0,0,0,.5); white-space: nowrap; pointer-events: none; }
-  #grande.bien { color: var(--bien); } #grande.mal { color: var(--mal); }
+  #grande.bien { color: var(--bien); } #grande.mal { color: var(--mal); } #grande.pico { color: var(--oro); }
+  #cajas { font-size: 14px; letter-spacing: -2px; }
+  /* la explicacion de la primera version pasada: todo se frena y aparece esto abajo (el anillo amarillo la marca en la calle) */
+  #explica { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(440px, calc(100% - 32px));
+    background: rgba(20,22,26,.92); border: 2px solid var(--oro); border-radius: 14px; padding: 16px 18px; text-align: center; }
+  #explica h2 { margin: 0 0 6px; color: var(--oro); font-size: 26px; }
+  #explica p { margin: 0 0 10px; font-size: 16px; line-height: 1.35; }
+  #explicaSeguir { background: var(--oro); color: #1d1a10; font-weight: 700; font-size: 18px; padding: 10px 26px; }
   #ayudita { position: fixed; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); color: var(--apagado); font-size: 13px; pointer-events: none; }
   html:not(.jugando) #arriba, html:not(.jugando) #mapita, html:not(.jugando) #ayudita, html:not(.jugando) #mandos { display: none; }
 
@@ -76,7 +83,7 @@
 <canvas id="lienzo"></canvas>
 
 <div id="arriba">
-  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span></div>
+  <div class="caja" id="pedido"><span id="carga">📦</span><span>→</span><span id="destinoIcono"></span><b id="destinoNombre"></b><span id="distancia"></span><span id="cajas" hidden></span></div>
   <div class="caja" id="reloj">0:00</div>
   <div class="caja" id="cuenta" title="Entregas · récord">
     <span>📦</span><b id="entregas">0</b>
@@ -110,6 +117,13 @@
     <button id="pueblonuevo" hidden>Empezar de cero</button>
     <div class="teclas"><kbd>WASD</kbd> o flechas · <kbd>Espacio</kbd> freno de mano · <kbd>C</kbd> cámara</div>
   </div>
+</div>
+
+<div id="explica" hidden>
+  <h2 class="titulo">¡Ese sos vos!</h2>
+  <p>Esa es tu entrega anterior. Cada viaje que hacés queda en la calle y vuelve a salir, a la vez que vos.</p>
+  <p>Cuanto mejor manejes ahora, más fácil va a ser el camino después.</p>
+  <button id="explicaSeguir">Entendido</button>
 </div>
 
 <div id="nocargo" hidden>Este navegador no puede mostrar gráficos 3D.</div>

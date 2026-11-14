@@ -1,9 +1,11 @@
-// Reparto: el juego. Viajes cortos de un negocio a otro: al llegar, sale el siguiente. Cada viaje queda guardado y, en el
-// siguiente, todos los viajes anteriores vuelven a correr a la vez desde su largada: el trafico del pueblo sos vos.
-// Si se hace tarde, el viaje fallido tambien queda (ensucia el pueblo) y se vuelve a intentar el mismo.
+// Reparto: el juego. Viajes cortos entre el deposito y los negocios: al llegar, sale el siguiente. Cada viaje queda guardado
+// y, en el siguiente, todos los viajes anteriores vuelven a correr a la vez desde su largada: el trafico del pueblo sos vos.
+// Si se hace tarde (o se cae toda la carga), el viaje fallido tambien queda y se vuelve a intentar el mismo.
+// La primera vez que te cruzas con una version pasada, el juego se frena y lo explica.
 //
-// El auto, la camara, los mandos y el sonido son los de Shakedown (src/). Lo propio esta en esta carpeta: el pueblo
-// (mapa.js), como se dibuja (dibujo.js), la memoria (memoria.js) y las versiones pasadas (fantasmas.js).
+// La fisica del auto, la camara, los mandos y el sonido son los de Shakedown (src/). Lo propio esta en esta carpeta: el
+// pueblo y los viajes (mapa.js), como se dibuja (dibujo.js), los vehiculos (vehiculos.js), la carga suelta (carga.js),
+// la memoria (memoria.js) y las versiones pasadas (fantasmas.js).
 import * as THREE from '../vendor/three.module.js';
 import { JUEGO } from '../src/config.js';
 import { crearAuto } from '../src/vehicle.js';
@@ -12,16 +14,19 @@ import { crearTeclas } from '../src/input.js';
 import { crearSonido } from '../src/audio.js';
 import { ambiente } from '../src/material.js';
 import { crearMapa, TAM, CALLES, SEMAFOROS, colorSemaforo } from './mapa.js';
-import { configFurgon, crearDibujoFurgon } from './furgon.js';
+import { TIPOS, configDeTipo, crearDibujoVehiculo } from './vehiculos.js';
 import { crearDibujoPueblo } from './dibujo.js';
 import { crearMemoria, crearGrabacion } from './memoria.js';
 import { crearFantasmas } from './fantasmas.js';
+import { crearCarga } from './carga.js';
 import { crearPiloto } from './piloto.js';
 
 const $ = (id) => document.getElementById(id);
 const QUIETO = { x: 0, y: 0, mano: true };
-const LLEGA = 2.6;        // metros del centro del destino para que cuente como llegado
+const LLEGA = 2.8;        // metros del centro del destino para que cuente como llegado
 const PARAR = 0.5;        // segundos que hay que quedarse ahi (casi parado) para entregar
+const COLOR = '#f2b51c';  // la cabina del que juega
+const QUEDA_DEPOSITO = 12, QUEDA_NEGOCIO = 3;   // segundos que una version pasada queda estacionada al entregar
 const reloj2 = (s) => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 // --- lo de una sola vez ---
@@ -36,22 +41,37 @@ render.outputColorSpace = THREE.SRGBColorSpace;
 const escena = new THREE.Scene();
 const mapa = crearMapa(), T = mapa.T;
 const pueblo = crearDibujoPueblo(escena, mapa, liviano);
-const C = configFurgon();
-const c = crearAuto(T, C), dibujo = crearDibujoFurgon(escena, C, '#f2b51c');
 const camara = crearCamara(T);
 const sonido = crearSonido();
 const memoria = crearMemoria();
-const fantasmas = crearFantasmas(escena, T, C);
+const fantasmas = crearFantasmas(escena, T, (v) => (mapa.viaje(v.k).a.deposito ? QUEDA_DEPOSITO : QUEDA_NEGOCIO));
 for (const v of memoria.viajes()) fantasmas.sumar(v);
+const carga = crearCarga(escena);
+
+// --- el vehiculo de turno: cambia de un viaje a otro segun lo que se lleva ---
+let tipo = '', c = null, dibujo = null;
+function ponerVehiculo(t) {
+  if (t === tipo) return;
+  const antes = c;
+  tipo = t;
+  if (dibujo) dibujo.sacar();
+  c = crearAuto(T, configDeTipo(t));
+  dibujo = crearDibujoVehiculo(escena, t, COLOR);
+  if (antes) c.poner(antes.pos[0], antes.pos[2], Math.atan2(antes.adelante[0], -antes.adelante[2]));
+  camara.alejar(t === 'camion' ? 1.3 : 1);
+}
+ponerVehiculo('furgon');
 
 // --- el estado ---
-// fase: 'portada', 'cuenta' (antes de salir), 'viaje', 'entrega' (llego: un instante de festejo) o 'tarde' (no llego)
-let fase = 'portada', viaje = null, reloj = 0, cuenta = 0, pausa = 0, parado = 0, resto = 0, tiempo = 0, grabacion = null;
+// fase: 'portada', 'cuenta' (antes de salir), 'viaje', 'explica' (frenado: la explicacion de la primera version pasada),
+// 'entrega' (llego: un instante de festejo) o 'tarde' (no llego)
+let fase = 'portada', viaje = null, reloj = 0, cuenta = 0, pausa = 0, parado = 0, resto = 0, tiempo = 0, grabacion = null, motivo = '';
 let piloto = null;   // (solo las pruebas: maneja solo)
 const ent = { x: 0, y: 0, mano: false };
 
 const teclas = crearTeclas((tecla) => {
   sonido.iniciar();
+  if (fase === 'explica') { if (tecla === 'Enter' || tecla === 'Space') seguir(); return; }
   if (tecla === 'KeyC') camara.cambiar();
   else if (tecla === 'KeyM') { sonido.alternar(); }
   else if (tecla === 'KeyR' && fase === 'viaje') tarde('rendido');
@@ -65,33 +85,57 @@ camara.cambiar('aerea');
 // empieza el viaje que toca. enElLugar: el auto ya esta en la puerta (acaba de entregar): sale de donde esta
 function empezar(enElLugar) {
   viaje = mapa.viaje(memoria.entregas());
+  ponerVehiculo(viaje.tipo);
   if (!enElLugar) { c.poner(viaje.de.x, viaje.de.z, viaje.de.rumbo); camara.saltar(); }
   else c.poner(c.pos[0], c.pos[2], Math.atan2(c.adelante[0], -c.adelante[2]));
   reloj = 0; parado = 0; resto = 0;
-  fase = 'cuenta'; cuenta = enElLugar ? 1.2 : 2;
+  fase = 'cuenta'; cuenta = enElLugar ? 1.4 : 2;
+  carga.cargar(dibujo);
   fantasmas.reiniciar();
   fantasmas.mover(0, c);
   pueblo.destino(viaje.a);
   grabacion = crearGrabacion();
   pintarViaje();
-  grande(viaje.carga + ' → ' + viaje.a.icono, 1.4);
+  if (viaje.culmine) grande('🚚 ¡Hora pico!', 1.8, 'pico');
+  else grande(TIPOS[viaje.tipo].nombre + ' · ' + viaje.carga + ' → ' + viaje.a.icono, 1.6);
 }
 
 function entregar() {
-  memoria.sumar(grabacion.cerrar(viaje.k, true));
+  memoria.sumar(grabacion.cerrar(viaje.k, true, tipo));
   fantasmas.sumar(memoria.viajes()[memoria.viajes().length - 1]);
   fase = 'entrega'; pausa = 1.6;
   sonido.meta && sonido.meta();
   grande('¡Entregado! ' + viaje.carga, 1.5, 'bien');
   pintarCuenta();
 }
-function tarde(motivo) {
-  memoria.sumar(grabacion.cerrar(viaje.k, false));
+function tarde(m) {
+  memoria.sumar(grabacion.cerrar(viaje.k, false, tipo));
   fantasmas.sumar(memoria.viajes()[memoria.viajes().length - 1]);
-  fase = 'tarde'; pausa = 2.2;
-  grande(motivo === 'rendido' ? '🏳️ Otra vez' : '⏰ Se hizo tarde', 2, 'mal');
+  fase = 'tarde'; pausa = 2.2; motivo = m;
+  grande(m === 'rendido' ? '🏳️ Otra vez' : m === 'carga' ? '📦 Se cayó la carga' : '⏰ Se hizo tarde', 2, 'mal');
   pintarCuenta();
 }
+
+// --- la explicacion: la primera vez que una version pasada se te cruza, todo se frena ---
+let marcado = null;
+const anillo = new THREE.Mesh(new THREE.RingGeometry(4.2, 4.9, 40), new THREE.MeshBasicMaterial({ color: '#ffd23a', transparent: true, opacity: 0.95, depthTest: false }));
+anillo.rotation.x = -Math.PI / 2; anillo.renderOrder = 8; anillo.visible = false;
+escena.add(anillo);
+function explicar(f) {
+  fase = 'explica'; marcado = f;
+  anillo.position.set(f.x, 0.1, f.z); anillo.visible = true;
+  // la camara sube y mira desde arriba a las dos: vos y tu version pasada (que no la tape una casa)
+  const mx = (f.x + c.pos[0]) / 2, mz = (f.z + c.pos[2]) / 2, lejos = Math.hypot(f.x - c.pos[0], f.z - c.pos[2]);
+  vistaFija = new THREE.PerspectiveCamera(45, lienzo.clientWidth / lienzo.clientHeight, 1, 3000);
+  vistaFija.position.set(mx, 30 + lejos * 1.2, mz + 10 + lejos * 0.4); vistaFija.lookAt(mx, 0, mz + 4);
+  $('explica').hidden = false;
+}
+function seguir() {
+  memoria.visto(true);
+  $('explica').hidden = true; anillo.visible = false; marcado = null; vistaFija = null;
+  fase = 'viaje';
+}
+$('explicaSeguir').addEventListener('click', seguir);
 
 // --- la pantalla ---
 let tGrande = 0;
@@ -103,8 +147,13 @@ function pintarCuenta() {
 function pintarViaje() {
   $('carga').textContent = viaje.carga;
   $('destinoIcono').textContent = viaje.a.icono;
-  $('destinoNombre').textContent = viaje.a.nombre;
+  $('destinoNombre').textContent = viaje.a.deposito ? 'DEPÓSITO ' + (viaje.a.anden + 1) : viaje.a.nombre;
   pintarCuenta();
+}
+function pintarCajas() {
+  const n = carga.quedan();
+  $('cajas').hidden = n < 0;
+  if (n >= 0) $('cajas').textContent = '📦'.repeat(n) + '▫️'.repeat(Math.max(0, 4 - n));
 }
 function portada(si) {
   if (si) { fase = 'portada'; }
@@ -119,7 +168,7 @@ function salir() { sonido.iniciar(); portada(false); empezar(false); }
 $('salir').addEventListener('click', salir);
 $('pueblonuevo').addEventListener('click', () => {
   if (!confirm('¿Empezar de cero? Se borran tus entregas (el récord queda).')) return;
-  memoria.borrar(); fantasmas.borrar(); portada(true);
+  memoria.borrar(); fantasmas.borrar(); carga.vaciar(); portada(true);
 });
 
 // el mapita: las calles, vos, el destino y tus versiones pasadas
@@ -143,6 +192,7 @@ function pintarMapita() {
 // --- cada cuadro: la logica (sin dibujar: las pruebas la corren sola) ---
 function logica(dt) {
   tiempo += dt;
+  if (fase === 'explica') return;   // (todo quieto hasta que se lee)
   if (tGrande > 0 && (tGrande -= dt) <= 0) $('grande').hidden = true;
   let manda = QUIETO;
   if (fase === 'cuenta') {
@@ -155,17 +205,24 @@ function logica(dt) {
     if ((pausa -= dt) <= 0) empezar(fase === 'entrega');
   }
   // las versiones pasadas se mueven con el reloj del viaje (en la cuenta y en las pausas, quietas)
-  if (fase === 'viaje') fantasmas.mover(reloj, c);
+  if (fase === 'viaje') fantasmas.mover(reloj, c, carga.caidas());
   resto += dt;
   while (resto >= JUEGO.paso) { c.paso(manda, JUEGO.paso); resto -= JUEGO.paso; }
+  const quedan = carga.actualizar(c, dt);
   if (fase === 'viaje') {
     if (c.impacto > 2) { sonido.toque && sonido.toque(c.contra, c.impacto, 0); camara.sacudir(c.impacto); }
     c.impacto = 0;
     grabacion.muestra(reloj, c);
+    // la primera vez que una version pasada anda cerca, se frena todo y se explica
+    if (!memoria.visto() && !piloto) {
+      const f = fantasmas.enLaCalle().find((g) => g.suelto && Math.hypot(g.x - c.pos[0], g.z - c.pos[2]) < 24);
+      if (f) { explicar(f); return; }
+    }
     // llego: adentro del circulo y casi parado, un ratito
     const lejos = Math.hypot(viaje.a.x - c.pos[0], viaje.a.z - c.pos[2]);
     parado = lejos < LLEGA && Math.abs(c.velocidad) < 2.5 ? parado + dt : 0;
-    if (parado >= PARAR) entregar();
+    if (quedan === 0) tarde('carga');
+    else if (parado >= PARAR) entregar();
     else if (reloj >= viaje.limite) tarde('reloj');
   }
 }
@@ -190,24 +247,26 @@ function cuadro(ahora) {
 }
 function dibujar(dt) {
   dibujo.actualizar(c, dt);
-  camara.seguir(c, dt);
+  if (fase !== 'explica') camara.seguir(c, dt);
   ambiente.tiempo.value = tiempo;
   if (viaje) pueblo.actualizar(tiempo, reloj, c, viaje.a);
   else pueblo.actualizar(tiempo, tiempo, c, mapa.destinos[0]);
-  sonido.actualizar(c, 0, dt);
+  if (marcado) anillo.material.opacity = 0.6 + 0.35 * Math.sin(tiempo * 6);
+  sonido.actualizar(c, 0, fase === 'explica' ? 0 : dt);
   if (viaje) {
     const queda = viaje.limite - reloj;
     $('reloj').textContent = reloj2(queda);
     $('reloj').classList.toggle('apuro', fase === 'viaje' && queda < 10);
     $('distancia').textContent = Math.round(Math.hypot(viaje.a.x - c.pos[0], viaje.a.z - c.pos[2])) + ' m';
   }
+  pintarCajas();
   pintarMapita();
   render.render(escena, vistaFija || camara.cam);
 }
 let vistaFija = null;   // (solo las pruebas: una camara quieta para mirar el pueblo de arriba)
 
 // --- arranque ---
-c.poner(mapa.destinos[0].x, mapa.destinos[0].z, mapa.destinos[0].rumbo);
+c.poner(mapa.destinos[2].x, mapa.destinos[2].z, mapa.destinos[2].rumbo);
 portada(true);
 pintarCuenta();
 document.documentElement.classList.remove('cargando');
@@ -215,11 +274,16 @@ requestAnimationFrame(cuadro);
 
 // --- para las pruebas ---
 window.reparto = {
-  mapa, auto: () => c, memoria, fantasmas,
-  estado: () => ({ fase, k: viaje && viaje.k, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1) }),
-  salir,
-  // maneja solo hasta el destino del viaje que toca
-  pilotear: (si = true) => { piloto = si && viaje ? crearPiloto(mapa.red, { x: c.pos[0], z: c.pos[2] }, viaje.a) : null; },
+  mapa, auto: () => c, memoria, fantasmas, carga,
+  viaje: (k) => mapa.viaje(k),
+  estado: () => ({ fase, k: viaje && viaje.k, tipo, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), limite: viaje && viaje.limite, cajas: carga.quedan(), x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
+  salir, seguir,
+  // maneja solo hasta el destino del viaje que toca (si esta en la largada, sale por donde se sale: el playon del deposito)
+  pilotear: (si = true) => {
+    if (!si || !viaje) { piloto = null; return; }
+    const enLargada = Math.hypot(c.pos[0] - viaje.de.x, c.pos[2] - viaje.de.z) < 6;
+    piloto = crearPiloto(mapa.red, enLargada ? viaje.de : { x: c.pos[0], z: c.pos[2] }, viaje.a);
+  },
   // corre el juego "seg" segundos sin esperar (de a 1/30), con el piloto si esta prendido (y lo rearma en cada viaje nuevo)
   avanzar: (seg) => {
     let k = viaje && viaje.k, f = fase;

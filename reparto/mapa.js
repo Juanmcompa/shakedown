@@ -1,11 +1,13 @@
 // Reparto: el pueblo. Siempre el mismo (sale de una semilla fija), porque los viajes guardados tienen que volver a
 // pasar por las mismas calles. Pocas calles, para que el lio llegue rapido: dos avenidas que se cruzan en el medio, una
-// diagonal que corta el pueblo, algunas calles que no siguen, una plaza, negocios con lugar para estacionar en la vereda
-// y semaforos en las esquinas de las avenidas.
+// diagonal que corta el pueblo, algunas calles que no siguen, una plaza, el deposito central con sus andenes, negocios
+// con lugar para estacionar en la vereda y semaforos en las esquinas de las avenidas.
 //
 // No dibuja nada (eso es dibujo.js): hace de "terreno" para la fisica de Shakedown, que le pregunta solo cuatro cosas: la
 // altura del piso, su inclinacion, que piso es, y contra que puede chocar cerca de un punto (cosasCerca).
 // Las versiones pasadas del que juega tambien se chocan: fantasmas.js las anota aca en cada cuadro (ver ponerMoviles).
+//
+// Tambien decide los viajes (ver "los viajes", al final): siempre los mismos, en el mismo orden.
 import { SUELOS } from '../src/config.js';
 import { azar } from '../src/noise.js';
 
@@ -21,15 +23,21 @@ export const CALLES = [
   [0, 0, TAM, 0, CALLE], [0, 80, TAM, 80, CALLE], [0, 240, 160, 240, CALLE], [0, TAM, TAM, TAM, CALLE],
 ].map(([x1, z1, x2, z2, m], i) => { const L = Math.hypot(x2 - x1, z2 - z1); return { i, x1, z1, x2, z2, m, L, ux: (x2 - x1) / L, uz: (z2 - z1) / L }; });
 export const PLAZA = { x0: 80, z0: 240, x1: 160, z1: TAM };   // la manzana que es plaza
+// El deposito central: un galpon con andenes (las puertas donde se carga) y un playon abierto a la calle de abajo.
+// De ahi sale y ahi vuelve buena parte de los viajes: es donde mas se cruzan tus versiones pasadas, y donde hacen fila.
+export const DEPOSITO = { x0: 250, x1: 310, z0: 246, zAnden: 262, z1: 316 };
+const ANDENES = [258, 270, 282, 294, 306];
 
-// los negocios: el nombre (en el cartel), un icono y el color del toldo
+// Los negocios: el nombre (en el cartel), que se les lleva, el color del toldo y en que se lleva:
+// 'camioneta' (lo chico: va en la caja abierta), 'furgon' o 'camion'.
 export const NEGOCIOS = [
-  ['ALMACEN', '🥫', '#3f6a4a'], ['PANADERIA', '🥖', '#b5523a'], ['FERRETERIA', '🔩', '#35546e'], ['FARMACIA', '💊', '#3f8a55'],
-  ['KIOSCO', '🍬', '#c8402f'], ['CLUB', '⚽', '#2f6fa8'], ['TALLER', '🔧', '#55585e'], ['BAR', '☕', '#6b4a36'],
-  ['VERDULERIA', '🥬', '#4f7a55'], ['CORREO', '✉️', '#e0a21e'], ['CARNICERIA', '🥩', '#8a3a2a'], ['LIBRERIA', '📚', '#8a6f9a'],
+  ['PANADERIA', '🌾', '#b5523a', 'camioneta'], ['FARMACIA', '💊', '#3f8a55', 'camioneta'], ['FLORERIA', '💐', '#c8608a', 'camioneta'],
+  ['HELADERIA', '🍦', '#5aa6c8', 'camioneta'], ['KIOSCO', '🍬', '#c8402f', 'camioneta'], ['VERDULERIA', '🥕', '#4f7a55', 'camioneta'],
+  ['CARNICERIA', '🥩', '#8a3a2a', 'camioneta'], ['VETERINARIA', '🦴', '#6b8a3a', 'camioneta'], ['BAR', '🍺', '#6b4a36', 'camioneta'],
+  ['FERRETERIA', '🔩', '#35546e', 'furgon'], ['CORREO', '📮', '#e0a21e', 'furgon'], ['LIBRERIA', '📚', '#8a6f9a', 'furgon'],
+  ['CLUB', '⚽', '#2f6fa8', 'furgon'], ['TALLER', '🔧', '#55585e', 'furgon'], ['ESCUELA', '✏️', '#3f6a4a', 'furgon'],
+  ['MUNICIPALIDAD', '📁', '#7d8a84', 'furgon'], ['ALMACEN', '🥫', '#a8735a', 'furgon'], ['SUPERMERCADO', '🛒', '#2f8a6f', 'camion'],
 ];
-// lo que se lleva en cada viaje (solo para contarlo)
-export const CARGAS = ['📦', '🥚', '🍞', '🌵', '🎂', '🥛', '🔑', '📮', '🧀', '🍉', '📻', '💐'];
 
 // los semaforos: en las esquinas de las avenidas (donde solo se cruzan calles derechas), con su desfase en segundos
 export const SEMAFOROS = [[160, 160, 0], [240, 160, 6], [160, 240, 11], [240, 80, 3], [80, 240, 14]].map(([x, z, des]) => ({ x, z, des }));
@@ -67,6 +75,8 @@ export function crearMapa() {
       if (d <= s.m) { z_ = Z.calle; break; }
       if (d <= s.m + VEREDA) z_ = Z.vereda;
     }
+    // el deposito: el galpon y el playon (que se come la vereda de abajo: se entra de la calle)
+    if (x > DEPOSITO.x0 && x < DEPOSITO.x1 && z > DEPOSITO.z0 && z < DEPOSITO.z1 && z_ !== Z.calle) z_ = z < DEPOSITO.zAnden ? Z.casa : Z.bahia;
     zona[j * NR + i] = z_;
   }
   const celda = (x, z) => { const i = Math.floor((x - X0) / RES), j = Math.floor((z - X0) / RES); return i < 0 || j < 0 || i >= NR || j >= NR ? -1 : j * NR + i; };
@@ -75,9 +85,9 @@ export function crearMapa() {
   // --- lo que se choca: en celdas de 8 m ---
   const cosas = [], celdas = new Map();
   const clave = (i, j) => i * 4096 + j;
-  // anota una cosa en todas las celdas que toca (con 3 m de mas: el auto pregunta por el centro de sus circulos de choque)
+  // anota una cosa en todas las celdas que toca (con 4 m de mas: el auto pregunta por el centro de sus circulos de choque)
   function anotar(o, mapa = celdas) {
-    const ex = (o.hx ? Math.abs(o.hx * o.ux) + Math.abs(o.hz * o.uz) : o.r) + 3, ez = (o.hx ? Math.abs(o.hx * o.uz) + Math.abs(o.hz * o.ux) : o.r) + 3;
+    const ex = (o.hx ? Math.abs(o.hx * o.ux) + Math.abs(o.hz * o.uz) : o.r) + 4, ez = (o.hx ? Math.abs(o.hx * o.uz) + Math.abs(o.hz * o.ux) : o.r) + 4;
     for (let i = Math.floor((o.x - ex) / CELDA); i <= Math.floor((o.x + ex) / CELDA); i++)
       for (let j = Math.floor((o.z - ez) / CELDA); j <= Math.floor((o.z + ez) / CELDA); j++) {
         const k = clave(i, j);
@@ -94,6 +104,12 @@ export function crearMapa() {
     for (let a = -hx + 0.25; a < hx; a += RES) for (let b = -hz + 0.25; b < hz; b += RES) if (f(x + ux * a - uz * b, z + uz * a + ux * b) === false) return false;
     return true;
   }
+
+  // --- el deposito: el galpon se choca; el playon tiene paredes a los costados ---
+  const D = DEPOSITO;
+  caja((D.x0 + D.x1) / 2, (D.z0 + D.zAnden) / 2, (D.x1 - D.x0) / 2, (D.zAnden - D.z0) / 2);
+  caja(D.x0 - 0.3, (D.zAnden + D.z1 - 4) / 2, 0.3, (D.z1 - 4 - D.zAnden) / 2);
+  caja(D.x1 + 0.3, (D.zAnden + D.z1 - 4) / 2, 0.3, (D.z1 - 4 - D.zAnden) / 2);
 
   // --- las casas: a lo largo de cada calle, de los dos lados, de frente a ella ---
   const edificios = [];
@@ -137,44 +153,30 @@ export function crearMapa() {
   caja(TAM / 2, -BORDE, lejos, 1); caja(TAM / 2, TAM + BORDE, lejos, 1);
   caja(-BORDE, TAM / 2, 1, lejos); caja(TAM + BORDE, TAM / 2, 1, lejos);
 
-  // --- los negocios: casas anchas, repartidas por todo el pueblo, con una bahia en la vereda para estacionar ---
+  // --- los destinos: los andenes del deposito y los negocios ---
+  // Un anden: el vehiculo estaciona de trompa a la calle (rumbo pi: mirando hacia +z), con la cola contra la puerta.
+  const destinos = ANDENES.map((x, i) => ({ n: i, anden: i, deposito: true, nombre: 'DEPOSITO', icono: '🏭', color: '#2f6fa8', tamano: 'camion',
+    x, z: D.zAnden + 4.4, rumbo: Math.PI, salida: { x, z: TAM - 2 } }));   // (se sale por la calle de abajo)
+  // Los negocios: casas anchas, repartidas por todo el pueblo, con una bahia en la vereda para estacionar.
   const BAHIA = 4.5;   // medio largo de la bahia
   const candidatos = edificios.filter((e) => e.ancho >= 8 && e.alto < 4 && e.a > BAHIA && e.a < e.calle.L - BAHIA);
   for (let i = candidatos.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]]; }
-  const destinos = [];
+  let cual = 0;
   for (const e of candidatos) {
-    if (destinos.length >= 10) break;
+    if (cual >= NEGOCIOS.length) break;
     const s = e.calle, nx = -e.nx, nz = -e.nz;   // de la calle hacia la casa
     const ex = s.x1 + s.ux * e.a, ez = s.z1 + s.uz * e.a;   // el punto del eje de la calle frente a la puerta
     // la bahia: toda la vereda frente a la puerta, sin tocar otra calle (no en una esquina)
     const bx = ex + nx * (s.m + VEREDA / 2), bz = ez + nz * (s.m + VEREDA / 2);
     if (!cadaPunto(bx, bz, BAHIA, VEREDA / 2 - 0.05, s.ux, s.uz, (x, z) => zonaEn(x, z) === Z.vereda)) continue;
-    if (destinos.some((d) => Math.hypot(d.x - bx, d.z - bz) < 85)) continue;
+    if (destinos.some((d) => Math.hypot(d.x - bx, d.z - bz) < 55)) continue;
     cadaPunto(bx, bz, BAHIA, VEREDA / 2, s.ux, s.uz, (x, z) => { zona[celda(x, z)] = Z.bahia; });
-    const n = destinos.length;
-    e.negocio = n;
+    const [nombre, icono, color, tamano] = NEGOCIOS[cual++];
+    e.negocio = destinos.length;
     e.alto = Math.max(e.alto, 4.4);   // (un negocio es mas alto: el cartel y el toldo van por arriba de la camioneta)
     // estacionado en la bahia, a lo largo de la calle, con la puerta a la derecha (rumbo 0 = hacia -z; la derecha es (cos, sin))
-    destinos.push({ n, nombre: NEGOCIOS[n][0], icono: NEGOCIOS[n][1], color: NEGOCIOS[n][2], x: bx, z: bz, rumbo: Math.atan2(nz, nx), edificio: e,
+    destinos.push({ n: destinos.length, nombre, icono, color, tamano, x: bx, z: bz, rumbo: Math.atan2(nz, nx), edificio: e,
       bahia: { x: bx, z: bz, hx: BAHIA, hz: VEREDA / 2, ux: s.ux, uz: s.uz } });
-  }
-
-  // --- el orden de los viajes: siempre el mismo. El viaje k va del destino ruta(k) al destino ruta(k + 1) ---
-  const ruta = [0];
-  function destinoDe(k) {
-    while (ruta.length <= k) {
-      const de = destinos[ruta[ruta.length - 1]], rr = azar(7919 * ruta.length + 13);
-      const lejos = (d) => Math.hypot(d.x - de.x, d.z - de.z);
-      const buenos = destinos.filter((d) => d !== de && lejos(d) > 110 && lejos(d) < 290);
-      const lista = buenos.length ? buenos : destinos.filter((d) => d !== de);
-      ruta.push(lista[Math.floor(rr() * lista.length)].n);
-    }
-    return destinos[ruta[k]];
-  }
-  // el viaje k: de donde a donde, que se lleva y cuanto tiempo hay (hasta 2 minutos)
-  function viaje(k) {
-    const de = destinoDe(k), a = destinoDe(k + 1), lejos = Math.hypot(a.x - de.x, a.z - de.z) * 1.3;
-    return { k, de, a, carga: CARGAS[k % CARGAS.length], limite: Math.min(120, Math.round(25 + lejos / 7)) };
   }
 
   // --- el terreno, para la fisica: todo plano ---
@@ -192,8 +194,9 @@ export function crearMapa() {
       const k = clave(Math.floor(x / CELDA), Math.floor(z / CELDA));
       return (moviles && moviles.get(k)) || celdas.get(k);
     },
-    // Las versiones pasadas de este cuadro: una lista de cajas que se mueven. Se arma un mapa aparte con las celdas que tocan
-    // (cada una con lo fijo de esa celda mas los autos que pasan), asi el auto choca contra todo sin tocar su fisica.
+    // Lo que se mueve en este cuadro (las versiones pasadas, las cajas que se cayeron): una lista de cajas y circulos.
+    // Se arma un mapa aparte con las celdas que tocan (cada una con lo fijo de esa celda mas lo que se mueve), asi el auto
+    // choca contra todo sin tocar su fisica.
     ponerMoviles: (lista) => {
       if (!lista.length) { moviles = null; return; }
       const m = new Map();
@@ -203,11 +206,12 @@ export function crearMapa() {
     },
     zona: zonaEn,
   };
-  return { T, edificios, arboles, monumento, destinos, viaje, cosas, red: crearRed() };
+  const red = crearRed();
+  return { T, edificios, arboles, monumento, destinos, cosas, red, viaje: crearViajes(destinos, red) };
 }
 
 // --- la red de calles: las esquinas (donde se cruzan o terminan) y que esquinas une cada calle ---
-// La usan el dibujo (sendas peatonales, lineas de pare) y el piloto automatico de las pruebas.
+// La usan el dibujo (sendas peatonales, lineas de pare), los viajes (que tan lejos queda cada lugar) y el piloto de las pruebas.
 function crearRed() {
   const nodos = [];
   const nodo = (x, z) => {
@@ -236,4 +240,102 @@ function crearRed() {
   }
   for (const n of nodos) n.calles = [...n.calles];
   return { nodos };
+}
+
+// la calle mas cercana a un punto y las dos esquinas de esa cuadra (con lo que falta hasta cada una)
+function cuadra(red, x, z) {
+  let s = CALLES[0], d = 1e9;
+  for (const q of CALLES) { const e = aCalle(q, x, z).d; if (e < d) { d = e; s = q; } }
+  const t = aCalle(s, x, z).t;
+  const en = red.nodos.filter((n) => aCalle(s, n.x, n.z).d < 0.5).map((n) => ({ n, t: aCalle(s, n.x, n.z).t })).sort((a, b) => a.t - b.t);
+  let a = en[0], b = en[en.length - 1];
+  for (let k = 1; k < en.length; k++) if (en[k].t >= t) { a = en[k - 1]; b = en[k]; break; }
+  return { s, d, puntas: [a, b].map((p) => ({ n: p.n, d: Math.abs(p.t - t) })) };
+}
+
+// El camino mas corto por las calles: la lista de puntos (las esquinas por las que pasa y, al final, el destino), su
+// largo en metros, y las cuadras que recorre (pares de esquinas, para saber cuanto se pisan dos caminos).
+// (un anden del deposito se conecta con la calle por su "salida": se entra y se sale por el playon)
+export function camino(red, desde, hasta) {
+  const p0 = desde.salida || desde, p1 = hasta.salida || hasta, extra = (desde.salida ? Math.hypot(desde.x - p0.x, desde.z - p0.z) : 0) + (hasta.salida ? Math.hypot(hasta.x - p1.x, hasta.z - p1.z) : 0);
+  const fin = hasta.salida ? [{ x: p1.x, z: p1.z }, { x: hasta.x, z: hasta.z }] : [{ x: hasta.x, z: hasta.z }];
+  const inicio = desde.salida ? [{ x: p0.x, z: p0.z }] : [];
+  const A = cuadra(red, p0.x, p0.z), B = cuadra(red, p1.x, p1.z);
+  const N = red.nodos.length, dist = new Float64Array(N).fill(Infinity), antes = new Int32Array(N).fill(-1), hecho = new Uint8Array(N);
+  for (const p of A.puntas) dist[p.n.id] = Math.min(dist[p.n.id], p.d + A.d);
+  for (;;) {
+    let k = -1;
+    for (let q = 0; q < N; q++) if (!hecho[q] && dist[q] < Infinity && (k < 0 || dist[q] < dist[k])) k = q;
+    if (k < 0) break;
+    hecho[k] = 1;
+    for (const v of red.nodos[k].vecinos) if (dist[k] + v.largo < dist[v.n.id]) { dist[v.n.id] = dist[k] + v.largo; antes[v.n.id] = k; }
+  }
+  if (A.s === B.s && A.puntas[0].n === B.puntas[0].n)   // en la misma cuadra: derecho
+    return { puntos: [...inicio, ...fin], largo: Math.hypot(p1.x - p0.x, p1.z - p0.z) + extra, cuadras: [] };
+  let mejor = B.puntas[0];
+  for (const p of B.puntas) if (dist[p.n.id] + p.d < dist[mejor.n.id] + mejor.d) mejor = p;
+  const ids = [];
+  for (let k = mejor.n.id; k >= 0; k = antes[k]) ids.unshift(k);
+  const cuadras = [];
+  for (let k = 1; k < ids.length; k++) cuadras.push(Math.min(ids[k], ids[k - 1]) * 1000 + Math.max(ids[k], ids[k - 1]));
+  return { puntos: [...inicio, ...ids.map((k) => ({ x: red.nodos[k].x, z: red.nodos[k].z })), ...fin], largo: dist[mejor.n.id] + mejor.d + B.d + extra, cuadras };
+}
+
+// --- los viajes ---
+// Van en vueltas de 5. En cada vuelta (v = 0, 1, 2...):
+//   1. del deposito a un negocio
+//   2. de vuelta al deposito: por el mismo camino, de frente con tu viaje anterior (asi, en el segundo viaje, te cruzas
+//      con tu primera version: el juego lo explica ahi)
+//   3. del deposito a otro negocio
+//   4. de ese negocio a otro, elegido para que el viaje siguiente pise las calles mas usadas
+//   5. de vuelta al deposito, en camion: el punto culminante. Pasa por donde mas viajes pasaron y termina en el mismo anden
+//      que el viaje 2 de esa vuelta (y que los viajes 5 de otras vueltas): ahi se hace fila.
+// Cada vuelta, los viajes son mas largos. Todo sale de una semilla fija: siempre los mismos viajes, en el mismo orden.
+function crearViajes(destinos, red) {
+  const andenes = destinos.filter((d) => d.deposito), negocios = destinos.filter((d) => !d.deposito);
+  const lista = [];   // los viajes ya decididos: { de, a, camino }
+  const largoEntre = new Map();
+  const largo = (a, b) => { const k = a.n * 100 + b.n; if (!largoEntre.has(k)) largoEntre.set(k, camino(red, a, b).largo); return largoEntre.get(k); };
+  // que tan lejos puede quedar un negocio, segun la vuelta
+  const rango = (v) => [60 + 45 * v, 170 + 60 * v];
+  // de los negocios que quedan a buena distancia, uno al azar (o el que mejor puntue, si se da "puntaje")
+  function elegir(de, v, rr, puntaje, sacar = []) {
+    const [min, max] = rango(v);
+    let buenos = negocios.filter((d) => d !== de && !sacar.includes(d) && largo(de, d) >= min && largo(de, d) <= max);
+    if (!buenos.length) {   // (si no hay ninguno en el rango: los mas cercanos al rango)
+      const fuera = (d) => { const l = largo(de, d); return l < min ? min - l : l > max ? l - max : 0; };
+      buenos = negocios.filter((d) => d !== de && !sacar.includes(d)).sort((a, b) => fuera(a) - fuera(b)).slice(0, 3);
+    }
+    if (!puntaje) return buenos[Math.floor(rr() * buenos.length)];
+    let mejor = null, pm = -Infinity;
+    for (const d of buenos) { const p = puntaje(d) + rr() * 0.5; if (p > pm) { pm = p; mejor = d; } }
+    return mejor;
+  }
+  // cuantas cuadras de un camino ya recorrieron los viajes anteriores (contando cada viaje)
+  const pisadas = (cuadras) => { let p = 0; for (const v of lista) for (const q of v.camino.cuadras) if (cuadras.includes(q)) p++; return p; };
+  function decidir(k) {
+    const v = Math.floor(k / 5), i = k % 5, rr = azar(7919 * k + 13);
+    const anden = andenes[v % 2];   // los viajes que vuelven al deposito, a uno de dos andenes (asi se hace fila)
+    const de = k === 0 ? andenes[2] : lista[k - 1].a;
+    // (los negocios de los ultimos viajes no se repiten enseguida)
+    const recientes = lista.slice(-8).flatMap((x) => [x.de, x.a]);
+    const [, max] = rango(v);
+    let a, tipo;
+    if (i === 0 || i === 2) { a = elegir(de, v, rr, null, recientes); tipo = a.tamano; }
+    else if (i === 1) { a = anden; tipo = lista[k - 1].tipo; }
+    else if (i === 3) {
+      // el que deja el viaje siguiente (la hora pico) por las calles mas usadas, sin que quede demasiado lejos del deposito
+      a = elegir(de, v, rr, (d) => pisadas(camino(red, d, anden).cuadras) - Math.max(0, largo(d, anden) - max * 1.2) * 0.5, recientes);
+      tipo = a.tamano;
+    } else { a = anden; tipo = 'camion'; }
+    const c = camino(red, de, a);
+    lista.push({ de, a, tipo, camino: c });
+  }
+  // el viaje k: de donde a donde, que se lleva, en que, y cuanto tiempo hay (hasta 2 minutos)
+  return function viaje(k) {
+    while (lista.length <= k) decidir(lista.length);
+    const { de, a, tipo, camino: c } = lista[k];
+    const lento = tipo === 'camion' ? 1.25 : 1;
+    return { k, de, a, tipo, carga: a.deposito ? '📦' : a.icono, camino: c, culmine: k % 5 === 4, limite: Math.min(120, Math.round((22 + c.largo / 7) * lento)) };
+  };
 }

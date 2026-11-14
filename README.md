@@ -236,13 +236,16 @@ Al lado de "Probar de nuevo" hay un botón que copia el detalle completo (en el 
 
 **Jugar:** https://juanmcompa.github.io/shakedown/reparto/
 
-Un pueblo chico: dos avenidas que se cruzan, una diagonal, algunas calles sin salida, una plaza y semáforos en las esquinas de las avenidas. Manejás una camioneta de reparto: llevás un paquete de un negocio a otro (dos minutos como mucho), estacionás en la bahía de carga que tiene en la vereda y, al llegar, sale el siguiente. Cada viaje queda guardado en tu aparato y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**, en camionetas iguales con la cabina de otro color: el tráfico sos vos. El juego no lo explica: se descubre jugando. Al principio el pueblo está vacío; con cada entrega se llena. Chocar con un viaje viejo no te rompe nada, pero te frena (ellos no se corren: ya pasaron).
+Un pueblo chico: dos avenidas que se cruzan, una diagonal, algunas calles sin salida, una plaza, un depósito central con andenes de carga y semáforos en las esquinas de las avenidas. Llevás paquetes entre el depósito y los negocios (dos minutos como mucho por viaje), estacionás en la bahía de carga (o en el andén) y, al llegar, sale el siguiente. Cada viaje queda guardado en tu aparato y, en el próximo, **todos tus viajes anteriores vuelven a la calle a la vez**, con la cabina de otro color: el tráfico sos vos. Chocarlos no rompe nada, pero ellos no se corren.
 
-- Si se hace tarde, el viaje fallido también queda en la calle, y se vuelve a intentar el mismo.
-- Los semáforos hacen lo mismo en cada viaje, segundo a segundo. Nadie obliga a respetarlos, pero si tu yo de antes cruzó en rojo, ahora te lo cruzás.
+- **Según la carga, cambia el vehículo:** camioneta (lo chico, en la caja abierta: las cajas se deslizan y, si doblás o frenás fuerte, se caen y quedan en la calle; si se caen todas, el viaje no vale), furgón o camión (largo y lento). Las versiones pasadas van tapadas: solo se repite su recorrido.
+- **Los viajes van en vueltas de 5:** depósito → negocio, de vuelta al depósito (por el mismo camino: te cruzás de frente con tu viaje anterior), depósito → otro negocio, de ahí a otro, y la **hora pico**: en camión, de vuelta al depósito por las calles que más usaste, al mismo andén que otros viajes (ahí se hace fila). Cada vuelta, los viajes son más largos.
+- **La primera vez que te cruzás con una versión pasada**, todo se frena y aparece una explicación corta. La portada no lo cuenta: se descubre jugando.
+- Si se hace tarde (o se cae toda la carga), el viaje fallido también queda en la calle, y se vuelve a intentar el mismo.
+- Los semáforos hacen lo mismo en cada viaje, segundo a segundo. Nadie obliga a respetarlos.
 - Gana el que hace más entregas. "Empezar de cero" borra los viajes (el récord queda).
 
-Está todo en la carpeta `reparto/`: el pueblo (`mapa.js`: las calles son una lista con su ancho, y las casas se acomodan solas a lo largo de cada una), la camioneta (`furgon.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). La física del auto, la cámara, los mandos y el sonido son los de Shakedown: si se mejora el manejo allá, mejora en los dos. Prueba: `node tools/pruebas/verreparto.mjs`.
+Está todo en la carpeta `reparto/`: el pueblo y el orden de los viajes (`mapa.js`), los vehículos (`vehiculos.js`), la carga suelta (`carga.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). La física del auto, la cámara, los mandos y el sonido son los de Shakedown: si se mejora el manejo allá, mejora en los dos. Prueba: `node tools/pruebas/verreparto.mjs`.
 
 ## Configuración
 

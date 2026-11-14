@@ -3,7 +3,7 @@
 // color con el reloj del viaje; y el destino es una columna de luz con el icono del negocio.
 import * as THREE from '../vendor/three.module.js';
 import { tono } from '../src/pixel.js';
-import { TAM, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, colorSemaforo, aCalle } from './mapa.js';
+import { TAM, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITO, colorSemaforo, aCalle } from './mapa.js';
 
 const PX = 4;   // pixeles por metro en el piso
 const REVOQUES = ['#e6dfcd', '#d9b36a', '#d8a48c', '#a9c3cc', '#b4cdb4', '#c9bfa8', '#e2c9a0', '#bfae9a'];
@@ -113,10 +113,20 @@ function pintarPiso(mapa) {
   // las bahias de los negocios: asfalto sobre la vereda, con el borde pintado y rayas amarillas de carga y descarga
   for (const dd of mapa.destinos) {
     const b = dd.bahia;
+    if (!b) continue;
     girado(b.x, b.z, b.hx + 0.25, b.hz, b.ux, b.uz, '#8e8a80');
     girado(b.x, b.z, b.hx, b.hz, b.ux, b.uz, '#55565b');
     for (const k of [-1, 1]) girado(b.x + b.ux * k * (b.hx - 0.1), b.z + b.uz * k * (b.hx - 0.1), 0.1, b.hz, b.ux, b.uz, '#f1ede2');
     for (let u = -b.hx + 0.8; u < b.hx - 0.5; u += 1.2) girado(b.x + b.ux * u, b.z + b.uz * u, 0.18, b.hz * 0.6, b.ux, b.uz, '#d8b23a');
+  }
+  // el playon del deposito: cemento, y cada anden con sus lineas y una franja amarilla contra la puerta
+  const D = DEPOSITO;
+  R(D.x0, D.zAnden, D.x1 - D.x0, D.z1 - D.zAnden, '#8f8c86');
+  for (let x = D.x0; x < D.x1; x += 4) R(x, D.zAnden, 0.08, D.z1 - D.zAnden, 'rgba(0,0,0,.08)');
+  for (let z = D.zAnden; z < D.z1; z += 4) R(D.x0, z, D.x1 - D.x0, 0.08, 'rgba(0,0,0,.08)');
+  for (const dd of mapa.destinos) if (dd.deposito) {
+    R(dd.x - 2.6, D.zAnden, 0.2, 10, '#f1ede2'); R(dd.x + 2.4, D.zAnden, 0.2, 10, '#f1ede2');
+    R(dd.x - 2.4, D.zAnden, 4.8, 0.5, '#d8b23a');
   }
   return { lienzo, X0, lado, bocas: B };
 }
@@ -192,6 +202,51 @@ function cartel(e, d) {
   return grupo;
 }
 
+// el galpon del deposito: paredes grises con una franja azul arriba, un porton por anden con topes amarillos (como en un
+// centro de distribucion), el techo de chapa y el nombre grande arriba (se lee desde la camara alta). Mas dos muros bajos
+// a los costados del playon.
+function galpon(andenes) {
+  const D = DEPOSITO, W = D.x1 - D.x0, F = D.zAnden - D.z0, H = 7, grupo = new THREE.Group();
+  const l = document.createElement('canvas');
+  l.width = W * 4; l.height = H * 4;
+  const g = l.getContext('2d');
+  const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  R(0, 0, W * 4, H * 4, '#d9d4c8'); R(0, 0, W * 4, 7, '#2f6fa8'); R(0, 7, W * 4, 1, '#25588a');
+  for (let x = 0; x < W * 4; x += 3) R(x, 0, 1, 7, '#3a7bb5');
+  for (const a of andenes) {
+    const cx = Math.round((a.x - D.x0) * 4);
+    R(cx - 9, 9, 18, 19, '#5b5e63'); R(cx - 8, 10, 16, 16, '#eef0f2');
+    for (let y = 12; y < 26; y += 2) R(cx - 8, y, 16, 1, '#c9ccd0');
+    R(cx - 11, 18, 2, 8, '#e0b21e'); R(cx + 9, 18, 2, 8, '#e0b21e');
+    g.fillStyle = '#2b2b2d'; g.font = '700 6px sans-serif'; g.textAlign = 'center'; g.fillText(String(a.anden + 1), cx, 9);
+  }
+  const frente = new THREE.MeshLambertMaterial({ map: textura(l) });
+  const pared = new THREE.MeshLambertMaterial({ color: '#d9d4c8' }), techo = new THREE.MeshLambertMaterial({ color: '#8fa4b8' });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(W, H, F), [pared, pared, techo, pared, frente, pared]);
+  m.position.set((D.x0 + D.x1) / 2, H / 2, (D.z0 + D.zAnden) / 2);
+  m.castShadow = m.receiveShadow = true;
+  grupo.add(m);
+  // el nombre en el techo
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 40;
+  const k = c.getContext('2d');
+  k.fillStyle = '#2f6fa8'; k.fillRect(0, 0, 256, 40);
+  k.fillStyle = '#f1ede2'; k.font = '700 28px "Atkinson Hyperlegible", "Segoe UI", sans-serif'; k.textAlign = 'center'; k.textBaseline = 'middle';
+  k.fillText('DEPOSITO', 128, 21);
+  const nombre = new THREE.Mesh(new THREE.PlaneGeometry(26, 4), new THREE.MeshBasicMaterial({ map: textura(c) }));
+  nombre.rotation.x = -Math.PI / 2;
+  nombre.position.set((D.x0 + D.x1) / 2, H + 0.05, (D.z0 + D.zAnden) / 2);
+  grupo.add(nombre);
+  // los muros bajos del playon
+  const muro = new THREE.MeshLambertMaterial({ color: '#b9b4a8' });
+  for (const x of [D.x0 - 0.3, D.x1 + 0.3]) {
+    const largo = D.z1 - 4 - D.zAnden, mm = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.2, largo), muro);
+    mm.position.set(x, 0.6, D.zAnden + largo / 2); mm.castShadow = true;
+    grupo.add(mm);
+  }
+  return grupo;
+}
+
 // un icono (emoji) en un dibujo, para los carteles que flotan
 export function iconoTextura(txt) {
   const l = document.createElement('canvas');
@@ -230,7 +285,8 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
 
   // --- las casas y los negocios ---
   for (const e of mapa.edificios) escena.add(casa(e));
-  for (const d of mapa.destinos) escena.add(cartel(d.edificio, d));
+  for (const d of mapa.destinos) if (d.edificio) escena.add(cartel(d.edificio, d));
+  escena.add(galpon(mapa.destinos.filter((d) => d.deposito)));
 
   // --- la plaza ---
   const tronco = new THREE.MeshLambertMaterial({ color: '#6b4a36' }), copas = ['#4f7a3a', '#5f8f3c', '#3f6a34'].map((c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
