@@ -113,6 +113,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] El nombre del fantasma solo se ve cuando va bastante adelante (de cerca tapaba la cámara)
 - [x] Tabla con prácticas: por corredor el mejor tiempo arriba y el oficial abajo, marcas de casco, línea (trazada, nueva) y ayuda, orden Oficial / Con prácticas, sin el dibujo del auto (solo su número)
 - [x] "Cómo leer la tabla" en Cómo se juega, con renglones de ejemplo dibujados igual que la tabla
+- [x] F FOR TRAFFIC: el mapita pinta cada cuadra según el tráfico de ese momento (verde a rojo oscuro)
 - [x] F FOR TRAFFIC: viajes repartidos (calles nuevas que se cruzan, lugares que no se repiten), 6 negocios nuevos por zona, terminal en el medio de la zona sur, mapita que crece con lo abierto y flecha verde para el jugador
 - [x] F FOR TRAFFIC (antes Reparto): niveles en la misma partida (depósito 1 → depósito 2 y zona este a las 30 → colectivos con paradas y zona sur a las 50 → taxis a las 70; semi solo al final del depósito 1, mezclado en el 2), vallas de obra, cartel de nivel, sello Early Access y firma
 - [x] Reparto: compartir el resultado (Probá Reparto 📦 Hice N entregas), semi con remolque desde la entrega 15, en el depósito se estaciona de culata

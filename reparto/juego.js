@@ -13,7 +13,7 @@ import { crearCamara } from '../src/camera.js';
 import { crearTeclas } from '../src/input.js';
 import { crearSonido } from '../src/audio.js';
 import { ambiente } from '../src/material.js';
-import { crearMapa, TAM, XMAX, ZMAX, CALLES, SEMAFOROS, ABRE, TAXIS, zonasAbiertas, colorSemaforo } from './mapa.js';
+import { crearMapa, TAM, XMAX, ZMAX, CALLES, ROTONDAS, SEMAFOROS, ABRE, TAXIS, zonasAbiertas, colorSemaforo } from './mapa.js';
 import { TIPOS, configDeTipo, crearDibujoVehiculo } from './vehiculos.js';
 import { crearDibujoPueblo } from './dibujo.js';
 import { crearMemoria, crearGrabacion } from './memoria.js';
@@ -306,6 +306,30 @@ $('pueblonuevo').addEventListener('click', () => {
 
 // el mapita: las calles, vos, el destino y tus versiones pasadas
 const mapita = $('mapita'), mg = mapita.getContext('2d');
+// El trafico de ahora, como en los mapas del celular: cada cuadra (de esquina a esquina) se pinta segun cuantas versiones
+// pasadas tiene encima en este momento, por cada 100 m: verde (libre), amarillo, naranja, rojo y rojo oscuro (trabada).
+// Las rotondas, igual (por su anillo). Se recalcula unas cuantas veces por segundo.
+const cuadras = [];
+for (const nd of mapa.red.nodos) for (const v of nd.vecinos) if (nd.id < v.n.id) cuadras.push({ x1: nd.x, z1: nd.z, x2: v.n.x, z2: v.n.z, m: v.calle.m, largo: v.largo, hay: 0 });
+const anillos = ROTONDAS.map((q) => ({ q, hay: 0 }));
+const COLOR_TRAFICO = (porCien) => (porCien < 0.6 ? '#3fbf5f' : porCien < 1.5 ? '#f2c94c' : porCien < 3 ? '#f2994a' : porCien < 5 ? '#e04a3a' : '#8a1c1c');
+let tTrafico = 0;
+function medirTrafico() {
+  for (const q of cuadras) q.hay = 0;
+  for (const a of anillos) a.hay = 0;
+  for (const f of fantasmas.enLaCalle()) {
+    const an = anillos.find((a) => Math.hypot(f.x - a.q.x, f.z - a.q.z) < a.q.ro + 2);
+    if (an) { an.hay++; continue; }
+    let mejor = null, dm = 1e9;
+    for (const q of cuadras) {
+      const dx = q.x2 - q.x1, dz = q.z2 - q.z1, t = Math.max(0, Math.min(1, ((f.x - q.x1) * dx + (f.z - q.z1) * dz) / (dx * dx + dz * dz)));
+      const d = Math.hypot(f.x - q.x1 - dx * t, f.z - q.z1 - dz * t);
+      if (d < dm) { dm = d; mejor = q; }
+    }
+    if (mejor && dm < mejor.m + 3) mejor.hay++;   // (los que estan adentro de un deposito o estacionados en una bahia no cuentan)
+  }
+}
+
 // Muestra solo la parte del pueblo que esta abierta: al principio el pueblo chico, y se agranda al abrir cada zona.
 // Vos sos la flecha verde (grande, con borde: que se encuentre enseguida entre el trafico).
 function pintarMapita() {
@@ -319,8 +343,19 @@ function pintarMapita() {
   mg.save(); mg.beginPath(); mg.rect(ox, oz, ancho * esc, alto * esc); mg.clip();
   mg.strokeStyle = '#6a6c72'; mg.lineCap = 'round';
   for (const s of CALLES) { mg.lineWidth = Math.max(3, 2 * s.m * esc); mg.beginPath(); mg.moveTo(ax(s.x1), az(s.z1)); mg.lineTo(ax(s.x2), az(s.z2)); mg.stroke(); }
+  // el trafico de ahora, encima de cada calle (mas finito que la calle, como una linea de color)
+  if ((tTrafico -= 1) <= 0) { medirTrafico(); tTrafico = 8; }
+  mg.lineCap = 'butt';
+  for (const q of cuadras) {
+    mg.strokeStyle = COLOR_TRAFICO(q.hay / Math.max(q.largo, 20) * 100); mg.lineWidth = Math.max(2, q.m * esc * 1.1);
+    mg.beginPath(); mg.moveTo(ax(q.x1), az(q.z1)); mg.lineTo(ax(q.x2), az(q.z2)); mg.stroke();
+  }
+  for (const a of anillos) {
+    mg.strokeStyle = COLOR_TRAFICO(a.hay / (2 * Math.PI * (a.q.ri + a.q.ro) / 2) * 100); mg.lineWidth = Math.max(2, (a.q.ro - a.q.ri) * esc * 0.6);
+    mg.beginPath(); mg.arc(ax(a.q.x), az(a.q.z), (a.q.ri + a.q.ro) / 2 * esc, 0, Math.PI * 2); mg.stroke();
+  }
+  mg.lineCap = 'round';
   for (const s of SEMAFOROS) { mg.fillStyle = { verde: '#3fdc6a', amarillo: '#ffc21e', rojo: '#ff3b2a' }[colorSemaforo(s, 'ns', reloj)]; mg.fillRect(ax(s.x) - 2, az(s.z) - 2, 4, 4); }
-  for (const f of fantasmas.enLaCalle()) { mg.fillStyle = f.entrego ? '#c9d4e0' : '#e08a7a'; mg.fillRect(ax(f.x) - 2, az(f.z) - 2, 4, 4); }
   if (viaje) { const d = objetivo(); mg.fillStyle = '#ffd23a'; mg.beginPath(); mg.arc(ax(d.x), az(d.z), 5, 0, Math.PI * 2); mg.fill(); }
   mg.restore();
   // vos: una flecha verde que apunta hacia donde vas

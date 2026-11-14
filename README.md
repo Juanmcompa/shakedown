@@ -249,7 +249,7 @@ Un pueblo que crece. Llevás cosas de un lado a otro, cada viaje con su tiempo (
 | 51 a 70 | **Colectivo**: sale de la terminal, para en cada parada en orden (de 2 a 4) y vuelve | La zona 3, al sur: la terminal, paradas con refugio y la base de taxis |
 | 71 en adelante | **Taxi**: buscás al pasajero en un negocio y lo llevás a otro | — |
 
-El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se agranda al abrir cada zona); vos sos la flecha verde. Las zonas cerradas se ven en la calle desde el principio, detrás de una valla de obra con un cartel en cada calle ("🚧 EN OBRA · 🔒 30 entregas"). Al llegar, la valla desaparece y sale un cartel grande.
+El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se agranda al abrir cada zona); vos sos la flecha verde. Las calles se pintan según el tráfico de ese momento, como en los mapas del celular: verde libre, amarillo, naranja, rojo y rojo oscuro según cuántas copias tiene cada cuadra encima. Las zonas cerradas se ven en la calle desde el principio, detrás de una valla de obra con un cartel en cada calle ("🚧 EN OBRA · 🔒 30 entregas"). Al llegar, la valla desaparece y sale un cartel grande.
 
 **El pueblo:** dos avenidas que se cruzan, una diagonal, cuatro rotondas (una de seis bocas), calles sin salida, una plaza, semáforos en las esquinas de las avenidas y negocios con bahía de carga en la vereda.
 
