@@ -312,7 +312,7 @@ function galpon(andenes) {
   nombre.rotation.x = -Math.PI / 2;
   nombre.position.set((D.x0 + D.x1) / 2, H + 0.05, (D.z0 + D.zAnden) / 2);
   grupo.add(nombre);
-  // los muros del playon: a los costados y adelante (sobre la linea de la vereda), con las dos bocas
+  // los muros del playon: solo a los costados (adelante, la vereda: no se tapa la calle)
   const muro = new THREE.MeshLambertMaterial({ color: '#b9b4a8' }), reja = new THREE.MeshLambertMaterial({ color: '#4a4d52' });
   const tapia = (x, z, w, d) => {
     const mm = new THREE.Mesh(new THREE.BoxGeometry(w, 1.2, d), muro);
@@ -325,7 +325,6 @@ function galpon(andenes) {
     }
   };
   for (const x of [D.x0 - 0.3, D.x1 + 0.3]) tapia(x, (D.zAnden + D.z1) / 2, 0.6, D.z1 - D.zAnden);
-  for (const [a, b] of [[D.x0 - 0.6, D.salida[0]], [D.salida[1], D.entrada[0]], [D.entrada[1], D.x1 + 0.6]]) if (b - a > 0.2) tapia((a + b) / 2, D.z1 - 0.3, b - a, 0.6);
   // los carteles: CONTRAMANO en la salida (mirando a la calle: que nadie entre por ahi) y en la entrada (mirando adentro:
   // que nadie salga por ahi), y PARE en la salida, mirando adentro
   grupo.add(cartelVial('contramano', D.salida[1] + 0.6, D.z1 + 0.4, 0));

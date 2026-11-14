@@ -3,8 +3,9 @@
 // apunta hacia el plato. Andando para adelante se acomoda solo detras del tractor; marcha atras se cruza para el lado
 // contrario al que se dobla, y si se lo deja ir se pliega (se lo frena a 75 grados: mas no se puede doblar).
 //
-// El remolque es solido: si va a meterse en una casa, en un poste o en otro vehiculo, el tractor no puede hacer ese
-// movimiento (se lo vuelve atras y se frena, como contra una pared).
+// El remolque es solido contra lo fijo: si va a meterse en una pared, una casa o un poste, se desliza contra eso (gira
+// sobre el plato); si no hay forma, el tractor no puede hacer ese movimiento (se lo vuelve atras y se frena, como contra
+// una pared). Tus versiones pasadas lo atraviesan.
 const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
 const MAXIMO = 75 * Math.PI / 180;   // lo mas que se puede doblar el remolque contra el tractor
 
@@ -45,23 +46,63 @@ export function crearRemolque(R, centro = 0) {
     const fx = Math.sin(s.th), fz = -Math.cos(s.th), m = R.largo / 2 - R.perno;
     return { x: s.ax + fx * L - fx * m, z: s.az + fz * L - fz * m, fx, fz };
   }
-  // si el remolque se mete en algo: se prueban puntos de su borde (cada ~1 m) contra lo que hay cerca
+  // Si el remolque se mete en una pared, una casa o un poste: se lo empuja para afuera (gira sobre el plato), asi se
+  // desliza contra la pared en vez de trabarse. Solo si no hay forma de sacarlo (la parte de adelante, pegada al plato,
+  // contra algo) el tractor no puede hacer ese paso. Los otros vehiculos (tus versiones pasadas) lo atraviesan: no cuentan.
+  // Devuelve 0 (nada), 1 (se deslizo contra algo) o 2 (trabado: hay que volver atras el tractor).
   function choca(T) {
-    const k = caja(), px = -k.fz, pz = k.fx, hl = R.largo / 2, hw = R.ancho;
-    for (let a = -hl; a <= hl + 0.01; a += hl / 5) for (const b of [-hw, hw]) if (dentro(T, k.x + k.fx * a + px * b, k.z + k.fz * a + pz * b)) return true;
-    for (const a of [-hl, hl]) for (let b = -hw; b <= hw; b += hw / 2) if (dentro(T, k.x + k.fx * a + px * b, k.z + k.fz * a + pz * b)) return true;
-    return false;
-  }
-  function dentro(T, x, z) {
-    const lista = T.cosasCerca(x, z);
-    if (!lista) return false;
-    for (const o of lista) {
-      if (o.roto || o.cede) continue;
-      const dx = x - o.x, dz = z - o.z;
-      if (o.hx) { const ex = dx * o.ux + dz * o.uz, ez = dz * o.ux - dx * o.uz; if (Math.abs(ex) < o.hx && Math.abs(ez) < o.hz) return true; }
-      else if (dx * dx + dz * dz < o.r * o.r) return true;
+    let toco = false;
+    for (let vez = 0; vez < 3; vez++) {
+      const e = empuje(T);
+      if (!e) return toco ? 1 : 0;
+      toco = true;
+      // se mueve el eje lo que pide el empuje (un poco mas, para que no quede rozando) y se vuelve a enganchar al plato
+      s.ax += e.x * 1.15; s.az += e.z * 1.15;
+      let dx = H.x - s.ax, dz = H.z - s.az;
+      const d = Math.hypot(dx, dz) || 1;
+      dx /= d; dz /= d;
+      s.th = Math.atan2(dx, -dz);
+      s.ax = H.x - dx * L; s.az = H.z - dz * L;
     }
-    return false;
+    return empuje(T) ? 2 : 1;
+  }
+  // el empuje mas grande que hace falta para sacar del todo un punto del borde del remolque de lo que tiene adentro
+  // (se prueban puntos del borde, cada ~1 m). null si no esta metido en nada.
+  function empuje(T) {
+    const k = caja(), px = -k.fz, pz = k.fx, hl = R.largo / 2, hw = R.ancho;
+    let mejor = null, m2 = 0;
+    const probar = (x, z) => {
+      const e = salir(T, x, z);
+      if (e && e.x * e.x + e.z * e.z > m2) { m2 = e.x * e.x + e.z * e.z; mejor = e; }
+    };
+    for (let a = -hl; a <= hl + 0.01; a += hl / 5) for (const b of [-hw, hw]) probar(k.x + k.fx * a + px * b, k.z + k.fz * a + pz * b);
+    for (let b = -hw; b <= hw + 0.01; b += hw / 2) probar(k.x - k.fx * hl + px * b, k.z - k.fz * hl + pz * b);
+    return mejor;
+  }
+  // si un punto esta adentro de algo fijo, hacia donde y cuanto hay que moverlo para sacarlo (por la cara mas cercana)
+  function salir(T, x, z) {
+    const lista = T.cosasCerca(x, z);
+    if (!lista) return null;
+    let mejor = null;
+    for (const o of lista) {
+      if (o.roto || o.cede || o.clase === 'auto') continue;
+      const dx = x - o.x, dz = z - o.z;
+      let e = null;
+      if (o.hx) {
+        const ex = dx * o.ux + dz * o.uz, ez = dz * o.ux - dx * o.uz;
+        if (Math.abs(ex) >= o.hx || Math.abs(ez) >= o.hz) continue;
+        // (local: x a lo largo de (ux, uz); z a lo largo de (-uz, ux))
+        const lx = o.hx - Math.abs(ex) < o.hz - Math.abs(ez) ? Math.sign(ex || 1) * (o.hx - Math.abs(ex) + 0.02) : 0;
+        const lz = lx ? 0 : Math.sign(ez || 1) * (o.hz - Math.abs(ez) + 0.02);
+        e = { x: o.ux * lx - o.uz * lz, z: o.uz * lx + o.ux * lz };
+      } else {
+        const d = Math.hypot(dx, dz);
+        if (d >= o.r) continue;
+        e = { x: dx / (d || 1) * (o.r - d + 0.02), z: dz / (d || 1) * (o.r - d + 0.02) };
+      }
+      if (!mejor || e.x * e.x + e.z * e.z > mejor.x * mejor.x + mejor.z * mejor.z) mejor = e;
+    }
+    return mejor;
   }
   // antes de cada paso de la fisica se guarda como estaba todo; si el remolque choca, se vuelve ahi
   function guardar(c) {

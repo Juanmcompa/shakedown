@@ -71,6 +71,7 @@ ponerVehiculo('furgon');
 let fase = 'portada', viaje = null, reloj = 0, cuenta = 0, pausa = 0, parado = 0, resto = 0, tiempo = 0, grabacion = null, motivo = '';
 let piloto = null;   // (solo las pruebas: maneja solo)
 let forzado = null;  // (solo las pruebas: el viaje que se juega, en vez del que toca)
+let trabas = 0, roces = 0;   // (solo las pruebas: cuantos pasos el remolque quedo trabado o rozando)
 const ent = { x: 0, y: 0, mano: false };
 
 const teclas = crearTeclas((tecla) => {
@@ -290,7 +291,12 @@ function logica(dt) {
     // con remolque: si el remolque se mete en algo, el tractor no puede hacer ese paso
     if (remolque) remolque.guardar(c);
     c.paso(manda, JUEGO.paso);
-    if (remolque) { remolque.seguir(c); if (remolque.choca(T)) remolque.volver(c); }
+    if (remolque) {
+      remolque.seguir(c);
+      const r = remolque.choca(T);
+      if (r === 2) { remolque.volver(c); trabas++; }
+      else if (r === 1) { roces++; c.vel[0] *= 0.996; c.vel[2] *= 0.996; }   // (rozando la pared, frena un poco)
+    }
     resto -= JUEGO.paso;
   }
   if (fase === 'viaje') {
@@ -359,8 +365,10 @@ requestAnimationFrame(cuadro);
 window.reparto = {
   mapa, auto: () => c, memoria, fantasmas, remolque: () => remolque, ubicar, llego,
   viaje: (k) => mapa.viaje(k),
-  estado: () => ({ avisoCulata, fase, k: viaje && viaje.k, tipo, doblado: remolque ? Math.round(remolque.doblado(c) * 180 / Math.PI) : null, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
+  estado: () => ({ trabas, roces, avisoCulata, fase, k: viaje && viaje.k, tipo, doblado: remolque ? Math.round(remolque.doblado(c) * 180 / Math.PI) : null, reloj: +reloj.toFixed(2), entregas: memoria.entregas(), record: memoria.record(), pasados: fantasmas.cuantos(), enCalle: fantasmas.enCalle(), limite: viaje && viaje.limite, x: +c.pos[0].toFixed(1), z: +c.pos[2].toFixed(1), v: +c.velocidad.toFixed(1), motivo }),
   salir, seguir, otraVez, textoParaCompartir,
+  // maneja con estos mandos (volante x, acelerador y) hasta que se apague (sin nada)
+  mandar: (x, y) => { piloto = x === undefined ? null : (cc, e) => { e.x = x; e.y = y; e.mano = false; }; },
   // juega el viaje k (sin importar cuantas entregas van)
   jugarViaje: (k) => { forzado = k; $('portada').hidden = true; $('fin').hidden = true; document.documentElement.classList.add('jugando'); empezar(false); },
   // maneja solo hasta el destino del viaje que toca (si esta en la largada, sale por donde se sale: el playon del deposito)

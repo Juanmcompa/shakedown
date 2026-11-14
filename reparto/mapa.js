@@ -23,13 +23,13 @@ export const CALLES = [
   [0, 0, TAM, 0, CALLE], [0, 80, TAM, 80, CALLE], [0, 240, 160, 240, CALLE], [0, TAM, TAM, TAM, CALLE],
 ].map(([x1, z1, x2, z2, m], i) => { const L = Math.hypot(x2 - x1, z2 - z1); return { i, x1, z1, x2, z2, m, L, ux: (x2 - x1) / L, uz: (z2 - z1) / L }; });
 export const PLAZA = { x0: 80, z0: 240, x1: 160, z1: TAM };   // la manzana que es plaza
-// El deposito central: un galpon con 8 portones (darsenas) y un playon cerrado por un muro sobre la vereda, con dos bocas:
-// la ENTRADA a la derecha (mirando el deposito desde la calle) y la SALIDA a la izquierda. Adentro se circula en un solo
+// El deposito central: un galpon con 8 portones (darsenas) y un playon abierto a la vereda (sin muro), con dos bocas
+// marcadas: la ENTRADA a la derecha (mirando el deposito desde la calle) y la SALIDA a la izquierda. Adentro se circula en un solo
 // sentido, de la entrada hacia la salida: se entra, se pasa de largo el porton, se retrocede de culata, y al salir se sigue
 // para el mismo lado hasta la salida. Asi nadie se cruza de frente en el playon.
 // De ahi sale y ahi vuelve buena parte de los viajes: es donde mas se cruzan tus versiones pasadas.
 // (x0, x1: los costados; z0: el fondo del galpon; zAnden: la pared de los portones; z1: el muro, sobre la linea de la vereda;
-//  entrada y salida: de que x a que x va cada boca; quiebre: hasta donde llegan las darsenas)
+//  entrada y salida: de que x a que x va cada boca (la vereda ahi es una rampa); quiebre: hasta donde llegan las darsenas)
 export const DEPOSITO = { x0: 250, x1: 310, z0: 246, zAnden: 262, z1: 312.5, entrada: [297, 309], salida: [251, 259], quiebre: 277 };
 const ANDENES = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 254 + i * 7.2);   // ocho portones
 
@@ -118,8 +118,6 @@ export function crearMapa() {
   caja((D.x0 + D.x1) / 2, (D.z0 + D.zAnden) / 2, (D.x1 - D.x0) / 2, (D.zAnden - D.z0) / 2);
   caja(D.x0 - 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2);
   caja(D.x1 + 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2);
-  // el muro de adelante, con las dos bocas
-  for (const [a, b] of [[D.x0, D.salida[0]], [D.salida[1], D.entrada[0]], [D.entrada[1], D.x1]]) if (b - a > 0.2) caja((a + b) / 2, D.z1 - 0.3, (b - a) / 2, 0.3);
 
   // --- las casas: a lo largo de cada calle, de los dos lados, de frente a ella ---
   const edificios = [];
