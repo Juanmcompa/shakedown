@@ -23,6 +23,11 @@ export const CALLES = [
   [0, 0, TAM, 0, CALLE], [0, 80, TAM, 80, CALLE], [0, 240, 160, 240, CALLE], [0, TAM, TAM, TAM, CALLE],
 ].map(([x1, z1, x2, z2, m], i) => { const L = Math.hypot(x2 - x1, z2 - z1); return { i, x1, z1, x2, z2, m, L, ux: (x2 - x1) / L, uz: (z2 - z1) / L }; });
 export const PLAZA = { x0: 80, z0: 240, x1: 160, z1: TAM };   // la manzana que es plaza
+// Las rotondas: centro, radio de la isla del medio y radio de afuera del anillo de asfalto. Se gira alrededor de la isla
+// (en sentido contrario a las agujas del reloj, visto desde arriba, como en Argentina).
+//   la primera esquina a la derecha saliendo del deposito (la calle de abajo y la avenida), la de la avenida con la
+//   diagonal (donde tambien cruza una calle: seis bocas), y una chiquita al final de la calle sin salida, detras del deposito
+export const ROTONDAS = [{ x: 160, z: TAM, ri: 7, ro: 16 }, { x: 160, z: 80, ri: 8, ro: 18 }, { x: 240, z: 240, ri: 2.5, ro: 9.5 }];
 // El deposito central: un galpon con 8 portones (darsenas) y un playon abierto a la vereda (sin muro), con dos bocas
 // marcadas: la ENTRADA a la derecha (mirando el deposito desde la calle) y la SALIDA a la izquierda. Adentro se circula en un solo
 // sentido, de la entrada hacia la salida: se entra, se pasa de largo el porton, se retrocede de culata, y al salir se sigue
@@ -79,6 +84,11 @@ export function crearMapa() {
       const d = aCalle(s, x, z).d;
       if (d <= s.m) { z_ = Z.calle; break; }
       if (d <= s.m + VEREDA) z_ = Z.vereda;
+    }
+    // las rotondas: la isla (pasto), el anillo de asfalto y su vereda
+    for (const q of ROTONDAS) {
+      const d = Math.hypot(x - q.x, z - q.z);
+      if (d <= q.ri) z_ = Z.plaza; else if (d <= q.ro) z_ = Z.calle; else if (d <= q.ro + VEREDA && z_ !== Z.calle) z_ = Z.vereda;
     }
     // el deposito: el galpon y el playon (que se come la vereda de abajo: se entra de la calle)
     const D = DEPOSITO;
@@ -155,6 +165,8 @@ export function crearMapa() {
   }
   const monumento = { x: pcx, z: pcz };
   circulo(pcx, pcz, 2.4, 'monumento');
+  // la isla de cada rotonda (con su cordon) se choca
+  for (const q of ROTONDAS) circulo(q.x, q.z, q.ri, 'cantero');
 
   // --- el paredon de afuera ---
   const lejos = TAM / 2 + BORDE;
@@ -294,12 +306,13 @@ export function camino(red, desde, hasta) {
 
 // --- los viajes ---
 // Van en vueltas de 5. En cada vuelta (v = 0, 1, 2...):
-//   1. del deposito a un negocio
+//   1. del deposito a un negocio (en el vehiculo que pida ese negocio: camioneta, furgon o camion)
 //   2. de vuelta al deposito: por el mismo camino, de frente con tu viaje anterior (asi, en el segundo viaje, te cruzas
 //      con tu primera version: el juego lo explica ahi)
-//   3. del deposito a otro negocio
+//   3. del deposito a otro negocio, en camion (desde la vuelta 3, la de las entregas 11 a 15, en semi)
 //   4. de ese negocio a otro, elegido para que el viaje siguiente pise las calles mas usadas
-//   5. de vuelta al deposito, en camion (desde la entrega 15, en semi): el punto culminante. Pasa por donde mas viajes pasaron.
+//   5. de vuelta al deposito: el punto culminante. Pasa por donde mas viajes pasaron.
+// Desde que se sale del deposito hasta que se vuelve, el vehiculo es siempre el mismo (cambia solo en el deposito).
 // En el deposito siempre se estaciona de culata: con la cola contra el porton y la trompa hacia el playon.
 // Cada llegada al deposito usa un porton distinto, en rueda (1, 4, 7, 2, 5, 0, 3, 6, y de nuevo): el que llega sale despues
 // por el mismo porton, y ese porton no se vuelve a usar hasta 8 llegadas mas tarde. Asi los camiones no se pisan en la puerta.
@@ -335,13 +348,16 @@ function crearViajes(destinos, red) {
     const recientes = lista.slice(-8).flatMap((x) => [x.de, x.a]);
     const [, max] = rango(v);
     let a, tipo;
-    if (i === 0 || i === 2) { a = elegir(de, v, rr, null, recientes); tipo = a.tamano; }
+    // El vehiculo se elige al salir del deposito y es el mismo hasta volver: la primera salida de la vuelta (viajes 1 y 2),
+    // el que pide el negocio; la segunda (viajes 3, 4 y 5, con la hora pico), camion, y desde la vuelta 3, semi.
+    if (i === 0) { a = elegir(de, v, rr, null, recientes); tipo = a.tamano; }
+    else if (i === 2) { a = elegir(de, v, rr, null, recientes); tipo = v >= 2 ? 'semi' : 'camion'; }
     else if (i === 1) { a = anden; tipo = lista[k - 1].tipo; }
     else if (i === 3) {
       // el que deja el viaje siguiente (la hora pico) por las calles mas usadas, sin que quede demasiado lejos del deposito
       a = elegir(de, v, rr, (d) => pisadas(camino(red, d, anden).cuadras) - Math.max(0, largo(d, anden) - max * 1.2) * 0.5, recientes);
-      tipo = a.tamano;
-    } else { a = anden; tipo = k >= 14 ? 'semi' : 'camion'; }   // (desde la hora pico de la entrega 15, en semi)
+      tipo = lista[k - 1].tipo;
+    } else { a = anden; tipo = lista[k - 1].tipo; }
     const c = camino(red, de, a);
     lista.push({ de, a, tipo, camino: c });
   }

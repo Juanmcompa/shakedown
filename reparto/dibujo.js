@@ -3,7 +3,9 @@
 // color con el reloj del viaje; y el destino es una columna de luz con el icono del negocio.
 import * as THREE from '../vendor/three.module.js';
 import { tono } from '../src/pixel.js';
-import { TAM, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITO, colorSemaforo, aCalle } from './mapa.js';
+import { TAM, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITO, ROTONDAS, colorSemaforo, aCalle } from './mapa.js';
+
+const rotondaEn = (n) => ROTONDAS.find((q) => Math.hypot(q.x - n.x, q.z - n.z) < 1);
 
 const PX = 4;   // pixeles por metro en el piso
 const REVOQUES = ['#e6dfcd', '#d9b36a', '#d8a48c', '#a9c3cc', '#b4cdb4', '#c9bfa8', '#e2c9a0', '#bfae9a'];
@@ -24,7 +26,8 @@ const textura = (lienzo, repetir) => {
 const ruido = (i, j) => { const s = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return s - Math.floor(s); };
 
 // Para cada esquina y cada calle que sale de ella: hasta donde llega el cruce (de ahi para afuera va la senda peatonal).
-// Se avanza por la calle hasta que sus dos bordes quedan afuera del asfalto de las otras calles de esa esquina.
+// Se avanza por la calle hasta que sus dos bordes quedan afuera del asfalto de las otras calles de esa esquina (en una
+// rotonda: hasta afuera del anillo).
 function bocas(red) {
   const lista = [];
   for (const n of red.nodos) {
@@ -40,7 +43,9 @@ function bocas(red) {
         }
         if (libre) break;
       }
-      lista.push({ n, s, ux, uz, px, pz, d });
+      const q = rotondaEn(n);
+      if (q) d = Math.max(d, q.ro + 0.2);
+      lista.push({ n, s, ux, uz, px, pz, d, rotonda: q });
     }
   }
   return lista;
@@ -81,12 +86,16 @@ function pintarPiso(mapa) {
   R(pcx - 1.2, PLAZA.z0, 2.4, PLAZA.z1 - PLAZA.z0, '#c9b48a'); R(PLAZA.x0, pcz - 1.2, PLAZA.x1 - PLAZA.x0, 2.4, '#c9b48a');
   R(pcx - 5, pcz - 5, 10, 10, '#c9b48a');
   // veredas, cordon y asfalto (en ese orden: cada uno tapa al anterior)
+  const disco = (q, radio, col) => { g.beginPath(); g.arc(q.x, q.z, radio, 0, Math.PI * 2); g.fillStyle = col; g.fill(); };
   for (const s of CALLES) linea(s, 2 * (s.m + VEREDA), BALDOSA);
+  for (const q of ROTONDAS) disco(q, q.ro + VEREDA, BALDOSA);
   for (const s of CALLES) for (let u = 1; u < s.L; u += 1) {   // las juntas de las baldosas, cada metro
     for (const k of [-1, 1]) girado(s.x1 + s.ux * u - s.uz * k * (s.m + VEREDA / 2), s.z1 + s.uz * u + s.ux * k * (s.m + VEREDA / 2), 0.06, VEREDA / 2, s.ux, s.uz, 'rgba(0,0,0,.07)');
   }
   for (const s of CALLES) linea(s, 2 * s.m + 0.5, '#8e8a80');
+  for (const q of ROTONDAS) disco(q, q.ro + 0.25, '#8e8a80');
   for (const s of CALLES) linea(s, 2 * s.m, ASFALTO);
+  for (const q of ROTONDAS) disco(q, q.ro, ASFALTO);
   // manchas y parches del asfalto
   for (let k = 0; k < 700; k++) {
     const s = CALLES[Math.floor(ruido(k, 4) * CALLES.length)], u = ruido(k, 1) * s.L, w = (ruido(k, 2) - 0.5) * 2 * (s.m - 0.6);
@@ -100,6 +109,22 @@ function pintarPiso(mapa) {
   // los cruces, limpios (asfalto encima de las lineas), y las sendas peatonales de cada boca
   const B = bocas(mapa.red);
   for (const b of B) girado(b.n.x + b.ux * b.d / 2, b.n.z + b.uz * b.d / 2, b.d / 2 + 0.05, b.s.m, b.ux, b.uz, ASFALTO);
+  // las rotondas: el anillo limpio, la isla del medio (pasto con cordon blanco) y, en cada boca, los triangulos de ceda el
+  // paso del lado del que entra (el que ya gira en la rotonda tiene prioridad)
+  for (const q of ROTONDAS) {
+    disco(q, q.ro, ASFALTO);
+    g.beginPath(); g.arc(q.x, q.z, (q.ri + q.ro) / 2 + 0.6, 0, Math.PI * 2); g.lineWidth = 0.15; g.strokeStyle = 'rgba(233,228,214,.55)'; g.setLineDash([2, 2]); g.stroke(); g.setLineDash([]);
+    disco(q, q.ri + 0.35, '#e9e4d6');
+    disco(q, q.ri, '#5f8f3c');
+  }
+  for (const b of B) {
+    if (!b.rotonda) continue;
+    for (let w = 0.3; w < b.s.m - 0.5; w += 1.1) {
+      const x = b.n.x + b.ux * (b.d + 3.0) - b.px * w, z = b.n.z + b.uz * (b.d + 3.0) - b.pz * w;   // (despues de la senda)
+      g.fillStyle = '#f1ede2'; g.beginPath();
+      g.moveTo(x - b.px * 0.45, z - b.pz * 0.45); g.lineTo(x + b.px * 0.45, z + b.pz * 0.45); g.lineTo(x + b.ux * 0.9, z + b.uz * 0.9); g.fill();   // (la punta mira al que llega)
+    }
+  }
   for (const b of B) {
     if (b.d <= 0) continue;
     for (let w = -b.s.m + 0.6; w < b.s.m - 0.4; w += 1) girado(b.n.x + b.ux * (b.d + 1.2) + b.px * w, b.n.z + b.uz * (b.d + 1.2) + b.pz * w, 1.1, 0.27, b.ux, b.uz, '#e9e4d6');
@@ -388,6 +413,22 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
   base.position.set(mapa.monumento.x, 0.6, mapa.monumento.z); aguja.position.set(mapa.monumento.x, 4.6, mapa.monumento.z);
   base.castShadow = aguja.castShadow = true;
   escena.add(base, aguja);
+
+  // --- las islas de las rotondas: un cordon blanco, pasto, y un arbol (o, en la chiquita, unas matas) ---
+  const cordon = new THREE.MeshLambertMaterial({ color: '#e9e4d6' }), pasto = new THREE.MeshLambertMaterial({ color: '#5f8f3c' });
+  for (const q of ROTONDAS) {
+    const c1 = new THREE.Mesh(new THREE.CylinderGeometry(q.ri + 0.3, q.ri + 0.3, 0.25, 32), cordon);
+    c1.position.set(q.x, 0.125, q.z); c1.receiveShadow = true;
+    const c2 = new THREE.Mesh(new THREE.CylinderGeometry(q.ri, q.ri, 0.3, 32), pasto);
+    c2.position.set(q.x, 0.15, q.z); c2.receiveShadow = true;
+    escena.add(c1, c2);
+    const grande = q.ri > 4, alto = grande ? 7 : 2.2;
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, alto * 0.45, 0.5), tronco);
+    t.position.set(q.x, alto * 0.225, q.z); t.castShadow = true;
+    const copa = new THREE.Mesh(new THREE.IcosahedronGeometry(alto * (grande ? 0.36 : 0.5), 0), copas[0]);
+    copa.position.set(q.x, alto * 0.62, q.z); copa.castShadow = true;
+    escena.add(t, copa);
+  }
 
   // --- el paredon de afuera ---
   const ladrillo = new THREE.MeshLambertMaterial({ color: '#a8735a' });

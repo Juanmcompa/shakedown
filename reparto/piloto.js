@@ -2,7 +2,7 @@
 // doblando en las esquinas, por la mano derecha) sin que nadie maneje. Sigue el camino mas corto (ver camino, en mapa.js).
 // En el deposito estaciona de culata: entra al playon, da la vuelta y retrocede hasta el porton (con el semi no le sale
 // bien: el remolque marcha atras es dificil hasta para el piloto).
-import { camino, DEPOSITO } from './mapa.js';
+import { camino, DEPOSITO, ROTONDAS } from './mapa.js';
 
 const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
 const rumboA = (dx, dz) => Math.atan2(dx, -dz);
@@ -19,6 +19,7 @@ export function crearPiloto(red, desde, hasta, cola) {
     const D = DEPOSITO, zq = D.quiebre;
     puntos = puntos.slice(0, -1).concat([{ x: Math.min(hasta.x + 10, D.entrada[0] - 2), z: zq + 15 }, { x: Math.max(hasta.x - 9, D.x0 + 5), z: zq + 7 }]);
   }
+  puntos = rodear(puntos, desde);
   let k = 0, quieto = 0, atras = 0, marcha = false;
   return function paso(c, ent, dt) {
     const v = c.velocidad;
@@ -37,12 +38,12 @@ export function crearPiloto(red, desde, hasta, cola) {
     if (Math.abs(v) < 0.6) quieto += dt; else quieto = 0;
     if (quieto > 2.5) { atras = 1.4; quieto = 0; }
     let p = puntos[k];
-    while (k < puntos.length - 1 && Math.hypot(p.x - c.pos[0], p.z - c.pos[2]) < 8) p = puntos[++k];
+    while (k < puntos.length - 1 && Math.hypot(p.x - c.pos[0], p.z - c.pos[2]) < (p.anillo ? 4.5 : 8)) p = puntos[++k];
     const ultimo = k === puntos.length - 1;
     // por la mano derecha: el punto se corre 2,5 m a la derecha de hacia donde va
     let dx = p.x - c.pos[0], dz = p.z - c.pos[2];
     const l = Math.hypot(dx, dz) || 1;
-    const corre = ultimo || (culata && k >= puntos.length - 4);
+    const corre = ultimo || p.anillo || (culata && k >= puntos.length - 4);
     const tx = corre ? p.x : p.x + (-dz / l) * 2.5, tz = corre ? p.z : p.z + (dx / l) * 2.5;
     dx = tx - c.pos[0]; dz = tz - c.pos[2];
     const e = giro(rumboA(dx, dz) - rumboA(c.adelante[0], c.adelante[2]));
@@ -50,8 +51,26 @@ export function crearPiloto(red, desde, hasta, cola) {
     const lejos = Math.hypot(dx, dz);
     if (culata && ultimo && lejos < 4) { marcha = true; ent.y = -1; return; }
     // despacio en las esquinas y frenando al llegar
-    const quiero = ultimo ? Math.min(12, Math.max(culata ? 4 : 0, (lejos - 1) * 0.7)) : lejos < 24 ? 6.5 : 13;
+    const quiero = ultimo ? Math.min(12, Math.max(culata ? 4 : 0, (lejos - 1) * 0.7)) : p.anillo ? 6 : lejos < 24 ? 6.5 : 13;
     ent.y = v > quiero + 1.5 ? -1 : v > quiero ? 0 : Math.abs(e) > 1.2 && v > 4 ? 0 : 1;
     if (ultimo && !culata && lejos < 1.8) ent.y = v > 0.4 ? -1 : 0;
   };
+}
+
+// Las rotondas: si el camino pasa por el centro de una, en vez de ir al centro se la rodea por el anillo, girando en
+// sentido contrario a las agujas del reloj (visto desde arriba con el norte arriba: en el dibujo, con z hacia abajo, el
+// angulo baja). Se entra doblando a la derecha y se sale por la boca que va hacia el punto siguiente.
+function rodear(puntos, desde) {
+  const out = [];
+  for (let i = 0; i < puntos.length; i++) {
+    const p = puntos[i], q = ROTONDAS.find((r) => Math.hypot(r.x - p.x, r.z - p.z) < 1);
+    if (!q || i === puntos.length - 1) { out.push(p); continue; }
+    const antes = i > 0 ? puntos[i - 1] : desde, despues = puntos[i + 1], rm = (q.ri + q.ro) / 2 + 0.5;
+    const a0 = Math.atan2(antes.z - q.z, antes.x - q.x), a1 = Math.atan2(despues.z - q.z, despues.x - q.x);
+    let vuelta = a0 - a1;
+    while (vuelta <= 0.3) vuelta += 2 * Math.PI;
+    while (vuelta > 2 * Math.PI + 0.3) vuelta -= 2 * Math.PI;
+    for (let t = 0.45; t < vuelta - 0.3; t += 0.5) out.push({ x: q.x + Math.cos(a0 - t) * rm, z: q.z + Math.sin(a0 - t) * rm, anillo: true });
+  }
+  return out;
 }
