@@ -14,9 +14,10 @@ export function crearPiloto(red, desde, hasta, cola) {
   let puntos = camino(red, desde, hasta).puntos;
   const culata = !!hasta.deposito;
   if (culata) {
-    // en vez de ir al porton: entra al playon por un costado, sube, y vuelve en diagonal (queda mirando hacia la calle)
-    const lado = hasta.x < (DEPOSITO.x0 + DEPOSITO.x1) / 2 ? 1 : -1, z0 = DEPOSITO.zAnden;
-    puntos = puntos.slice(0, -1).concat([{ x: hasta.x + 15 * lado, z: z0 + 34 }, { x: hasta.x + 15 * lado, z: z0 + 12 }, { x: hasta.x + 3 * lado, z: z0 + 30 }]);
+    // en vez de ir al porton: entra por la ENTRADA, sigue el flujo del playon (hacia la izquierda), pasa de largo el porton
+    // y desde ahi retrocede de culata
+    const D = DEPOSITO, zq = D.quiebre;
+    puntos = puntos.slice(0, -1).concat([{ x: Math.min(hasta.x + 10, D.entrada[0] - 2), z: zq + 15 }, { x: Math.max(hasta.x - 9, D.x0 + 5), z: zq + 7 }]);
   }
   let k = 0, quieto = 0, atras = 0, marcha = false;
   return function paso(c, ent, dt) {
@@ -41,7 +42,7 @@ export function crearPiloto(red, desde, hasta, cola) {
     // por la mano derecha: el punto se corre 2,5 m a la derecha de hacia donde va
     let dx = p.x - c.pos[0], dz = p.z - c.pos[2];
     const l = Math.hypot(dx, dz) || 1;
-    const corre = ultimo || (culata && k >= puntos.length - 3);
+    const corre = ultimo || (culata && k >= puntos.length - 4);
     const tx = corre ? p.x : p.x + (-dz / l) * 2.5, tz = corre ? p.z : p.z + (dx / l) * 2.5;
     dx = tx - c.pos[0]; dz = tz - c.pos[2];
     const e = giro(rumboA(dx, dz) - rumboA(c.adelante[0], c.adelante[2]));

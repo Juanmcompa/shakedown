@@ -23,9 +23,14 @@ export const CALLES = [
   [0, 0, TAM, 0, CALLE], [0, 80, TAM, 80, CALLE], [0, 240, 160, 240, CALLE], [0, TAM, TAM, TAM, CALLE],
 ].map(([x1, z1, x2, z2, m], i) => { const L = Math.hypot(x2 - x1, z2 - z1); return { i, x1, z1, x2, z2, m, L, ux: (x2 - x1) / L, uz: (z2 - z1) / L }; });
 export const PLAZA = { x0: 80, z0: 240, x1: 160, z1: TAM };   // la manzana que es plaza
-// El deposito central: un galpon con andenes (las puertas donde se carga) y un playon abierto a la calle de abajo.
+// El deposito central: un galpon con 8 portones (darsenas) y un playon cerrado por un muro sobre la vereda, con dos bocas:
+// la ENTRADA a la derecha (mirando el deposito desde la calle) y la SALIDA a la izquierda. Adentro se circula en un solo
+// sentido, de la entrada hacia la salida: se entra, se pasa de largo el porton, se retrocede de culata, y al salir se sigue
+// para el mismo lado hasta la salida. Asi nadie se cruza de frente en el playon.
 // De ahi sale y ahi vuelve buena parte de los viajes: es donde mas se cruzan tus versiones pasadas.
-export const DEPOSITO = { x0: 250, x1: 310, z0: 246, zAnden: 262, z1: 316 };
+// (x0, x1: los costados; z0: el fondo del galpon; zAnden: la pared de los portones; z1: el muro, sobre la linea de la vereda;
+//  entrada y salida: de que x a que x va cada boca; quiebre: hasta donde llegan las darsenas)
+export const DEPOSITO = { x0: 250, x1: 310, z0: 246, zAnden: 262, z1: 312.5, entrada: [297, 309], salida: [251, 259], quiebre: 277 };
 const ANDENES = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 254 + i * 7.2);   // ocho portones
 
 // Los negocios: el nombre (en el cartel), que se les lleva, el color del toldo y en que se lleva:
@@ -76,7 +81,10 @@ export function crearMapa() {
       if (d <= s.m + VEREDA) z_ = Z.vereda;
     }
     // el deposito: el galpon y el playon (que se come la vereda de abajo: se entra de la calle)
-    if (x > DEPOSITO.x0 && x < DEPOSITO.x1 && z > DEPOSITO.z0 && z < DEPOSITO.z1 && z_ !== Z.calle) z_ = z < DEPOSITO.zAnden ? Z.casa : Z.bahia;
+    const D = DEPOSITO;
+    if (x > D.x0 && x < D.x1 && z > D.z0 && z < D.z1 && z_ !== Z.calle) z_ = z < D.zAnden ? Z.casa : Z.bahia;
+    // (las dos bocas cruzan la vereda)
+    if (z >= D.z1 && z_ === Z.vereda && ((x > D.entrada[0] && x < D.entrada[1]) || (x > D.salida[0] && x < D.salida[1]))) z_ = Z.bahia;
     zona[j * NR + i] = z_;
   }
   const celda = (x, z) => { const i = Math.floor((x - X0) / RES), j = Math.floor((z - X0) / RES); return i < 0 || j < 0 || i >= NR || j >= NR ? -1 : j * NR + i; };
@@ -108,8 +116,10 @@ export function crearMapa() {
   // --- el deposito: el galpon se choca; el playon tiene paredes a los costados ---
   const D = DEPOSITO;
   caja((D.x0 + D.x1) / 2, (D.z0 + D.zAnden) / 2, (D.x1 - D.x0) / 2, (D.zAnden - D.z0) / 2);
-  caja(D.x0 - 0.3, (D.zAnden + D.z1 - 4) / 2, 0.3, (D.z1 - 4 - D.zAnden) / 2);
-  caja(D.x1 + 0.3, (D.zAnden + D.z1 - 4) / 2, 0.3, (D.z1 - 4 - D.zAnden) / 2);
+  caja(D.x0 - 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2);
+  caja(D.x1 + 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2);
+  // el muro de adelante, con las dos bocas
+  for (const [a, b] of [[D.x0, D.salida[0]], [D.salida[1], D.entrada[0]], [D.entrada[1], D.x1]]) if (b - a > 0.2) caja((a + b) / 2, D.z1 - 0.3, (b - a) / 2, 0.3);
 
   // --- las casas: a lo largo de cada calle, de los dos lados, de frente a ella ---
   const edificios = [];
@@ -156,7 +166,10 @@ export function crearMapa() {
   // --- los destinos: los andenes del deposito y los negocios ---
   // Un anden: el vehiculo estaciona de trompa a la calle (rumbo pi: mirando hacia +z), con la cola contra la puerta.
   const destinos = ANDENES.map((x, i) => ({ n: i, anden: i, deposito: true, nombre: 'DEPOSITO', icono: '🏭', color: '#2f6fa8', tamano: 'camion',
-    x, z: D.zAnden + 4.4, rumbo: Math.PI, salida: { x, z: TAM - 2 }, puerta: { x, z: D.zAnden + 0.6 } }));   // (se sale por la calle de abajo)
+    x, z: D.zAnden + 4.4, rumbo: Math.PI, puerta: { x, z: D.zAnden + 0.6 },
+    // se entra por la boca de la derecha y se sale por la de la izquierda (adentro: un punto del playon frente a cada boca)
+    entrada: { x: (D.entrada[0] + D.entrada[1]) / 2, z: TAM - 2.5, adentro: { x: (D.entrada[0] + D.entrada[1]) / 2, z: D.z1 - 5 } },
+    salida: { x: (D.salida[0] + D.salida[1]) / 2, z: TAM - 2.5, adentro: { x: (D.salida[0] + D.salida[1]) / 2, z: D.z1 - 5 } } }));
   // Los negocios: casas anchas, repartidas por todo el pueblo, con una bahia en la vereda para estacionar.
   const BAHIA = 4.5;   // medio largo de la bahia
   const candidatos = edificios.filter((e) => e.ancho >= 8 && e.alto < 4 && e.a > BAHIA && e.a < e.calle.L - BAHIA);
@@ -255,11 +268,11 @@ function cuadra(red, x, z) {
 
 // El camino mas corto por las calles: la lista de puntos (las esquinas por las que pasa y, al final, el destino), su
 // largo en metros, y las cuadras que recorre (pares de esquinas, para saber cuanto se pisan dos caminos).
-// (un anden del deposito se conecta con la calle por su "salida": se entra y se sale por el playon)
+// (un porton del deposito se conecta con la calle por las bocas del playon: se entra por la entrada y se sale por la salida)
 export function camino(red, desde, hasta) {
-  const p0 = desde.salida || desde, p1 = hasta.salida || hasta, extra = (desde.salida ? Math.hypot(desde.x - p0.x, desde.z - p0.z) : 0) + (hasta.salida ? Math.hypot(hasta.x - p1.x, hasta.z - p1.z) : 0);
-  const fin = hasta.salida ? [{ x: p1.x, z: p1.z }, { x: hasta.x, z: hasta.z }] : [{ x: hasta.x, z: hasta.z }];
-  const inicio = desde.salida ? [{ x: p0.x, z: p0.z }] : [];
+  const p0 = desde.salida || desde, p1 = hasta.entrada || hasta, extra = (desde.salida ? Math.hypot(desde.x - p0.x, desde.z - p0.z) : 0) + (hasta.entrada ? Math.hypot(hasta.x - p1.x, hasta.z - p1.z) : 0);
+  const fin = hasta.entrada ? [{ x: p1.x, z: p1.z }, { ...hasta.entrada.adentro }, { x: hasta.x, z: hasta.z }] : [{ x: hasta.x, z: hasta.z }];
+  const inicio = desde.salida ? [{ ...desde.salida.adentro }, { x: p0.x, z: p0.z }] : [];
   const A = cuadra(red, p0.x, p0.z), B = cuadra(red, p1.x, p1.z);
   const N = red.nodos.length, dist = new Float64Array(N).fill(Infinity), antes = new Int32Array(N).fill(-1), hecho = new Uint8Array(N);
   for (const p of A.puntas) dist[p.n.id] = Math.min(dist[p.n.id], p.d + A.d);
