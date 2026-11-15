@@ -6,6 +6,7 @@ import { tono } from '../src/pixel.js';
 import { crearPueblo } from '../src/pueblo.js';
 import { crearLoteDeArboles } from '../src/arboles.js';
 import { lienzoDePiso } from '../src/arte.js';
+import { crearHuellas } from './huellas.js';
 import { TAM, XMAX, ZMAX, LIMITE, ABRE, VEREDA, BORDE, PLAZA, CALLES, SEMAFOROS, DEPOSITOS, ROTONDAS, colorSemaforo, aCalle } from './mapa.js';
 
 const rotondaEn = (n) => ROTONDAS.find((q) => Math.hypot(q.x - n.x, q.z - n.z) < 1);
@@ -434,22 +435,33 @@ export function iconoTextura(txt) {
 }
 
 export function crearDibujoPueblo(escena, mapa, liviano) {
-  // --- luz: una tarde de sol ---
-  escena.background = new THREE.Color('#9fc4dc');
-  escena.fog = new THREE.Fog('#9fc4dc', 220, 520);
-  escena.add(new THREE.HemisphereLight('#dbe9f5', '#7a6e58', 1.5));
-  const sol = new THREE.DirectionalLight('#fff1d6', 2.2);
+  // --- luz: la de la tarde de Shakedown (HORAS.tarde en src/world.js): sol calido y bajo, cielo lila, rebote marron del
+  // piso y sombras marcadas. (La bruma, mas lejos que alla: aca la camara va alta y el pueblo se ve de arriba.)
+  const LUZ_TARDE = { sol: [0xffe3b4, 2.5, [-0.72, 0.62, -0.3]], cielo: [0xd2d8ee, 0x86736c, 1.4], bruma: [0xeadcc0, 200, 520], sombra: 0.78 };
+  escena.background = new THREE.Color(0xc9d6e6);
+  escena.fog = new THREE.Fog(LUZ_TARDE.bruma[0], LUZ_TARDE.bruma[1], LUZ_TARDE.bruma[2]);
+  escena.add(new THREE.HemisphereLight(LUZ_TARDE.cielo[0], LUZ_TARDE.cielo[1], LUZ_TARDE.cielo[2]));
+  const sol = new THREE.DirectionalLight(LUZ_TARDE.sol[0], LUZ_TARDE.sol[1]);
+  sol.shadow.intensity = LUZ_TARDE.sombra;
   sol.castShadow = true;
   sol.shadow.mapSize.set(liviano ? 1024 : 2048, liviano ? 1024 : 2048);
   const S = sol.shadow.camera;
   S.left = -70; S.right = 70; S.top = 70; S.bottom = -70; S.near = 1; S.far = 400;
   sol.shadow.bias = -0.0008;
   escena.add(sol, sol.target);
-  const haciaElSol = new THREE.Vector3(-0.5, 1, 0.35).normalize();
+  const haciaElSol = new THREE.Vector3(...LUZ_TARDE.sol[2]).normalize();
 
   // --- el piso ---
   const p = pintarPiso(mapa);
-  const piso = new THREE.Mesh(new THREE.PlaneGeometry(p.ladoX, p.ladoZ), new THREE.MeshLambertMaterial({ map: textura(p.lienzo) }));
+  // las marcas de las cubiertas (ver huellas.js): el piso se oscurece donde patinaron
+  const huellas = crearHuellas(p.X0, p.X0, p.ladoX, p.ladoZ);
+  const matPiso = new THREE.MeshLambertMaterial({ map: textura(p.lienzo) });
+  matPiso.onBeforeCompile = (sh) => {
+    sh.uniforms.tHuellas = { value: huellas.textura };
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      diffuseColor.rgb *= 1.0 - texture2D(tHuellas, vec2(vMapUv.x, 1.0 - vMapUv.y)).r * 0.62;`).replace('void main() {', 'uniform sampler2D tHuellas;\nvoid main() {');
+  };
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(p.ladoX, p.ladoZ), matPiso);
   piso.rotation.x = -Math.PI / 2;
   piso.position.set(p.X0 + p.ladoX / 2, 0, p.X0 + p.ladoZ / 2);
   piso.receiveShadow = true;
@@ -538,6 +550,7 @@ export function crearDibujoPueblo(escena, mapa, liviano) {
   const ARRIBA = new THREE.Vector3(0, 1, 0), HACIA = new THREE.Vector3();
 
   return {
+    huellas,
     // muestra las vallas de las zonas que siguen cerradas (n: hasta que zona esta abierto)
     abrir: (n) => { vallas[2].visible = n < 2; vallas[3].visible = n < 3; },
     destino: (d) => {

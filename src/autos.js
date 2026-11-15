@@ -1023,3 +1023,12 @@ export function crearEspectro(escena, T, C) {
     ocultar: () => { grupo.visible = false; },
   };
 }
+
+// Para F FOR TRAFFIC (la otra pagina, en reparto/): la pintura de un vehiculo de otro color (sin numeros ni franjas de rally).
+// Se guarda cada una para no armar dos veces el mismo dibujo. No cambia nada de Shakedown.
+const pinturasDeAfuera = new Map();
+export const pinturaDeColor = (color, mas = {}) => {
+  const clave = color + JSON.stringify(mas);
+  if (!pinturasDeAfuera.has(clave)) pinturasDeAfuera.set(clave, pintura(color, { rally: false, numero: '', ...mas }));
+  return pinturasDeAfuera.get(clave);
+};

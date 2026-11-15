@@ -251,7 +251,7 @@ Un pueblo que crece. Llevás cosas de un lado a otro, cada viaje con su tiempo (
 
 El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se agranda al abrir cada zona); vos sos la flecha verde. Las calles se pintan según el tráfico de ese momento, como en los mapas del celular: verde libre, amarillo, naranja, rojo y rojo oscuro según cuántas copias tiene cada cuadra encima. Las zonas cerradas se ven en la calle desde el principio, detrás de una valla de obra con un cartel en cada calle ("🚧 EN OBRA · 🔒 30 entregas"). Al llegar, la valla desaparece y sale un cartel grande.
 
-**Gráficos:** las casas, los árboles y los pisos (pasto, tierra, vereda, asfalto) son los dibujos de Shakedown. La carga de los vehículos se bambolea un poco al doblar y al frenar (es solo dibujo, no física).
+**Gráficos:** las casas, los árboles y los pisos (pasto, tierra, vereda, asfalto) son los dibujos de Shakedown, igual que la camioneta (la chata) y el camión, pintados píxel por píxel; los demás vehículos llevan el mismo acabado. La luz es la de la tarde de Shakedown, con su revelado (sombras frías, luces cálidas, bordes más oscuros y desenfoque de maqueta), y las cubiertas dejan marcas de frenada, humo y polvo como allá. La carga se bambolea un poco al doblar y al frenar (es solo dibujo, no física).
 
 **El pueblo:** dos avenidas que se cruzan, una diagonal, cuatro rotondas (una de seis bocas), calles sin salida, una plaza, semáforos en las esquinas de las avenidas y negocios con bahía de carga en la vereda.
 

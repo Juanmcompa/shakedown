@@ -12,16 +12,21 @@
 import * as THREE from '../vendor/three.module.js';
 import { configDe } from '../src/partes.js';
 import { tono } from '../src/pixel.js';
+import { armarAuto, pinturaDeColor } from '../src/autos.js';
 
 // las medidas de cada uno. k: cuanto mas pesado que la Vitarita. ancho/largo: medio ancho y medio largo (para chocarlos).
 // cabina, caja: largos (m). altoCabina, altoCaja: altos. abierta: la caja es una caja de camioneta, sin techo.
 export const TIPOS = {
-  camioneta: { nombre: 'Camioneta', k: 1.2, motor: 1.25, giro: 1, ancho: 0.95, largo: 2.3, choque: [0.95, 1.35], trocha: 0.8, ejes: 1.4,
-    cabina: 1.95, caja: 2.5, altoCabina: 1.45, altoCaja: 0.5, anchoDibujo: 1.85, abierta: true, piso: 0.42 },
+  // la camioneta y el camion son los de Shakedown (src/autos.js: la chata y el camion, pintados pixel por pixel). modelo: cual;
+  // altoModelo: el "alto" de sus medidas alla (a que altura va su centro); placa: donde va el numero del techo [alto, adelante].
+  camioneta: { nombre: 'Camioneta', k: 1.2, motor: 1.25, giro: 1, ancho: 1.0, largo: 2.25, choque: [0.98, 1.3], trocha: 0.72, ejes: 1.45,
+    cabina: 1.95, caja: 2.5, altoCabina: 1.45, altoCaja: 0.5, anchoDibujo: 1.85, abierta: true, piso: 0.42,
+    modelo: 'chata', radio: 0.37, altoModelo: -0.43, placa: [1.15, -0.55] },
   furgon: { nombre: 'Furgón', k: 1.45, motor: 1.3, giro: 1, ancho: 0.97, largo: 2.3, choque: [0.95, 1.35], trocha: 0.84, ejes: 1.45,
     cabina: 1.5, caja: 3.1, altoCabina: 1.45, altoCaja: 2.05, anchoDibujo: 1.9, piso: 0.42 },
-  camion: { nombre: 'Camión', k: 2.8, motor: 2.1, giro: 0.82, ancho: 1.18, largo: 3.6, choque: [1.15, 2.4], trocha: 0.98, ejes: 2.2,
-    cabina: 2.0, caja: 5.2, altoCabina: 2.1, altoCaja: 2.75, anchoDibujo: 2.35, piso: 0.55 },
+  camion: { nombre: 'Camión', k: 2.8, motor: 2.1, giro: 0.82, ancho: 1.13, largo: 3.0, choque: [1.1, 1.9], trocha: 0.86, ejes: 1.7,
+    cabina: 2.0, caja: 5.2, altoCabina: 2.1, altoCaja: 2.75, anchoDibujo: 2.35, piso: 0.55,
+    modelo: 'camion', radio: 0.46, altoModelo: -0.37, placa: [1.55, -2.0] },
   // el semi: el tractor solo (la cabina y un chasis corto con el plato donde se engancha el remolque). remolque: largo
   // total, medio ancho, alto, del frente al perno de enganche, de la cola al eje, y a cuanto detras del centro del tractor
   // queda el plato.
@@ -43,16 +48,31 @@ export function configDeTipo(tipo) {
     ...V,
     masa: V.masa * k, resorte: V.resorte * k, amortigua: V.amortigua.map((a) => a * k), potencia: V.potencia * t.motor,
     inercia: V.inercia.map((i) => i * k * (1 + t.largo / 4)), giro: V.giro * t.giro,
-    caja: [t.ancho, t.largo, V.caja[2], t.altoCaja + 0.4], choque: t.choque, trocha: t.trocha, ejes: t.ejes,
+    caja: [t.ancho, t.largo, V.caja[2], t.altoCaja + 0.4], choque: t.choque, trocha: t.trocha, ejes: t.ejes, radio: t.radio || V.radio,
   });
 }
 export const altoDe = (C) => C.resorteLargo + C.radio - C.masa * 9.81 / 4 / C.resorte - C.anclaje;   // a que altura va el centro, apoyado
 
+// Un dibujo de pocos pixeles para una cara. Con el acabado de los autos de Shakedown: motas de un tono mas oscuro o mas claro
+// salpicadas (que no quede liso), el borde de arriba con luz y el de abajo y los costados con sombra.
+let semillaMotas = 7;
 const lienzo = (w, h, pintar) => {
   const l = document.createElement('canvas');
   l.width = w; l.height = h;
   const g = l.getContext('2d');
   pintar((x, y, ww, hh, c) => { g.fillStyle = c; g.fillRect(x, y, ww, hh); });
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  let a = semillaMotas++ * 7919;
+  const azar = () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let k = 0; k < w * h; k++) {
+    const x = k % w, y = Math.floor(k / w), v = azar();
+    let f = v < 0.07 ? 0.9 : v > 0.95 ? 1.08 : 1;
+    if (h > 3 && y === 0) f *= 1.12;
+    if (h > 3 && y === h - 1) f *= 0.78;
+    if (w > 3 && (x === 0 || x === w - 1)) f *= 0.9;
+    for (let c = 0; c < 3; c++) d[k * 4 + c] = Math.min(255, d[k * 4 + c] * f);
+  }
+  g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(l);
   t.magFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -150,6 +170,23 @@ const tabla = new THREE.MeshLambertMaterial({ color: '#7a6248' }), lona = mat(li
 const llanta = new THREE.MeshLambertMaterial({ color: '#202124' }), aro = new THREE.MeshLambertMaterial({ color: '#b9bec4' });
 const rojo = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.25, 0.15) }), apagada = new THREE.MeshLambertMaterial({ color: '#7a2a22' });
 
+// La camioneta y el camion: los dibujos de Shakedown (la chata, con la carga tapada, y el camion), de un color. Todo el cuerpo
+// se bambolea (ver bambolear). El dibujo se sube o se baja para que las ruedas queden en el piso con la altura de la fisica.
+function armarDeShakedown(tipo, color) {
+  const t = TIPOS[tipo], C = configDeTipo(tipo), alto = altoDe(C);
+  const { grupo, ruedas, cuerpo } = armarAuto({ modelo: t.modelo, radio: C.radio, trocha: C.trocha, ejes: C.ejes, alto: t.altoModelo, centro: C.centro },
+    pinturaDeColor(color, t.modelo === 'chata' ? { carga: true } : {}));
+  const sube = C.radio - t.altoModelo - alto;
+  cuerpo.position.y += sube;
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), materialNumero(1));
+  placa.rotation.set(-Math.PI / 2, 0, Math.PI);
+  placa.position.set(0, t.placa[0] + sube + 0.03, t.placa[1] + (C.centro || 0));
+  placa.visible = false;
+  grupo.add(placa);
+  const numero = (n) => { placa.visible = n > 0; if (n > 0) placa.material = materialNumero(n); };
+  return { grupo, remolque: null, carga: cuerpo, cajaRemolque: null, ruedas, frenos: [], alto, numero, C, tipo };
+}
+
 // el numero de una entrega, para el techo de la cabina: blanco, con borde oscuro (sin fondo)
 const numeros = new Map();
 function materialNumero(n) {
@@ -171,6 +208,7 @@ function materialNumero(n) {
 // fisica: el piso queda "alto" metros abajo), sus ruedas, las luces de freno y numero(n): pone el numero del techo.
 export function armarVehiculo(tipo, color) {
   const t = TIPOS[tipo], C = configDeTipo(tipo), alto = altoDe(C);
+  if (t.modelo) return armarDeShakedown(tipo, color);
   const piso = -alto, grupo = new THREE.Group(), W = t.anchoDibujo;
   const largo = t.caja + t.cabina, z0 = -largo / 2 + (C.centro || 0), base = piso + t.piso;
   const poner = (m) => { m.castShadow = true; grupo.add(m); return m; };

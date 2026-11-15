@@ -13,6 +13,8 @@ import { crearCamara } from '../src/camera.js';
 import { crearTeclas } from '../src/input.js';
 import { crearSonido } from '../src/audio.js';
 import { ambiente } from '../src/material.js';
+import { crearPost } from '../src/post.js';
+import { crearEfectos } from '../src/fx.js';
 import { crearMapa, TAM, XMAX, ZMAX, CALLES, ROTONDAS, SEMAFOROS, ABRE, TAXIS, zonasAbiertas, colorSemaforo } from './mapa.js';
 import { TIPOS, configDeTipo, crearDibujoVehiculo } from './vehiculos.js';
 import { crearDibujoPueblo } from './dibujo.js';
@@ -41,6 +43,12 @@ const escena = new THREE.Scene();
 const mapa = crearMapa(), T = mapa.T;
 const pueblo = crearDibujoPueblo(escena, mapa, liviano);
 const camara = crearCamara(T);
+// la imagen, revelada como en Shakedown (sombras frias, luces calidas, bordes mas oscuros, maqueta), y los efectos de las
+// cubiertas (ver huellas.js)
+const post = crearPost(render, 'sol', liviano);
+post.revelar('sol'); post.prender(true);
+const fx = crearEfectos(escena, pueblo.huellas, 1, [0.5, 0.3], liviano);
+const HACIA = new THREE.Vector3(), AL_AUTO = new THREE.Vector3();
 const sonido = crearSonido();
 const memoria = crearMemoria();
 const fantasmas = crearFantasmas(escena, T);
@@ -50,7 +58,7 @@ fantasmas.preparar(memoria.entregas());
 // --- el vehiculo de turno: cambia de un viaje a otro segun lo que se lleva ---
 let tipo = '', c = null, dibujo = null, remolque = null;
 // pone el vehiculo en un lugar (y el remolque, si lleva, derecho atras)
-function ubicar(x, z, rumbo) { c.poner(x, z, rumbo); if (remolque) remolque.poner(c); }
+function ubicar(x, z, rumbo) { c.poner(x, z, rumbo); if (remolque) remolque.poner(c); if (fx) fx.cortar(); }
 function ponerVehiculo(t) {
   if (t === tipo) return;
   const antes = c;
@@ -218,7 +226,7 @@ function mostrarFin() {
   $('finRecord').textContent = record;
   $('finNuevo').hidden = !(hechas > 0 && hechas > recordAntes);
   recordAntes = record;
-  memoria.borrar(); fantasmas.borrar(); fantasmas.preparar(0); abrirZonas(0);
+  memoria.borrar(); fantasmas.borrar(); fantasmas.preparar(0); abrirZonas(0); pueblo.huellas.limpiar();
   $('fin').hidden = false;
   pintarCuenta();
 }
@@ -303,7 +311,7 @@ function salir() { sonido.iniciar(); portada(false); empezar(false); if (memoria
 $('salir').addEventListener('click', salir);
 $('pueblonuevo').addEventListener('click', () => {
   if (!confirm('¿Empezar de cero? Se borran tus entregas (el récord queda).')) return;
-  memoria.borrar(); fantasmas.borrar(); abrirZonas(0); portada(true);
+  memoria.borrar(); fantasmas.borrar(); abrirZonas(0); pueblo.huellas.limpiar(); portada(true);
 });
 
 // el mapita: las calles, vos, el destino y tus versiones pasadas
@@ -436,6 +444,7 @@ function logica(dt) {
 function medir() {
   const w = lienzo.clientWidth, h = lienzo.clientHeight;
   render.setSize(w, h, false);
+  post.medir(render.domElement.width, render.domElement.height);
   camara.pantalla(w, h);
   // Con el celular parado, la camioneta va siempre en la franja de abajo (entre el 62 % y el 86 % de la pantalla, de arriba
   // hacia abajo): arriba quedan el reloj, el pedido y el mapita, abajo los controles, y en el medio se ve la calle de adelante.
@@ -456,6 +465,7 @@ function cuadro(ahora) {
 }
 function dibujar(dt) {
   dibujo.actualizar(c, dt, remolque);
+  if (!pausado && fase !== 'explica') fx.actualizar(c, dt);   // (las marcas de las cubiertas, el humo de goma y el polvo: los de Shakedown)
   if (fase !== 'explica') camara.seguir(c, dt);
   ambiente.tiempo.value = tiempo;
   if (viaje) pueblo.actualizar(tiempo, reloj, c, objetivo());
@@ -468,7 +478,10 @@ function dibujar(dt) {
     $('reloj').classList.toggle('apuro', fase === 'viaje' && queda < 10);
   }
   pintarMapita();
-  render.render(escena, vistaFija || camara.cam);
+  // el revelado de Shakedown (src/post.js): el ajuste de color, el brillo y el desenfoque de maqueta, con foco en el vehiculo
+  const cam = vistaFija || camara.cam;
+  cam.getWorldDirection(HACIA);
+  post.dibujar(escena, cam, AL_AUTO.set(c.pos[0], c.pos[1], c.pos[2]).sub(cam.position).dot(HACIA));
 }
 let vistaFija = null;   // (solo las pruebas: una camara quieta para mirar el pueblo de arriba)
 
