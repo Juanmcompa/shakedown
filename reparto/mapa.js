@@ -485,16 +485,22 @@ function crearViajes(destinos, red) {
     const anden = andenes[(1 + 3 * (2 * v + (i >= 2 ? 1 : 0))) % andenes.length];
     const de = k === 0 ? andenes[0] : lista[k - 1].a;
     const recientes = lista.slice(-4).flatMap((x) => [x.de, x.a]);
-    const [, max] = rango(v);
+    // Al empezar en cada deposito, las entregas van lejos (asi el lio de tus versiones pasadas se arma lejos, y no enseguida
+    // en la calle del deposito); vuelta a vuelta se van acercando y mezclando. vd: la vuelta, contada desde que se empezo en
+    // este deposito. lejos(d): puntos por lo lejos que queda el negocio del deposito (cada vez pesa menos).
+    const vd = dep === 0 ? v : v - ABRE[2] / 5, D = andenes[0].dep, cx = (D.x0 + D.x1) / 2, cz = (D.z0 + D.z1) / 2;
+    const rangoDep = vd <= 0 ? [200, 380] : vd === 1 ? [170, 380] : vd === 2 ? [140, 360] : rango(v);
+    const lejos = (d) => Math.max(0, 3 - vd) * Math.hypot(d.x - cx, d.z - cz) / 50;
+    const [, max] = rangoDep;
     // en el deposito 2 se prefieren los negocios de la zona 2 (mas en la primera salida de la vuelta; en la segunda, mezclado)
-    const zona2 = (cuanto) => (d) => (dep === 1 && d.zona === 2 ? cuanto : 0);
+    const zona2 = (cuanto) => (d) => (dep === 1 && d.zona === 2 ? cuanto : 0) + lejos(d);
     let a, tipo;
     // El vehiculo se elige al salir del deposito y es el mismo hasta volver: la primera salida de la vuelta (viajes 1 y 2),
     // el que pide el negocio; la segunda (viajes 3, 4 y 5, con la hora pico), camion o semi (en el deposito 1, semi solo en las
     // dos ultimas vueltas; en el 2, sorteado).
-    if (i === 0) { a = elegir(de, v, rr, puntaje(de, zona2(6)), recientes, enZona); tipo = a.tamano; }
+    if (i === 0) { a = elegir(de, v, rr, puntaje(de, zona2(6)), recientes, enZona, rangoDep); tipo = a.tamano; }
     else if (i === 2) {
-      a = elegir(de, v, rr, puntaje(de, zona2(2)), recientes, enZona);
+      a = elegir(de, v, rr, puntaje(de, zona2(2)), recientes, enZona, rangoDep);
       const ultimas = Math.floor(ABRE[2] / 5) - 2;   // (las dos ultimas vueltas del deposito 1)
       tipo = dep === 0 ? (v >= ultimas ? 'semi' : 'camion') : rr() < 0.5 ? 'semi' : 'camion';
     }
@@ -503,7 +509,7 @@ function crearViajes(destinos, red) {
       // el que deja la hora pico (el viaje siguiente) cruzando la mayor cantidad de caminos de antes, sin que quede
       // demasiado lejos del deposito; y este viaje, por calles nuevas
       a = elegir(de, v, rr, (d) => puntajeCamino(caminoDe(de, d)) * 0.5 + puntajeCamino(caminoDe(d, anden), 2.5, 0.15) - (visitas.get(d) || 0) * 4
-        - Math.max(0, largo(d, anden) - max * 1.2) * 0.5 + zona2(2)(d), recientes, enZona);
+        - Math.max(0, largo(d, anden) - max * 1.2) * 0.5 + zona2(2)(d), recientes, enZona, [80, 300]);
       tipo = lista[k - 1].tipo;
     } else { a = anden; tipo = lista[k - 1].tipo; }
     guardar({ de, a, tipo, paradas: [], camino: caminoDe(de, a) }, [a]);

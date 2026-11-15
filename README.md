@@ -259,7 +259,7 @@ El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se ag
 
 **Los vehículos** cambian solo al salir del depósito: camioneta, furgón o camión según el negocio; la segunda salida de cada vuelta en camión o en **semi** (en el depósito 1, el semi solo en las dos últimas vueltas; en el 2, sorteado) (el remolque se abre en las curvas, marcha atrás se cruza, se desliza contra las paredes y tus copias lo atraviesan). Después, colectivo y taxi.
 
-**Para repartir el tráfico**, cada viaje se elige buscando calles que no se usaron, pero que crucen los caminos de antes en alguna esquina, y lugares que se repitan poco. El depósito 2 prefiere los negocios de la zona este; los colectivos rotan las paradas (la terminal está en el medio de la zona sur); los taxis prefieren cambiar de zona.
+**Para que el lío no se arme enseguida en la puerta del depósito**, las primeras vueltas de cada depósito van a negocios lejos y, vuelta a vuelta, se van acercando. **Para repartir el tráfico**, cada viaje se elige buscando calles que no se usaron, pero que crucen los caminos de antes en alguna esquina, y lugares que se repitan poco. El depósito 2 prefiere los negocios de la zona este; los colectivos rotan las paradas (la terminal está en el medio de la zona sur); los taxis prefieren cambiar de zona.
 
 **Las vueltas de reparto** (de 5 viajes): depósito → negocio, de vuelta al depósito (de frente con tu viaje anterior: la primera vez el juego se frena y lo explica), depósito → otro negocio, de ahí a otro, y la **hora pico** de vuelta al depósito por las calles más usadas. Cada vuelta los viajes son más largos.
 

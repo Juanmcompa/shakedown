@@ -113,6 +113,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] El nombre del fantasma solo se ve cuando va bastante adelante (de cerca tapaba la cámara)
 - [x] Tabla con prácticas: por corredor el mejor tiempo arriba y el oficial abajo, marcas de casco, línea (trazada, nueva) y ayuda, orden Oficial / Con prácticas, sin el dibujo del auto (solo su número)
 - [x] "Cómo leer la tabla" en Cómo se juega, con renglones de ejemplo dibujados igual que la tabla
+- [x] F FOR TRAFFIC: las primeras entregas de cada depósito van lejos y se van acercando (el lío no arranca en la calle del depósito)
 - [x] F FOR TRAFFIC: luz de la tarde y revelado de Shakedown, chata y camión de Shakedown, marcas de frenada, humo y polvo
 - [x] F FOR TRAFFIC: casas, árboles y pisos de Shakedown; bamboleo de la carga al doblar y al frenar
 - [x] F FOR TRAFFIC: pantalla del celular reordenada (dos renglones arriba, camioneta en la franja de abajo) y botón de pausa en el medio de los controles
