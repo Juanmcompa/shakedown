@@ -174,12 +174,24 @@ function cola() {
   const f = c.adelante, l = Math.hypot(f[0], f[2]) || 1, fx = f[0] / l, fz = f[2] / l, largo = TIPOS[tipo].largo;
   return { x: c.pos[0] - fx * largo, z: c.pos[2] - fz * largo, fx, fz };
 }
-// En un negocio: el centro adentro del circulo de la bahia. En el deposito: de culata, con la cola contra el porton y la
+// que tan cerca pasa el segmento (ax, az)-(bx, bz) del punto d
+function cerca(d, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((d.x - ax) * dx + (d.z - az) * dz) / l2));
+  return Math.hypot(d.x - ax - dx * t, d.z - az - dz * t);
+}
+// En un negocio: alguna parte del vehiculo adentro del circulo de la bahia. En el deposito: de culata, con la cola contra el porton y la
 // trompa hacia el playon (mirando hacia +z, con 35 grados de margen).
 function llego() {
   if (hechas < viaje.paradas.length) return false;   // (falta pasar por alguna parada)
   const d = viaje.a;
-  if (!d.deposito) return Math.hypot(d.x - c.pos[0], d.z - c.pos[2]) < LLEGA;
+  // (en un negocio cuenta cualquier parte del vehiculo, de la trompa a la cola del remolque: con el semi o el camion,
+  // estacionado junto al cordon, el centro de la cabina casi nunca caia en la bahia)
+  if (!d.deposito) {
+    const q = cola(), f = c.adelante, l = Math.hypot(f[0], f[2]) || 1, largo = TIPOS[tipo].largo;
+    const tx = c.pos[0] + f[0] / l * largo, tz = c.pos[2] + f[2] / l * largo;   // (la trompa)
+    if (remolque) return Math.min(cerca(d, tx, tz, c.pos[0], c.pos[2]), cerca(d, c.pos[0], c.pos[2], q.x, q.z)) < LLEGA;
+    return cerca(d, tx, tz, q.x, q.z) < LLEGA;
+  }
   const q = cola();
   return Math.hypot(q.x - d.puerta.x, q.z - d.puerta.z) < 2.2 && q.fz > 0.82;
 }
