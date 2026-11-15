@@ -85,7 +85,7 @@ export function crearRemolque(R, centro = 0) {
     if (!lista) return null;
     let mejor = null;
     for (const o of lista) {
-      if (o.roto || o.cede || o.clase === 'auto') continue;
+      if (o.roto || o.cede || o.clase === 'auto' || o.deposito) continue;   // (el galpon y las paredes del deposito: los atraviesa)
       const dx = x - o.x, dz = z - o.z;
       let e = null;
       if (o.hx) {

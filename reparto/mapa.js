@@ -160,10 +160,11 @@ export function crearMapa() {
   }
 
   // --- los depositos: el galpon se choca; el playon tiene paredes a los costados ---
+  // (deposito: el remolque del semi los atraviesa, para que no se trabe al estacionar de culata; ver remolque.js)
   for (const D of DEPOSITOS) {
-    caja((D.x0 + D.x1) / 2, (D.z0 + D.zAnden) / 2, (D.x1 - D.x0) / 2, (D.zAnden - D.z0) / 2);
-    caja(D.x0 - 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2);
-    caja(D.x1 + 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2);
+    caja((D.x0 + D.x1) / 2, (D.z0 + D.zAnden) / 2, (D.x1 - D.x0) / 2, (D.zAnden - D.z0) / 2).deposito = true;
+    caja(D.x0 - 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2).deposito = true;
+    caja(D.x1 + 0.3, (D.zAnden + D.z1) / 2, 0.3, (D.z1 - D.zAnden) / 2).deposito = true;
   }
 
   // --- las vallas de obra: cierran las zonas que todavia no se abrieron (ver abrir, en T) ---
