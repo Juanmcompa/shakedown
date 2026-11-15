@@ -53,7 +53,8 @@ export function crearPiloto(red, desde, hasta, cola, paradas = [], largo = false
     // por la mano derecha: el punto se corre 2,5 m a la derecha de hacia donde va
     let dx = p.x - c.pos[0], dz = p.z - c.pos[2];
     const l = Math.hypot(dx, dz) || 1;
-    const corre = ultimo || p.parada || p.anillo || (culata && k >= puntos.length - 4);
+    // (al salir de una rotonda, derecho a la calle: corrido, se clavaba en la esquina)
+    const corre = ultimo || p.parada || p.anillo || (k > 0 && puntos[k - 1].anillo) || (culata && k >= puntos.length - 4);
     const tx = corre ? p.x : p.x + (-dz / l) * 2.5, tz = corre ? p.z : p.z + (dx / l) * 2.5;
     dx = tx - c.pos[0]; dz = tz - c.pos[2];
     const e = giro(rumboA(dx, dz) - rumboA(c.adelante[0], c.adelante[2]));
@@ -84,6 +85,8 @@ function rodear(puntos, desde) {
     while (vuelta <= 0.3) vuelta += 2 * Math.PI;
     while (vuelta > 2 * Math.PI + 0.3) vuelta -= 2 * Math.PI;
     for (let t = 0.45; t < vuelta - 0.3; t += 0.5) out.push({ x: q.x + Math.cos(a0 - t) * rm, z: q.z + Math.sin(a0 - t) * rm, anillo: true });
+    // (y la boca de salida, afuera del anillo: asi sale derecho por la calle y no contra la esquina)
+    out.push({ x: q.x + Math.cos(a1) * (q.ro + 3), z: q.z + Math.sin(a1) * (q.ro + 3), anillo: true });
   }
   return out;
 }

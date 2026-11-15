@@ -66,9 +66,10 @@ function ponerVehiculo(t) {
   if (dibujo) dibujo.sacar();
   c = crearAuto(T, configDeTipo(t));
   dibujo = crearDibujoVehiculo(escena, t, COLOR);
+  fantasmas.peso(configDeTipo(t).masa);   // (para los choques: cuanto pesa uno contra el otro)
   remolque = TIPOS[t].remolque ? crearRemolque(TIPOS[t].remolque, configDeTipo(t).centro || 0) : null;
   if (antes) ubicar(antes.pos[0], antes.pos[2], Math.atan2(antes.adelante[0], -antes.adelante[2]));
-  camara.alejar({ camion: 1.3, semi: 1.7, colectivo: 1.5 }[t] || 1);
+  camara.alejar({ moto: 0.8, camion: 1.3, semi: 1.7, colectivo: 1.5 }[t] || 1);
 }
 ponerVehiculo('furgon');
 
@@ -422,6 +423,13 @@ function logica(dt) {
     resto -= JUEGO.paso;
   }
   if (fase === 'viaje') {
+    // si tocaste una copia, sale despedida y queda boba un momento (ver fantasmas.js); y los choques entre copias, si
+    // estan cerca, se oyen
+    fantasmas.golpear(c, configDeTipo(tipo));
+    for (const g of fantasmas.choques()) {
+      const d = Math.hypot(g.x - c.pos[0], g.z - c.pos[2]);
+      if (d < 60) sonido.toque && sonido.toque('auto', 2 + g.v * Math.max(0.2, 1 - d / 60), 0);
+    }
     if (c.impacto > 2) { sonido.toque && sonido.toque(c.contra, c.impacto, 0); camara.sacudir(c.impacto); }
     c.impacto = 0;
     grabacion.muestra(reloj, c, remolque ? remolque.rumbo() : undefined);

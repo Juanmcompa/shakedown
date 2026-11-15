@@ -1,4 +1,5 @@
 // Reparto: los vehiculos de reparto. Segun lo que se lleva, el viaje se hace en uno de tres:
+//   moto:      la mas chica: liviana y rapida, con la caja atras. Se inclina al doblar. Un golpe la saca volando
 //   camioneta: chica, con la carga tapada con una lona
 //   furgon:    la camioneta de reparto de siempre, caja cerrada
 //   camion:    largo, pesado, lento para arrancar y para doblar
@@ -17,6 +18,11 @@ import { armarAuto, pinturaDeColor } from '../src/autos.js';
 // las medidas de cada uno. k: cuanto mas pesado que la Vitarita. ancho/largo: medio ancho y medio largo (para chocarlos).
 // cabina, caja: largos (m). altoCabina, altoCaja: altos. abierta: la caja es una caja de camioneta, sin techo.
 export const TIPOS = {
+  // la moto: por dentro, cuatro ruedas muy juntas (la misma fisica que todos, para que no se caiga); por fuera, dos.
+  // fisica: lo que se cambia de la Vitarita, ademas de lo de siempre (el centro bajo: que no vuelque).
+  moto: { nombre: 'Moto', k: 0.33, motor: 0.8, giro: 1.2, ancho: 0.45, largo: 1.1, choque: [0.5, 0.55], trocha: 0.72, ejes: 0.68,
+    cabina: 0, caja: 0, altoCabina: 1.55, altoCaja: 0.9, anchoDibujo: 0.6, piso: 0, radio: 0.3, moto: true,
+    fisica: { estable: 0.6, empuje: 0.75 } },
   // la camioneta y el camion son los de Shakedown (src/autos.js: la chata y el camion, pintados pixel por pixel). modelo: cual;
   // altoModelo: el "alto" de sus medidas alla (a que altura va su centro); placa: donde va el numero del techo [alto, adelante].
   camioneta: { nombre: 'Camioneta', k: 1.2, motor: 1.25, giro: 1, ancho: 1.0, largo: 2.25, choque: [0.98, 1.3], trocha: 0.72, ejes: 1.45,
@@ -49,6 +55,7 @@ export function configDeTipo(tipo) {
     masa: V.masa * k, resorte: V.resorte * k, amortigua: V.amortigua.map((a) => a * k), potencia: V.potencia * t.motor,
     inercia: V.inercia.map((i) => i * k * (1 + t.largo / 4)), giro: V.giro * t.giro,
     caja: [t.ancho, t.largo, V.caja[2], t.altoCaja + 0.4], choque: t.choque, trocha: t.trocha, ejes: t.ejes, radio: t.radio || V.radio,
+    ...(t.fisica || {}),
   });
 }
 export const altoDe = (C) => C.resorteLargo + C.radio - C.masa * 9.81 / 4 / C.resorte - C.anclaje;   // a que altura va el centro, apoyado
@@ -187,6 +194,61 @@ function armarDeShakedown(tipo, color) {
   return { grupo, remolque: null, carga: cuerpo, cajaRemolque: null, ruedas, frenos: [], alto, numero, C, tipo };
 }
 
+// La moto: el cuadro y el tanque del color, el que maneja (con el casco del color) y la caja de reparto atras. Todo va en
+// "carga", con el eje en el piso: se inclina entera hacia adentro de la curva (ver bambolear). Dos ruedas, en el medio.
+let mCajaMoto = null;
+function armarMoto(tipo, color) {
+  const t = TIPOS[tipo], C = configDeTipo(tipo), alto = altoDe(C), grupo = new THREE.Group(), cz = C.centro || 0;
+  const carga = new THREE.Group();
+  carga.position.set(0, -alto, cz);
+  grupo.add(carga);
+  const pieza = (w, h, l, m, x, y, z) => { const p = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), m); p.position.set(x, y, z); p.castShadow = true; carga.add(p); return p; };
+  const pintura = new THREE.MeshLambertMaterial({ color }), oscura = new THREE.MeshLambertMaterial({ color: tono(color, -0.35) });
+  const campera = new THREE.MeshLambertMaterial({ color: '#2f3a4a' }), piel = new THREE.MeshLambertMaterial({ color: '#c99a76' });
+  if (!mCajaMoto) {
+    const lado = mat(lienzo(6, 6, (R) => { R(0, 0, 6, 6, '#d8492f'); R(0, 0, 6, 1, '#f06a4a'); R(1, 2, 4, 2, '#f2f0ea'); R(0, 5, 6, 1, '#8a2a1e'); }));
+    const tapa = mat(lienzo(6, 6, (R) => { R(0, 0, 6, 6, '#e05a3a'); R(0, 0, 6, 1, '#f06a4a'); }));
+    mCajaMoto = [lado, lado, tapa, negro, lado, lado];
+  }
+  const r = C.radio;
+  // el cuadro, el tanque, el asiento y el guardabarros
+  pieza(0.22, 0.32, 1.2, oscura, 0, r + 0.25, 0);
+  pieza(0.36, 0.28, 0.5, pintura, 0, r + 0.55, -0.3);
+  pieza(0.3, 0.1, 0.55, negro, 0, r + 0.5, 0.2);
+  pieza(0.4, 0.34, 0.3, pintura, 0, r + 0.6, -0.68);   // (el carenado de adelante)
+  // el manubrio (dobla con las ruedas: ver crearDibujoVehiculo)
+  const manubrio = new THREE.Group();
+  manubrio.position.set(0, r + 0.82, -0.6);
+  carga.add(manubrio);
+  const barra = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.05, 0.05), negro); manubrio.add(barra);
+  // el que maneja: piernas, cuerpo inclinado, brazos y casco
+  pieza(0.36, 0.18, 0.5, campera, 0, r + 0.62, 0.0);
+  const cuerpo = pieza(0.4, 0.55, 0.28, campera, 0, r + 0.98, 0.05); cuerpo.rotation.x = -0.35;
+  for (const x of [-1, 1]) { const b = pieza(0.1, 0.1, 0.5, campera, x * 0.24, r + 0.98, -0.3); b.rotation.x = 0.35; }
+  pieza(0.3, 0.3, 0.32, pintura, 0, r + 1.38, -0.05);
+  pieza(0.24, 0.1, 0.06, new THREE.MeshLambertMaterial({ color: '#22364a' }), 0, r + 1.38, -0.22);   // (la visera)
+  pieza(0.18, 0.06, 0.1, piel, 0, r + 1.21, -0.12);
+  // la caja de reparto, atras, con el numero en la tapa
+  pieza(0.55, 0.5, 0.5, mCajaMoto, 0, r + 0.85, 0.55);
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), materialNumero(1));
+  placa.rotation.set(-Math.PI / 2, 0, Math.PI); placa.position.set(0, r + 1.11, 0.55); placa.visible = false;
+  carga.add(placa);
+  const numero = (n) => { placa.visible = n > 0; if (n > 0) placa.material = materialNumero(n); };
+  // la luz de freno
+  const freno = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.1), apagada); freno.position.set(0, r + 0.7, 0.81); carga.add(freno);
+  // las dos ruedas (cada una dentro de un pivote, como las de los otros; la de adelante dobla)
+  const geo = new THREE.CylinderGeometry(r, r, 0.14, 12), geoAro = new THREE.CylinderGeometry(r * 0.55, r * 0.55, 0.16, 6);
+  geo.rotateZ(Math.PI / 2); geoAro.rotateZ(Math.PI / 2);
+  const ruedasMoto = [];
+  for (const z of [-C.ejes, C.ejes]) {
+    const pivote = new THREE.Group(), rueda = new THREE.Group(), goma = new THREE.Mesh(geo, llanta);
+    goma.castShadow = true; rueda.add(goma, new THREE.Mesh(geoAro, aro)); pivote.add(rueda);
+    pivote.position.set(0, r, z); carga.add(pivote);
+    ruedasMoto.push({ pivote, rueda });
+  }
+  return { grupo, remolque: null, carga, cajaRemolque: null, ruedas: [], ruedasMoto, manubrio, frenos: [freno], alto, numero, C, tipo, moto: true };
+}
+
 // el numero de una entrega, para el techo de la cabina: blanco, con borde oscuro (sin fondo)
 const numeros = new Map();
 function materialNumero(n) {
@@ -209,6 +271,7 @@ function materialNumero(n) {
 export function armarVehiculo(tipo, color) {
   const t = TIPOS[tipo], C = configDeTipo(tipo), alto = altoDe(C);
   if (t.modelo) return armarDeShakedown(tipo, color);
+  if (t.moto) return armarMoto(tipo, color);
   const piso = -alto, grupo = new THREE.Group(), W = t.anchoDibujo;
   const largo = t.caja + t.cabina, z0 = -largo / 2 + (C.centro || 0), base = piso + t.piso;
   const poner = (m) => { m.castShadow = true; grupo.add(m); return m; };
@@ -299,7 +362,8 @@ const lim = (v, a, b) => (v < a ? a : v > b ? b : v);
 export function bambolear(f, aLat, aLon, dt) {
   if (!f.carga || !(dt > 0)) return;
   const b = f.bambolea || (f.bambolea = { r: 0, vr: 0, p: 0, vp: 0 }), mucho = f.tipo === 'taxi' ? 0.5 : 1;
-  const objR = lim(aLat * 0.017 * mucho, -0.12, 0.12), objP = lim(aLon * 0.008 * mucho, -0.05, 0.05);
+  // (la moto no: se inclina hacia adentro de la curva, como de verdad, y mucho mas)
+  const objR = f.moto ? lim(-aLat * 0.075, -0.6, 0.6) : lim(aLat * 0.017 * mucho, -0.12, 0.12), objP = lim(aLon * 0.008 * mucho, -0.05, 0.05);
   for (let paso = Math.min(dt, 0.1), n = Math.ceil(paso / 0.01), h = paso / n, i = 0; i < n; i++) {
     b.vr += ((objR - b.r) * 70 - b.vr * 4.5) * h; b.r += b.vr * h;
     b.vp += ((objP - b.p) * 80 - b.vp * 5) * h; b.p += b.vp * h;
@@ -324,7 +388,12 @@ export function crearDibujoVehiculo(escena, tipo, color) {
       bambolear(f, v * -c.w[1], aLon, dt);
       f.grupo.position.fromArray(c.pos);
       f.grupo.quaternion.fromArray(c.q);
+      if (f.moto) {   // (las dos ruedas giran con las de la fisica; la de adelante y el manubrio doblan)
+        f.ruedasMoto[0].pivote.rotation.y = f.manubrio.rotation.y = -c.giroRuedas;
+        f.ruedasMoto[0].rueda.rotation.x = -c.ruedas[0].giro; f.ruedasMoto[1].rueda.rotation.x = -c.ruedas[2].giro;
+      }
       c.ruedas.forEach((r, i) => {
+        if (!f.ruedas[i]) return;
         f.ruedas[i].pivote.position.set(r.x * 1.06, f.C.anclaje - r.largo, r.z);
         f.ruedas[i].pivote.rotation.y = r.delantera ? -c.giroRuedas : 0;
         f.ruedas[i].rueda.rotation.x = -r.giro;

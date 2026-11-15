@@ -498,7 +498,9 @@ function crearViajes(destinos, red) {
     // El vehiculo se elige al salir del deposito y es el mismo hasta volver: la primera salida de la vuelta (viajes 1 y 2),
     // el que pide el negocio; la segunda (viajes 3, 4 y 5, con la hora pico), camion o semi (en el deposito 1, semi solo en las
     // dos ultimas vueltas; en el 2, sorteado).
-    if (i === 0) { a = elegir(de, v, rr, puntaje(de, zona2(6)), recientes, enZona, rangoDep); tipo = a.tamano; }
+    // (una vuelta si y una no, desde la segunda, la primera salida es en moto: a un negocio chico, de los que piden camioneta)
+    const enMoto = i === 0 && v % 2 === 1, chicos = enZona.filter((d) => d.tamano === 'camioneta');
+    if (i === 0) { a = elegir(de, v, rr, puntaje(de, zona2(6)), recientes, enMoto && chicos.length ? chicos : enZona, rangoDep); tipo = enMoto ? 'moto' : a.tamano; }
     else if (i === 2) {
       a = elegir(de, v, rr, puntaje(de, zona2(2)), recientes, enZona, rangoDep);
       const ultimas = Math.floor(ABRE[2] / 5) - 2;   // (las dos ultimas vueltas del deposito 1)
@@ -551,7 +553,7 @@ function crearViajes(destinos, red) {
     while (lista.length <= k) decidir(lista.length);
     const { de, a, tipo, paradas: ps, camino: c, salto } = lista[k];
     // el tiempo: segun el largo y el vehiculo, mas lo que lleva estacionar de culata en el deposito y frenar en cada parada
-    const lento = { camion: 1.25, semi: 1.45, colectivo: 1.2, taxi: 0.9 }[tipo] || 1, culata = a.deposito ? (tipo === 'semi' ? 30 : 10) : 0;
+    const lento = { moto: 0.85, camion: 1.25, semi: 1.45, colectivo: 1.2, taxi: 0.9 }[tipo] || 1, culata = a.deposito ? (tipo === 'semi' ? 30 : 10) : 0;
     const carga = tipo === 'colectivo' ? '🚌' : tipo === 'taxi' ? '🙋' : a.deposito ? '📦' : a.icono;
     return { k, de, a, tipo, paradas: ps, salto: !!salto, carga, camino: c, culmine: k < ABRE[3] && k % 5 === 4,
       // (el colectivo, con sus paradas, tiene hasta 2 minutos y medio; todo lo demas, hasta 2)
