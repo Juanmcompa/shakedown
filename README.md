@@ -257,7 +257,7 @@ El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se ag
 
 **Los depósitos:** ocho portones con dársenas numeradas, ENTRADA a la derecha y SALIDA a la izquierda, circulación en un solo sentido. Siempre se estaciona **de culata** (si llegás de trompa, aparece "⤵ ¡De culata!"). Cada llegada usa otro portón, en rueda.
 
-**Los vehículos** cambian solo al salir del depósito: camioneta, furgón o camión según el negocio (una vuelta sí y una no, desde la segunda, la primera salida va en **moto** a un negocio chico: liviana, rápida, se inclina al doblar y un golpe la saca volando); la segunda salida de cada vuelta en camión o en **semi** (en el depósito 1, el semi solo en las dos últimas vueltas; en el 2, sorteado) (el remolque se abre en las curvas, marcha atrás se cruza, se desliza contra las paredes y tus copias lo atraviesan). Después, colectivo y taxi.
+**Los vehículos** cambian solo al salir del depósito: camioneta, furgón o camión según el negocio; la segunda salida de cada vuelta en camión o en **semi** (en el depósito 1, el semi solo en las dos últimas vueltas; en el 2, sorteado) (el remolque se abre en las curvas, marcha atrás se cruza, se desliza contra las paredes y tus copias lo atraviesan). Después, colectivo y taxi.
 
 **Para que el lío no se arme enseguida en la puerta del depósito**, las primeras vueltas de cada depósito van a negocios lejos y, vuelta a vuelta, se van acercando. **Para repartir el tráfico**, cada viaje se elige buscando calles que no se usaron, pero que crucen los caminos de antes en alguna esquina, y lugares que se repitan poco. El depósito 2 prefiere los negocios de la zona este; los colectivos rotan las paradas (la terminal está en el medio de la zona sur); los taxis prefieren cambiar de zona.
 

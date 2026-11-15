@@ -498,9 +498,8 @@ function crearViajes(destinos, red) {
     // El vehiculo se elige al salir del deposito y es el mismo hasta volver: la primera salida de la vuelta (viajes 1 y 2),
     // el que pide el negocio; la segunda (viajes 3, 4 y 5, con la hora pico), camion o semi (en el deposito 1, semi solo en las
     // dos ultimas vueltas; en el 2, sorteado).
-    // (una vuelta si y una no, desde la segunda, la primera salida es en moto: a un negocio chico, de los que piden camioneta)
-    const enMoto = i === 0 && v % 2 === 1, chicos = enZona.filter((d) => d.tamano === 'camioneta');
-    if (i === 0) { a = elegir(de, v, rr, puntaje(de, zona2(6)), recientes, enMoto && chicos.length ? chicos : enZona, rangoDep); tipo = enMoto ? 'moto' : a.tamano; }
+    // (la moto esta armada en vehiculos.js pero no se usa: no funciono. Para volver a probarla, asignarla aca)
+    if (i === 0) { a = elegir(de, v, rr, puntaje(de, zona2(6)), recientes, enZona, rangoDep); tipo = a.tamano; }
     else if (i === 2) {
       a = elegir(de, v, rr, puntaje(de, zona2(2)), recientes, enZona, rangoDep);
       const ultimas = Math.floor(ABRE[2] / 5) - 2;   // (las dos ultimas vueltas del deposito 1)
