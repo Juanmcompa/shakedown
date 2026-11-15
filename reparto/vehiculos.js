@@ -38,7 +38,8 @@ export const TIPOS = {
   // queda el plato.
   semi: { nombre: 'Semi', k: 3.4, motor: 2.5, giro: 0.86, ancho: 1.2, largo: 2.9, choque: [1.15, 1.75], trocha: 1.0, ejes: 1.6,
     cabina: 2.5, caja: 3.2, altoCabina: 2.6, altoCaja: 0.3, anchoDibujo: 2.4, piso: 0.6, tractor: true,
-    remolque: { largo: 11, ancho: 1.24, alto: 3.0, perno: 1.0, eje: 2.2, plato: 1.2 } },
+    remolque: { largo: 11, ancho: 1.24, alto: 3.0, perno: 1.0, eje: 2.2, plato: 1.2 },
+    fisica: { atraviesaDeposito: true } },
   colectivo: { nombre: 'Colectivo', k: 3.0, motor: 2.3, giro: 0.8, ancho: 1.27, largo: 5.6, choque: [1.25, 4.35], trocha: 1.0, ejes: 2.9,
     cabina: 11.2, caja: 0, altoCabina: 2.9, altoCaja: 0, anchoDibujo: 2.5, piso: 0.35, colectivo: true },
   taxi: { nombre: 'Taxi', k: 0.95, motor: 1.15, giro: 1.05, ancho: 0.9, largo: 2.15, choque: [0.88, 1.25], trocha: 0.78, ejes: 1.3,

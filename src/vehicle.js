@@ -279,7 +279,7 @@ export function crearAuto(terreno, C) {
       const lista = terreno.cosasCerca(px, pz);
       if (!lista) continue;
       for (const o of lista) {
-        if (o.roto || p[1] + oy > o.y + 6) continue;
+        if (o.roto || p[1] + oy > o.y + 6 || (C.atraviesaDeposito && o.deposito)) continue;
         // hacia donde empuja (dx, dz, de largo 1) y cuanto se metio el circulo adentro
         let dx = px - o.x, dz = pz - o.z, mete;
         if (o.hx) {
