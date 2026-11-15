@@ -113,6 +113,7 @@ Lo social es el centro: el link que compartís lleva tu pasada, y quien lo abre 
 - [x] El nombre del fantasma solo se ve cuando va bastante adelante (de cerca tapaba la cámara)
 - [x] Tabla con prácticas: por corredor el mejor tiempo arriba y el oficial abajo, marcas de casco, línea (trazada, nueva) y ayuda, orden Oficial / Con prácticas, sin el dibujo del auto (solo su número)
 - [x] "Cómo leer la tabla" en Cómo se juega, con renglones de ejemplo dibujados igual que la tabla
+- [x] F FOR TRAFFIC: al perder, lista de las entregas con su tiempo y «Seguir desde acá» en cada una (no hay que empezar de cero)
 - [x] F FOR TRAFFIC: práctica desde cualquier entrega (`?entrega=N`, no toca lo guardado ni el récord); en los negocios cuenta cualquier parte del vehículo sobre la bahía (el semi no entregaba); el semi y su remolque atraviesan el galpón (se trababa al salir)
 - [x] F FOR TRAFFIC: choques con peso (una copia liviana sale despedida), copias que quedan bobas y se atrasan, efecto dominó entre copias fuera de horario (la moto se armó pero se sacó: no funcionó); el piloto de prueba sale derecho de las rotondas
 - [x] F FOR TRAFFIC: las primeras entregas de cada depósito van lejos y se van acercando (el lío no arranca en la calle del depósito)

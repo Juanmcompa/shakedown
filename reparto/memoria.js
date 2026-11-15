@@ -95,6 +95,14 @@ export function crearMemoria(desde = null) {
       if (v.entrego) { datos.entregas++; if (!practica) datos.record = Math.max(datos.record, datos.entregas); }
       guardar();
     },
+    // seguir desde una entrega (despues de perder): vuelven estos viajes (los entregados de antes) y se juega el viaje k.
+    // El record no cambia.
+    restaurar(lista, k) {
+      viajes = lista.slice();
+      datos.viajes = viajes.map(empaquetar);
+      datos.entregas = k; datos.intentos = viajes.length;
+      guardar();
+    },
     // pueblo nuevo: se borran los viajes (el record queda)
     borrar() {
       viajes = [];

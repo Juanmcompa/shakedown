@@ -18,7 +18,7 @@ import { crearEfectos } from '../src/fx.js';
 import { crearMapa, TAM, XMAX, ZMAX, CALLES, ROTONDAS, SEMAFOROS, ABRE, TAXIS, zonasAbiertas, colorSemaforo } from './mapa.js';
 import { TIPOS, configDeTipo, crearDibujoVehiculo } from './vehiculos.js';
 import { crearDibujoPueblo } from './dibujo.js';
-import { crearMemoria, crearGrabacion } from './memoria.js';
+import { crearMemoria, crearGrabacion, MUESTRA } from './memoria.js';
 import { crearFantasmas } from './fantasmas.js';
 import { crearPiloto } from './piloto.js';
 import { crearRemolque } from './remolque.js';
@@ -227,7 +227,9 @@ function entregar() {
   pintarCuenta();
 }
 // No llego a tiempo (o se rindio): se pierde la partida. Un instante con el cartel y despues el resultado. Los viajes
-// se borran: la proxima partida arranca con el pueblo vacio (el record queda).
+// se borran: la proxima partida arranca con el pueblo vacio (el record queda). Pero en el resultado esta la lista de
+// todas las entregas de la partida, con su tiempo, y en cada una "seguir desde aca": vuelven las anteriores y se juega
+// esa de nuevo (las mas nuevas se pierden). La ultima fila es la que no llego: seguir desde ahi es reintentarla.
 let recordAntes = memoria.record();
 function tarde(m) {
   avisoCulata = false; $('avisoCulata').hidden = true;
@@ -242,11 +244,50 @@ function mostrarFin() {
   $('finRecord').textContent = record;
   $('finNuevo').hidden = !(hechas > 0 && hechas > recordAntes);
   recordAntes = record;
+  perdida = { viajes: memoria.viajes().filter((v) => v.entrego), k: viaje ? viaje.k : hechas };
+  pintarLista();
   memoria.borrar(); fantasmas.borrar(); fantasmas.preparar(0); abrirZonas(0); pueblo.huellas.limpiar();
   $('fin').hidden = false;
   pintarCuenta();
 }
-function otraVez() { $('fin').hidden = true; salir(); }
+function otraVez() { $('fin').hidden = true; perdida = null; salir(); }
+
+// --- seguir desde una entrega de la partida perdida ---
+let perdida = null;   // { viajes: los entregados, k: el viaje en el que se perdio }
+const duracion = (v) => Math.max(0, (v.xs.length - 1) * MUESTRA);
+function pintarLista() {
+  const L = $('finLista');
+  L.textContent = '';
+  if (!perdida || !perdida.viajes.length) { L.hidden = true; return; }
+  const fila = (k, icono, tiempo, fallo) => {
+    const f = document.createElement('div'), b = document.createElement('button');
+    f.className = 'fila' + (fallo ? ' fallo' : '');
+    f.innerHTML = '<b>#' + (k + 1) + '</b><span>' + icono + '</span><span class="t">' + tiempo + '</span>';
+    b.textContent = fallo ? '↻ Reintentar' : '↺ Seguir desde acá';
+    b.addEventListener('click', () => seguirDesde(k));
+    f.appendChild(b); L.appendChild(f);
+  };
+  for (const v of perdida.viajes) {
+    const p = mapa.viaje(v.k);
+    fila(v.k, p.carga, reloj2(duracion(v)) + ' / ' + reloj2(p.limite), false);
+  }
+  const p = mapa.viaje(perdida.k);
+  fila(perdida.k, p.carga, motivo === 'rendido' ? 'te rendiste' : 'no llegó (' + reloj2(p.limite) + ')', true);
+  L.hidden = false;
+  L.scrollTop = L.scrollHeight;   // (las ultimas, que son las que mas sirven, a la vista)
+}
+// vuelven los viajes entregados antes del viaje k, y se juega el k
+function seguirDesde(k) {
+  if (!perdida) return;
+  const quedan = perdida.viajes.filter((v) => v.k < k);
+  perdida = null;
+  memoria.restaurar(quedan, k);
+  fantasmas.borrar();
+  for (const v of quedan) fantasmas.sumar(v);
+  abrirZonas(k);
+  $('fin').hidden = true;
+  salir();
+}
 
 // --- compartir el resultado (como en Shakedown: en el celular abre el menu de compartir; en la compu lo copia) ---
 //   Probá F for Traffic 📦 Hice 12 entregas
