@@ -50,7 +50,10 @@ post.revelar('sol'); post.prender(true);
 const fx = crearEfectos(escena, pueblo.huellas, 1, [0.5, 0.3], liviano);
 const HACIA = new THREE.Vector3(), AL_AUTO = new THREE.Vector3();
 const sonido = crearSonido();
-const memoria = crearMemoria();
+// Para practicar una entrega en especial: reparto/?entrega=24 arranca en la entrega 24, con las zonas que toquen, pero sin
+// copias en la calle (las entregas de antes no se jugaron). No toca lo guardado ni el record (ver memoria.js).
+const pedida = parseInt(new URLSearchParams(location.search).get('entrega'), 10);
+const memoria = crearMemoria(pedida >= 1 ? Math.min(pedida, 500) - 1 : null);
 const fantasmas = crearFantasmas(escena, T);
 for (const v of memoria.viajes()) fantasmas.sumar(v);
 fantasmas.preparar(memoria.entregas());
@@ -320,7 +323,11 @@ function portada(si) {
   $('pueblonuevo').hidden = !fantasmas.cuantos();
   $('salir').textContent = memoria.entregas() || fantasmas.cuantos() ? 'Seguir repartiendo' : 'Salir a repartir';
 }
-function salir() { sonido.iniciar(); portada(false); empezar(false); if (memoria.entregas() === 0) mostrarSello(); }
+function salir() {
+  sonido.iniciar(); portada(false); empezar(false);
+  if (memoria.practica()) grande('🧪 Práctica desde la entrega ' + memoria.practica() + ' (no cuenta para el récord)', 2.6);
+  else if (memoria.entregas() === 0) mostrarSello();
+}
 $('salir').addEventListener('click', salir);
 $('pueblonuevo').addEventListener('click', () => {
   if (!confirm('¿Empezar de cero? Se borran tus entregas (el récord queda).')) return;

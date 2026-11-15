@@ -267,6 +267,8 @@ El mapita muestra solo lo que está abierto (empieza con el pueblo chico y se ag
 
 **Compartir:** `Probá F for Traffic 📦 Hice 12 entregas`, una cajita por entrega, el link y el aviso de Early Access.
 
+**Para practicar una entrega:** `reparto/?entrega=24` arranca directo en la entrega 24 (con el vehículo y las zonas que tocan), pero sin copias en la calle: las de antes no se jugaron. Se van sumando las que hagas desde ahí. No toca tus viajes guardados ni el récord, y al perder vuelve a la misma entrega.
+
 Está todo en la carpeta `reparto/` (la dirección no cambió): el pueblo, las zonas y el orden de los viajes (`mapa.js`), los vehículos (`vehiculos.js`), el remolque del semi (`remolque.js`), cómo se dibuja (`dibujo.js`), la memoria de viajes (`memoria.js`), las versiones pasadas (`fantasmas.js`) y el juego (`juego.js`). La física del auto, la cámara, los mandos y el sonido son los de Shakedown. Prueba: `node tools/pruebas/verreparto.mjs`.
 
 ## Configuración

@@ -60,20 +60,26 @@ function desempaquetar(p) {
 }
 
 // --- lo guardado: los viajes, en que viaje se va (cuantas entregas) y el record ---
-export function crearMemoria() {
+// desde: para practicar (reparto/?entrega=24 da desde = 23): se arranca con esas entregas hechas, sin viajes guardados, y
+// no se lee ni se escribe nada de lo guardado de verdad (salvo si ya se vio la explicacion). El record no se toca.
+export function crearMemoria(desde = null) {
   let datos = { viajes: [], entregas: 0, record: 0, intentos: 0, visto: 0 };
   try {
     const x = JSON.parse(localStorage.getItem(CLAVE) || 'null');
     if (x && Array.isArray(x.viajes)) datos = Object.assign(datos, x);
   } catch (e) { /* sin memoria: se juega igual, pero se pierde al cerrar */ }
+  const practica = desde !== null;
+  if (practica) datos = { viajes: [], entregas: desde, record: datos.record, intentos: 0, visto: datos.visto };
   let viajes = [];
   try { viajes = datos.viajes.map(desempaquetar); } catch (e) { viajes = []; datos.viajes = []; }
   let lleno = false;
   const guardar = () => {
+    if (practica) return;
     try { localStorage.setItem(CLAVE, JSON.stringify(datos)); lleno = false; }
     catch (e) { lleno = true; }   // (la memoria del navegador se lleno: el viaje queda hasta cerrar la pagina)
   };
   return {
+    practica: () => (practica ? desde + 1 : 0),   // (practicando: desde que entrega)
     viajes: () => viajes,
     entregas: () => datos.entregas,
     record: () => datos.record,
@@ -86,13 +92,13 @@ export function crearMemoria() {
       viajes.push(v);
       datos.viajes.push(empaquetar(v));
       datos.intentos++;
-      if (v.entrego) { datos.entregas++; datos.record = Math.max(datos.record, datos.entregas); }
+      if (v.entrego) { datos.entregas++; if (!practica) datos.record = Math.max(datos.record, datos.entregas); }
       guardar();
     },
     // pueblo nuevo: se borran los viajes (el record queda)
     borrar() {
       viajes = [];
-      datos = { viajes: [], entregas: 0, record: datos.record, intentos: 0, visto: datos.visto };
+      datos = { viajes: [], entregas: practica ? desde : 0, record: datos.record, intentos: 0, visto: datos.visto };
       guardar();
     },
   };
